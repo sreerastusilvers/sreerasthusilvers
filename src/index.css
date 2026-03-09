@@ -1,0 +1,469 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Sreerasthu Silvers Jewelry Store Design System */
+@layer base {
+  :root {
+    /* Core Colors - Cream and Gold Luxury Palette */
+    --background: 30 33% 98%;
+    --foreground: 0 0% 7%;
+    
+    --cream: 30 33% 97%;
+    --cream-dark: 30 20% 94%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+
+    /* Gold Accent Colors */
+    --primary: 38 58% 53%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 42 75% 68%;
+    --primary-dark: 35 55% 45%;
+
+    --secondary: 30 33% 97%;
+    --secondary-foreground: 0 0% 7%;
+
+    --muted: 30 15% 92%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 38 58% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 20% 90%;
+    --input: 30 20% 90%;
+    --ring: 38 58% 53%;
+
+    --radius: 0.75rem;
+
+    /* Typography */
+    --font-heading: 'Poppins', system-ui, sans-serif;
+    --font-body: 'Poppins', system-ui, sans-serif;
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(17, 17, 17, 0.04);
+    --shadow-md: 0 6px 20px rgba(17, 17, 17, 0.06);
+    --shadow-lg: 0 12px 32px rgba(17, 17, 17, 0.08);
+    --shadow-xl: 0 20px 40px rgba(17, 17, 17, 0.1);
+    --shadow-gold: 0 8px 24px rgba(201, 154, 72, 0.15);
+
+    /* Gold Gradient */
+    --gradient-gold: linear-gradient(135deg, hsl(38, 58%, 53%) 0%, hsl(42, 75%, 68%) 50%, hsl(38, 58%, 53%) 100%);
+    --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(255, 210, 122, 0.4) 50%, transparent 100%);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 20 14% 8%;
+    --foreground: 30 33% 97%;
+
+    --card: 20 14% 10%;
+    --card-foreground: 30 33% 97%;
+
+    --popover: 20 14% 10%;
+    --popover-foreground: 30 33% 97%;
+
+    --primary: 38 58% 53%;
+    --primary-foreground: 0 0% 7%;
+
+    --secondary: 20 14% 15%;
+    --secondary-foreground: 30 33% 97%;
+
+    --muted: 20 14% 20%;
+    --muted-foreground: 30 15% 60%;
+
+    --accent: 38 58% 53%;
+    --accent-foreground: 0 0% 7%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 30 33% 97%;
+
+    --border: 20 14% 20%;
+    --input: 20 14% 20%;
+    --ring: 38 58% 53%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    overflow-x: clip;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Poppins', system-ui, sans-serif;
+    overflow-x: clip;
+    width: 100%;
+  }
+
+  /* Mobile Image Optimization */
+  @media (max-width: 1024px) {
+    img {
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      image-rendering: -webkit-optimize-contrast;
+    }
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* Button Variants */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-4 bg-foreground text-background font-medium text-sm tracking-wider uppercase rounded-full transition-all duration-300;
+    @apply hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent text-foreground font-medium text-sm tracking-wider uppercase rounded-full transition-all duration-300;
+    @apply border-2 border-primary hover:bg-primary hover:text-primary-foreground;
+  }
+
+  .btn-outline-gold {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-4 bg-transparent font-medium text-sm tracking-wider uppercase rounded-full transition-all duration-300;
+    @apply border-[1.5px] border-primary text-foreground hover:bg-primary hover:text-primary-foreground;
+  }
+
+  /* Section Styles */
+  .section-padding {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+
+  .container-custom {
+    @apply max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16;
+  }
+
+  /* Text Styles */
+  .eyebrow {
+    @apply text-xs font-semibold tracking-[0.2em] uppercase text-primary;
+  }
+
+  .heading-xl {
+    @apply text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-medium leading-[1.02] tracking-tight;
+  }
+
+  .heading-lg {
+    @apply text-3xl md:text-4xl lg:text-5xl font-heading font-medium leading-tight;
+  }
+
+  .heading-md {
+    @apply text-2xl md:text-3xl lg:text-4xl font-heading font-medium leading-tight;
+  }
+
+  .heading-sm {
+    @apply text-xl md:text-2xl font-heading font-medium leading-snug;
+  }
+
+  .body-lg {
+    @apply text-base md:text-lg text-muted-foreground leading-relaxed;
+  }
+
+  .body-md {
+    @apply text-sm md:text-base text-muted-foreground leading-relaxed;
+  }
+
+  /* Card Styles */
+  .card-luxury {
+    @apply bg-card rounded-xl shadow-[var(--shadow-md)] overflow-hidden transition-all duration-300;
+    @apply hover:shadow-[var(--shadow-lg)] hover:-translate-y-1;
+  }
+
+  /* Gold Shimmer Effect */
+  .gold-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gold-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: var(--gradient-gold-shine);
+    animation: shimmer 6s infinite;
+  }
+
+  @keyframes shimmer {
+    0%, 100% {
+      left: -100%;
+    }
+    50% {
+      left: 100%;
+    }
+  }
+
+  /* Scroll Animations */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Stagger children */
+  .stagger-children > * {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  .stagger-children.visible > *:nth-child(1) { animation: fadeInUp 0.6s ease forwards 0s; }
+  .stagger-children.visible > *:nth-child(2) { animation: fadeInUp 0.6s ease forwards 0.08s; }
+  .stagger-children.visible > *:nth-child(3) { animation: fadeInUp 0.6s ease forwards 0.16s; }
+  .stagger-children.visible > *:nth-child(4) { animation: fadeInUp 0.6s ease forwards 0.24s; }
+  .stagger-children.visible > *:nth-child(5) { animation: fadeInUp 0.6s ease forwards 0.32s; }
+  .stagger-children.visible > *:nth-child(6) { animation: fadeInUp 0.6s ease forwards 0.4s; }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Gold Text Gradient */
+  .text-gold-gradient {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Marquee Animation */
+  .marquee {
+    animation: marquee 30s linear infinite;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  /* Product Card Hover Effects */
+  .product-card-image {
+    @apply relative overflow-hidden rounded-xl;
+  }
+
+  .product-card-image img {
+    @apply transition-transform duration-500 ease-out;
+  }
+
+  .product-card:hover .product-card-image img {
+    @apply scale-105;
+  }
+
+  .product-card-actions {
+    @apply absolute inset-0 flex items-center justify-center gap-3 opacity-0 transition-all duration-300;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .product-card:hover .product-card-actions,
+  .product-card:active .product-card-actions {
+    @apply opacity-100;
+  }
+
+  @media (pointer: coarse) {
+    .product-card-actions {
+      @apply opacity-100;
+    }
+  }
+
+  /* Underline Animation */
+  .link-underline {
+    @apply relative inline-block;
+  }
+
+  .link-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-0.5 bg-primary origin-right transition-transform duration-300 scale-x-0;
+  }
+
+  .link-underline:hover::after {
+    @apply origin-left scale-x-100;
+  }
+
+  /* Focus States */
+  .focus-gold:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  /* Hide Scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Parallax Helper */
+  .parallax-slow {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  /* Reduced Motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Custom Range Slider Styles */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  input[type="range"]::-webkit-slider-track {
+    background: #e5e7eb;
+    height: 8px;
+    border-radius: 4px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #111827;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    background: #f9fafb;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Firefox */
+  input[type="range"]::-moz-range-track {
+    background: #e5e7eb;
+    height: 8px;
+    border-radius: 4px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #111827;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  input[type="range"]::-moz-range-thumb:hover {
+    background: #f9fafb;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Crop zoom slider specific styles */
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    border: 3px solid #3B82F6;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    border: 3px solid #3B82F6;
+  }
+
+  input[type="range"]::-moz-range-track {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+  }
+}

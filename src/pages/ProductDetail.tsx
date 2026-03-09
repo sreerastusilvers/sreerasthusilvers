@@ -1,0 +1,1035 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Truck, Shield, RotateCcw, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
+import { getProduct, getActiveProducts } from "@/services/productService";
+import { UIProductDetail, adaptFirebaseToUIDetail, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { getProductReviews, getProductReviewStats, hasUserPurchasedProduct, hasUserReviewedProduct, Review } from "@/services/reviewService";
+import logo from "@/assets/logo-new.png";
+import MobileHeader from "@/components/MobileHeader";
+import MobileSearchBar from "@/components/MobileSearchBar";
+
+const ProductDetail = () => {
+  const { productId } = useParams();
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [quantity, setQuantity] = useState(1);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [product, setProduct] = useState<UIProductDetail | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<UIProductDetail[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [showImagePopup, setShowImagePopup] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  // Review states
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewStats, setReviewStats] = useState<{ averageRating: number; totalReviews: number; ratingDistribution: Record<number, number> }>({ averageRating: 0, totalReviews: 0, ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } });
+  const [canWriteReview, setCanWriteReview] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
+  const [helpfulVotes, setHelpfulVotes] = useState<Record<string, { up: number; down: number; voted: 'up' | 'down' | null }>>({});
+
+  const handleHelpfulVote = (reviewId: string, type: 'up' | 'down') => {
+    setHelpfulVotes(prev => {
+      const current = prev[reviewId] || { up: 0, down: 0, voted: null };
+      if (current.voted) return prev; // already voted
+      return {
+        ...prev,
+        [reviewId]: {
+          up: type === 'up' ? current.up + 1 : current.up,
+          down: type === 'down' ? current.down + 1 : current.down,
+          voted: type,
+        },
+      };
+    });
+  };
+
+  // Fetch product and related products
+  useEffect(() => {
+    const fetchProductData = async () => {
+      if (!productId) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        // Fetch the main product
+        const fbProduct = await getProduct(productId);
+        
+        if (!fbProduct) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+
+        const uiProduct = adaptFirebaseToUIDetail(fbProduct);
+        setProduct(uiProduct);
+
+        // Fetch all active products for related products
+        const allActiveProducts = await getActiveProducts();
+        const related = allActiveProducts
+          .filter(p => p.id !== productId)
+          .slice(0, 4)
+          .map(adaptFirebaseToUIDetail);
+        setRelatedProducts(related);
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        setNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductData();
+  }, [productId]);
+
+  // Fetch reviews and check if user can review
+  useEffect(() => {
+    const fetchReviewData = async () => {
+      if (!productId) return;
+      
+      try {
+        setReviewsLoading(true);
+        const [fetchedReviews, stats] = await Promise.all([
+          getProductReviews(productId),
+          getProductReviewStats(productId),
+        ]);
+        
+        setReviews(fetchedReviews);
+        setReviewStats(stats);
+        
+        // Check if logged-in user can write a review
+        if (user?.uid) {
+          const purchased = await hasUserPurchasedProduct(user.uid, productId);
+          setCanWriteReview(purchased);
+        }
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    
+    fetchReviewData();
+  }, [productId, user]);
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [productId]);
+
+  const incrementQuantity = () => setQuantity((prev) => prev + 1);
+  const decrementQuantity = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
+
+  const handleAddToCart = async () => {
+    if (!product) return;
+
+    try {
+      // Add items based on quantity
+      for (let i = 0; i < quantity; i++) {
+        await addToCart({
+          id: product.id,
+          name: product.title,
+          price: product.price,
+          image: product.image,
+          category: product.category || 'Products',
+        });
+      }
+      
+      // Show success state
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+      
+      // Show toast notification
+      toast({
+        title: "Added to cart",
+        description: `${product.title} (${quantity}) has been added to your cart.`,
+      });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!product) return;
+
+    try {
+      // Add items based on quantity
+      for (let i = 0; i < quantity; i++) {
+        await addToCart({
+          id: product.id,
+          name: product.title,
+          price: product.price,
+          image: product.image,
+          category: product.category || 'Products',
+        });
+      }
+      // Navigate to checkout
+      navigate('/checkout');
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handleShare = async (platform: string) => {
+    if (!product) return;
+    
+    const productUrl = window.location.href;
+    const productTitle = product.title;
+    const productImage = product.image.startsWith('http') ? product.image : `${window.location.origin}${product.image}`;
+    const shareText = `Check out ${productTitle} at Sree Rasthu Silvers! ₹${product.price.toLocaleString("en-IN")}`;
+
+    // Helper function to share with image via native share API
+    const shareWithImage = async (text: string) => {
+      if (navigator.share && navigator.canShare) {
+        try {
+          const response = await fetch(productImage);
+          const blob = await response.blob();
+          const ext = blob.type.includes('png') ? 'png' : 'jpg';
+          const file = new File([blob], `${productTitle.replace(/[^a-zA-Z0-9]/g, '_')}.${ext}`, { type: blob.type });
+          
+          const shareData = { 
+            title: productTitle, 
+            text: text + '\n' + productUrl, 
+            files: [file]
+          };
+          
+          if (navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+            return true;
+          }
+        } catch {
+          // Fallback below
+        }
+      }
+      return false;
+    };
+
+    switch (platform) {
+      case 'whatsapp': {
+        // Try native share with image first (mobile), fallback to URL
+        const shared = await shareWithImage(shareText);
+        if (!shared) {
+          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + '\n' + productUrl)}`, '_blank');
+        }
+        break;
+      }
+      case 'facebook': {
+        const shared = await shareWithImage(shareText);
+        if (!shared) {
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}&quote=${encodeURIComponent(shareText)}`, '_blank');
+        }
+        break;
+      }
+      case 'twitter': {
+        const shared = await shareWithImage(shareText);
+        if (!shared) {
+          window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(productUrl)}`, '_blank');
+        }
+        break;
+      }
+      case 'telegram': {
+        const shared = await shareWithImage(shareText);
+        if (!shared) {
+          window.open(`https://t.me/share/url?url=${encodeURIComponent(productUrl)}&text=${encodeURIComponent(shareText)}`, '_blank');
+        }
+        break;
+      }
+      case 'pinterest':
+        window.open(`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(productUrl)}&media=${encodeURIComponent(productImage)}&description=${encodeURIComponent(shareText)}`, '_blank');
+        break;
+      case 'email': {
+        const shared = await shareWithImage(shareText);
+        if (!shared) {
+          const emailBody = `${shareText}\n\nProduct Link: ${productUrl}`;
+          window.open(`mailto:?subject=${encodeURIComponent(productTitle + ' - Sree Rasthu Silvers')}&body=${encodeURIComponent(emailBody)}`, '_blank');
+        }
+        break;
+      }
+      case 'copy':
+        try {
+          await navigator.clipboard.writeText(productUrl);
+          toast({ title: "Link copied!", description: "Product link copied to clipboard." });
+        } catch {
+          toast({ title: "Error", description: "Failed to copy link.", variant: "destructive" });
+        }
+        break;
+      case 'native':
+        if (navigator.share) {
+          try {
+            const response = await fetch(productImage);
+            const blob = await response.blob();
+            const ext = blob.type.includes('png') ? 'png' : 'jpg';
+            const file = new File([blob], `${productTitle.replace(/[^a-zA-Z0-9]/g, '_')}.${ext}`, { type: blob.type });
+            
+            const shareData: ShareData = { 
+              title: productTitle, 
+              text: shareText + '\n' + productUrl,
+              files: [file]
+            };
+            
+            if (navigator.canShare && navigator.canShare(shareData)) {
+              await navigator.share(shareData);
+            } else {
+              await navigator.share({ title: productTitle, text: shareText, url: productUrl });
+            }
+          } catch {
+            // User cancelled or error
+          }
+        }
+        break;
+    }
+    setShowShareMenu(false);
+  };
+
+  // Swipe handlers for image popup
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe && selectedImage < productImages.length - 1) {
+      setSelectedImage(selectedImage + 1);
+    }
+    if (isRightSwipe && selectedImage > 0) {
+      setSelectedImage(selectedImage - 1);
+    }
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full">
+        <main className="container-custom py-20 flex items-center justify-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        </main>
+      </div>
+    );
+  }
+
+  // Product not found
+  if (notFound || !product) {
+    return (
+      <div className="min-h-screen w-full">
+        <main className="container-custom py-20 text-center">
+          <h1 className="text-2xl font-semibold mb-4">Product Not Found</h1>
+          <p className="text-muted-foreground mb-6">The product you're looking for doesn't exist or has been removed.</p>
+          <button
+            onClick={() => navigate("/shop/necklaces")}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-all"
+          >
+            Back to Shop
+          </button>
+        </main>
+      </div>
+    );
+  }
+
+  // Generate SKU
+  const sku = `sreerasthu-${product.category.toLowerCase().replace(/[^a-z]/g, "-")}-${product.id}`;
+
+  // Product images for gallery - use all images from product, fallback to main image if no images array
+  const productImages = product.images && product.images.length > 0 ? product.images : [product.image];
+
+  return (
+    <div className="min-h-screen w-full overflow-x-clip">
+      <main>
+        {/* Mobile Header and Search */}
+        <div className="lg:hidden">
+          <MobileHeader />
+          <MobileSearchBar />
+        </div>
+
+        {/* Breadcrumb */}
+        <section className="hidden lg:block bg-secondary/30 py-2">
+          <div className="container-custom">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <a href="/" className="hover:text-primary transition-colors">Home</a>
+              <ChevronRight className="w-4 h-4" />
+              <a href="/shop/necklaces" className="hover:text-primary transition-colors">Shop</a>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-foreground">
+                {product.title.length > 20 ? product.title.slice(0, 20) + '...' : product.title}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Product Details Section */}
+        <section className="py-4 md:py-8">
+          <div className="container-custom">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+              {/* Product Images */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                {/* Main Image */}
+                <div 
+                  className="relative bg-muted rounded-2xl overflow-hidden aspect-[4/3] max-w-lg mx-auto mb-4 cursor-pointer md:cursor-default"
+                  onClick={() => window.innerWidth < 768 && setShowImagePopup(true)}
+                >
+                  <img
+                    src={productImages[selectedImage]}
+                    alt={product.alt}
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Back Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(-1);
+                    }}
+                    className="absolute top-3 left-3 w-10 h-10 rounded-full bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-all shadow-lg z-10"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Wishlist & Share Icons */}
+                  <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsWishlisted(!isWishlisted);
+                      }}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg ${
+                        isWishlisted
+                          ? "bg-red-500 text-white"
+                          : "bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Heart
+                        className="w-5 h-5"
+                        fill={isWishlisted ? "currentColor" : "none"}
+                      />
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowShareMenu(!showShareMenu);
+                      }}
+                      className="w-10 h-10 rounded-full bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-all shadow-lg"
+                    >
+                      <Share2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Thumbnail Gallery - only show if multiple images */}
+                {productImages.length > 1 && (
+                  <div className="grid grid-cols-4 gap-2 max-w-lg mx-auto">
+                    {productImages.map((img, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedImage(index)}
+                        className={`aspect-square bg-muted rounded-lg overflow-hidden border-2 transition-all ${
+                          selectedImage === index
+                            ? "border-primary"
+                            : "border-transparent hover:border-primary/50"
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt={`${product.title} view ${index + 1}`}
+                          className="w-full h-full object-contain p-1"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Product Info */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="flex flex-col"
+                style={{ fontFamily: "'Poppins', sans-serif" }}
+              >
+                {/* Title */}
+                <h1 
+                  className="text-base md:text-2xl lg:text-3xl font-medium text-foreground mb-3"
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  {product.title}
+                </h1>
+
+                {/* Price */}
+                <div className="mb-1">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                      ₹{product.price.toLocaleString("en-IN")}
+                    </span>
+                    {product.oldPrice && (
+                      <>
+                        <span className="text-lg md:text-xl text-muted-foreground line-through">
+                          ₹{product.oldPrice.toLocaleString("en-IN")}
+                        </span>
+                        {product.discount && (
+                          <span className="px-2 py-1 bg-red-100 text-red-600 text-xs md:text-sm font-semibold rounded">
+                            ({product.discount}% off)
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs md:text-sm text-gray-600 mt-1">
+                    (MRP Inclusive of all taxes)
+                  </p>
+                </div>
+
+                {/* Description */}
+                <div className="mb-4 mt-4">
+                  <p className={`text-xs md:text-sm text-gray-600 leading-relaxed ${
+                    !showFullDescription ? 'line-clamp-2' : ''
+                  }`}>
+                    {product.description ||
+                      `Traditional silver anklet with delicate bells creating a graceful and charming`}
+                  </p>
+                  {(product.description || 'Traditional silver anklet with delicate bells creating a graceful and charming').length > 100 && (
+                    <button
+                      onClick={() => setShowFullDescription(!showFullDescription)}
+                      className="text-blue-600 text-xs md:text-sm font-medium mt-1 hover:underline"
+                    >
+                      {showFullDescription ? 'less' : 'more'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Specifications */}
+                {product.specifications && (product.specifications.material || product.specifications.purity || product.specifications.dimensions) && (
+                  <div className="grid grid-cols-3 gap-2 md:gap-3 mb-6">
+                    {product.specifications.dimensions && (
+                      <div className="border-2 border-[#C4A962] rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-600 mb-1">Size</p>
+                        <p className="text-sm md:text-base font-medium text-foreground">
+                          {product.specifications.dimensions}
+                        </p>
+                      </div>
+                    )}
+                    {product.specifications.material && (
+                      <div className="border-2 border-[#C4A962] rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-600 mb-1">Metal</p>
+                        <p className="text-sm md:text-base font-medium text-foreground">
+                          {product.specifications.material}
+                        </p>
+                      </div>
+                    )}
+                    {product.specifications.purity && (
+                      <div className="border-2 border-[#C4A962] rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-600 mb-1">Purity</p>
+                        <p className="text-sm md:text-base font-medium text-foreground">
+                          {product.specifications.purity}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Divider */}
+                <div className="border-t border-border my-4" />
+
+                {/* Quantity & Actions - Hidden on mobile, shown on desktop */}
+                <div className="hidden md:flex flex-wrap items-center gap-4 mb-6">
+                  {/* Quantity Selector */}
+                  <div className="flex items-center border border-border rounded-full overflow-hidden">
+                    <button
+                      onClick={decrementQuantity}
+                      className="w-12 h-12 flex items-center justify-center hover:bg-muted transition-colors"
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-12 text-center font-medium">{quantity}</span>
+                    <button
+                      onClick={incrementQuantity}
+                      className="w-12 h-12 flex items-center justify-center hover:bg-muted transition-colors"
+                      aria-label="Increase quantity"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Add to Cart Button */}
+                  <motion.button
+                    onClick={handleAddToCart}
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex-1 min-w-[180px] px-8 py-3.5 font-medium text-sm rounded-full transition-all flex items-center justify-center gap-2 ${
+                      addedToCart
+                        ? "bg-green-500 text-white"
+                        : "bg-foreground text-background hover:bg-foreground/90"
+                    }`}
+                  >
+                    {addedToCart ? (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Added to Cart
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag className="w-5 h-5" />
+                        Add to Cart
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+
+                {/* Share Popup */}
+                <AnimatePresence>
+                  {showShareMenu && (
+                    <>
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 z-40" 
+                        onClick={() => setShowShareMenu(false)} 
+                      />
+                      <motion.div
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl p-6 max-w-screen-sm mx-auto"
+                      >
+                        <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+                        <p className="text-sm font-semibold text-gray-700 mb-4">Share this product</p>
+                        <div className="grid grid-cols-4 gap-4">
+                              {/* WhatsApp */}
+                              <button onClick={() => handleShare('whatsapp')} className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                </div>
+                                <span className="text-[10px] text-gray-600">WhatsApp</span>
+                              </button>
+
+                              {/* Facebook */}
+                              <button onClick={() => handleShare('facebook')} className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                </div>
+                                <span className="text-[10px] text-gray-600">Facebook</span>
+                              </button>
+
+                              {/* Twitter/X */}
+                              <button onClick={() => handleShare('twitter')} className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center">
+                                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                                </div>
+                                <span className="text-[10px] text-gray-600">X</span>
+                              </button>
+
+                              {/* Telegram */}
+                              <button onClick={() => handleShare('telegram')} className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-sky-500 flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                                </div>
+                                <span className="text-[10px] text-gray-600">Telegram</span>
+                              </button>
+
+                              {/* Pinterest */}
+                              <button onClick={() => handleShare('pinterest')} className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 0 1 .083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12.017 24c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641.001 12.017.001z"/></svg>
+                                </div>
+                                <span className="text-[10px] text-gray-600">Pinterest</span>
+                              </button>
+
+                              {/* Email */}
+                              <button onClick={() => handleShare('email')} className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                                </div>
+                                <span className="text-[10px] text-gray-600">Email</span>
+                              </button>
+
+                              {/* Copy Link */}
+                              <button onClick={() => handleShare('copy')} className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                </div>
+                                <span className="text-[10px] text-gray-600">Copy Link</span>
+                              </button>
+
+                              {/* Native Share (mobile) */}
+                              {typeof navigator !== 'undefined' && navigator.share && (
+                                <button onClick={() => handleShare('native')} className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                  <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center">
+                                    <Share2 className="w-5 h-5 text-white" />
+                                  </div>
+                                  <span className="text-[10px] text-gray-600">More</span>
+                                </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+
+                {/* Features */}
+                <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6 md:mb-8">
+                  <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 bg-secondary/50 rounded-lg md:rounded-xl text-center md:text-left">
+                    <Truck className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
+                    <span className="text-[10px] md:text-sm leading-tight">Free Shipping</span>
+                  </div>
+                  <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 bg-secondary/50 rounded-lg md:rounded-xl text-center md:text-left">
+                    <Shield className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
+                    <span className="text-[10px] md:text-sm leading-tight">2 Year Warranty</span>
+                  </div>
+                  <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 bg-secondary/50 rounded-lg md:rounded-xl text-center md:text-left">
+                    <RotateCcw className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
+                    <span className="text-[10px] md:text-sm leading-tight">Easy Returns</span>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border my-4" />
+
+                {/* Customer Reviews */}
+                <div className="mb-6" id="reviews">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-base md:text-lg font-bold text-gray-900">
+                      Customer Reviews ({reviewStats.totalReviews > 0 ? reviewStats.totalReviews : (product.reviews || 0)})
+                    </h3>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-0.5">
+                    Reviews have been published* with verified customer's consent.
+                  </p>
+                  <p className="text-xs text-gray-400 mb-4">*T&C Applied</p>
+
+                  {/* Write a Review Button */}
+                  {canWriteReview && (
+                    <button
+                      onClick={() => navigate('/write-review', {
+                        state: {
+                          productId: product.id,
+                          productName: product.title,
+                          productImage: product.image,
+                        }
+                      })}
+                      className="w-full py-2 bg-transparent border-2 border-[#D4AF37] text-[#D4AF37] rounded-full font-medium hover:bg-[#D4AF37]/10 transition-colors flex items-center justify-center gap-2 mb-4 text-sm"
+                    >
+                      <PenLine size={16} />
+                      Write a Review
+                    </button>
+                  )}
+
+                  {/* Individual Reviews */}
+                  {reviews.length > 0 ? (
+                    <div className="space-y-3">
+                      {reviews.slice(0, 5).map((review) => {
+                        const isExpanded = expandedReviews.has(review.id);
+                        const dateStr = review.createdAt?.toDate
+                          ? review.createdAt.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : '';
+                        const isLong = review.reviewText.length > 150;
+                        const votes = helpfulVotes[review.id] || { up: 0, down: 0, voted: null };
+                        return (
+                          <div key={review.id} className="border border-gray-400 rounded-xl py-4 px-4">
+                            {/* Rating pill + date */}
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded flex items-center gap-0.5">
+                                {review.rating}★
+                              </span>
+                              <span className="text-xs text-gray-400">{dateStr}</span>
+                            </div>
+
+                            {/* Review text */}
+                            <p className={`text-sm text-gray-700 mb-1 ${!isExpanded && isLong ? 'line-clamp-3' : ''}`}>
+                              {review.reviewText}
+                            </p>
+                            {isLong && (
+                              <button
+                                onClick={() => setExpandedReviews(prev => {
+                                  const next = new Set(prev);
+                                  isExpanded ? next.delete(review.id) : next.add(review.id);
+                                  return next;
+                                })}
+                                className="text-xs text-blue-600 mb-2"
+                              >
+                                {isExpanded ? 'read less' : '...read more'}
+                              </button>
+                            )}
+
+                            {/* Review Images */}
+                            {review.images?.length > 0 && (
+                              <div className="flex gap-2 mb-3">
+                                {review.images.map((img, i) => (
+                                  <img key={i} src={img} alt={`Review ${i + 1}`} className="w-14 h-14 object-cover rounded-lg" />
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Footer: username + helpful */}
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-green-600 flex items-center gap-1">
+                                <Check size={10} />{review.userName}
+                              </span>
+                              <span className="text-xs text-gray-400 flex items-center gap-3">
+                                Helpful?
+                                <button
+                                  onClick={() => handleHelpfulVote(review.id, 'up')}
+                                  disabled={!!votes.voted}
+                                  className={`flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded-md border ${
+                                    votes.voted === 'up'
+                                      ? 'border-yellow-400 text-yellow-500'
+                                      : 'border-transparent hover:text-gray-700'
+                                  }`}
+                                >
+                                  <ThumbsUp size={13} strokeWidth={1.8} /> {votes.up}
+                                </button>
+                                <button
+                                  onClick={() => handleHelpfulVote(review.id, 'down')}
+                                  disabled={!!votes.voted}
+                                  className={`flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded-md border ${
+                                    votes.voted === 'down'
+                                      ? 'border-red-400 text-red-500'
+                                      : 'border-transparent hover:text-gray-700'
+                                  }`}
+                                >
+                                  <ThumbsDown size={13} strokeWidth={1.8} /> {votes.down}
+                                </button>
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 mt-4">No reviews yet. Be the first to review!</p>
+                  )}
+                </div>
+
+                {/* Category */}
+                <div className="text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Category:</span>{" "}
+                    <a href="/shop/necklaces" className="text-primary hover:underline">
+                      {product.category}
+                    </a>
+                  </p>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* Related Products */}
+        <section className="py-8 md:py-12 bg-secondary/30">
+          <div className="container-custom">
+            <h2
+              className="text-xl md:text-3xl font-semibold text-left mb-6 md:mb-8"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              You May Also Like
+            </h2>
+            {/* Mobile: Horizontal Scroll */}
+            <div className="md:hidden flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+              {relatedProducts.map((relatedProduct) => (
+                <motion.a
+                  key={relatedProduct.id}
+                  href={`/product/${relatedProduct.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="group flex-shrink-0 w-32"
+                >
+                  <div className="relative bg-muted rounded-lg overflow-hidden aspect-square mb-2">
+                    <img
+                      src={relatedProduct.image}
+                      alt={relatedProduct.alt}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <h3 className="font-medium text-foreground group-hover:text-primary transition-colors text-xs text-center line-clamp-2">
+                    {relatedProduct.title}
+                  </h3>
+                  <p className="text-center font-semibold mt-1 text-xs">
+                    ₹{relatedProduct.price.toLocaleString("en-IN")}
+                  </p>
+                </motion.a>
+              ))}
+            </div>
+            {/* Desktop: Grid */}
+            <div className="hidden md:grid grid-cols-4 lg:grid-cols-5 gap-4">
+              {relatedProducts.map((relatedProduct) => (
+                <motion.a
+                  key={relatedProduct.id}
+                  href={`/product/${relatedProduct.id}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="group"
+                >
+                  <div className="relative bg-muted rounded-lg overflow-hidden aspect-square mb-2">
+                    <img
+                      src={relatedProduct.image}
+                      alt={relatedProduct.alt}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <h3 className="font-medium text-foreground group-hover:text-primary transition-colors text-xs md:text-sm text-center line-clamp-2">
+                    {relatedProduct.title}
+                  </h3>
+                  <p className="text-center font-semibold mt-1 text-sm">
+                    ₹{relatedProduct.price.toLocaleString("en-IN")}
+                  </p>
+                </motion.a>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Fixed Bottom Bar for Mobile */}
+      {!showShareMenu && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-50">
+          <div className="flex gap-3">
+          <motion.button
+            onClick={handleAddToCart}
+            whileTap={{ scale: 0.95 }}
+            className="flex-1 py-3.5 font-medium text-sm rounded-full border-2 border-gray-300 bg-white text-gray-800 flex items-center justify-center gap-2"
+          >
+            {addedToCart ? (
+              <>
+                <Check className="w-5 h-5" />
+                Added
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="w-4 h-4" />
+                Add to cart
+              </>
+            )}
+          </motion.button>
+          <motion.button
+            onClick={handleBuyNow}
+            whileTap={{ scale: 0.95 }}
+            className="flex-1 py-3.5 font-semibold text-sm rounded-full bg-black text-white flex items-center justify-center"
+          >
+            Buy at ₹{product?.price.toLocaleString("en-IN")}
+          </motion.button>
+        </div>
+      </div>
+      )}
+
+      {/* Full Screen Image Popup for Mobile */}
+      {showImagePopup && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="md:hidden fixed inset-0 bg-black z-[100] flex flex-col"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 bg-black/80">
+            <span className="text-white text-sm">
+              {selectedImage + 1} / {productImages.length}
+            </span>
+            <button
+              onClick={() => setShowImagePopup(false)}
+              className="text-white p-2"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Image Container with Swipe */}
+          <div
+            className="flex-1 flex items-center justify-center relative"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            <motion.img
+              key={selectedImage}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2 }}
+              src={productImages[selectedImage]}
+              alt={product?.alt}
+              className="max-w-full max-h-full object-contain p-4"
+            />
+
+            {/* Navigation Arrows */}
+            {productImages.length > 1 && (
+              <>
+                {selectedImage > 0 && (
+                  <button
+                    onClick={() => setSelectedImage(selectedImage - 1)}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/20 rounded-full p-2"
+                  >
+                    <ChevronLeft className="w-6 h-6 text-white" />
+                  </button>
+                )}
+                {selectedImage < productImages.length - 1 && (
+                  <button
+                    onClick={() => setSelectedImage(selectedImage + 1)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/20 rounded-full p-2"
+                  >
+                    <ChevronRight className="w-6 h-6 text-white" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Thumbnail Dots */}
+          {productImages.length > 1 && (
+            <div className="flex justify-center gap-2 p-4 bg-black/80">
+              {productImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImage(index)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    selectedImage === index ? "bg-white w-4" : "bg-white/50"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* Bottom padding for mobile to account for fixed bar */}
+      <div className="md:hidden h-20"></div>
+    </div>
+  );
+};
+
+export default ProductDetail;

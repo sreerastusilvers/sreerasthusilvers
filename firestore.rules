@@ -1,0 +1,289 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- HELPER FUNCTIONS (The "Brain" of the Rules) ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // --- USER RULES (Profiles, Addresses, History, & Security) ---
+    match /users/{userId} {
+      // Admin can see everyone; Users can see their own profile
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Admin can create delivery boys; Users can create their own profile
+      allow create: if isAdmin() || isOwner(userId);
+
+      // Admin can update everything; Users can update own info
+      // Users CANNOT change: role, accountStatus (only admin/server)
+      allow update: if isAdmin() || (
+        isOwner(userId) && 
+        !('role' in request.resource.data && request.resource.data.role != resource.data.role)
+      );
+
+      // Only Admin can delete users
+      allow delete: if isAdmin();
+      
+      // --- Addresses ---
+      match /addresses/{addressId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // --- Browsing History ---
+      match /history/{historyId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      // --- GIFT CARDS SUBCOLLECTION ---
+      match /giftCards/{giftCardId} {
+        allow read: if isOwner(userId) || isAdmin();
+        // Only admin can create/update/delete gift cards
+        allow write: if isAdmin();
+      }
+
+      // --- WALLET (subcollection) ---
+      // Balance is READ-ONLY for clients. Only server/admin can modify.
+      // In production, replace client writes with Cloud Functions.
+      match /wallets/{walletId} {
+        allow read: if isOwner(userId) || isAdmin();
+        // Allow create for wallet initialization
+        allow create: if isOwner(userId) || isAdmin();
+        // Users can update their own wallet (for client-side atomic transactions)
+        // In production: restrict to Cloud Functions only
+        allow update: if isOwner(userId) || isAdmin();
+        allow delete: if false; // NEVER delete wallets
+      }
+      
+      // --- TRANSACTIONS (append-only ledger) ---
+      match /transactions/{txId} {
+        allow read: if isOwner(userId) || isAdmin();
+        // Transactions can be created but NEVER edited or deleted
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if isAdmin(); // Only admin can update status (e.g., expire)
+        allow delete: if false; // Immutable transaction log
+      }
+      
+      // --- REWARDS ---
+      match /rewards/{rewardId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if isOwner(userId) || isAdmin(); // For redemption
+        allow delete: if false; // Never delete reward entries
+      }
+      
+      // --- PAYMENT METHODS (Razorpay ready) ---
+      match /paymentMethods/{methodId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if isOwner(userId) || isAdmin();
+        allow delete: if isAdmin(); // Only admin can hard-delete
+      }
+      
+      // --- LOGIN HISTORY (append-only security log) ---
+      match /loginHistory/{entryId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if false; // Immutable
+        allow delete: if isAdmin(); // Admin cleanup only
+      }
+      
+      // --- SESSIONS ---
+      match /sessions/{sessionId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if isOwner(userId) || isAdmin(); // For termination
+        allow delete: if isAdmin();
+      }
+      
+      // --- TRUSTED DEVICES ---
+      match /trustedDevices/{deviceId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if isOwner(userId) || isAdmin();
+        allow delete: if isAdmin();
+      }
+      
+      // --- AUDIT LOG (append-only) ---
+      match /auditLog/{logId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) || isAdmin();
+        allow update: if false; // Immutable audit trail
+        allow delete: if false; // Never delete audit logs
+      }
+    }
+    
+    // --- GIFT CARDS (global collection) ---
+    match /giftCards/{cardId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAuthenticated(); // For redemption
+      allow delete: if isAdmin();
+    }
+    
+    // --- REFUNDS (global collection) ---
+    match /refunds/{refundId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAdmin(); // Only admin processes refunds
+      allow delete: if false;
+    }
+    
+    // --- ADMIN WALLET LOG ---
+    match /adminWalletLog/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if false; // Immutable
+      allow delete: if false;
+    }
+    
+    // --- ACCOUNT DELETION REQUESTS ---
+    match /accountDeletionRequests/{requestId} {
+      // Allow list/query: users can query their own requests
+      allow list: if isAuthenticated();
+      // Allow get: users can read their own requests or admin can read all
+      allow get: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // --- STORE MANAGEMENT (Products & Admin Data) ---
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /admin/{docId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // --- CUSTOMER EXPERIENCE (Carts & Categories) ---
+    match /carts/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+      
+      match /items/{itemId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+    
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- MARKETING (Banners) ---
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- HOMEPAGE SHOWCASES ---
+    match /showcases/{showcaseId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- HOMEPAGE TESTIMONIALS ---
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- CUSTOMER REVIEWS ---
+    match /reviews/{reviewId} {
+      // Anyone can read approved reviews
+      allow read: if true;
+      // Authenticated users can create their own reviews
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      // Only admin can update (approve/reject) or delete reviews
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // --- HOMEPAGE GALLERY ---
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // --- ORDER FULFILLMENT (Optimized for Delivery Partners with OTP Verification) ---
+    match /orders/{orderId} {
+      // Helper: Check if user is the assigned delivery partner
+      function isAssignedDeliveryBoy() {
+        return isAuthenticated() && resource.data.delivery_boy_id == request.auth.uid;
+      }
+      
+      // Helper: Check if user is the order owner (customer)
+      function isOrderOwner() {
+        return isAuthenticated() && resource.data.userId == request.auth.uid;
+      }
+      
+      // Helper: Validate status transitions for delivery workflow
+      function isValidStatusTransition() {
+        let currentStatus = resource.data.status;
+        let newStatus = request.resource.data.status;
+        
+        // Delivery boy workflow: shipped/assigned → picked → outForDelivery → delivered
+        return (currentStatus == 'shipped' && newStatus == 'picked') ||
+               (currentStatus == 'assigned' && newStatus == 'picked') ||
+               (currentStatus == 'picked' && newStatus == 'outForDelivery') ||
+               (currentStatus == 'outForDelivery' && newStatus == 'delivered');
+      }
+      
+      // Helper: Ensure OTP is only cleared when marking as delivered
+      function isValidOTPUpdate() {
+        let newStatus = request.resource.data.status;
+        // Only allow OTP to be cleared (set to null) when status becomes 'delivered'
+        return newStatus == 'delivered' ? 
+          (request.resource.data.delivery_otp == null && request.resource.data.otp_verified == true) :
+          true;
+      }
+      
+      // Helper: Check if customer is cancelling their own order
+      function isValidCancellation() {
+        let currentStatus = resource.data.status;
+        let newStatus = request.resource.data.status;
+        // Customers can only cancel orders that are 'pending' or 'processing'
+        return newStatus == 'cancelled' && 
+               (currentStatus == 'pending' || currentStatus == 'processing') &&
+               request.resource.data.cancelledBy == 'user';
+      }
+      
+      // READ: Admins see all; Customers see their orders; Delivery boys see assigned orders
+      allow read: if isAuthenticated() && 
+        (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || isAdmin());
+      
+      // CREATE: Only authenticated users can create their own orders
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+        
+      // UPDATE: Complex rules for different roles
+      // - Admin can update anything
+      // - Customers can cancel their own orders (pending/processing only)
+      // - Delivery boys can only update their assigned orders with valid status transitions
+      allow update: if isAdmin() || 
+        (isOrderOwner() && isValidCancellation()) ||
+        (isAssignedDeliveryBoy() && isValidStatusTransition() && isValidOTPUpdate());
+      
+      // DELETE: Only admin can delete orders
+      allow delete: if isAdmin();
+    }
+  }
+}

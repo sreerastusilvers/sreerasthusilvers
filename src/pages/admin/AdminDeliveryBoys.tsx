@@ -1,0 +1,887 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Users,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
+  Power,
+  PowerOff,
+  Loader2,
+  X,
+  Mail,
+  Phone,
+  MapPin,
+  Truck,
+  Package,
+  Star,
+  Upload,
+  Eye,
+  EyeOff,
+  AlertCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import {
+  DeliveryBoy,
+  DeliveryBoyFormData,
+  subscribeToDeliveryBoys,
+  createDeliveryBoy,
+  updateDeliveryBoy,
+  deleteDeliveryBoy,
+  toggleDeliveryBoyStatus,
+  getDeliveryBoyStats,
+} from '@/services/deliveryBoyService';
+
+const AdminDeliveryBoys = () => {
+  // State Management
+  const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedDeliveryBoy, setSelectedDeliveryBoy] = useState<DeliveryBoy | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Stats
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    onDuty: 0,
+    totalDeliveries: 0,
+    averageRating: 0,
+  });
+
+  // Form Data
+  const [formData, setFormData] = useState<DeliveryBoyFormData & { confirmPassword?: string }>({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    vehicleType: 'bike',
+    address: '',
+    profileImage: '',
+    isActive: true,
+  });
+
+  // Load delivery boys on mount
+  useEffect(() => {
+    const unsubscribe = subscribeToDeliveryBoys(
+      (fetchedDeliveryBoys) => {
+        setDeliveryBoys(fetchedDeliveryBoys);
+        setLoading(false);
+        loadStats();
+      },
+      (error) => {
+        console.error('Error fetching delivery boys:', error);
+        toast.error('Failed to load delivery boys');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      const deliveryStats = await getDeliveryBoyStats();
+      setStats(deliveryStats);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
+
+  // Filter delivery boys
+  const filteredDeliveryBoys = deliveryBoys.filter((boy) => {
+    const matchesSearch =
+      boy.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      boy.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      boy.phone.includes(searchQuery);
+
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && boy.isActive) ||
+      (statusFilter === 'inactive' && !boy.isActive);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validation
+    if (!formData.name || !formData.email || !formData.phone) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (!showEditModal) {
+      // Creating new delivery boy
+      if (!formData.password || !formData.confirmPassword) {
+        toast.error('Password is required');
+        return;
+      }
+
+      if (formData.password.length < 6) {
+        toast.error('Password must be at least 6 characters');
+        return;
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    // Phone validation
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(formData.phone.replace(/\D/g, ''))) {
+      toast.error('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      if (showEditModal && selectedDeliveryBoy) {
+        // Update existing delivery boy
+        await updateDeliveryBoy(selectedDeliveryBoy.id, {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          vehicleType: formData.vehicleType,
+          address: formData.address,
+          profileImage: formData.profileImage,
+          isActive: formData.isActive,
+        });
+        toast.success('Delivery boy updated successfully');
+        setShowEditModal(false);
+      } else {
+        // Create new delivery boy
+        await createDeliveryBoy({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          vehicleType: formData.vehicleType,
+          address: formData.address,
+          profileImage: formData.profileImage,
+          isActive: formData.isActive,
+        });
+        toast.success('Delivery boy created successfully');
+        setShowAddModal(false);
+      }
+
+      // Reset form
+      resetForm();
+    } catch (error: any) {
+      console.error('Error saving delivery boy:', error);
+      toast.error(error.message || 'Failed to save delivery boy');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+      vehicleType: 'bike',
+      address: '',
+      profileImage: '',
+      isActive: true,
+    });
+    setSelectedDeliveryBoy(null);
+  };
+
+  // Handle edit
+  const handleEdit = (deliveryBoy: DeliveryBoy) => {
+    setSelectedDeliveryBoy(deliveryBoy);
+    setFormData({
+      name: deliveryBoy.name,
+      email: deliveryBoy.email,
+      phone: deliveryBoy.phone,
+      password: '',
+      confirmPassword: '',
+      vehicleType: deliveryBoy.vehicleType,
+      address: deliveryBoy.address,
+      profileImage: deliveryBoy.profileImage,
+      isActive: deliveryBoy.isActive,
+    });
+    setShowEditModal(true);
+  };
+
+  // Handle delete
+  const handleDelete = async () => {
+    if (!selectedDeliveryBoy) return;
+
+    setSubmitting(true);
+    try {
+      await deleteDeliveryBoy(selectedDeliveryBoy.id);
+      toast.success('Delivery boy deleted successfully');
+      setShowDeleteDialog(false);
+      setSelectedDeliveryBoy(null);
+    } catch (error: any) {
+      console.error('Error deleting delivery boy:', error);
+      toast.error(error.message || 'Failed to delete delivery boy');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handle toggle status
+  const handleToggleStatus = async (deliveryBoy: DeliveryBoy) => {
+    try {
+      await toggleDeliveryBoyStatus(deliveryBoy.id, !deliveryBoy.isActive);
+      toast.success(
+        `Delivery boy ${!deliveryBoy.isActive ? 'activated' : 'deactivated'} successfully`
+      );
+    } catch (error: any) {
+      console.error('Error toggling status:', error);
+      toast.error(error.message || 'Failed to update status');
+    }
+  };
+
+  // Get vehicle icon
+  const getVehicleIcon = (type: string) => {
+    switch (type) {
+      case 'bike':
+        return '🏍️';
+      case 'cycle':
+        return '🚲';
+      case 'van':
+        return '🚐';
+      default:
+        return '🏍️';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FBF8F3]">
+      {/* Header Section */}
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Delivery Boys Management
+            </h1>
+            <p className="text-gray-600">Create and manage delivery partners</p>
+          </div>
+          <Button
+            onClick={() => {
+              resetForm();
+              setShowAddModal(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Delivery Boy
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg shadow-sm p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Total Delivery Boys</p>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-full">
+              <Users className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-lg shadow-sm p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Active</p>
+              <p className="text-3xl font-bold text-green-600 mt-1">{stats.active}</p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-full">
+              <Power className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-lg shadow-sm p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">On Duty</p>
+              <p className="text-3xl font-bold text-amber-600 mt-1">{stats.onDuty}</p>
+            </div>
+            <div className="bg-amber-100 p-3 rounded-full">
+              <Truck className="h-6 w-6 text-amber-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-lg shadow-sm p-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-600 text-sm">Total Deliveries</p>
+              <p className="text-3xl font-bold text-purple-600 mt-1">
+                {stats.totalDeliveries}
+              </p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-full">
+              <Package className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Filters Section */}
+      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search by name, email, or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <div className="w-full md:w-48">
+            <Select
+              value={statusFilter}
+              onValueChange={(value: any) => setStatusFilter(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Delivery Boys Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        ) : filteredDeliveryBoys.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Users className="h-16 w-16 text-gray-300 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {searchQuery || statusFilter !== 'all'
+                ? 'No delivery boys found'
+                : 'No delivery partners added yet'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {searchQuery || statusFilter !== 'all'
+                ? 'Try adjusting your filters'
+                : 'Start by adding your first delivery partner'}
+            </p>
+            {!searchQuery && statusFilter === 'all' && (
+              <Button
+                onClick={() => {
+                  resetForm();
+                  setShowAddModal(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Delivery Boy
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                    Delivery Boy
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                    Contact
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                    Vehicle
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                    Current Orders
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredDeliveryBoys.map((deliveryBoy) => (
+                  <motion.tr
+                    key={deliveryBoy.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          {deliveryBoy.profileImage ? (
+                            <img
+                              src={deliveryBoy.profileImage}
+                              alt={deliveryBoy.name}
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold text-sm">
+                                {deliveryBoy.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {deliveryBoy.name}
+                          </div>
+                          <div className="text-sm text-gray-500 flex items-center mt-1">
+                            <Star className="h-3 w-3 text-yellow-400 mr-1 fill-current" />
+                            {deliveryBoy.rating.toFixed(1)} ({deliveryBoy.totalDeliveries}{' '}
+                            deliveries)
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 flex items-center mb-1">
+                        <Mail className="h-3 w-3 mr-2 text-gray-400" />
+                        {deliveryBoy.email}
+                      </div>
+                      <div className="text-sm text-gray-500 flex items-center">
+                        <Phone className="h-3 w-3 mr-2 text-gray-400" />
+                        {deliveryBoy.phone}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-2">
+                          {getVehicleIcon(deliveryBoy.vehicleType)}
+                        </span>
+                        <span className="text-sm text-gray-900 capitalize">
+                          {deliveryBoy.vehicleType}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Package className="h-4 w-4 text-gray-400 mr-2" />
+                        <span className="text-sm font-semibold text-gray-900">
+                          {deliveryBoy.currentOrdersCount}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge
+                        variant={deliveryBoy.isActive ? 'default' : 'secondary'}
+                        className={
+                          deliveryBoy.isActive
+                            ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                        }
+                      >
+                        {deliveryBoy.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(deliveryBoy)}
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleStatus(deliveryBoy)}
+                          className={
+                            deliveryBoy.isActive
+                              ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50'
+                              : 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                          }
+                        >
+                          {deliveryBoy.isActive ? (
+                            <PowerOff className="h-4 w-4" />
+                          ) : (
+                            <Power className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDeliveryBoy(deliveryBoy);
+                            setShowDeleteDialog(true);
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Add/Edit Modal */}
+      <Dialog open={showAddModal || showEditModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowAddModal(false);
+          setShowEditModal(false);
+          resetForm();
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {showEditModal ? 'Edit Delivery Boy' : 'Add New Delivery Boy'}
+            </DialogTitle>
+            <DialogDescription>
+              {showEditModal
+                ? 'Update delivery boy information'
+                : 'Create a new delivery partner account'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Full Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  Full Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter full name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email">
+                  Email <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter email address"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  disabled={showEditModal}
+                />
+              </div>
+
+              {/* Phone Number */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">
+                  Phone Number <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="Enter phone number"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Vehicle Type */}
+              <div className="space-y-2">
+                <Label htmlFor="vehicleType">
+                  Vehicle Type <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.vehicleType}
+                  onValueChange={(value: any) =>
+                    setFormData({ ...formData, vehicleType: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select vehicle type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bike">🏍️ Bike</SelectItem>
+                    <SelectItem value="cycle">🚲 Cycle</SelectItem>
+                    <SelectItem value="van">🚐 Van</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Password - Only for new delivery boy */}
+              {!showEditModal && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">
+                      Password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter password"
+                        value={formData.password}
+                        onChange={(e) =>
+                          setFormData({ ...formData, password: e.target.value })
+                        }
+                        required={!showEditModal}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">
+                      Confirm Password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="Confirm password"
+                        value={formData.confirmPassword}
+                        onChange={(e) =>
+                          setFormData({ ...formData, confirmPassword: e.target.value })
+                        }
+                        required={!showEditModal}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Address */}
+            <div className="space-y-2">
+              <Label htmlFor="address">
+                Address <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="address"
+                type="text"
+                placeholder="Enter full address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Profile Image URL */}
+            <div className="space-y-2">
+              <Label htmlFor="profileImage">Profile Image URL (Optional)</Label>
+              <Input
+                id="profileImage"
+                type="url"
+                placeholder="Enter image URL"
+                value={formData.profileImage}
+                onChange={(e) =>
+                  setFormData({ ...formData, profileImage: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Status Toggle */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="isActive">Account Status</Label>
+                <p className="text-sm text-gray-500">
+                  {formData.isActive
+                    ? 'Delivery boy can login and receive orders'
+                    : 'Account is disabled'}
+                </p>
+              </div>
+              <Switch
+                id="isActive"
+                checked={formData.isActive}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isActive: checked })
+                }
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setShowEditModal(false);
+                  resetForm();
+                }}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : showEditModal ? (
+                  'Update Delivery Boy'
+                ) : (
+                  'Create Delivery Boy'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the delivery boy account for{' '}
+              <strong>{selectedDeliveryBoy?.name}</strong>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={submitting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default AdminDeliveryBoys;
