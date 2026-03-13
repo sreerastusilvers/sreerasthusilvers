@@ -74,7 +74,7 @@ const LuxurySofaSection = () => {
                 className="relative max-w-md mx-auto lg:mx-0"
                 style={{ y: titleY, opacity: titleOpacity }}
               >
-                <div className="relative bg-[#f5ebe0] rounded-lg overflow-hidden aspect-[4/3]">
+                <div className="relative bg-secondary/50 dark:bg-muted rounded-lg overflow-hidden aspect-[4/3]">
                   <img
                     src={silverSofa}
                     alt="Royal Silver Sofa"

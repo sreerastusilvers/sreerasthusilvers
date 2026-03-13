@@ -19,7 +19,7 @@ import Footer from "@/components/Footer";
 
 const Index = () => {
   return (
-    <div className="min-h-screen w-full overflow-x-clip pb-16 lg:pb-0">
+    <div className="min-h-screen w-full overflow-x-clip bg-white">
       <Header />
       
       {/* Mobile Search Bar - Sticky */}

@@ -9,7 +9,7 @@ import Footer from "@/components/Footer";
 
 const About = () => {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Header />
       {/* Hero Section */}
       <section className="relative h-[600px] bg-gradient-to-r from-zinc-900 to-zinc-800 overflow-hidden">
@@ -63,7 +63,7 @@ const About = () => {
             </div>
             <div>
               <h2 className="text-4xl font-light mb-6">Our Story</h2>
-              <div className="space-y-4 text-gray-700 leading-relaxed">
+              <div className="space-y-4 text-foreground/80 leading-relaxed">
                 <p>
                   Jewelry is a form of personal adornment that has been worn by humans for
                   thousands of years. It is typically made from precious metals such as gold, silver,
@@ -91,7 +91,7 @@ const About = () => {
       </section>
 
       {/* Collection Banner */}
-      <section className="relative h-[500px] bg-stone-200 overflow-hidden">
+      <section className="relative h-[500px] bg-muted overflow-hidden">
         <div className="absolute inset-0">
           <img
             src="/src/assets/collection-banner.jpg"
@@ -101,22 +101,22 @@ const About = () => {
         </div>
         <div className="relative container mx-auto px-4 h-full flex items-center">
           <div className="max-w-xl">
-            <div className="text-sm uppercase tracking-wider mb-4 text-stone-600">
+            <div className="text-sm uppercase tracking-wider mb-4 text-muted-foreground">
               SREE RASTHU COLLECTION
             </div>
-            <h2 className="text-5xl font-light text-stone-900 mb-2">
+            <h2 className="text-5xl font-light text-foreground mb-2">
               Discover Your Signature
             </h2>
-            <h2 className="text-5xl font-light text-stone-900 mb-2">
+            <h2 className="text-5xl font-light text-foreground mb-2">
               Sparkle with New
             </h2>
-            <h2 className="text-5xl font-light text-stone-900">Collection</h2>
+            <h2 className="text-5xl font-light text-foreground">Collection</h2>
           </div>
         </div>
       </section>
 
       {/* Handcrafted Design Section */}
-      <section className="relative h-[400px] bg-stone-300 overflow-hidden my-20">
+      <section className="relative h-[400px] bg-muted overflow-hidden my-20">
         <div className="absolute inset-0">
           <img
             src="/src/assets/handmade-crafting.jpg"
@@ -126,10 +126,10 @@ const About = () => {
         </div>
         <div className="relative container mx-auto px-4 h-full flex items-center">
           <div className="max-w-xl">
-            <h3 className="text-3xl font-light text-stone-900 mb-6">
+            <h3 className="text-3xl font-light text-foreground mb-6">
               Exceptional Handcrafted Design to Enhance The Magnificent Glow
             </h3>
-            <Button className="bg-white text-black hover:bg-gray-100">
+            <Button className="bg-card text-foreground hover:bg-muted">
               Shop Now
             </Button>
           </div>
@@ -137,11 +137,11 @@ const About = () => {
       </section>
 
       {/* The Finishing Touch Section */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section className="py-20 px-4 bg-muted">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-light mb-4">The Finishing Touch</h2>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Our collections represent an assemblage of diverse jewelry pieces united by a common theme.
             </p>
           </div>
@@ -179,13 +179,13 @@ const About = () => {
                     alt={item.title}
                     className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute top-4 left-4 bg-white/90 px-3 py-1 rounded text-sm font-medium">
+                  <div className="absolute top-4 left-4 bg-background/90 dark:bg-card/90 px-3 py-1 rounded text-sm font-medium">
                     {item.subtitle}
                   </div>
                 </div>
                 <CardContent className="p-6">
                   <h3 className="text-xl font-light mb-3">{item.title}</h3>
-                  <p className="text-sm text-gray-600 mb-4">{item.description}</p>
+                  <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
                   <Button variant="link" className="p-0 h-auto font-normal">
                     See More Products <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -208,18 +208,18 @@ const About = () => {
               />
             </div>
             <div>
-              <div className="text-sm uppercase tracking-wider mb-4 text-gray-600">
+              <div className="text-sm uppercase tracking-wider mb-4 text-muted-foreground">
                 OUR CHALLENGE TO DO BETTER
               </div>
               <h2 className="text-4xl font-light mb-6">
                 All Of Our Jewellery Is Handmade.
               </h2>
-              <p className="text-gray-700 leading-relaxed mb-8">
+              <p className="text-foreground/80 leading-relaxed mb-8">
                 A gift they'll treasure forever, Olight created diamonds jewelry
                 combines precious metals with laboratory-grown diamonds to
                 form captivating collections.
               </p>
-              <Button className="bg-black text-white hover:bg-gray-800">
+              <Button className="bg-foreground text-background hover:bg-foreground/90">
                 Explore More
               </Button>
             </div>
@@ -228,7 +228,7 @@ const About = () => {
       </section>
 
       {/* Our Team Section */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section className="py-20 px-4 bg-muted">
         <div className="container mx-auto">
           <h2 className="text-4xl font-light text-center mb-16">Our Team</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -263,7 +263,7 @@ const About = () => {
                   />
                 </div>
                 <h3 className="text-xl font-medium mb-2">{member.name}</h3>
-                <p className="text-gray-600 text-sm">{member.role}</p>
+                <p className="text-muted-foreground text-sm">{member.role}</p>
               </div>
             ))}
           </div>
@@ -274,11 +274,11 @@ const About = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-4xl font-light mb-4">What Our Clients Say</h2>
-          <p className="text-gray-600 mb-12">
+          <p className="text-muted-foreground mb-12">
             Adorn Yourself in Glamour: Find Your Perfect Piece Today
           </p>
-          <div className="bg-gradient-to-br from-gray-50 to-white p-12 rounded-2xl shadow-lg">
-            <p className="text-lg italic text-gray-700 mb-8 leading-relaxed">
+          <div className="bg-gradient-to-br from-muted to-background p-12 rounded-2xl shadow-lg">
+            <p className="text-lg italic text-foreground/80 mb-8 leading-relaxed">
               "Monttuc claim to offer the finest diamond jewellery you can buy direct
               from the maker. I did my research, compared specifications with some of
               the big brands and now I will never walk into a store again."
@@ -290,7 +290,7 @@ const About = () => {
               </Avatar>
               <div className="text-left">
                 <div className="font-medium">Mark Jance</div>
-                <div className="text-sm text-gray-600">Alexandra Janetus</div>
+                <div className="text-sm text-muted-foreground">Alexandra Janetus</div>
               </div>
             </div>
           </div>

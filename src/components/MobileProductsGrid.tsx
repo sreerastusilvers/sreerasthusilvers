@@ -172,8 +172,8 @@ const MobileProductsGrid = () => {
 
   if (loading) {
     return (
-      <section className="md:hidden py-6 px-4 bg-gray-50">
-        <div className="text-center text-gray-500">Loading products...</div>
+      <section className="md:hidden py-6 px-4 bg-muted">
+        <div className="text-center text-muted-foreground">Loading products...</div>
       </section>
     );
   }
@@ -184,7 +184,7 @@ const MobileProductsGrid = () => {
 
   return (
     <>
-      <section className="md:hidden py-6 bg-gray-50">
+      <section className="md:hidden py-6 bg-muted">
         {/* ─── FILTER PILLS ROW 1: Sort + Price Range ─── */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 pb-2">
           {/* Sort Pill */}
@@ -192,8 +192,8 @@ const MobileProductsGrid = () => {
             onClick={() => setShowSortModal(true)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
               activeSort !== "newest"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-200"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-card text-foreground/80 border-border"
             }`}
           >
             <SlidersHorizontal className="w-3 h-3" />
@@ -206,8 +206,8 @@ const MobileProductsGrid = () => {
             onClick={() => setActivePriceRange(activePriceRange === "1000-above" ? "all" : "1000-above")}
             className={`px-3 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
               activePriceRange === "1000-above"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-200"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-card text-foreground/80 border-border"
             }`}
           >
             ₹1000 And Above
@@ -217,8 +217,8 @@ const MobileProductsGrid = () => {
             onClick={() => setActivePriceRange(activePriceRange === "500-999" ? "all" : "500-999")}
             className={`px-3 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
               activePriceRange === "500-999"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-200"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-card text-foreground/80 border-border"
             }`}
           >
             ₹500 - ₹999
@@ -228,8 +228,8 @@ const MobileProductsGrid = () => {
             onClick={() => setActivePriceRange(activePriceRange === "under500" ? "all" : "under500")}
             className={`px-3 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
               activePriceRange === "under500"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-200"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-card text-foreground/80 border-border"
             }`}
           >
             Under ₹500
@@ -242,8 +242,8 @@ const MobileProductsGrid = () => {
             onClick={() => setShowCategoryModal(true)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
               selectedCategories.length > 0
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-200"
+                ? "bg-foreground text-background border-foreground"
+                : "bg-card text-foreground/80 border-border"
             }`}
           >
             Product Type
@@ -257,7 +257,7 @@ const MobileProductsGrid = () => {
         {/* Active filter count */}
         {filteredProducts.length !== products.length && (
           <div className="flex items-center justify-between px-4 pb-3">
-            <span className="text-[11px] text-gray-500">
+            <span className="text-[11px] text-muted-foreground">
             Showing {filteredProducts.length} of {products.length} products
           </span>
           <button
@@ -284,7 +284,7 @@ const MobileProductsGrid = () => {
           return (
             <div
               key={product.id}
-              className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 relative"
+              className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border relative"
             >
               {/* Wishlist Button */}
               <button
@@ -292,18 +292,18 @@ const MobileProductsGrid = () => {
                   e.stopPropagation();
                   handleWishlistToggle(product);
                 }}
-                className="absolute top-2 left-2 z-10 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md"
+                className="absolute top-2 left-2 z-10 w-7 h-7 bg-card rounded-full flex items-center justify-center shadow-md"
               >
                 <Heart
                   className={`w-4 h-4 ${
-                    isWishlisted ? "fill-red-500 text-red-500" : "text-gray-400"
+                    isWishlisted ? "fill-red-500 text-red-500" : "text-muted-foreground"
                   }`}
                 />
               </button>
 
               {/* Discount Badge */}
               {discount && discount > 0 && (
-                <div className="absolute top-2 right-2 z-10 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                <div className="absolute top-2 right-2 z-10 bg-primary text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
                   {discount}% OFF
                 </div>
               )}
@@ -311,7 +311,7 @@ const MobileProductsGrid = () => {
               {/* Product Image */}
               <div
                 onClick={() => handleProductClick(product.id || "")}
-                className="relative aspect-square bg-gray-100 cursor-pointer overflow-hidden"
+                className="relative aspect-square bg-muted cursor-pointer overflow-hidden"
               >
                 <img
                   src={product.media.images[0] || "/placeholder.jpg"}
@@ -330,7 +330,7 @@ const MobileProductsGrid = () => {
                       e.stopPropagation();
                       handleAddToCart(product);
                     }}
-                    className="text-orange-600 hover:text-orange-700 transition-colors"
+                    className="text-primary hover:text-primary/80 transition-colors"
                     aria-label="Add to cart"
                   >
                     <ShoppingCart className="w-5 h-5" />
@@ -343,7 +343,7 @@ const MobileProductsGrid = () => {
                         <span>{product.rating}</span>
                         <Star className="w-2.5 h-2.5 fill-current" />
                       </div>
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-[10px] text-muted-foreground">
                         ({product.reviewCount})
                       </span>
                     </div>
@@ -353,18 +353,18 @@ const MobileProductsGrid = () => {
                 {/* Product Name */}
                 <h3
                   onClick={() => handleProductClick(product.id || "")}
-                  className="text-xs font-medium text-gray-900 mb-1.5 line-clamp-1 leading-snug cursor-pointer hover:text-orange-600"
+                  className="text-xs font-medium text-foreground mb-1.5 line-clamp-1 leading-snug cursor-pointer hover:text-primary"
                 >
                   {product.name}
                 </h3>
 
                 {/* Price */}
                 <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-sm font-bold text-gray-900">
+                  <span className="text-sm font-bold text-foreground">
                     {formatPrice(price)}
                   </span>
                   {oldPrice && (
-                    <span className="text-[10px] text-gray-400 line-through">
+                    <span className="text-[10px] text-muted-foreground line-through">
                       {formatPrice(oldPrice)}
                     </span>
                   )}
@@ -373,10 +373,10 @@ const MobileProductsGrid = () => {
                 {/* Explore Button */}
                 <button
                   onClick={() => handleProductClick(product.id || "")}
-                  className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white text-[10px] font-semibold py-1.5 rounded hover:bg-gray-800"
+                  className="w-full flex items-center justify-center gap-1.5 bg-primary text-white text-[10px] font-semibold py-1.5 rounded-full hover:bg-primary/90"
                 >
                   <Eye className="w-3 h-3" />
-                  XPLORE
+                  EXPLORE
                 </button>
               </div>
             </div>
@@ -387,14 +387,14 @@ const MobileProductsGrid = () => {
       {/* No results */}
       {filteredProducts.length === 0 && (
         <div className="text-center py-10 px-4">
-          <p className="text-sm text-gray-500 mb-2">No products found for selected filters</p>
+          <p className="text-sm text-muted-foreground mb-2">No products found for selected filters</p>
           <button
             onClick={() => {
               setActiveSort("newest");
               setActivePriceRange("all");
               setSelectedCategories([]);
             }}
-            className="text-sm text-orange-600 font-medium"
+            className="text-sm text-primary font-medium"
           >
             Clear all filters
           </button>
@@ -406,17 +406,17 @@ const MobileProductsGrid = () => {
       {showSortModal && (
         <div className="fixed inset-0 bg-black/50 z-50 md:hidden" onClick={() => setShowSortModal(false)}>
           <div 
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[80vh] overflow-hidden"
+            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b">
-              <h3 className="text-base font-semibold text-gray-900">Sort</h3>
+            <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+              <h3 className="text-base font-semibold text-foreground">Sort</h3>
               <button 
                 onClick={() => setShowSortModal(false)}
-                className="p-1 rounded-full hover:bg-gray-100"
+                className="p-1 rounded-full hover:bg-muted"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
 
@@ -438,8 +438,8 @@ const MobileProductsGrid = () => {
                   }}
                   className={`w-full px-4 py-3.5 text-left text-sm transition-colors ${
                     activeSort === option.value
-                      ? "bg-orange-50 text-orange-600 font-medium"
-                      : "text-gray-700 hover:bg-gray-50"
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-foreground/80 hover:bg-muted"
                   }`}
                 >
                   {option.label}
@@ -454,38 +454,38 @@ const MobileProductsGrid = () => {
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black/50 z-50 md:hidden" onClick={() => setShowCategoryModal(false)}>
           <div 
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[80vh] flex flex-col overflow-hidden"
+            className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl max-h-[80vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b flex-shrink-0">
-              <h3 className="text-base font-semibold text-gray-900">Product Type</h3>
+            <div className="flex items-center justify-between px-4 py-4 border-b border-border flex-shrink-0">
+              <h3 className="text-base font-semibold text-foreground">Product Type</h3>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSelectedCategories([])}
-                  className="text-sm text-orange-600 font-medium"
+                  className="text-sm text-primary font-medium"
                 >
                   Clear All
                 </button>
                 <button 
                   onClick={() => setShowCategoryModal(false)}
-                  className="p-1 rounded-full hover:bg-gray-100"
+                  className="p-1 rounded-full hover:bg-muted"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
             </div>
 
             {/* Search */}
-            <div className="px-4 py-3 border-b flex-shrink-0">
+            <div className="px-4 py-3 border-b border-border flex-shrink-0">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search"
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
                 />
               </div>
             </div>
@@ -501,7 +501,7 @@ const MobileProductsGrid = () => {
                     setSelectedCategories([...ALL_CATEGORIES]);
                   }
                 }}
-                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 flex items-center justify-center">
@@ -509,15 +509,15 @@ const MobileProductsGrid = () => {
                       <Check className="w-5 h-5 text-blue-600" strokeWidth={3} />
                     )}
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">
+                  <span className="text-sm font-semibold text-foreground">
                     Select All ({ALL_CATEGORIES.length})
                   </span>
                 </div>
               </button>
 
               {/* Shop Categories Header */}
-              <div className="px-4 py-2 bg-gray-50">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Shop</h4>
+              <div className="px-4 py-2 bg-muted">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Shop</h4>
               </div>
 
               {/* Shop Categories */}
@@ -527,7 +527,7 @@ const MobileProductsGrid = () => {
                 <button
                   key={category}
                   onClick={() => toggleCategorySelection(category)}
-                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-5 h-5 flex items-center justify-center">
@@ -535,17 +535,17 @@ const MobileProductsGrid = () => {
                         <Check className="w-5 h-5 text-blue-600" strokeWidth={3} />
                       )}
                     </div>
-                    <span className="text-sm text-gray-700">{category}</span>
+                    <span className="text-sm text-foreground/80">{category}</span>
                   </div>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-muted-foreground">
                     {products.filter(p => p.category === category).length}
                   </span>
                 </button>
               ))}
 
               {/* Specific Categories Header */}
-              <div className="px-4 py-2 bg-gray-50 mt-2">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Categories</h4>
+              <div className="px-4 py-2 bg-muted mt-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categories</h4>
               </div>
 
               {/* Specific Categories */}
@@ -555,7 +555,7 @@ const MobileProductsGrid = () => {
                 <button
                   key={category}
                   onClick={() => toggleCategorySelection(category)}
-                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-5 h-5 flex items-center justify-center">
@@ -563,9 +563,9 @@ const MobileProductsGrid = () => {
                         <Check className="w-5 h-5 text-blue-600" strokeWidth={3} />
                       )}
                     </div>
-                    <span className="text-sm text-gray-700">{category}</span>
+                    <span className="text-sm text-foreground/80">{category}</span>
                   </div>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-muted-foreground">
                     {products.filter(p => p.category === category).length}
                   </span>
                 </button>
@@ -573,10 +573,10 @@ const MobileProductsGrid = () => {
             </div>
 
             {/* Footer Button */}
-            <div className="px-4 py-3 border-t bg-white flex-shrink-0">
+            <div className="px-4 py-3 border-t border-border bg-card flex-shrink-0">
               <button
                 onClick={() => setShowCategoryModal(false)}
-                className="w-full py-3 bg-black hover:bg-gray-900 text-white text-sm font-semibold rounded-lg transition-colors"
+                className="w-full py-3 bg-foreground hover:bg-foreground/90 text-background text-sm font-semibold rounded-lg transition-colors"
               >
                 Show Results
               </button>

@@ -12,7 +12,7 @@ const FreeShippingBand = () => {
   const duplicatedPhrases = [...phrases, ...phrases, ...phrases];
 
   return (
-    <section className="hidden md:block py-4 bg-white border-y border-border/30 overflow-hidden">
+    <section className="hidden md:block py-3.5 bg-primary/10 border-y border-primary/10 overflow-hidden">
       <div className="relative">
         <motion.div
           className="flex items-center gap-12 whitespace-nowrap"
@@ -30,13 +30,10 @@ const FreeShippingBand = () => {
         >
           {duplicatedPhrases.map((phrase, index) => (
             <div key={index} className="flex items-center gap-12">
-              <span 
-                className="text-sm font-medium text-foreground tracking-wide"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-              >
+              <span className="text-sm font-light text-primary tracking-wide">
                 {phrase}
               </span>
-              <Gem className="w-4 h-4 text-primary flex-shrink-0" />
+              <Gem className="w-3.5 h-3.5 text-primary/50 flex-shrink-0" />
             </div>
           ))}
         </motion.div>

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import promoHeart from "@/assets/promo-heart.jpg";
 import promoRing from "@/assets/promo-ring.jpg";
 
@@ -14,6 +15,7 @@ const tiles = [
     cta: "Shop Now",
     image: promoHeart,
     gradient: "from-foreground/60 to-transparent",
+    href: "/shop/necklaces",
   },
   {
     id: 2,
@@ -22,12 +24,14 @@ const tiles = [
     cta: "Shop Now",
     image: promoRing,
     gradient: "from-foreground/60 to-transparent",
+    href: "/jewelry-collections",
   },
 ];
 
 const PromoTiles = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, amount: 0.2 });
+  const navigate = useNavigate();
 
   return (
     <section ref={ref} className="pb-8 md:pb-12 w-[100vw] ml-[calc(-50vw+50%)] overflow-hidden">
@@ -63,13 +67,13 @@ const PromoTiles = () => {
                 <p className="body-md text-primary-foreground/80 mb-4 max-w-sm">
                   {tile.subtitle}
                 </p>
-                <a
-                  href="#"
+                <button
+                  onClick={() => navigate(tile.href)}
                   className="inline-flex items-center gap-2 text-primary-foreground font-medium text-sm tracking-wider uppercase group/link"
                 >
                   {tile.cta}
                   <ArrowRight className="w-4 h-4 transition-transform group-hover/link:translate-x-1" />
-                </a>
+                </button>
               </div>
             </motion.div>
           ))}

@@ -16,8 +16,10 @@ import {
   MessageSquare,
   Gift,
   Star,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ThemeToggle from '@/components/ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +49,7 @@ const AdminLayout = () => {
     { path: '/admin/gift-cards', icon: Gift, label: 'Gift Cards' },
     { path: '/admin/reviews', icon: Star, label: 'Reviews' },
     { path: '/admin/media', icon: Image, label: 'Media' },
+    { path: '/admin/settings', icon: Settings, label: 'Settings' },
   ];
 
   return (
@@ -143,8 +146,10 @@ const AdminLayout = () => {
             />
           </div>
 
-          {/* User Menu */}
-          <DropdownMenu>
+          {/* Theme Toggle & User Menu */}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -169,6 +174,7 @@ const AdminLayout = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </header>
 
         {/* Page Content */}

@@ -430,6 +430,19 @@ const SecurityPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <div className="hidden lg:block"><Header /></div>
 
+      {/* Desktop Back Button */}
+      <div className="hidden lg:block bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4">
+          <button
+            onClick={() => navigate('/account')}
+            className="flex items-center gap-2 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm font-medium">Back to Account</span>
+          </button>
+        </div>
+      </div>
+
       {/* Mobile Header */}
       <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
         <button onClick={() => activeTab === 'overview' ? navigate(-1) : setActiveTab('overview')} className="p-1 hover:bg-gray-100 rounded-full">

@@ -46,7 +46,7 @@ const BestDeals = () => {
 
   if (loading) {
     return (
-      <section className="py-12 bg-white">
+      <section className="py-12 bg-background">
         <div className="container-custom">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -59,23 +59,23 @@ const BestDeals = () => {
   if (products.length === 0) return null;
 
   return (
-    <section className="py-12 bg-white">
+    <section className="py-12 bg-background">
       <div className="container-custom">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground">
             Best Deals on Silver Products
           </h2>
           <div className="hidden md:flex gap-2">
             <button
               onClick={() => scroll('left')}
-              className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
+              className="w-10 h-10 bg-muted hover:bg-muted/80 rounded-full flex items-center justify-center transition-colors"
               aria-label="Scroll left"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={() => scroll('right')}
-              className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
+              className="w-10 h-10 bg-muted hover:bg-muted/80 rounded-full flex items-center justify-center transition-colors"
               aria-label="Scroll right"
             >
               <ChevronRight className="w-5 h-5" />
@@ -93,10 +93,10 @@ const BestDeals = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="min-w-[200px] md:min-w-[250px] flex-shrink-0 bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow cursor-pointer group"
+              className="min-w-[200px] md:min-w-[250px] flex-shrink-0 bg-card rounded-xl border border-border overflow-hidden hover:shadow-xl transition-shadow cursor-pointer group"
               onClick={() => navigate(`/product/${product.id}`)}
             >
-              <div className="aspect-square relative overflow-hidden bg-gray-50">
+              <div className="aspect-square relative overflow-hidden bg-muted">
                 <img
                   src={product.image}
                   alt={product.title}
@@ -109,17 +109,17 @@ const BestDeals = () => {
                 )}
               </div>
               <div className="p-4">
-                <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2">
+                <h3 className="font-semibold text-foreground line-clamp-2 mb-2">
                   {product.title}
                 </h3>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-gray-900">
+                    <span className="text-xl font-bold text-foreground">
                       From ₹{product.price.toLocaleString()}*
                     </span>
                   </div>
                   {product.oldPrice && (
-                    <div className="text-sm text-gray-500 line-through">
+                    <div className="text-sm text-muted-foreground line-through">
                       ₹{product.oldPrice.toLocaleString()}
                     </div>
                   )}

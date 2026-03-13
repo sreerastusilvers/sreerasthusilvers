@@ -28,6 +28,7 @@ export interface UserProfile {
   createdAt: Date;
   updatedAt: Date;
   phone?: string;
+  whatsappNumber?: string;
   avatar?: string;
   // Delivery boy specific fields
   name?: string;
@@ -42,7 +43,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isDelivery: boolean;
-  signup: (email: string, password: string, username: string) => Promise<void>;
+  signup: (email: string, password: string, username: string, phone?: string, sameForWhatsApp?: boolean) => Promise<void>;
   login: (email: string, password: string) => Promise<UserProfile>;
   loginWithGoogle: () => Promise<UserProfile>;
   logout: () => Promise<void>;
@@ -139,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Signup function
-  const signup = async (email: string, password: string, username: string) => {
+  const signup = async (email: string, password: string, username: string, phone?: string, sameForWhatsApp?: boolean) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const { uid } = userCredential.user;
 
@@ -162,6 +163,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: 'user',
       createdAt: new Date(),
       updatedAt: new Date(),
+      ...(phone && { phone }),
+      ...(phone && sameForWhatsApp && { whatsappNumber: phone }),
     };
 
     await setDoc(doc(db, 'users', uid), {

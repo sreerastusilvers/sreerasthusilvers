@@ -86,7 +86,7 @@ const MobileBottomNav = () => {
         >
           <path 
             d="M0 20 H130 Q145 20 152 30 Q167 55 187.5 55 Q208 55 223 30 Q230 20 245 20 H375 V64 H0 Z"
-            fill="white"
+            className="fill-background"
             filter="drop-shadow(0 -4px 12px rgba(0,0,0,0.08))"
           />
         </svg>
@@ -113,7 +113,7 @@ const MobileBottomNav = () => {
             onClick={() => navigate("/")}
             className="flex flex-col items-center justify-center flex-1 h-full"
           >
-            <Home className={`w-6 h-6 ${isActive("/") ? "text-gray-800" : "text-gray-400"}`} strokeWidth={1.5} />
+            <Home className={`w-6 h-6 ${isActive("/") ? "text-foreground" : "text-muted-foreground"}`} strokeWidth={1.5} />
             {isActive("/") && (
               <span className="w-1 h-1 bg-emerald-600 rounded-full mt-1"></span>
             )}
@@ -124,7 +124,7 @@ const MobileBottomNav = () => {
             onClick={() => navigate("/categories")}
             className="flex flex-col items-center justify-center flex-1 h-full"
           >
-            <Grid className={`w-6 h-6 ${isActive("/categories") ? "text-gray-800" : "text-gray-400"}`} strokeWidth={1.5} />
+            <Grid className={`w-6 h-6 ${isActive("/categories") ? "text-foreground" : "text-muted-foreground"}`} strokeWidth={1.5} />
             {isActive("/categories") && (
               <span className="w-1 h-1 bg-emerald-600 rounded-full mt-1"></span>
             )}
@@ -138,7 +138,7 @@ const MobileBottomNav = () => {
             onClick={() => navigate("/wishlist")}
             className="flex flex-col items-center justify-center flex-1 h-full"
           >
-            <Heart className={`w-6 h-6 ${isActive("/wishlist") ? "text-gray-800" : "text-gray-400"}`} strokeWidth={1.5} />
+            <Heart className={`w-6 h-6 ${isActive("/wishlist") ? "text-foreground" : "text-muted-foreground"}`} strokeWidth={1.5} />
             {isActive("/wishlist") && (
               <span className="w-1 h-1 bg-emerald-600 rounded-full mt-1"></span>
             )}
@@ -149,7 +149,7 @@ const MobileBottomNav = () => {
             onClick={() => setIsSidebarOpen(true)}
             className="flex flex-col items-center justify-center flex-1 h-full"
           >
-            <Menu className={`w-6 h-6 text-gray-400`} strokeWidth={1.5} />
+            <Menu className={`w-6 h-6 text-muted-foreground`} strokeWidth={1.5} />
           </button>
         </div>
       </nav>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Search, Heart, ShoppingBag, User, Mic, Diamond, Gift } from "lucide-react";
+import { Menu, X, Search, Heart, ShoppingBag, User, Mic, Gift } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo-new.png";
 import { useCart } from "@/contexts/CartContext";
@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAllProducts, Product } from "@/services/productService";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import MobileHeader from "./MobileHeader";
+import ThemeToggle from "./ThemeToggle";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -148,25 +149,25 @@ const Header = () => {
 
       {/* Main Header */}
       <header
-        className={`hidden lg:block sticky top-0 z-50 transition-all duration-300 ${
+        className={`hidden lg:block sticky top-0 z-50 transition-all duration-500 ${
           isScrolled
-            ? "bg-white/98 backdrop-blur-md shadow-md"
-            : "bg-white"
+            ? "bg-background/98 backdrop-blur-xl shadow-[0_1px_0_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]"
+            : "bg-background"
         }`}
       >
-        <div className="max-w-[1600px] mx-auto px-12 lg:px-16">
-          <div className="flex items-center justify-between gap-6 h-[60px] lg:h-16">
+        <div className="max-w-[1440px] mx-auto px-8 lg:px-12">
+          <div className="flex items-center justify-between gap-8 h-[68px]">
             {/* Logo */}
             <a href="/" className="flex items-center flex-shrink-0">
-              <img src={logo} alt="Sreerasthu Silvers" className="h-7 md:h-8 lg:h-9 w-auto" />
+              <img src={logo} alt="Sreerasthu Silvers" className="h-8 lg:h-10 w-auto" />
             </a>
 
-            {/* Search Bar - Tanishq Style */}
-            <div className="flex-1 max-w-[620px] mx-6" ref={searchRef}>
+            {/* Search Bar - Premium Style */}
+            <div className="flex-1 max-w-[560px] mx-8" ref={searchRef}>
               <div className="relative">
                 <div className="relative flex items-center">
                   <div className="absolute left-4">
-                    <Search className="w-[19px] h-[19px] text-[#832729]" strokeWidth={1.5} />
+                    <Search className="w-[18px] h-[18px] text-muted-foreground" strokeWidth={1.8} />
                   </div>
                   <input
                     type="text"
@@ -174,7 +175,7 @@ const Header = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => searchQuery && setShowSearchResults(true)}
-                    className="w-full pl-11 pr-24 py-2.5 bg-white text-sm rounded-full border border-gray-200 focus:outline-none focus:border-gray-300 transition-all placeholder:text-gray-400"
+                    className="w-full pl-11 pr-24 py-2.5 bg-muted text-[13px] rounded-full border-none focus:outline-none focus:ring-1 focus:ring-border focus:bg-background transition-all placeholder:text-muted-foreground font-light"
                   />
                   
                   {/* "Speak now..." overlay when listening */}
@@ -197,19 +198,19 @@ const Header = () => {
                   <div className="absolute right-3 flex items-center gap-2">
                     <button 
                       onClick={() => navigate('/articles/gift-articles')}
-                      className="p-1 hover:bg-gray-50 rounded-full transition-colors" 
+                      className="p-1 hover:bg-muted rounded-full transition-colors" 
                       aria-label="Gift articles"
                     >
-                      <Gift className="w-[19px] h-[19px] text-[#832729]" strokeWidth={1.5} />
+                      <Gift className="w-[19px] h-[19px] text-foreground/80" strokeWidth={1.5} />
                     </button>
                     <button 
                       onClick={handleVoiceSearch}
-                      className={`p-1 hover:bg-gray-50 rounded-full transition-colors ${
+                      className={`p-1 hover:bg-muted rounded-full transition-colors ${
                         isListening ? 'bg-red-50' : ''
                       }`}
                       aria-label="Voice search"
                     >
-                      <Mic className="w-[19px] h-[19px]" strokeWidth={1.5} style={{ color: isListening ? '#EF4444' : '#832729' }} />
+                      <Mic className={`w-[19px] h-[19px] ${isListening ? 'text-red-500' : 'text-foreground/80'}`} strokeWidth={1.5} />
                     </button>
                   </div>
                 </div>
@@ -221,7 +222,7 @@ const Header = () => {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-[400px] overflow-y-auto z-50"
+                      className="absolute top-full left-0 right-0 mt-2 bg-card rounded-lg shadow-2xl border border-border max-h-[400px] overflow-y-auto z-50"
                     >
                       <div className="p-2">
                         {searchResults.map((product) => (
@@ -232,9 +233,9 @@ const Header = () => {
                               setSearchQuery("");
                               setShowSearchResults(false);
                             }}
-                            className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg w-full text-left transition-colors"
+                            className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg w-full text-left transition-colors"
                           >
-                            <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                            <div className="w-12 h-12 flex-shrink-0 bg-muted rounded overflow-hidden">
                               {product.image ? (
                                 <img
                                   src={product.image}
@@ -243,18 +244,18 @@ const Header = () => {
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <ShoppingBag className="w-6 h-6 text-gray-400" />
+                                  <ShoppingBag className="w-6 h-6 text-muted-foreground" />
                                 </div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
+                              <p className="text-sm font-medium text-foreground truncate">
                                 {product.title}
                               </p>
-                              <p className="text-xs text-gray-500 truncate">
+                              <p className="text-xs text-muted-foreground truncate">
                                 {product.category}
                               </p>
-                              <p className="text-sm font-semibold text-blue-600 mt-0.5">
+                              <p className="text-sm font-semibold text-primary mt-0.5">
                                 ₹{product.price.toLocaleString()}
                               </p>
                             </div>
@@ -262,13 +263,13 @@ const Header = () => {
                         ))}
                       </div>
                       {searchResults.length === 8 && (
-                        <div className="border-t border-gray-200 p-3 text-center">
+                        <div className="border-t border-border p-3 text-center">
                           <button
                             onClick={() => {
                               // Navigate to search results page if you have one
                               setShowSearchResults(false);
                             }}
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="text-sm text-primary hover:text-primary/80 font-medium"
                           >
                             View all results for "{searchQuery}"
                           </button>
@@ -285,11 +286,11 @@ const Header = () => {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-2xl border border-gray-200 z-50"
+                      className="absolute top-full left-0 right-0 mt-2 bg-card rounded-lg shadow-2xl border border-border z-50"
                     >
                       <div className="p-6 text-center">
-                        <p className="text-gray-600">No products found for "{searchQuery}"</p>
-                        <p className="text-sm text-gray-400 mt-1">Try searching with different keywords</p>
+                        <p className="text-muted-foreground">No products found for "{searchQuery}"</p>
+                        <p className="text-sm text-muted-foreground/70 mt-1">Try searching with different keywords</p>
                       </div>
                     </motion.div>
                   )}
@@ -297,39 +298,24 @@ const Header = () => {
               </div>
             </div>
 
-            {/* Right Actions - Tanishq Style Icons */}
-            <div className="flex items-center gap-4 flex-shrink-0">
-              {/* Diamond Icon */}
-              <button 
-                onClick={() => navigate("/jewelry")}
-                className="p-1.5 hover:bg-gray-50 rounded-full transition-colors group"
-                aria-label="Diamond jewelry"
-              >
-                <Diamond className="w-[21px] h-[21px] text-[#832729] group-hover:text-[#832729] transition-colors" strokeWidth={1.3} />
-              </button>
-
-              {/* Store/Gift Icon */}
-              <button 
-                onClick={() => navigate("/products")}
-                className="p-1.5 hover:bg-gray-50 rounded-full transition-colors group"
-                aria-label="Store locator"
-              >
-                <Gift className="w-[21px] h-[21px] text-[#832729] group-hover:text-[#832729] transition-colors" strokeWidth={1.3} />
-              </button>
+            {/* Right Actions */}
+            <div className="flex items-center gap-5 flex-shrink-0">
+              {/* Theme Toggle */}
+              <ThemeToggle />
 
               {/* Wishlist */}
               <button 
                 onClick={() => navigate("/wishlist")}
-                className="p-1.5 hover:bg-gray-50 rounded-full transition-colors group relative"
+                className="p-2 hover:bg-muted rounded-full transition-all duration-200 group relative"
                 aria-label="Wishlist"
               >
-                <Heart className="w-[21px] h-[21px] text-[#832729] group-hover:text-[#832729] transition-colors" strokeWidth={1.3} />
+                <Heart className="w-[20px] h-[20px] text-foreground/80 group-hover:text-primary transition-colors" strokeWidth={1.5} />
               </button>
 
               {/* User Profile */}
               <button 
                 onClick={() => navigate(user ? "/account" : "/account")}
-                className="p-1.5 hover:bg-gray-50 rounded-full transition-colors group"
+                className="p-2 hover:bg-muted rounded-full transition-all duration-200 group"
                 aria-label="Account"
               >
                 {user ? (
@@ -338,31 +324,31 @@ const Header = () => {
                       key={userProfile?.avatar || user.photoURL}
                       src={userProfile?.avatar || user.photoURL} 
                       alt="Profile" 
-                      className="w-[21px] h-[21px] rounded-full object-cover border border-gray-200"
+                      className="w-[22px] h-[22px] rounded-full object-cover ring-1 ring-border"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-[21px] h-[21px] rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center">
+                    <div className="w-[22px] h-[22px] rounded-full bg-[#832729] flex items-center justify-center">
                       <span className="text-white font-semibold text-[9px]">
                         {(userProfile?.name || userProfile?.username || 'U').charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )
                 ) : (
-                  <User className="w-[21px] h-[21px] text-[#832729] group-hover:text-[#832729] transition-colors" strokeWidth={1.3} />
+                  <User className="w-[20px] h-[20px] text-foreground/80 group-hover:text-primary transition-colors" strokeWidth={1.5} />
                 )}
               </button>
 
-              {/* Cart with Red Badge */}
+              {/* Cart with Badge */}
               <button 
                 onClick={toggleCart}
-                className="p-1.5 hover:bg-gray-50 rounded-full transition-colors relative group" 
+                className="p-2 hover:bg-muted rounded-full transition-all duration-200 relative group" 
                 aria-label="Cart"
               >
                 <div className="relative">
-                  <ShoppingBag className="w-[21px] h-[21px] text-[#832729] group-hover:text-[#832729] transition-colors" strokeWidth={1.3} />
+                  <ShoppingBag className="w-[20px] h-[20px] text-foreground/80 group-hover:text-primary transition-colors" strokeWidth={1.5} />
                   {user && totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-[#832729] text-white text-[9px] rounded-full flex items-center justify-center font-bold px-1">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-[#832729] text-white text-[9px] rounded-full flex items-center justify-center font-bold px-1 shadow-sm">
                       {totalItems}
                     </span>
                   )}
@@ -380,12 +366,12 @@ const Header = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-4 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-[180px] overflow-hidden"
+              className="absolute right-4 top-full mt-2 bg-card border border-border rounded-lg shadow-xl z-50 min-w-[180px] overflow-hidden"
             >
               <nav className="py-2">
                 <a
                   href="/contact"
-                  className="block px-4 py-3 text-base font-medium text-foreground hover:bg-gray-50 transition-colors"
+                  className="block px-4 py-3 text-base font-medium text-foreground hover:bg-muted transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Contact

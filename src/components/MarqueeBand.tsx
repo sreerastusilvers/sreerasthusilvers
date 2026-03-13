@@ -1,15 +1,15 @@
 import { motion } from "framer-motion";
-import { Sun } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 const phrases = [
   "The Iconic Collection",
   "Color In Your Look",
   "Elegant And Everlasting",
-  "Black Friday Offer",
   "Handcrafted Jewelry",
   "Timeless Beauty",
   "Premium Quality",
   "Exclusive Designs",
+  "925 Pure Silver",
 ];
 
 const MarqueeBand = () => {
@@ -17,10 +17,10 @@ const MarqueeBand = () => {
   const duplicatedPhrases = [...phrases, ...phrases, ...phrases];
 
   return (
-    <section className="py-0 bg-black md:bg-background border-y border-border/30 overflow-hidden">
+    <section className="py-3 md:py-4 bg-primary overflow-hidden">
       <div className="relative">
         <motion.div
-          className="flex items-center gap-8 whitespace-nowrap"
+          className="flex items-center gap-10 whitespace-nowrap"
           animate={{
             x: [0, -100 * phrases.length],
           }}
@@ -28,17 +28,17 @@ const MarqueeBand = () => {
             x: {
               repeat: Infinity,
               repeatType: "loop",
-              duration: 30,
+              duration: 35,
               ease: "linear",
             },
           }}
         >
           {duplicatedPhrases.map((phrase, index) => (
-            <div key={index} className="flex items-center gap-8">
-              <span className="text-lg md:text-xl font-heading font-medium text-white md:text-foreground tracking-wide">
+            <div key={index} className="flex items-center gap-10">
+              <span className="text-sm md:text-base font-light text-white/90 tracking-[0.15em] uppercase">
                 {phrase}
               </span>
-              <Sun className="w-5 h-5 text-white md:text-primary flex-shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-white/50 flex-shrink-0" />
             </div>
           ))}
         </motion.div>

@@ -193,24 +193,33 @@ const TrendProducts = () => {
   const displayProducts = products;
 
   return (
-    <section ref={ref} className="py-3 md:py-8 bg-gray-50">
-      <div className="container-custom md:bg-white md:rounded-lg md:shadow-lg md:p-6">
+    <section ref={ref} className="py-3 md:py-10 bg-background">
+      <div className="container-custom">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="mb-3 md:mb-6 hidden md:block"
+          className="mb-3 md:mb-8 hidden md:flex md:items-end md:justify-between"
         >
-          <h2 className="text-lg md:text-3xl font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Trend Products
-          </h2>
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold text-foreground font-serif">
+              New Arrivals
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1 font-light">Fresh designs crafted just for you</p>
+          </div>
+          <button onClick={() => navigate('/jewelry')} className="text-sm text-primary font-medium hover:underline underline-offset-4 flex items-center gap-1">
+            View All <ChevronRight className="w-4 h-4" />
+          </button>
         </motion.div>
         {/* Mobile header without animation */}
-        <div className="mb-3 md:mb-6 md:hidden">
-          <h2 className="text-lg md:text-3xl font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Trend Products
+        <div className="mb-3 md:mb-6 md:hidden flex items-center justify-between px-1">
+          <h2 className="text-lg font-semibold text-foreground font-serif">
+            New Arrivals
           </h2>
+          <button onClick={() => navigate('/jewelry')} className="text-xs text-primary font-medium">
+            View All
+          </button>
         </div>
 
         {/* Products Container */}
@@ -219,10 +228,10 @@ const TrendProducts = () => {
           {products.length > 3 && (
             <button
               onClick={scrollLeftBtn}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 bg-background/90 backdrop-blur-sm rounded-full shadow-luxury-md hover:bg-background transition-all hover:scale-110 focus-gold -ml-2 md:-ml-4"
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 bg-background/90 dark:bg-card/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background transition-all hover:scale-105 -ml-2 md:-ml-5 flex items-center justify-center"
               aria-label="Scroll left"
             >
-              <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+              <ChevronLeft className="w-5 h-5" />
             </button>
           )}
 
@@ -230,10 +239,10 @@ const TrendProducts = () => {
           {products.length > 3 && (
             <button
               onClick={scrollRightBtn}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 bg-background/90 backdrop-blur-sm rounded-full shadow-luxury-md hover:bg-background transition-all hover:scale-110 focus-gold -mr-2 md:-mr-4"
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 bg-background/90 dark:bg-card/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background transition-all hover:scale-105 -mr-2 md:-mr-5 flex items-center justify-center"
               aria-label="Scroll right"
             >
-              <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+              <ChevronRight className="w-5 h-5" />
             </button>
           )}
 
@@ -254,37 +263,37 @@ const TrendProducts = () => {
                   className="flex-shrink-0 w-[130px] md:w-[220px] snap-start"
                 >
                   <div className="animate-pulse">
-                    <div className="bg-gray-200 rounded-lg aspect-square mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                    <div className="bg-gray-200 dark:bg-muted rounded-lg aspect-square mb-2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-muted rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-muted rounded w-2/3"></div>
                   </div>
                 </div>
               ))
             ) : products.length === 0 ? (
               // Empty state
               <div className="w-full py-12 text-center">
-                <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-500">No trending products available yet.</p>
+                <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No trending products available yet.</p>
               </div>
             ) : (
               displayProducts.map((product, index) => (
                 <div
                   key={`${product.id}-${index}`}
-                  className="flex-shrink-0 w-[130px] md:w-[220px] md:snap-start cursor-pointer"
+                  className="flex-shrink-0 w-[150px] md:w-[230px] md:snap-start cursor-pointer"
                   onClick={() => navigate(`/product/${product.id}`)}
                 >
-                  <div className="bg-white rounded-lg overflow-hidden h-full flex flex-col border border-gray-100 md:shadow-sm">
+                  <div className="bg-card rounded-2xl overflow-hidden h-full flex flex-col border border-border hover:shadow-lg transition-shadow duration-300">
                     {/* Image */}
-                    <div className="aspect-square overflow-hidden bg-gray-100 relative group">
+                    <div className="aspect-square overflow-hidden bg-secondary/50 dark:bg-muted relative group">
                       <img
                         src={product.image}
                         alt={product.title}
-                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       
                       {/* Discount Badge */}
                       {product.discount && product.discount > 0 && (
-                        <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] lg:text-xs font-bold px-2 py-1 rounded-md shadow-lg">
+                        <div className="absolute top-2 left-2 bg-primary text-white text-[10px] lg:text-xs font-semibold px-2 py-1 rounded-full">
                           {product.discount}% OFF
                         </div>
                       )}
@@ -292,40 +301,40 @@ const TrendProducts = () => {
                       {/* Wishlist Button */}
                       <button
                         onClick={(e) => handleWishlistClick(e, product.id, product.title)}
-                        className="absolute top-1 right-1 md:top-2 md:right-2 p-1 md:p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all duration-200 z-10"
+                        className="absolute top-2 right-2 p-1.5 bg-background/90 dark:bg-card/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-background transition-all duration-200 z-10"
                         aria-label="Add to wishlist"
                       >
                         <Heart 
-                          className={`w-3 h-3 md:w-4 md:h-4 ${
+                          className={`w-3.5 h-3.5 md:w-4 md:h-4 ${
                             isInWishlist(product.id) 
                               ? 'fill-red-500 text-red-500' 
-                              : 'text-gray-600'
+                              : 'text-muted-foreground'
                           }`}
                         />
                       </button>
                     </div>
 
                     {/* Content */}
-                    <div className="p-2 md:p-3 flex flex-col flex-grow">
+                    <div className="p-2.5 md:p-3.5 flex flex-col flex-grow">
                       {/* Category Badge */}
                       {product.category && (
-                        <span className="text-[10px] uppercase tracking-wider text-amber-600 font-medium mb-1">
-                          TREND PRODUCTS
+                        <span className="text-[9px] uppercase tracking-widest text-primary/70 font-medium mb-1">
+                          NEW ARRIVAL
                         </span>
                       )}
                       
-                      <h3 className="text-xs md:text-sm font-semibold text-gray-900 line-clamp-1 mb-1 md:mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      <h3 className="text-xs md:text-sm font-medium text-foreground line-clamp-1 mb-1.5">
                         {product.title}
                       </h3>
                       
                       <div className="mt-auto">
                         <div className="flex items-end justify-between">
                           <div>
-                            <p className="text-sm md:text-lg font-bold text-gray-900">
+                            <p className="text-sm md:text-base font-bold text-foreground">
                               ₹{product.price.toLocaleString()}
                             </p>
                             {product.oldPrice && product.oldPrice > product.price && (
-                              <p className="text-[10px] md:text-xs text-gray-500 line-through">
+                              <p className="text-[10px] md:text-xs text-muted-foreground line-through">
                                 ₹{product.oldPrice.toLocaleString()}
                               </p>
                             )}
@@ -334,10 +343,10 @@ const TrendProducts = () => {
                           {/* Cart Button */}
                           <button
                             onClick={(e) => handleAddToCart(e, product)}
-                            className="hover:scale-110 transition-transform duration-200"
+                            className="w-8 h-8 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors duration-200 group/cart"
                             aria-label="Add to cart"
                           >
-                            <ShoppingCart className="w-5 h-5 md:w-6 md:h-6 text-[#8B7355]" />
+                            <ShoppingCart className="w-4 h-4 text-muted-foreground group-hover/cart:text-white" />
                           </button>
                         </div>
                       </div>

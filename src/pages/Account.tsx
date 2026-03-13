@@ -10,6 +10,7 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn } from '@/services/orderService';
 import { uploadToCloudinary, UploadProgress } from '@/services/cloudinaryService';
 import { toast } from 'sonner';
+import logo from '@/assets/logo-new.png';
 import {
   Loader2,
   User,
@@ -44,6 +45,7 @@ import {
   AlertCircle,
   X,
   Edit,
+  Phone,
 } from 'lucide-react';
 
 const Account = () => {
@@ -78,6 +80,8 @@ const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [sameForWhatsApp, setSameForWhatsApp] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -95,6 +99,7 @@ const LoginForm = () => {
     setEmail('');
     setPassword('');
     setFullName('');
+    setPhone('');
     setError('');
     setResetSent(false);
     // Update URL to reflect tab change
@@ -132,8 +137,7 @@ const LoginForm = () => {
         return;
       }
       
-      // For regular verified users, redirect to home page
-      navigate('/');
+      // For regular verified users, stay on account page (component will re-render)
       setGoogleLoading(false);
     } catch (err: any) {
       console.error('Google login error:', err);
@@ -171,6 +175,11 @@ const LoginForm = () => {
       return;
     }
 
+    if (isSignUp && phone && !/^[6-9]\d{9}$/.test(phone)) {
+      setError('Please enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+
     if (isSignUp && !agreeTerms) {
       setError('Please agree to the terms and conditions.');
       return;
@@ -180,7 +189,7 @@ const LoginForm = () => {
 
     try {
       if (isSignUp) {
-        await signup(email, password, fullName);
+        await signup(email, password, fullName, phone || undefined, sameForWhatsApp);
         // Navigate immediately to email verification page
         sessionStorage.setItem('pendingVerificationEmail', email);
         // Keep loading state active during navigation to prevent flash
@@ -224,8 +233,7 @@ const LoginForm = () => {
           return;
         }
         
-        // For regular verified users, redirect to home page
-        navigate('/');
+        // For regular verified users, stay on account page (component will re-render)
         setEmailLoading(false);
       }
     } catch (err: any) {
@@ -265,277 +273,274 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left Side - Blue Gradient (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 relative overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 95% 20%, 100% 40%, 95% 60%, 100% 80%, 90% 100%, 0 100%)' }}>
-        {/* Decorative circles */}
-        <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
-        <div className="absolute bottom-40 right-10 w-48 h-48 bg-white/10 rounded-full blur-xl" />
-        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-white/5 rounded-full blur-lg" />
-        
-        {/* Content - Centered Image */}
-        <div className="relative z-10 flex flex-col items-center justify-center w-full p-8">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-            className="w-full max-w-md"
-          >
-            <img 
-              src="/login-image.png" 
-              alt="Login illustration" 
-              className="w-full h-auto object-contain"
-            />
-          </motion.div>
-        </div>
-      </div>
+    <div className="min-h-screen flex flex-col bg-muted">
+      {/* Site Header */}
+      <Header />
 
-      {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-start justify-center bg-gradient-to-br from-slate-50 to-gray-100 px-4 pt-6 pb-2 sm:py-8 lg:pt-8 lg:pb-12">
+      {/* Content area */}
+      <div className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md bg-card rounded-2xl shadow-lg border border-border p-6 sm:p-8"
         >
-          {/* Form */}
-          <div className="p-6 sm:p-8 lg:pt-0">
-            {/* Mobile Back Arrow */}
+          {/* Tabs */}
+          <div className="flex mb-6 bg-muted rounded-full p-1">
             <button
-              onClick={() => navigate('/')}
-              className="lg:hidden mb-4 flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors"
+              onClick={() => handleTabChange('user')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
+                activeTab === 'user'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground/80'
+              }`}
             >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="text-sm font-medium">Back</span>
+              <User className="h-4 w-4" />
+              User
             </button>
+            <button
+              onClick={() => handleTabChange('delivery')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
+                activeTab === 'delivery'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground/80'
+              }`}
+            >
+              <Truck className="h-4 w-4" />
+              Delivery
+            </button>
+          </div>
 
-            {/* Tabs */}
-            <div className="flex mb-6 bg-gray-100 rounded-full p-1">
-              <button
-                onClick={() => handleTabChange('user')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full text-sm font-medium transition-all ${
-                  activeTab === 'user'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <User className="h-4 w-4" />
-                User
-              </button>
-              <button
-                onClick={() => handleTabChange('delivery')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full text-sm font-medium transition-all ${
-                  activeTab === 'delivery'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Truck className="h-4 w-4" />
-                Delivery
-              </button>
-            </div>
+          {/* Header */}
+          <div className="text-center mb-5">
+            <h1 className="text-xl md:text-2xl font-bold text-foreground mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              {activeTab === 'delivery' 
+                ? 'Delivery Partner Login' 
+                : (isSignUp ? 'Create Account' : 'Welcome Back')}
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {activeTab === 'delivery'
+                ? 'Access your delivery dashboard'
+                : (isSignUp ? 'Sign up to get started' : 'Please login to your account')}
+            </p>
+          </div>
 
-            {/* Header */}
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-semibold text-gray-900 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                {activeTab === 'delivery' 
-                  ? 'Delivery Partner Login' 
-                  : (isSignUp ? 'Create Account' : 'Welcome Back')}
-              </h1>
-              <p className="text-gray-500 text-sm">
-                {activeTab === 'delivery'
-                  ? 'Please login to your account'
-                  : (isSignUp ? 'Sign up to get started' : 'Please login to your account')}
-              </p>
-            </div>
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4"
+            >
+              <p className="text-red-600 text-sm text-center">{error}</p>
+            </motion.div>
+          )}
 
-            {/* Error Message */}
-            {error && (
+          {/* Reset Password Success */}
+          {resetSent && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4"
+            >
+              <p className="text-green-600 text-sm text-center">Password reset email sent! Check your inbox.</p>
+            </motion.div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleEmailSignIn} className="space-y-4">
+            {/* Full Name - only for Sign Up (User tab only) */}
+            {activeTab === 'user' && isSignUp && (
               <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ duration: 0.3 }}
               >
-                <p className="text-red-600 text-sm text-center">{error}</p>
+                <label className="block text-sm font-medium text-foreground/80 mb-1.5">Full Name</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Full Name"
+                    className="w-full pl-11 pr-4 py-3 border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all bg-muted/50"
+                  />
+                </div>
               </motion.div>
             )}
 
-            {/* Reset Password Success */}
-            {resetSent && (
+            {/* Phone Number - only for Sign Up (User tab only) */}
+            {activeTab === 'user' && isSignUp && (
               <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ duration: 0.3 }}
               >
-                <p className="text-green-600 text-sm text-center">Password reset email sent! Check your inbox.</p>
-              </motion.div>
-            )}
-
-            {/* Form */}
-            <form onSubmit={handleEmailSignIn} className="space-y-4">
-              {/* Full Name - only for Sign Up (User tab only) */}
-              {activeTab === 'user' && isSignUp && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Full Name"
-                      className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-50"
-                    />
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email address</label>
+                <label className="block text-sm font-medium text-foreground/80 mb-1.5">Phone Number</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-50"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="Enter your phone number"
+                    className="w-full pl-11 pr-4 py-3 border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all bg-muted/50"
                   />
                 </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-sm font-medium text-gray-700">Password</label>
-                  {!isSignUp && (
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      className="text-xs text-blue-600 font-medium hover:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Terms Agreement - User tab sign up only */}
-              {activeTab === 'user' && isSignUp && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2 mt-2">
                   <input
                     type="checkbox"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                    className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={sameForWhatsApp}
+                    onChange={(e) => setSameForWhatsApp(e.target.checked)}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
-                  <span className="text-xs text-gray-500">
-                    I agree to all <span className="text-blue-600 cursor-pointer">Terms</span>, <span className="text-blue-600 cursor-pointer">Privacy Policy</span> and fees
-                  </span>
+                  <span className="text-xs text-muted-foreground">Same number for WhatsApp</span>
                 </div>
-              )}
-
-              {/* Sign In / Sign Up Button */}
-              <Button
-                type="submit"
-                disabled={emailLoading}
-                className="w-full py-3 h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-full text-sm transition-all shadow-lg shadow-blue-500/25"
-              >
-                {emailLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    {isSignUp ? 'Creating Account...' : 'Logging in...'}
-                  </>
-                ) : (
-                  isSignUp ? 'Sign Up' : 'Login'
-                )}
-              </Button>
-            </form>
-
-            {/* Divider - User tab only */}
-            {activeTab === 'user' && (
-              <div className="flex items-center gap-3 my-5">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-xs text-gray-400 font-medium">Or Login with</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
+              </motion.div>
             )}
 
-            {/* Social Sign In - User tab only */}
-            {activeTab === 'user' && (
-              <div className="grid grid-cols-1 gap-3">
-                {/* Google */}
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-1.5">Email address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full pl-11 pr-4 py-3 border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all bg-muted/50"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-foreground/80">Password</label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-xs text-primary font-medium hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full pl-11 pr-12 py-3 border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all bg-muted/50"
+                />
                 <button
                   type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={googleLoading}
-                  className="flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50 bg-white"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground/80"
                 >
-                  {googleLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                    </svg>
-                  )}
-                  {googleLoading ? 'Signing In...' : 'Google'}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            )}
+            </div>
 
-            {/* Toggle Sign In / Sign Up - User tab only */}
-            {activeTab === 'user' && (
-              <div className="text-center mt-6">
-                <span className="text-sm text-gray-500">
-                  {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+            {/* Terms Agreement - User tab sign up only */}
+            {activeTab === 'user' && isSignUp && (
+              <div className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span className="text-xs text-muted-foreground">
+                  I agree to all <span className="text-primary cursor-pointer">Terms</span>, <span className="text-primary cursor-pointer">Privacy Policy</span> and fees
                 </span>
-                <button
-                  onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    setError('');
-                    setResetSent(false);
-                  }}
-                  className="text-sm text-blue-600 font-semibold hover:underline"
-                >
-                  {isSignUp ? 'Sign In' : 'Sign up'}
-                </button>
               </div>
             )}
 
-            {/* Delivery Help Text */}
-            {activeTab === 'delivery' && (
-              <p className="text-center text-sm text-gray-500 mt-6">
-                Contact admin if you need your delivery account credentials.
-              </p>
-            )}
-          </div>
+            {/* Sign In / Sign Up Button */}
+            <Button
+              type="submit"
+              disabled={emailLoading}
+              className="w-full py-3 h-12 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-primary/25"
+            >
+              {emailLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  {isSignUp ? 'Creating Account...' : 'Logging in...'}
+                </>
+              ) : (
+                isSignUp ? 'Sign Up' : 'Login'
+              )}
+            </Button>
+          </form>
+
+          {/* Divider - User tab only */}
+          {activeTab === 'user' && (
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground font-medium">Or Login with</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
+
+          {/* Social Sign In - User tab only */}
+          {activeTab === 'user' && (
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading}
+              className="w-full flex items-center justify-center gap-3 py-3 border border-border rounded-xl text-sm font-medium text-foreground/80 hover:bg-muted transition-all disabled:opacity-50 bg-card"
+            >
+              {googleLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+              )}
+              {googleLoading ? 'Signing In...' : 'Google'}
+            </button>
+          )}
+
+          {/* Toggle Sign In / Sign Up - User tab only */}
+          {activeTab === 'user' && (
+            <div className="text-center mt-6">
+              <span className="text-sm text-muted-foreground">
+                {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+              </span>
+              <button
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError('');
+                  setResetSent(false);
+                }}
+                className="text-sm text-primary font-semibold hover:underline"
+              >
+                {isSignUp ? 'Sign In' : 'Sign up'}
+              </button>
+            </div>
+          )}
+
+          {/* Delivery Help Text */}
+          {activeTab === 'delivery' && (
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              Contact admin if you need your delivery account credentials.
+            </p>
+          )}
         </motion.div>
       </div>
+
+      {/* Mobile Bottom Nav */}
+      <MobileBottomNav />
     </div>
   );
 };
@@ -930,19 +935,19 @@ const AccountPage = () => {
   if (isMobile) {
     return (
       <>
-        <div className="min-h-screen pt-2 bg-gray-50 pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <div className="min-h-screen pt-2 bg-muted pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
           <div className="px-4 py-2">
             {/* Amazon-style Account Header */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+            <div className="bg-card rounded-lg shadow-sm p-4 mb-4">
               {/* Top Row: User info and icons */}
               <div className="flex items-center justify-between mb-4">
                 {/* User Avatar and Name */}
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => navigate('/')}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-1 hover:bg-muted rounded-full transition-colors"
                   >
-                    <ArrowLeft className="w-5 h-5 text-gray-700" />
+                    <ArrowLeft className="w-5 h-5 text-foreground/80" />
                   </button>
                   <div className="flex items-center gap-3">
                     {avatarUrl ? (
@@ -961,7 +966,7 @@ const AccountPage = () => {
                         </span>
                       </div>
                     )}
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-foreground">
                       Hello, {(userProfile?.name || userProfile?.username || user?.email?.split('@')[0] || 'User').slice(0, 12)}...
                     </span>
                   </div>
@@ -981,19 +986,19 @@ const AccountPage = () => {
               <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
                 <button 
                   onClick={() => navigate('/account/orders')}
-                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-border rounded-full hover:bg-muted transition-colors"
                 >
                   Orders
                 </button>
                 <button 
                   onClick={() => navigate('/buy-again')}
-                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-border rounded-full hover:bg-muted transition-colors"
                 >
                   Buy Again
                 </button>
                 <button 
                   onClick={() => navigate('/wishlist')}
-                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-border rounded-full hover:bg-muted transition-colors"
                 >
                   Lists
                 </button>
@@ -1001,17 +1006,17 @@ const AccountPage = () => {
             </div>
 
             {/* Navigation Menu */}
-            <div className="bg-white rounded-lg shadow-sm mb-4">
+            <div className="bg-card rounded-lg shadow-sm mb-4">
               {menuItems.filter(item => item.id !== 'orders' && item.id !== 'archived' && item.id !== 'saved').map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleMenuClick(item)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 text-left transition-colors ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 text-left transition-colors ${
                     item.id === 'logout'
-                      ? 'text-red-600 hover:bg-red-50'
+                      ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30'
                       : selectedMenu === item.id
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-700'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-foreground/80'
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -1022,9 +1027,9 @@ const AccountPage = () => {
 
             {/* Main Content */}
             {selectedMenu === 'addresses' && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Your Addresses</h3>
-                <p className="text-sm text-gray-600 mb-4">Manage your saved addresses here.</p>
+              <div className="bg-card rounded-lg shadow-sm p-4">
+                <h3 className="text-lg font-bold text-foreground mb-2">Your Addresses</h3>
+                <p className="text-sm text-muted-foreground mb-4">Manage your saved addresses here.</p>
                 <Button onClick={() => navigate('/account/addresses')} className="w-full">
                   View Addresses
                 </Button>
@@ -1032,32 +1037,32 @@ const AccountPage = () => {
             )}
 
             {selectedMenu === 'security' && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Login & Security</h3>
-                <p className="text-sm text-gray-600 mb-4">Manage your login credentials and security settings.</p>
+              <div className="bg-card rounded-lg shadow-sm p-4">
+                <h3 className="text-lg font-bold text-foreground mb-2">Login & Security</h3>
+                <p className="text-sm text-muted-foreground mb-4">Manage your login credentials and security settings.</p>
                 <Button onClick={() => navigate('/security')} className="w-full">Manage Security</Button>
               </div>
             )}
 
             {selectedMenu === 'payments' && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">My Jewellery Journey</h3>
-                <p className="text-sm text-gray-600 mb-4">Track your investment and order history with exclusive rewards.</p>
+              <div className="bg-card rounded-lg shadow-sm p-4">
+                <h3 className="text-lg font-bold text-foreground mb-2">My Jewellery Journey</h3>
+                <p className="text-sm text-muted-foreground mb-4">Track your investment and order history with exclusive rewards.</p>
                 <Button onClick={() => navigate('/purchase-summary')} className="w-full">View Summary</Button>
               </div>
             )}
 
             {selectedMenu === 'archived' && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Archived Orders</h3>
-                <p className="text-sm text-gray-600">View your archived orders.</p>
+              <div className="bg-card rounded-lg shadow-sm p-4">
+                <h3 className="text-lg font-bold text-foreground mb-2">Archived Orders</h3>
+                <p className="text-sm text-muted-foreground">View your archived orders.</p>
               </div>
             )}
 
             {selectedMenu === 'support' && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Customer Support</h3>
-                <p className="text-sm text-gray-600">Get help with your orders and account.</p>
+              <div className="bg-card rounded-lg shadow-sm p-4">
+                <h3 className="text-lg font-bold text-foreground mb-2">Customer Support</h3>
+                <p className="text-sm text-muted-foreground">Get help with your orders and account.</p>
               </div>
             )}
           </div>
@@ -1072,25 +1077,25 @@ const AccountPage = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed inset-0 bg-white z-50 overflow-y-auto"
+              className="fixed inset-0 bg-card z-50 overflow-y-auto"
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
               {/* Header */}
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 z-10">
+              <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center gap-3 z-10">
                 <button 
                   onClick={() => setShowOrderModal(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                  className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
                 >
-                  <ArrowLeft className="w-5 h-5 text-gray-700" />
+                  <ArrowLeft className="w-5 h-5 text-foreground/80" />
                 </button>
-                <h3 className="text-lg font-semibold text-gray-900">My Orders</h3>
+                <h3 className="text-lg font-semibold text-foreground">My Orders</h3>
               </div>
               
               <div className="p-4 pb-24 space-y-5">
                 {/* Order ID & Status */}
-                <div className="bg-white">
-                  <p className="text-xs text-gray-500 mb-1">Order ID</p>
-                  <h4 className="text-lg font-bold text-gray-900">#{selectedOrder.orderId}</h4>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Order ID</p>
+                  <h4 className="text-lg font-bold text-foreground">#{selectedOrder.orderId}</h4>
                   <span className={`inline-flex items-center gap-1.5 mt-2 text-sm font-medium px-3 py-1 rounded-full ${getStatusBadgeClass(selectedOrder.status)}`}>
                     {getStatusIcon(selectedOrder.status)}
                     {getStatusLabel(selectedOrder.status)}
@@ -1103,23 +1108,23 @@ const AccountPage = () => {
                     <p className="text-sm text-emerald-700 mt-2">Return approved! Pickup will be scheduled soon.</p>
                   )}
                   {selectedOrder.status === 'returned' && (
-                    <p className="text-sm text-gray-600 mt-2">Item has been picked up and returned successfully.</p>
+                    <p className="text-sm text-muted-foreground mt-2">Item has been picked up and returned successfully.</p>
                   )}
                 </div>
 
                 {/* Items Section */}
                 <div>
-                  <h5 className="text-base font-semibold text-gray-900 mb-3">Items</h5>
+                  <h5 className="text-base font-semibold text-foreground mb-3">Items</h5>
                   <div className="space-y-3">
                     {selectedOrder.items.map((item, idx) => (
-                      <div key={idx} className="flex gap-3 bg-gray-50 rounded-xl p-3">
-                        <div className="w-16 h-16 bg-white rounded-lg flex-shrink-0 overflow-hidden border border-gray-100">
+                      <div key={idx} className="flex gap-3 bg-muted rounded-xl p-3">
+                        <div className="w-16 h-16 bg-card rounded-lg flex-shrink-0 overflow-hidden border border-border">
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h6 className="text-sm font-semibold text-gray-900 mb-1">{item.name}</h6>
-                          <p className="text-xs text-gray-500">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
-                          <p className="text-sm font-bold text-gray-900 mt-1">₹{(item.price * item.quantity).toLocaleString()}</p>
+                          <h6 className="text-sm font-semibold text-foreground mb-1">{item.name}</h6>
+                          <p className="text-xs text-muted-foreground">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
+                          <p className="text-sm font-bold text-foreground mt-1">₹{(item.price * item.quantity).toLocaleString()}</p>
                         </div>
                       </div>
                     ))}
@@ -1128,26 +1133,26 @@ const AccountPage = () => {
 
                 {/* Tracking Information Section - Mobile */}
                 {(selectedOrder.trackingId || selectedOrder.carrier) && (
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl p-4 border border-blue-100 dark:border-blue-900/50">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
                         <Truck className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <span className="font-semibold text-gray-900 text-sm block">Tracking Information</span>
-                        <span className="text-xs text-gray-500">Track your package</span>
+                        <span className="font-semibold text-foreground text-sm block">Tracking Information</span>
+                        <span className="text-xs text-muted-foreground">Track your package</span>
                       </div>
                     </div>
                     <div className="space-y-2 text-sm">
                       {selectedOrder.carrier && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Carrier:</span>
-                          <span className="font-semibold text-gray-900">{selectedOrder.carrier}</span>
+                          <span className="text-muted-foreground">Carrier:</span>
+                          <span className="font-semibold text-foreground">{selectedOrder.carrier}</span>
                         </div>
                       )}
                       {selectedOrder.trackingId && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">ID:</span>
+                          <span className="text-muted-foreground">ID:</span>
                           <span className="font-mono font-semibold text-blue-600">{selectedOrder.trackingId}</span>
                         </div>
                       )}
@@ -1169,17 +1174,17 @@ const AccountPage = () => {
 
                 {/* Shipping Address */}
                 <div>
-                  <h5 className="text-base font-semibold text-gray-900 mb-3">Shipping Address</h5>
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <p className="font-semibold text-gray-900 mb-1">{selectedOrder.shippingAddress.fullName}</p>
-                    <p className="text-sm text-gray-600">{selectedOrder.shippingAddress.address}</p>
+                  <h5 className="text-base font-semibold text-foreground mb-3">Shipping Address</h5>
+                  <div className="bg-muted rounded-xl p-4">
+                    <p className="font-semibold text-foreground mb-1">{selectedOrder.shippingAddress.fullName}</p>
+                    <p className="text-sm text-muted-foreground">{selectedOrder.shippingAddress.address}</p>
                     {selectedOrder.shippingAddress.locality && (
-                      <p className="text-sm text-gray-600">{selectedOrder.shippingAddress.locality}</p>
+                      <p className="text-sm text-muted-foreground">{selectedOrder.shippingAddress.locality}</p>
                     )}
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.pincode}
                     </p>
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-muted-foreground mt-2">
                       <span className="font-medium">Phone:</span> {selectedOrder.shippingAddress.mobile}
                     </p>
                   </div>
@@ -1187,19 +1192,19 @@ const AccountPage = () => {
 
                 {/* Payment Summary */}
                 <div>
-                  <h5 className="text-base font-semibold text-gray-900 mb-3">Payment Summary</h5>
-                  <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <h5 className="text-base font-semibold text-foreground mb-3">Payment Summary</h5>
+                  <div className="bg-muted rounded-xl p-4 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="text-gray-900">₹{selectedOrder.subtotal.toLocaleString()}</span>
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="text-foreground">₹{selectedOrder.subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Delivery</span>
-                      <span className="text-gray-900">₹{selectedOrder.deliveryCharge.toLocaleString()}</span>
+                      <span className="text-muted-foreground">Delivery</span>
+                      <span className="text-foreground">₹{selectedOrder.deliveryCharge.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Tax</span>
-                      <span className="text-gray-900">₹{selectedOrder.taxAmount.toLocaleString()}</span>
+                      <span className="text-muted-foreground">Tax</span>
+                      <span className="text-foreground">₹{selectedOrder.taxAmount.toLocaleString()}</span>
                     </div>
                     {selectedOrder.discount > 0 && (
                       <div className="flex justify-between text-sm text-green-600">
@@ -1207,21 +1212,21 @@ const AccountPage = () => {
                         <span>-₹{selectedOrder.discount.toLocaleString()}</span>
                       </div>
                     )}
-                    <div className="border-t border-gray-200 pt-2 mt-2">
+                    <div className="border-t border-border pt-2 mt-2">
                       <div className="flex justify-between">
-                        <span className="font-semibold text-gray-900">Total</span>
-                        <span className="font-bold text-lg text-gray-900">₹{selectedOrder.total.toLocaleString()}</span>
+                        <span className="font-semibold text-foreground">Total</span>
+                        <span className="font-bold text-lg text-foreground">₹{selectedOrder.total.toLocaleString()}</span>
                       </div>
                     </div>
                     <div className="flex justify-between text-sm pt-2">
-                      <span className="text-gray-600">Payment Method</span>
-                      <span className="font-medium text-gray-900">{formatPaymentMethod(selectedOrder.paymentMethod)}</span>
+                      <span className="text-muted-foreground">Payment Method</span>
+                      <span className="font-medium text-foreground">{formatPaymentMethod(selectedOrder.paymentMethod)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Order Date */}
-                <div className="text-center text-xs text-gray-500 pt-2">
+                <div className="text-center text-xs text-muted-foreground pt-2">
                   Ordered on {formatDate(selectedOrder.createdAt)}
                 </div>
               </div>
@@ -1236,16 +1241,16 @@ const AccountPage = () => {
   return (
     <>
       <Header />
-      <div className="min-h-screen pt-16 bg-gray-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <div className="min-h-screen pt-16 bg-muted" style={{ fontFamily: "'Poppins', sans-serif" }}>
         <div className="container mx-auto px-6 pb-8">
           <div className="grid grid-cols-12 gap-6 -mt-4">
             {/* Sidebar */}
             <div className="col-span-3">
-              <div className="bg-white rounded-lg shadow-sm p-6 sticky top-20">
+              <div className="bg-card rounded-lg shadow-sm p-6 sticky top-20">
                 {/* User Info */}
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-1">Your Account</h2>
-                  <p className="text-sm text-gray-600">{userProfile?.username || 'Alex John'}, Email: {userProfile?.email || user?.email}</p>
+                  <h2 className="text-2xl font-bold text-foreground mb-1">Your Account</h2>
+                  <p className="text-sm text-muted-foreground">{userProfile?.username || 'Alex John'}, Email: {userProfile?.email || user?.email}</p>
                 </div>
 
                 {/* Menu Items */}
@@ -1256,8 +1261,8 @@ const AccountPage = () => {
                       onClick={() => handleMenuClick(item)}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
                         selectedMenu === item.id
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-foreground/80 hover:bg-muted'
                       }`}
                     >
                       <item.icon className="w-5 h-5" />
@@ -1271,16 +1276,16 @@ const AccountPage = () => {
             {/* Main Content */}
             <div className="col-span-9">
               {selectedMenu === 'orders' && (
-                <div className="bg-white rounded-lg shadow-sm">
+                <div className="bg-card rounded-lg shadow-sm">
                   {/* Order Tabs */}
-                  <div className="border-b border-gray-200 px-6 pt-6">
+                  <div className="border-b border-border px-6 pt-6">
                     <div className="flex gap-4">
                       <button
                         onClick={() => setSelectedOrderTab('current')}
                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                           selectedOrderTab === 'current'
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-600 hover:text-gray-900'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         Current
@@ -1289,8 +1294,8 @@ const AccountPage = () => {
                         onClick={() => setSelectedOrderTab('all')}
                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                           selectedOrderTab === 'all'
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-gray-600 hover:text-gray-900'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         All orders
@@ -1302,18 +1307,18 @@ const AccountPage = () => {
                   <div className="p-6 space-y-6">
                     {ordersLoading ? (
                       <div className="flex justify-center items-center py-12">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
                       </div>
                     ) : filteredOrders.length === 0 ? (
                       <div className="text-center py-12">
-                        <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-600">No orders found</p>
+                        <Package className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                        <p className="text-muted-foreground">No orders found</p>
                       </div>
                     ) : (
                       filteredOrders.map((order) => (
                         <div 
                           key={order.id} 
-                          className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow bg-gray-50"
+                          className="border border-border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow bg-muted"
                           style={{ fontFamily: "'Poppins', sans-serif" }}
                           onClick={() => {
                             navigate(`/account/orders/${order.id}`);
@@ -1323,20 +1328,20 @@ const AccountPage = () => {
                           <div className="space-y-4">
                             {order.items.map((item, idx) => (
                               <div key={idx} className="flex gap-4">
-                                <div className="w-20 h-20 bg-white rounded-lg flex-shrink-0 overflow-hidden">
+                                <div className="w-20 h-20 bg-card rounded-lg flex-shrink-0 overflow-hidden">
                                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className="text-base font-semibold text-gray-900 mb-1">{item.name}</h4>
-                                  <p className="text-sm text-gray-600">Price: {formatPrice(item.price)}</p>
-                                  <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                                  <h4 className="text-base font-semibold text-foreground mb-1">{item.name}</h4>
+                                  <p className="text-sm text-muted-foreground">Price: {formatPrice(item.price)}</p>
+                                  <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
                                   <div className="flex items-center gap-2 mt-1">
                                     <span className={`inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-0.5 rounded-full ${getStatusBadgeClass(order.status)}`}>
                                       {getStatusIcon(order.status)}
                                       {getStatusLabel(order.status)}
                                     </span>
-                                    <span className="text-sm text-gray-500">•</span>
-                                    <span className="text-sm text-gray-500">{formatDate(order.createdAt)}</span>
+                                    <span className="text-sm text-muted-foreground">•</span>
+                                    <span className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</span>
                                   </div>
                                 </div>
                               </div>
@@ -1345,18 +1350,18 @@ const AccountPage = () => {
                           
                           {/* Tracking Information - Real-time updated */}
                           {(order.trackingId || order.carrier) && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
+                            <div className="mt-4 pt-4 border-t border-border">
+                              <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
                                     <Truck className="w-4 h-4 text-blue-600" />
                                   </div>
                                   <div>
                                     {order.carrier && (
-                                      <p className="text-sm font-medium text-gray-900">{order.carrier}</p>
+                                      <p className="text-sm font-medium text-foreground">{order.carrier}</p>
                                     )}
                                     {order.trackingId && (
-                                      <p className="text-xs text-gray-600">Tracking ID: {order.trackingId}</p>
+                                      <p className="text-xs text-muted-foreground">Tracking ID: {order.trackingId}</p>
                                     )}
                                   </div>
                                 </div>
@@ -1378,10 +1383,10 @@ const AccountPage = () => {
 
                           {/* OTP Display for Out for Delivery Orders */}
                           {order.status === 'outForDelivery' && order.delivery_otp && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <p className="text-sm font-semibold text-gray-900">Delivery OTP</p>
-                              <p className="text-xs text-gray-600 mt-1">Share this OTP with your delivery partner</p>
-                              <p className="text-base font-bold text-gray-900 mt-2">{order.delivery_otp}</p>
+                            <div className="mt-4 pt-4 border-t border-border">
+                              <p className="text-sm font-semibold text-foreground">Delivery OTP</p>
+                              <p className="text-xs text-muted-foreground mt-1">Share this OTP with your delivery partner</p>
+                              <p className="text-base font-bold text-foreground mt-2">{order.delivery_otp}</p>
                             </div>
                           )}
                         </div>
@@ -1392,9 +1397,9 @@ const AccountPage = () => {
               )}
 
               {selectedMenu === 'addresses' && (
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Your Addresses</h3>
-                  <p className="text-gray-600">Manage your saved addresses here.</p>
+                <div className="bg-card rounded-lg shadow-sm p-6">
+                  <h3 className="text-xl font-bold text-foreground mb-4">Your Addresses</h3>
+                  <p className="text-muted-foreground">Manage your saved addresses here.</p>
                   <Button onClick={() => navigate('/account/addresses')} className="mt-4">
                     View Addresses
                   </Button>
@@ -1402,32 +1407,32 @@ const AccountPage = () => {
               )}
 
               {selectedMenu === 'security' && (
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Login & Security</h3>
-                  <p className="text-gray-600 mb-4">Manage your login credentials and security settings.</p>
+                <div className="bg-card rounded-lg shadow-sm p-6">
+                  <h3 className="text-xl font-bold text-foreground mb-4">Login & Security</h3>
+                  <p className="text-muted-foreground mb-4">Manage your login credentials and security settings.</p>
                   <Button onClick={() => navigate('/security')}>Manage Security</Button>
                 </div>
               )}
 
               {selectedMenu === 'payments' && (
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">My Jewellery Journey</h3>
-                  <p className="text-gray-600 mb-4">Track your investment and order history with exclusive rewards.</p>
+                <div className="bg-card rounded-lg shadow-sm p-6">
+                  <h3 className="text-xl font-bold text-foreground mb-4">My Jewellery Journey</h3>
+                  <p className="text-muted-foreground mb-4">Track your investment and order history with exclusive rewards.</p>
                   <Button onClick={() => navigate('/purchase-summary')}>View Summary</Button>
                 </div>
               )}
 
               {selectedMenu === 'archived' && (
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Archived Orders</h3>
-                  <p className="text-gray-600">View your archived orders.</p>
+                <div className="bg-card rounded-lg shadow-sm p-6">
+                  <h3 className="text-xl font-bold text-foreground mb-4">Archived Orders</h3>
+                  <p className="text-muted-foreground">View your archived orders.</p>
                 </div>
               )}
 
               {selectedMenu === 'support' && (
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Customer Support</h3>
-                  <p className="text-gray-600">Get help with your orders and account.</p>
+                <div className="bg-card rounded-lg shadow-sm p-6">
+                  <h3 className="text-xl font-bold text-foreground mb-4">Customer Support</h3>
+                  <p className="text-muted-foreground">Get help with your orders and account.</p>
                 </div>
               )}
             </div>
@@ -1439,12 +1444,12 @@ const AccountPage = () => {
       {/* Order Details Modal - Desktop */}
       {showOrderModal && selectedOrder && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center">
-              <h3 className="text-2xl font-bold text-gray-900">Order Details</h3>
+          <div className="bg-card rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <div className="sticky top-0 bg-card border-b border-border p-6 flex justify-between items-center">
+              <h3 className="text-2xl font-bold text-foreground">Order Details</h3>
               <button 
                 onClick={() => setShowOrderModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
+                className="text-muted-foreground hover:text-foreground/80 text-2xl"
               >
                 ✕
               </button>
@@ -1453,16 +1458,16 @@ const AccountPage = () => {
             <div className="p-6 space-y-6">
               {/* Order Number */}
               <div>
-                <h4 className="text-xl font-bold text-gray-900">Order #: {selectedOrder.orderId}</h4>
-                <p className="text-base text-gray-600 mt-2">
+                <h4 className="text-xl font-bold text-foreground">Order #: {selectedOrder.orderId}</h4>
+                <p className="text-base text-muted-foreground mt-2">
                   {selectedOrder.items.length} Products | By sree rasthu silvers | {formatDate(selectedOrder.createdAt)}
                 </p>
               </div>
 
               {/* Order Details Grid */}
               <div className="space-y-4 text-base">
-                <div className="flex justify-between py-3 border-b border-gray-200">
-                  <span className="text-gray-600 font-medium">Status:</span>
+                <div className="flex justify-between py-3 border-b border-border">
+                  <span className="text-muted-foreground font-medium">Status:</span>
                   <span className={`inline-flex items-center gap-1.5 font-semibold text-lg px-3 py-1 rounded-full ${getStatusBadgeClass(selectedOrder.status)}`}>
                     {getStatusIcon(selectedOrder.status)}
                     {getStatusLabel(selectedOrder.status)}
@@ -1508,7 +1513,7 @@ const AccountPage = () => {
                           {selectedOrder.status === 'returned' && 'Your item has been picked up and returned successfully.'}
                         </p>
                         {selectedOrder.returnReason && (
-                          <p className="text-xs text-gray-500 mt-2">Reason: {selectedOrder.returnReason}</p>
+                          <p className="text-xs text-muted-foreground mt-2">Reason: {selectedOrder.returnReason}</p>
                         )}
                       </div>
                     </div>
@@ -1517,26 +1522,26 @@ const AccountPage = () => {
                 
                 {/* Tracking Information Section - Real-time updated */}
                 {(selectedOrder.trackingId || selectedOrder.carrier) && (
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl p-4 border border-blue-100 dark:border-blue-900/50">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
                         <Truck className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <h5 className="font-semibold text-gray-900">Tracking Information</h5>
-                        <p className="text-xs text-gray-500">Updated in real-time</p>
+                        <h5 className="font-semibold text-foreground">Tracking Information</h5>
+                        <p className="text-xs text-muted-foreground">Updated in real-time</p>
                       </div>
                     </div>
                     <div className="space-y-2 pl-13">
                       {selectedOrder.carrier && (
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Carrier:</span>
-                          <span className="text-sm font-semibold text-gray-900">{selectedOrder.carrier}</span>
+                          <span className="text-sm text-muted-foreground">Carrier:</span>
+                          <span className="text-sm font-semibold text-foreground">{selectedOrder.carrier}</span>
                         </div>
                       )}
                       {selectedOrder.trackingId && (
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Tracking ID:</span>
+                          <span className="text-sm text-muted-foreground">Tracking ID:</span>
                           <span className="text-sm font-mono font-semibold text-blue-600">{selectedOrder.trackingId}</span>
                         </div>
                       )}
@@ -1560,37 +1565,37 @@ const AccountPage = () => {
 
                 {/* OTP Delivery Verification - Shown when out for delivery */}
                 {selectedOrder.status === 'outForDelivery' && selectedOrder.delivery_otp && (
-                  <div className="py-3 border-b border-gray-200">
-                    <p className="text-sm font-semibold text-gray-900">Delivery OTP</p>
-                    <p className="text-xs text-gray-600 mt-1">Share this OTP with your delivery partner</p>
-                    <p className="text-base font-bold text-gray-900 mt-2">{selectedOrder.delivery_otp}</p>
+                  <div className="py-3 border-b border-border">
+                    <p className="text-sm font-semibold text-foreground">Delivery OTP</p>
+                    <p className="text-xs text-muted-foreground mt-1">Share this OTP with your delivery partner</p>
+                    <p className="text-base font-bold text-foreground mt-2">{selectedOrder.delivery_otp}</p>
                   </div>
                 )}
                 
-                <div className="flex justify-between py-3 border-b border-gray-200">
-                  <span className="text-gray-600 font-medium">Payment:</span>
-                  <span className="font-semibold text-gray-900">
+                <div className="flex justify-between py-3 border-b border-border">
+                  <span className="text-muted-foreground font-medium">Payment:</span>
+                  <span className="font-semibold text-foreground">
                     {formatPaymentMethod(selectedOrder.paymentMethod)}
                   </span>
                 </div>
                 
-                <div className="py-3 border-b border-gray-200">
-                  <span className="text-gray-600 font-medium block mb-2">Delivered to:</span>
-                  <span className="font-semibold text-gray-900">
+                <div className="py-3 border-b border-border">
+                  <span className="text-muted-foreground font-medium block mb-2">Delivered to:</span>
+                  <span className="font-semibold text-foreground">
                     {selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}
                   </span>
                 </div>
                 
                 <div className="flex justify-between py-3">
-                  <span className="text-gray-600 font-medium text-lg">Total:</span>
-                  <span className="font-bold text-gray-900 text-2xl">
+                  <span className="text-muted-foreground font-medium text-lg">Total:</span>
+                  <span className="font-bold text-foreground text-2xl">
                     {formatPrice(selectedOrder.total)}
                   </span>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-border">
                 {/* Cancel Order Button - Only for pending/processing orders */}
                 {(selectedOrder.status === 'pending' || selectedOrder.status === 'processing') && (
                   <div className="flex gap-3">
@@ -1690,21 +1695,21 @@ const AccountPage = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            className="bg-card rounded-2xl shadow-2xl max-w-md w-full p-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Cancel Order</h3>
+              <h3 className="text-xl font-bold text-foreground">Cancel Order</h3>
               <button
                 onClick={() => setShowCancelModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-muted rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
 
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Order ID: <span className="font-semibold">ORD-{selectedOrder.orderId}</span></p>
-              <p className="text-sm text-gray-600 mb-4">Please select a reason for cancellation:</p>
+              <p className="text-sm text-muted-foreground mb-2">Order ID: <span className="font-semibold">ORD-{selectedOrder.orderId}</span></p>
+              <p className="text-sm text-muted-foreground mb-4">Please select a reason for cancellation:</p>
               
               <div className="space-y-2">
                 {[
@@ -1720,7 +1725,7 @@ const AccountPage = () => {
                     className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${
                       cancelReason === reason
                         ? 'border-red-500 bg-red-50 text-red-700'
-                        : 'border-gray-200 hover:border-red-200 hover:bg-red-50/50'
+                        : 'border-border hover:border-red-200 hover:bg-red-50/50'
                     }`}
                   >
                     {reason}
@@ -1735,7 +1740,7 @@ const AccountPage = () => {
                   setShowCancelModal(false);
                   setCancelReason('');
                 }}
-                className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 px-4 border border-border rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted transition-colors"
               >
                 Go Back
               </button>
@@ -1752,7 +1757,7 @@ const AccountPage = () => {
               </button>
             </div>
 
-            <p className="text-xs text-gray-500 mt-4 text-center">
+            <p className="text-xs text-muted-foreground mt-4 text-center">
               <AlertCircle className="w-4 h-4 inline mr-1" />
               This action cannot be undone
             </p>
@@ -1766,21 +1771,21 @@ const AccountPage = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            className="bg-card rounded-2xl shadow-2xl max-w-md w-full p-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Request Return</h3>
+              <h3 className="text-xl font-bold text-foreground">Request Return</h3>
               <button
                 onClick={() => setShowReturnModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-muted rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
 
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Order ID: <span className="font-semibold">ORD-{selectedOrder.orderId}</span></p>
-              <p className="text-sm text-gray-600 mb-4">Please select a reason for return:</p>
+              <p className="text-sm text-muted-foreground mb-2">Order ID: <span className="font-semibold">ORD-{selectedOrder.orderId}</span></p>
+              <p className="text-sm text-muted-foreground mb-4">Please select a reason for return:</p>
               
               <div className="space-y-2">
                 {[
@@ -1797,7 +1802,7 @@ const AccountPage = () => {
                     className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${
                       returnReason === reason
                         ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-gray-200 hover:border-emerald-200 hover:bg-emerald-50/50'
+                        : 'border-border hover:border-emerald-200 hover:bg-emerald-50/50'
                     }`}
                   >
                     {reason}
@@ -1819,7 +1824,7 @@ const AccountPage = () => {
                   setShowReturnModal(false);
                   setReturnReason('');
                 }}
-                className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 px-4 border border-border rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted transition-colors"
               >
                 Go Back
               </button>

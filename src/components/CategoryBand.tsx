@@ -10,7 +10,7 @@ const CategoryBand = () => {
       ref={ref}
       className="relative py-20 lg:py-32 overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, hsl(30, 33%, 97%) 0%, hsl(38, 40%, 92%) 100%)",
+        background: "linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--muted)) 100%)",
       }}
     >
       {/* Decorative SVG Pattern */}

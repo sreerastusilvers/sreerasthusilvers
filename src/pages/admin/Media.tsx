@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Image as ImageIcon, Video, Trash2, Copy, Check, Loader2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, Video, Trash2, Copy, Check, Loader2, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +22,7 @@ const Media = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const { toast } = useToast();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,13 +169,22 @@ const Media = () => {
 
       {/* Media Grid */}
       <Card className="bg-white border-gray-200">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-gray-900">
             Uploaded Media ({mediaItems.length})
           </CardTitle>
+          <div className="flex border border-gray-200 rounded-md overflow-hidden">
+            <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-amber-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button onClick={() => setViewMode('table')} className={`p-2 ${viewMode === 'table' ? 'bg-amber-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </CardHeader>
         <CardContent>
           {mediaItems.length > 0 ? (
+            viewMode === 'grid' ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {mediaItems.map((item, index) => (
                 <div
@@ -229,6 +239,49 @@ const Media = () => {
                 </div>
               ))}
             </div>
+            ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Preview</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Type</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">URL</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {mediaItems.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        {item.type === 'image' ? (
+                          <img src={item.url} alt="" className="w-12 h-12 object-cover rounded" />
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center"><Video className="h-5 w-5 text-gray-400" /></div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded capitalize">
+                          {item.type === 'image' ? <ImageIcon className="h-3 w-3" /> : <Video className="h-3 w-3" />} {item.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3"><span className="text-xs text-gray-500 font-mono truncate max-w-xs block">{item.url}</span></td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center gap-2 justify-end">
+                          <button onClick={() => handleCopyUrl(item.url)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="Copy URL">
+                            {copiedUrl === item.url ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          </button>
+                          <button onClick={() => handleDelete(item.url)} className="p-1.5 text-red-500 hover:bg-red-50 rounded" title="Delete">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            )
           ) : (
             <div className="text-center py-12">
               <ImageIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />

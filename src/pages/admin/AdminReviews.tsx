@@ -15,7 +15,9 @@ import {
   Eye,
   X,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,6 +29,7 @@ const AdminReviews = () => {
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   useEffect(() => {
     const unsubscribe = subscribeToReviews((fetchedReviews) => {
@@ -181,6 +184,14 @@ const AdminReviews = () => {
               {status}
             </button>
           ))}
+          <div className="flex border border-gray-200 rounded-md overflow-hidden ml-2">
+            <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-[#8B7355] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button onClick={() => setViewMode('table')} className={`p-2 ${viewMode === 'table' ? 'bg-[#8B7355] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -197,7 +208,53 @@ const AdminReviews = () => {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {/* Desktop Table */}
+          {/* Grid View (Cards) */}
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+              {filteredReviews.map((review) => (
+                <div key={review.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-medium text-sm">{review.userName}</p>
+                      <p className="text-xs text-gray-500">{review.userEmail}</p>
+                    </div>
+                    {getStatusBadge(review.status)}
+                  </div>
+                  <p className="text-sm text-gray-600 font-medium mb-1 truncate">{review.productName}</p>
+                  <div className="flex items-center gap-1 mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={14} className={i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} />
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{review.reviewText}</p>
+                  {review.images?.length > 0 && (
+                    <div className="flex gap-2 mb-3">
+                      {review.images.slice(0, 3).map((img, i) => (
+                        <img key={i} src={img} alt="" className="w-14 h-14 object-cover rounded-lg" />
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-400">{formatDate(review.createdAt)}</p>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setSelectedReview(review)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Eye size={14} /></button>
+                      {review.status !== 'approved' && (
+                        <button onClick={() => handleApprove(review.id)} disabled={actionLoading === review.id} className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg">
+                          {actionLoading === review.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                        </button>
+                      )}
+                      {review.status !== 'rejected' && (
+                        <button onClick={() => handleReject(review.id)} disabled={actionLoading === review.id} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg"><XCircle size={14} /></button>
+                      )}
+                      <button onClick={() => setShowDeleteConfirm(review.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+          <>
+          {/* Table View - Desktop */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -368,6 +425,8 @@ const AdminReviews = () => {
               </div>
             ))}
           </div>
+          </>
+          )}
         </div>
       )}
 

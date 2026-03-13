@@ -14,7 +14,7 @@ const SplitSection = () => {
   const imageY = useTransform(scrollYProgress, [0, 1], [50, -50]);
 
   return (
-    <section ref={ref} className="py-16 md:py-24 overflow-hidden bg-white">
+    <section ref={ref} className="py-16 md:py-24 overflow-hidden bg-background">
       <div className="container-custom">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           {/* Image */}

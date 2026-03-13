@@ -47,64 +47,84 @@ const CategoryShowcase = () => {
   }
 
   return (
-    <section className="w-full">
-      <div className="grid grid-cols-2 lg:grid-cols-4">
-        {showcases.map((showcase, index) => (
-          <motion.div
-            key={showcase.id}
-            className={`relative group overflow-hidden ${activeCard === showcase.id ? 'active' : ''}`}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <Link 
-              to={getCategoryLink(showcase.subtitle)}
-              className="block cursor-pointer"
-              onClick={() => handleCardClick(showcase.id!)}
-            >
-              {/* Background Image */}
-              <div className="aspect-[4/5] relative">
-                <img
-                  src={showcase.imageUrl}
-                  alt={showcase.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 lg:group-hover:scale-105"
-                />
-                
-                {/* Gradient Overlay - darker on hover/active */}
-                <div className={`absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent transition-all duration-300 ${activeCard === showcase.id ? 'lg:from-black/70 lg:via-black/40' : ''} lg:group-hover:from-black/70 lg:group-hover:via-black/40`} />
-                
-                {/* Content */}
-                <div className="absolute inset-0 flex flex-col justify-end items-center p-4 text-white text-center pointer-events-none">
-                  {/* Title - always visible at bottom */}
-                  <h3 
-                    className="text-base md:text-xl font-medium mb-1 transition-all duration-300"
-                    style={{ fontFamily: "'Poppins', sans-serif" }}
-                  >
-                    {showcase.title}
-                  </h3>
-                  
-                  {/* Subtitle/Product name - always visible */}
-                  <p className={`text-xs uppercase tracking-[0.2em] text-white/80 transition-all duration-300 ${activeCard === showcase.id ? 'mb-2' : 'mb-0 lg:group-hover:mb-2'}`}>
-                    {showcase.subtitle}
-                  </p>
-                  
-                  {/* Description - hidden by default, visible on tap (mobile) or hover (desktop) */}
-                  <p className={`text-xs text-white/80 leading-relaxed overflow-hidden transition-all duration-300 ${activeCard === showcase.id ? 'max-h-16 opacity-100 mb-3' : 'max-h-0 opacity-0 lg:group-hover:max-h-16 lg:group-hover:opacity-100 lg:group-hover:mb-3'}`}>
-                    {showcase.description}
-                  </p>
-                  
-                  {/* CTA - hidden by default, visible on tap (mobile) or hover (desktop) */}
-                  <span 
-                    className={`inline-block text-xs font-medium border-b border-white pb-1 hover:border-primary hover:text-primary overflow-hidden transition-all duration-300 ${activeCard === showcase.id ? 'max-h-10 opacity-100' : 'max-h-0 opacity-0 lg:group-hover:max-h-10 lg:group-hover:opacity-100'}`}
-                  >
-                    {showcase.cta}
-                  </span>
-                </div>
-              </div>
-            </Link>
-          </motion.div>
-        ))}
+    <section className="w-full py-6 md:py-14">
+      <div className="container-custom">
+        {/* Section Title */}
+        <div className="text-center mb-6 md:mb-10">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Our Collections
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2 font-light">Explore curated collections crafted with passion</p>
+        </div>
+        
+        {/* Bento Grid: 1 large left + 2 stacked right */}
+        <div className="grid grid-cols-2 gap-2 md:gap-5" style={{ gridTemplateRows: 'repeat(2, 1fr)' }}>
+          {showcases.map((showcase, index) => {
+            const isFirst = index === 0;
+            return (
+              <motion.div
+                key={showcase.id}
+                className={`relative group overflow-hidden rounded-2xl md:rounded-3xl ${
+                  isFirst ? 'row-span-2' : ''
+                } ${activeCard === showcase.id ? 'active' : ''}`}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+              >
+                <Link 
+                  to={getCategoryLink(showcase.subtitle)}
+                  className="block cursor-pointer h-full"
+                  onClick={() => handleCardClick(showcase.id!)}
+                >
+                  <div className={`relative h-full ${isFirst ? 'min-h-[400px] md:min-h-[520px]' : 'min-h-[195px] md:min-h-[252px]'}`}>
+                    <img
+                      src={showcase.imageUrl}
+                      alt={showcase.title}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 lg:group-hover:scale-105"
+                    />
+                    
+                    <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-all duration-300 lg:group-hover:from-black/70`} />
+                    
+                    {/* Content */}
+                    <div className="absolute inset-0 flex flex-col justify-end p-4 md:p-8 text-white">
+                      <h3 
+                        className={`font-semibold mb-0.5 transition-all duration-300 ${isFirst ? 'text-xl md:text-3xl' : 'text-base md:text-xl'}`}
+                        style={{ fontFamily: "'Playfair Display', serif" }}
+                      >
+                        {showcase.title}
+                      </h3>
+                      
+                      <p className={`uppercase tracking-[0.2em] text-white/70 font-light ${isFirst ? 'text-[10px] md:text-xs' : 'text-[9px] md:text-[11px]'}`}>
+                        {showcase.subtitle}
+                      </p>
+                      
+                      {/* Description - on hover/tap */}
+                      <p className={`text-xs text-white/80 leading-relaxed overflow-hidden transition-all duration-300 ${
+                        activeCard === showcase.id 
+                          ? 'max-h-16 opacity-100 mt-2' 
+                          : 'max-h-0 opacity-0 lg:group-hover:max-h-16 lg:group-hover:opacity-100 lg:group-hover:mt-3'
+                      }`}>
+                        {showcase.description}
+                      </p>
+
+                      {/* Shop button on hover */}
+                      <div className={`overflow-hidden transition-all duration-300 ${
+                        activeCard === showcase.id 
+                          ? 'max-h-12 opacity-100 mt-3' 
+                          : 'max-h-0 opacity-0 lg:group-hover:max-h-12 lg:group-hover:opacity-100 lg:group-hover:mt-4'
+                      }`}>
+                        <span className="inline-block px-5 py-2 bg-white text-gray-900 rounded-full text-xs font-medium">
+                          Shop Now
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

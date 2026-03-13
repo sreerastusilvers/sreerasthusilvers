@@ -38,7 +38,7 @@ const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
           transition={{ duration: 0.3 }}
         >
           {/* Background - white base */}
-          <div className="absolute inset-0 bg-white" />
+          <div className="absolute inset-0 bg-background" />
 
           {/* Centered Logo Image - stays in place */}
           <motion.div
@@ -56,7 +56,7 @@ const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
 
           {/* Left Door - solid color */}
           <motion.div
-            className="absolute top-0 left-0 w-1/2 h-full bg-white"
+            className="absolute top-0 left-0 w-1/2 h-full bg-background"
             initial={{ x: 0 }}
             animate={startAnimation ? { x: "-100%" } : { x: 0 }}
             transition={{
@@ -70,7 +70,7 @@ const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
 
           {/* Right Door - solid color */}
           <motion.div
-            className="absolute top-0 right-0 w-1/2 h-full bg-white"
+            className="absolute top-0 right-0 w-1/2 h-full bg-background"
             initial={{ x: 0 }}
             animate={startAnimation ? { x: "100%" } : { x: 0 }}
             transition={{
@@ -84,7 +84,7 @@ const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
 
           {/* Center line where doors meet */}
           <motion.div
-            className="absolute top-0 left-1/2 w-[1px] h-full bg-black/5 -translate-x-1/2"
+            className="absolute top-0 left-1/2 w-[1px] h-full bg-foreground/5 -translate-x-1/2"
             initial={{ opacity: 1 }}
             animate={startAnimation ? { opacity: 0 } : { opacity: 1 }}
             transition={{ duration: 0.2 }}

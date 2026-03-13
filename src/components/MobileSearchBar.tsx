@@ -84,8 +84,8 @@ const MobileSearchBar = () => {
   }, []);
 
   return (
-    <div className="lg:hidden bg-white px-4 pt-1 pb-2 z-40">
-      <div className="w-full relative flex items-center bg-white rounded-lg overflow-hidden border border-gray-200 h-[52px]">
+    <div className="lg:hidden bg-background px-4 pt-1 pb-2 z-40">
+      <div className="w-full relative flex items-center bg-muted rounded-full overflow-hidden h-[46px]">
         {/* "Speak now..." overlay when listening */}
         {isListening && (
           <div 
@@ -107,10 +107,10 @@ const MobileSearchBar = () => {
           onClick={() => navigate("/search")}
           className="pl-4 pr-2 flex items-center h-full flex-1"
         >
-          <Search className="w-[22px] h-[22px]" strokeWidth={1} style={{ color: '#832729' }} />
+          <Search className="w-[22px] h-[22px] text-foreground/80" strokeWidth={1} />
         
           {/* Placeholder Text */}
-          <div className="flex-1 text-[14px] text-gray-400 text-left flex items-center overflow-hidden ml-2">
+          <div className="flex-1 text-[14px] text-muted-foreground text-left flex items-center overflow-hidden ml-2">
             <span className="mr-1 whitespace-nowrap">Search for</span>
             <div className="relative min-w-[120px] h-[20px]">
               <AnimatePresence mode="wait">
@@ -133,19 +133,19 @@ const MobileSearchBar = () => {
         <div className="flex items-center gap-0 pr-3">
           <button 
             onClick={() => navigate('/articles/gift-articles')}
-            className="p-1 hover:bg-gray-50 rounded-full transition-colors" 
+            className="p-1 hover:bg-muted rounded-full transition-colors" 
             aria-label="Gift articles"
           >
-            <Gift className="w-[22px] h-[22px]" strokeWidth={1} style={{ color: '#832729' }} />
+            <Gift className="w-[22px] h-[22px] text-foreground/80" strokeWidth={1} />
           </button>
-          <div className="w-px h-5 bg-gray-300" />
+          <div className="w-px h-5 bg-border" />
           <button 
             onClick={handleVoiceSearch}
-            className={`p-1 hover:bg-gray-50 rounded-full transition-colors ${
-              isListening ? 'bg-red-50' : ''
+            className={`p-1 hover:bg-muted rounded-full transition-colors ${
+              isListening ? 'bg-red-50 dark:bg-red-900/20' : ''
             }`}
           >
-            <Mic className="w-[22px] h-[22px]" strokeWidth={1} style={{ color: isListening ? '#EF4444' : '#832729' }} />
+            <Mic className={`w-[22px] h-[22px] ${isListening ? 'text-red-500' : 'text-foreground/80'}`} strokeWidth={1} />
           </button>
         </div>
       </div>

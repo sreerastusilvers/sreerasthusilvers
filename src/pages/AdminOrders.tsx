@@ -20,7 +20,9 @@ import {
   Phone,
   User,
   RotateCcw as ReturnIcon,
-  AlertCircle
+  AlertCircle,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -70,6 +72,7 @@ const AdminOrders = () => {
   const [showAssignDrawer, setShowAssignDrawer] = useState(false);
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   useEffect(() => {
     // Check if user is admin
@@ -407,14 +410,83 @@ const AdminOrders = () => {
 
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Order Management Header */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">Order Management</h2>
-          <p className="text-sm text-gray-500">
-            Viewing {filteredOrders.length} of {stats.total} total orders
-          </p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Order Management</h2>
+            <p className="text-sm text-gray-500">
+              Viewing {filteredOrders.length} of {stats.total} total orders
+            </p>
+          </div>
+          <div className="flex border border-gray-200 rounded-md overflow-hidden">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Orders Table */}
+        {filteredOrders.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-16 text-center">
+            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">No orders found</p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          /* Grid View */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredOrders.map((order) => (
+              <div key={order.id} className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-gray-900">ORD-{order.orderId}</span>
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${getStatusBadgeClass(order.status)}`}>
+                    {getStatusLabel(order.status)}
+                  </span>
+                </div>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-sm text-gray-900">{order.userName}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">{order.userEmail}</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">{order.items.length} items</span>
+                    <span className="text-sm font-semibold text-gray-900">{formatPrice(order.total)}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">{formatDate(order.createdAt)}</div>
+                  {order.delivery_boy_name && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-semibold text-[10px]">
+                        {order.delivery_boy_name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-xs text-gray-700">{order.delivery_boy_name}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                  <Button onClick={() => openAssignDrawer(order)} variant="outline" size="sm" disabled={order.status === 'delivered' || order.status === 'cancelled'} className="text-xs flex-1">
+                    <UserPlus className="w-3 h-3 mr-1" />
+                    {order.delivery_boy_id ? 'Reassign' : 'Assign'}
+                  </Button>
+                  <Button onClick={() => openTrackingDrawer(order)} variant="outline" size="sm" className="text-xs flex-1 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100">
+                    <Truck className="w-3 h-3 mr-1" />
+                    Track
+                  </Button>
+                  <button onClick={() => handleDeleteOrder(order.id)} className="p-1.5 text-white bg-red-500 hover:bg-red-600 rounded-md" title="Delete">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Table View */
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <style>{`.overflow-x-auto::-webkit-scrollbar { display: none; }`}</style>
@@ -448,15 +520,7 @@ const AdminOrders = () => {
                 </tr>
               </thead>
               <tbody className="bg-white">
-                {filteredOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
-                      <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 text-lg">No orders found</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredOrders.map((order) => (
+                {filteredOrders.map((order) => (
                     <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -546,12 +610,12 @@ const AdminOrders = () => {
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
+                  ))}
               </tbody>
             </table>
           </div>
         </div>
+        )}
       </div>
 
       {/* Premium Manage Tracking Slide-Over Drawer */}

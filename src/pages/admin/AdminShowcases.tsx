@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, EyeOff, Loader2, ArrowLeft, LayoutGrid, List } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ImageUploader from '@/components/ImageUploader';
 import { 
@@ -22,6 +22,7 @@ const AdminShowcases = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingShowcase, setEditingShowcase] = useState<Showcase | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   // Form state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -445,16 +446,58 @@ const AdminShowcases = () => {
 
         {/* Showcases List */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-900">
-              All Showcases ({showcases.length})
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">These appear in the category showcase section on the homepage</p>
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                All Showcases ({showcases.length})
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">These appear in the category showcase section on the homepage</p>
+            </div>
+            <div className="flex border border-gray-200 rounded-md overflow-hidden">
+              <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button onClick={() => setViewMode('table')} className={`p-2 ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                <List className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {showcases.length === 0 ? (
             <div className="p-12 text-center">
               <p className="text-gray-500">No showcases yet. Create your first showcase!</p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {showcases.map((showcase, index) => (
+                <motion.div
+                  key={showcase.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="aspect-[4/5] bg-gray-100 relative">
+                    <img src={showcase.imageUrl} alt={showcase.title} className="w-full h-full object-cover" />
+                    <span className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full ${showcase.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                      {showcase.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-gray-900 truncate">{showcase.title}</h3>
+                    <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide truncate">{showcase.subtitle}</p>
+                    <p className="text-xs text-gray-500 mt-1">Order: {showcase.order}</p>
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                      <button onClick={() => handleEdit(showcase)} className="flex-1 py-1.5 text-xs text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+                        <Edit2 className="w-3 h-3 inline mr-1" /> Edit
+                      </button>
+                      <button onClick={() => handleDelete(showcase)} className="py-1.5 px-3 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                        <Trash2 className="w-3 h-3 inline" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           ) : (
             <div className="divide-y divide-gray-200">

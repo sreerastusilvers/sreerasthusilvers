@@ -27,12 +27,14 @@ export interface ProductInventory {
   stock: number;
   sku: string;
   weight: string;
+  weightUnit: 'grams' | 'kgs';
 }
 
 export interface ProductSpecifications {
   material: string;
   purity: string;
   dimensions: string;
+  [key: string]: string;
 }
 
 export interface ProductFlags {
@@ -40,6 +42,8 @@ export interface ProductFlags {
   isFeatured: boolean;
   isNewArrival: boolean;
   isBestSeller: boolean;
+  isTopDeal?: boolean;
+  isTrendProduct?: boolean;
 }
 
 export interface ProductSEO {
@@ -53,6 +57,7 @@ export interface Product {
   slug: string;
   category: string;
   subcategory?: string;
+  subSubcategory?: string;
   description: string;
   price: number;
   originalPrice?: number;

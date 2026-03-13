@@ -43,7 +43,7 @@ const FeaturedDeals = () => {
 
   if (loading) {
     return (
-      <section className="py-8 bg-gray-50">
+      <section className="py-8 bg-muted">
         <div className="container-custom">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -56,29 +56,29 @@ const FeaturedDeals = () => {
   if (products.length === 0) return null;
 
   return (
-    <section className="py-8 bg-gray-50">
+    <section className="py-8 bg-muted">
       <div className="container-custom">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
           {/* Main Deals Section */}
-          <div className="bg-white rounded-lg p-6">
+          <div className="bg-card rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground">
                 Best Deals on Silver Products
               </h2>
               <div className="hidden md:flex gap-2">
                 <button
                   onClick={() => scrollContainer('left')}
-                  className="w-10 h-10 bg-white hover:bg-gray-50 border border-gray-300 rounded-full flex items-center justify-center transition-colors shadow-sm"
+                  className="w-10 h-10 bg-card hover:bg-muted border border-border rounded-full flex items-center justify-center transition-colors shadow-sm"
                   aria-label="Scroll left"
                 >
-                  <ChevronLeft className="w-5 h-5 text-gray-700" />
+                  <ChevronLeft className="w-5 h-5 text-foreground/80" />
                 </button>
                 <button
                   onClick={() => scrollContainer('right')}
-                  className="w-10 h-10 bg-white hover:bg-gray-50 border border-gray-300 rounded-full flex items-center justify-center transition-colors shadow-sm"
+                  className="w-10 h-10 bg-card hover:bg-muted border border-border rounded-full flex items-center justify-center transition-colors shadow-sm"
                   aria-label="Scroll right"
                 >
-                  <ChevronRight className="w-5 h-5 text-gray-700" />
+                  <ChevronRight className="w-5 h-5 text-foreground/80" />
                 </button>
               </div>
             </div>
@@ -96,7 +96,7 @@ const FeaturedDeals = () => {
                   className="min-w-[180px] flex-shrink-0 cursor-pointer group"
                   onClick={() => navigate(`/product/${product.id}`)}
                 >
-                  <div className="aspect-[3/4] relative overflow-hidden bg-gray-50 rounded-lg mb-3">
+                  <div className="aspect-[3/4] relative overflow-hidden bg-muted rounded-lg mb-3">
                     <img
                       src={product.image}
                       alt={product.title}
@@ -109,16 +109,16 @@ const FeaturedDeals = () => {
                     )}
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-semibold text-sm text-gray-900 line-clamp-2">
+                    <h3 className="font-semibold text-sm text-foreground line-clamp-2">
                       {product.title}
                     </h3>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-bold text-gray-900">
+                      <span className="text-lg font-bold text-foreground">
                         {product.oldPrice && product.oldPrice > product.price ? 'From' : 'Just'} ₹{product.price.toLocaleString()}*
                       </span>
                     </div>
                     {product.oldPrice && (
-                      <div className="text-xs text-gray-500 line-through">
+                      <div className="text-xs text-muted-foreground line-through">
                         ₹{product.oldPrice.toLocaleString()}
                       </div>
                     )}

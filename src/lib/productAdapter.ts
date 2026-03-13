@@ -53,8 +53,8 @@ export const adaptFirebaseToUI = (fbProduct: FirebaseProduct): UIProduct => {
     category: fbProduct.category,
     price: fbProduct.price,
     oldPrice: fbProduct.originalPrice || null,
-    rating: 4.5, // Default rating until review system is implemented
-    reviews: 0,  // Default review count until review system is implemented
+    rating: (fbProduct as any).averageRating ?? 0,
+    reviews: (fbProduct as any).totalReviews ?? 0,
     image: fbProduct.media.thumbnail || fbProduct.media.images[0] || "/placeholder-product.jpg",
     alt: fbProduct.name,
     badge,
@@ -82,6 +82,7 @@ export const adaptFirebaseArrayToUI = (fbProducts: FirebaseProduct[]): UIProduct
 export interface UIProductDetail extends UIProduct {
   description?: string;
   images: string[];
+  videos: string[];
   specifications?: {
     material?: string;
     purity?: string;
@@ -102,6 +103,7 @@ export const adaptFirebaseToUIDetail = (fbProduct: FirebaseProduct): UIProductDe
     ...baseProduct,
     description: fbProduct.description,
     images: fbProduct.media.images || [],
+    videos: fbProduct.media.videos || [],
     specifications: fbProduct.specifications || {},
   };
 };

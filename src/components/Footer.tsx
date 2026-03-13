@@ -4,82 +4,24 @@ import logo from "../assets/logo-new.png";
 
 const Footer = () => {
   return (
-    <div className="px-4 md:px-6 lg:px-8 pb-4 md:pb-6 lg:pb-8">
-      <footer className="bg-black text-white relative overflow-visible">
-        {/* Top Wave Border */}
-        <div className="absolute top-0 overflow-hidden -left-4 -right-4 md:-left-6 md:-right-6 lg:-left-8 lg:-right-8" style={{ height: '30px', transform: 'translateY(-100%)' }}>
-          <svg 
-            viewBox="0 0 1200 30" 
-            preserveAspectRatio="none" 
-            className="w-full h-full"
-            style={{ display: 'block' }}
-          >
-            <path 
-              d="M0,15 Q150,0 300,15 T600,15 T900,15 T1200,15 L1200,30 L0,30 Z" 
-              fill="#000000"
-            />
-          </svg>
-        </div>
+    <footer className="bg-[#1a1a1a] dark:bg-card text-white relative overflow-visible">
+        {/* Subtle top border accent */}
+        <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         
-        {/* Left Wave Border */}
-        <div className="absolute top-0 left-0 bottom-0 overflow-hidden" style={{ width: '30px', transform: 'translateX(-100%)' }}>
-          <svg 
-            viewBox="0 0 30 1200" 
-            preserveAspectRatio="none" 
-            className="w-full h-full"
-            style={{ display: 'block' }}
-          >
-            <path 
-              d="M15,0 Q0,150 15,300 T15,600 T15,900 T15,1200 L30,1200 L30,0 Z" 
-              fill="#000000"
-            />
-          </svg>
-        </div>
-        
-        {/* Right Wave Border */}
-        <div className="absolute top-0 right-0 bottom-0 overflow-hidden" style={{ width: '30px', transform: 'translateX(100%)' }}>
-          <svg 
-            viewBox="0 0 30 1200" 
-            preserveAspectRatio="none" 
-            className="w-full h-full"
-            style={{ display: 'block' }}
-          >
-            <path 
-              d="M15,0 Q30,150 15,300 T15,600 T15,900 T15,1200 L0,1200 L0,0 Z" 
-              fill="#000000"
-            />
-          </svg>
-        </div>
-        
-        {/* Bottom Wave Border */}
-        <div className="absolute bottom-0 overflow-hidden -left-4 -right-4 md:-left-6 md:-right-6 lg:-left-8 lg:-right-8" style={{ height: '30px', transform: 'translateY(100%)' }}>
-          <svg 
-            viewBox="0 0 1200 30" 
-            preserveAspectRatio="none" 
-            className="w-full h-full"
-            style={{ display: 'block' }}
-          >
-            <path 
-              d="M0,15 Q150,30 300,15 T600,15 T900,15 T1200,15 L1200,0 L0,0 Z" 
-              fill="#000000"
-            />
-          </svg>
-        </div>
-        
-        <div className="container-custom py-16">
+        <div className="container-custom py-14">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
           {/* Logo & About */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <img src={logo} alt="Sreerasthu Silvers" className="h-14 w-auto mb-4 brightness-0 invert" />
-            <p className="text-white/80 text-sm leading-relaxed mb-6">
-              Timeless jewelry, ethically sourced. We believe in the power of jewelry — to tell a story, celebrate a moment.
+            <p className="text-white/60 text-sm leading-relaxed mb-6 font-light">
+              Your one-stop destination for premium silver jewelry, elegant furniture, exquisite articles, unique gift items, and sacred pooja items — crafted to celebrate every moment.
             </p>
             <div className="flex gap-3">
               <a 
                 href="https://www.facebook.com/sreerasthusilvers" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-black transition-colors"
+                className="p-2 rounded-full bg-white/10 hover:bg-primary transition-colors"
               >
                 <Facebook className="w-4 h-4" />
               </a>
@@ -87,7 +29,7 @@ const Footer = () => {
                 href="https://www.instagram.com/sreerasthu_silvers/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="p-2 rounded-full bg-white/20 hover:bg-white hover:text-black transition-colors"
+                className="p-2 rounded-full bg-white/10 hover:bg-primary transition-colors"
               >
                 <Instagram className="w-4 h-4" />
               </a>
@@ -96,8 +38,8 @@ const Footer = () => {
 
           {/* Shop Online */}
           <div>
-            <h4 className="font-heading font-medium mb-4 text-white">Shop Online</h4>
-            <ul className="space-y-2">
+            <h4 className="font-serif font-medium mb-4 text-white text-sm">Shop Online</h4>
+            <ul className="space-y-2.5">
               {[
                 { name: "Rings", path: "/shop/rings" },
                 { name: "Earrings", path: "/shop/earrings" },
@@ -105,7 +47,7 @@ const Footer = () => {
                 { name: "Bracelets", path: "/shop/bracelets" }
               ].map((link) => (
                 <li key={link.name}>
-                  <Link to={link.path} className="text-sm text-white/70 hover:text-white transition-colors">
+                  <Link to={link.path} className="text-sm text-white/50 hover:text-white transition-colors font-light">
                     {link.name}
                   </Link>
                 </li>
@@ -115,8 +57,8 @@ const Footer = () => {
 
           {/* Categories */}
           <div>
-            <h4 className="font-heading font-medium mb-4 text-white">Categories</h4>
-            <ul className="space-y-2">
+            <h4 className="font-serif font-medium mb-4 text-white text-sm">Categories</h4>
+            <ul className="space-y-2.5">
               {[
                 { name: "Jewelry", path: "/jewelry" },
                 { name: "Furniture", path: "/furniture" },
@@ -124,7 +66,7 @@ const Footer = () => {
                 { name: "Other Products", path: "/products" }
               ].map((link) => (
                 <li key={link.name}>
-                  <Link to={link.path} className="text-sm text-white/70 hover:text-white transition-colors">
+                  <Link to={link.path} className="text-sm text-white/50 hover:text-white transition-colors font-light">
                     {link.name}
                   </Link>
                 </li>
@@ -134,8 +76,8 @@ const Footer = () => {
 
           {/* Information */}
           <div>
-            <h4 className="font-heading font-medium mb-4 text-white">Information</h4>
-            <ul className="space-y-2">
+            <h4 className="font-serif font-medium mb-4 text-white text-sm">Information</h4>
+            <ul className="space-y-2.5">
               {[
                 { name: "Privacy Policy", path: "/privacy-policy" },
                 { name: "Terms & Conditions", path: "/terms-conditions" },
@@ -143,7 +85,7 @@ const Footer = () => {
                 { name: "Cancellation & Refund", path: "/cancellation-refund-policy" }
               ].map((link) => (
                 <li key={link.name}>
-                  <Link to={link.path} className="text-sm text-white/70 hover:text-white transition-colors">
+                  <Link to={link.path} className="text-sm text-white/50 hover:text-white transition-colors font-light">
                     {link.name}
                   </Link>
                 </li>
@@ -153,8 +95,8 @@ const Footer = () => {
 
           {/* Contact */}
           <div>
-            <h4 className="font-heading font-medium mb-4 text-white">Need Help?</h4>
-            <ul className="space-y-2 text-sm text-white/70">
+            <h4 className="font-serif font-medium mb-4 text-white text-sm">Need Help?</h4>
+            <ul className="space-y-2.5 text-sm text-white/50 font-light">
               <li>Ramasomayajulu street</li>
               <li>Ramaraopeta, Kakinada, Andhra Pradesh, India, 533001</li>
               <li>
@@ -164,13 +106,26 @@ const Footer = () => {
                 Email: <a href="mailto:sreerasthusilvers@gmail.com?subject=Inquiry%20about%20Sreerasthu%20Silvers&body=Hello%20Sreerasthu%20Silvers%20Team," className="hover:text-white transition-colors">sreerasthusilvers@gmail.com</a>
               </li>
             </ul>
+            {/* Google Map */}
+            <div className="mt-4 rounded-xl overflow-hidden">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2971.5777289331822!2d82.23205947387872!3d16.957781683857988!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a38290006734e2b%3A0x9f8b6cdf933bc2a!2sSreerastu%20silvers!5e1!3m2!1sen!2sin!4v1773164635883!5m2!1sen!2sin"
+                width="100%"
+                height="150"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Sreerasthu Silvers Store Location"
+              />
+            </div>
           </div>
         </div>
       </div>
-      <div className="border-t border-white/20 py-6">
-        <div className="text-center text-sm text-white/70 px-4">
+      <div className="border-t border-white/10 py-5">
+        <div className="text-center text-xs text-white/40 px-4 font-light">
           <p className="mb-1">
-            Copyright © 2025 <span className="text-white font-medium">Sreerasthu Silvers</span>. All Rights Reserved
+            Copyright &copy; {new Date().getFullYear()} <span className="text-white/60 font-normal">Sreerasthu Silvers</span>. All Rights Reserved
           </p>
           <p>
             Designed & Developed by{" "}
@@ -178,7 +133,7 @@ const Footer = () => {
               href="https://www.thedreamteamservices.com/" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-white hover:text-white/80 transition-colors font-medium whitespace-nowrap"
+              className="text-white/60 hover:text-white transition-colors font-normal whitespace-nowrap"
             >
               DREAM TEAM SERVICES
             </a>
@@ -186,7 +141,6 @@ const Footer = () => {
         </div>
       </div>
     </footer>
-    </div>
   );
 };
 

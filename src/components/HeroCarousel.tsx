@@ -159,17 +159,17 @@ const HeroCarousel = () => {
       {/* Navigation Arrows */}
       <button
         onClick={prevSlide}
-        className="absolute left-2 md:left-4 lg:left-8 top-1/2 -translate-y-1/2 z-30 p-3 md:p-4 bg-white/95 backdrop-blur-sm rounded-full shadow-2xl hover:bg-white transition-all hover:scale-110 border-2 border-gray-200"
+        className="absolute left-2 md:left-4 lg:left-8 top-1/2 -translate-y-1/2 z-30 p-3 md:p-4 bg-background/95 dark:bg-card/95 backdrop-blur-sm rounded-full shadow-2xl hover:bg-background transition-all hover:scale-110 border-2 border-border"
         aria-label="Previous slide"
       >
-        <ChevronLeft className="w-6 h-6 md:w-7 md:h-7 text-gray-900 stroke-[3]" />
+        <ChevronLeft className="w-6 h-6 md:w-7 md:h-7 text-foreground stroke-[3]" />
       </button>
       <button
         onClick={nextSlide}
-        className="absolute right-2 md:right-4 lg:right-8 top-1/2 -translate-y-1/2 z-30 p-3 md:p-4 bg-white/95 backdrop-blur-sm rounded-full shadow-2xl hover:bg-white transition-all hover:scale-110 border-2 border-gray-200"
+        className="absolute right-2 md:right-4 lg:right-8 top-1/2 -translate-y-1/2 z-30 p-3 md:p-4 bg-background/95 dark:bg-card/95 backdrop-blur-sm rounded-full shadow-2xl hover:bg-background transition-all hover:scale-110 border-2 border-border"
         aria-label="Next slide"
       >
-        <ChevronRight className="w-6 h-6 md:w-7 md:h-7 text-gray-900 stroke-[3]" />
+        <ChevronRight className="w-6 h-6 md:w-7 md:h-7 text-foreground stroke-[3]" />
       </button>
 
       {/* Dots Navigation */}

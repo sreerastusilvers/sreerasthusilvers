@@ -18,12 +18,7 @@ import DeliveryRoute from "@/guards/DeliveryRoute";
 // Public Pages
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import ShopNecklaces from "./pages/ShopNecklaces";
-import ShopRings from "./pages/ShopRings";
-import ShopBracelets from "./pages/ShopBracelets";
-import ShopAnklets from "./pages/ShopAnklets";
-import ShopPendants from "./pages/ShopPendants";
-import ShopEarrings from "./pages/ShopEarrings";
+import CategoryPage from "./pages/CategoryPage";
 import ProductDetail from "./pages/ProductDetail";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
@@ -48,83 +43,6 @@ import ProfileEditPage from "./pages/ProfileEditPage";
 import MobileCategories from "./pages/MobileCategories";
 import MobileSearch from "./pages/MobileSearch";
 import SearchResults from "./pages/SearchResults";
-
-// Bracelet Category Pages
-import DiamondBracelets from "./pages/categories/DiamondBracelets";
-import GemstoneBracelets from "./pages/categories/GemstoneBracelets";
-import PearlBracelets from "./pages/categories/PearlBracelets";
-import GoldBracelets from "./pages/categories/GoldBracelets";
-import SilverBracelets from "./pages/categories/SilverBracelets";
-import BangleBracelets from "./pages/categories/BangleBracelets";
-
-// Necklace Category Pages
-import DiamondNecklaces from "./pages/categories/DiamondNecklaces";
-import GemstoneNecklaces from "./pages/categories/GemstoneNecklaces";
-import PearlNecklaces from "./pages/categories/PearlNecklaces";
-import GoldNecklaces from "./pages/categories/GoldNecklaces";
-import SilverNecklaces from "./pages/categories/SilverNecklaces";
-import CrossNecklaces from "./pages/categories/CrossNecklaces";
-
-// Ring Category Pages
-import DiamondRings from "./pages/categories/DiamondRings";
-import GemstoneRings from "./pages/categories/GemstoneRings";
-import WeddingRings from "./pages/categories/WeddingRings";
-import EngagementRings from "./pages/categories/EngagementRings";
-import GoldRings from "./pages/categories/GoldRings";
-import FashionRings from "./pages/categories/FashionRings";
-
-// Jewelry Category Pages
-import JewelryCollections from "./pages/JewelryCollections";
-import MensJewelry from "./pages/MensJewelry";
-import BirthstoneJewelry from "./pages/BirthstoneJewelry";
-import PearlJewelry from "./pages/PearlJewelry";
-import RoseGoldJewelry from "./pages/RoseGoldJewelry";
-import NewArrivals from "./pages/NewArrivals";
-import JewelrySale from "./pages/JewelrySale";
-
-// Furniture Pages
-import FurnitureCollections from "./pages/FurnitureCollections";
-import SilverSofaCollection from "./pages/SilverSofaCollection";
-import RoyalSilverChairs from "./pages/RoyalSilverChairs";
-import RoyalSilverTables from "./pages/RoyalSilverTables";
-import AntiqueSilverDecor from "./pages/AntiqueSilverDecor";
-import SilverSwingJhoola from "./pages/SilverSwingJhoola";
-import SilverCradles from "./pages/SilverCradles";
-import SilverThrones from "./pages/SilverThrones";
-
-// Articles Pages
-import ArticlesCollections from "./pages/ArticlesCollections";
-import SilverPoojaItems from "./pages/SilverPoojaItems";
-import SilverGiftArticles from "./pages/SilverGiftArticles";
-import SilverLamps from "./pages/SilverLamps";
-import SilverPlates from "./pages/SilverPlates";
-import SilverIdols from "./pages/SilverIdols";
-import SilverVessels from "./pages/SilverVessels";
-
-// Other Products Pages
-import OtherProductsCollections from "./pages/OtherProductsCollections";
-import SilverCoins from "./pages/SilverCoins";
-import SilverBars from "./pages/SilverBars";
-import SilverUtensils from "./pages/SilverUtensils";
-import BabyItems from "./pages/BabyItems";
-import AntiqueSilver from "./pages/AntiqueSilver";
-import CustomOrders from "./pages/CustomOrders";
-
-// Home Decor Pages
-import HomeDecorCollections from "./pages/HomeDecorCollections";
-import SilverWallDecor from "./pages/SilverWallDecor";
-import SilverPhotoFrames from "./pages/SilverPhotoFrames";
-import SilverShowpieces from "./pages/SilverShowpieces";
-import SilverCandleStands from "./pages/SilverCandleStands";
-import SilverFlowerVases from "./pages/SilverFlowerVases";
-
-// Gifts Pages
-import GiftsCollections from "./pages/GiftsCollections";
-import SilverWeddingGifts from "./pages/SilverWeddingGifts";
-import SilverBirthdayGifts from "./pages/SilverBirthdayGifts";
-import SilverFestivalGifts from "./pages/SilverFestivalGifts";
-import SilverCorporateGifts from "./pages/SilverCorporateGifts";
-import SilverReturnGifts from "./pages/SilverReturnGifts";
 
 // Purchase Summary & Security Pages
 import PurchaseSummary from "./pages/PurchaseSummary";
@@ -152,6 +70,7 @@ import AdminOrders from "./pages/AdminOrders";
 import AdminDeliveryBoys from "./pages/admin/AdminDeliveryBoys";
 import AdminGiftCards from "./pages/admin/AdminGiftCards";
 import AdminReviews from "./pages/admin/AdminReviews";
+import AdminSettings from "./pages/admin/AdminSettings";
 import WriteReview from "./pages/WriteReview";
 import ThankYouReview from "./pages/ThankYouReview";
 
@@ -199,102 +118,16 @@ const App = () => {
               <Route path="/search" element={<MobileSearch />} />
               <Route path="/search-results" element={<SearchResults />} />
               
-              {/* Jewelry Collections Main Page */}
-              <Route path="/jewelry" element={<JewelryCollections />} />
+              {/* Category Pages – unified */}
+              <Route path="/category/:categorySlug" element={<CategoryPage />} />
               
-              {/* Furniture Collections Main Page */}
-              <Route path="/furniture" element={<FurnitureCollections />} />
-              
-              {/* Articles Collections Main Page */}
-              <Route path="/articles" element={<ArticlesCollections />} />
-              
-              {/* Other Products Collections Main Page */}
-              <Route path="/products" element={<OtherProductsCollections />} />
-              
-              {/* Jewellery Routes */}
-              <Route path="/shop/necklaces" element={<ShopNecklaces />} />
-              <Route path="/shop/rings" element={<ShopRings />} />
-              <Route path="/shop/bracelets" element={<ShopBracelets />} />
-              <Route path="/shop/anklets" element={<ShopAnklets />} />
-              <Route path="/shop/pendants" element={<ShopPendants />} />
-              <Route path="/shop/earrings" element={<ShopEarrings />} />
-              
-              {/* Bracelet Category Routes */}
-              <Route path="/categories/bracelets/diamond" element={<DiamondBracelets />} />
-              <Route path="/categories/bracelets/gemstone" element={<GemstoneBracelets />} />
-              <Route path="/categories/bracelets/pearl" element={<PearlBracelets />} />
-              <Route path="/categories/bracelets/gold" element={<GoldBracelets />} />
-              <Route path="/categories/bracelets/silver" element={<SilverBracelets />} />
-              <Route path="/categories/bracelets/bangle" element={<BangleBracelets />} />
-              
-              {/* Necklace Category Routes */}
-              <Route path="/categories/necklaces/diamond" element={<DiamondNecklaces />} />
-              <Route path="/categories/necklaces/gemstone" element={<GemstoneNecklaces />} />
-              <Route path="/categories/necklaces/pearl" element={<PearlNecklaces />} />
-              <Route path="/categories/necklaces/gold" element={<GoldNecklaces />} />
-              <Route path="/categories/necklaces/silver" element={<SilverNecklaces />} />
-              <Route path="/categories/necklaces/cross" element={<CrossNecklaces />} />
-              
-              {/* Ring Category Routes */}
-              <Route path="/categories/rings/diamond" element={<DiamondRings />} />
-              <Route path="/categories/rings/gemstone" element={<GemstoneRings />} />
-              <Route path="/categories/rings/wedding" element={<WeddingRings />} />
-              <Route path="/categories/rings/engagement" element={<EngagementRings />} />
-              <Route path="/categories/rings/gold" element={<GoldRings />} />
-              <Route path="/categories/rings/fashion" element={<FashionRings />} />
-              
-              {/* Jewelry Category Routes */}
-              <Route path="/categories/jewelry/mens" element={<MensJewelry />} />
-              <Route path="/categories/jewelry/birthstone" element={<BirthstoneJewelry />} />
-              <Route path="/categories/jewelry/pearl" element={<PearlJewelry />} />
-              <Route path="/categories/jewelry/rose-gold" element={<RoseGoldJewelry />} />
-              <Route path="/categories/jewelry/new-arrivals" element={<NewArrivals />} />
-              <Route path="/categories/jewelry/sale" element={<JewelrySale />} />
-              
-              {/* Furniture Routes */}
-              <Route path="/furniture/silver-sofa-collection" element={<SilverSofaCollection />} />
-              <Route path="/furniture/royal-silver-chairs" element={<RoyalSilverChairs />} />
-              <Route path="/furniture/royal-silver-tables" element={<RoyalSilverTables />} />
-              <Route path="/furniture/antique-silver-decor" element={<AntiqueSilverDecor />} />
-              <Route path="/furniture/silver-swing-jhoola" element={<SilverSwingJhoola />} />
-              <Route path="/furniture/silver-cradles" element={<SilverCradles />} />
-              <Route path="/furniture/silver-thrones" element={<SilverThrones />} />
-              
-              {/* Articles Routes */}
-              <Route path="/articles/pooja-items" element={<SilverPoojaItems />} />
-              <Route path="/articles/gift-articles" element={<SilverGiftArticles />} />
-              <Route path="/articles/silver-lamps" element={<SilverLamps />} />
-              <Route path="/articles/silver-plates" element={<SilverPlates />} />
-              <Route path="/articles/silver-idols" element={<SilverIdols />} />
-              <Route path="/articles/silver-vessels" element={<SilverVessels />} />
-              
-              {/* Other Products Routes */}
-              <Route path="/other-products/silver-coins" element={<SilverCoins />} />
-              <Route path="/other-products/silver-bars" element={<SilverBars />} />
-              <Route path="/other-products/silver-utensils" element={<SilverUtensils />} />
-              <Route path="/other-products/baby-items" element={<BabyItems />} />
-              <Route path="/other-products/antique-silver" element={<AntiqueSilver />} />
-              <Route path="/other-products/custom-orders" element={<CustomOrders />} />
-              
-              {/* Home Decor Collections Main Page */}
-              <Route path="/home-decor" element={<HomeDecorCollections />} />
-              
-              {/* Home Decor Routes */}
-              <Route path="/home-decor/wall-decor" element={<SilverWallDecor />} />
-              <Route path="/home-decor/photo-frames" element={<SilverPhotoFrames />} />
-              <Route path="/home-decor/showpieces" element={<SilverShowpieces />} />
-              <Route path="/home-decor/candle-stands" element={<SilverCandleStands />} />
-              <Route path="/home-decor/flower-vases" element={<SilverFlowerVases />} />
-              
-              {/* Gifts Collections Main Page */}
-              <Route path="/gifts" element={<GiftsCollections />} />
-              
-              {/* Gifts Routes */}
-              <Route path="/gifts/wedding-gifts" element={<SilverWeddingGifts />} />
-              <Route path="/gifts/birthday-gifts" element={<SilverBirthdayGifts />} />
-              <Route path="/gifts/festival-gifts" element={<SilverFestivalGifts />} />
-              <Route path="/gifts/corporate-gifts" element={<SilverCorporateGifts />} />
-              <Route path="/gifts/return-gifts" element={<SilverReturnGifts />} />
+              {/* Legacy redirects */}
+              <Route path="/jewelry" element={<Navigate to="/category/jewellery" replace />} />
+              <Route path="/furniture" element={<Navigate to="/category/furniture" replace />} />
+              <Route path="/articles" element={<Navigate to="/category/articles" replace />} />
+              <Route path="/products" element={<Navigate to="/category/others" replace />} />
+              <Route path="/home-decor" element={<Navigate to="/category/others" replace />} />
+              <Route path="/gifts" element={<Navigate to="/category/articles" replace />} />
               
               <Route path="/product/:productId" element={<ProductDetail />} />
               <Route path="/write-review" element={
@@ -385,6 +218,7 @@ const App = () => {
                 <Route path="gallery" element={<AdminGallery />} />
                 <Route path="gift-cards" element={<AdminGiftCards />} />
                 <Route path="reviews" element={<AdminReviews />} />
+                <Route path="settings" element={<AdminSettings />} />
               </Route>
 
               {/* Delivery Partner Routes */}

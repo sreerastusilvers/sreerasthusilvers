@@ -57,17 +57,17 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 left-0 bottom-0 w-full bg-white z-50 lg:hidden shadow-2xl overflow-y-auto"
+            className="fixed top-0 left-0 bottom-0 w-full bg-background z-50 lg:hidden shadow-2xl overflow-y-auto"
             style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif" }}
           >
             {/* Header with User Icon and Close Button */}
             <div className="flex items-center justify-between px-4 py-3">
-              <User className="w-6 h-6 text-gray-700" strokeWidth={1.5} />
+              <User className="w-6 h-6 text-foreground/80" strokeWidth={1.5} />
               <button
                 onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
               >
-                <X className="w-5 h-5 text-gray-700" />
+                <X className="w-5 h-5 text-foreground/80" />
               </button>
             </div>
 
@@ -75,7 +75,7 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
               <div className="mx-4 mb-2 relative">
                 {/* Scalloped border ticket */}
                 <div
-                  className="bg-pink-50 rounded-lg p-4 flex items-center justify-between gap-6 overflow-hidden"
+                  className="bg-pink-50 dark:bg-pink-950/30 rounded-lg p-4 flex items-center justify-between gap-6 overflow-hidden"
                   style={{
                     backgroundImage: `radial-gradient(circle at 0 50%, white 8px, transparent 8px), radial-gradient(circle at 100% 50%, white 8px, transparent 8px)`,
                     backgroundSize: '16px 24px',
@@ -96,24 +96,24 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
 
                   {/* Text content - completely on the right */}
                   <div className="flex-1 text-right">
-                    <h3 className="text-gray-900 font-bold text-base leading-tight">
+                    <h3 className="text-foreground font-bold text-base leading-tight">
                       Flat Rs. 500 off
                     </h3>
-                    <p className="text-gray-500 text-xs mt-0.5 mb-3">
+                    <p className="text-muted-foreground text-xs mt-0.5 mb-3">
                       on your first order
                     </p>
                     {!user ? (
                       <div className="flex items-center justify-end gap-3">
                         <button
                           onClick={() => handleAuthAction('login')}
-                          className="text-gray-900 font-bold text-sm tracking-wide hover:underline"
+                          className="text-foreground font-bold text-sm tracking-wide hover:underline"
                         >
                           LOGIN
                         </button>
-                        <span className="text-gray-400 font-light">|</span>
+                        <span className="text-muted-foreground font-light">|</span>
                         <button
                           onClick={() => handleAuthAction('signup')}
-                          className="text-gray-900 font-bold text-sm tracking-wide hover:underline"
+                          className="text-foreground font-bold text-sm tracking-wide hover:underline"
                         >
                           SIGN UP
                         </button>
@@ -121,7 +121,7 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                     ) : (
                       <button
                         onClick={() => handleNavigation('/wishlist')}
-                        className="text-[#832729] font-bold text-base hover:text-[#a02f32] transition-colors"
+                        className="text-primary font-bold text-base hover:text-primary/80 transition-colors"
                       >
                         |MY PROFILE|
                       </button>
@@ -141,13 +141,13 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     onClick={() => handleNavigation(item.href)}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50"
+                    className="flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors border-b border-border/50"
                   >
-                    <Icon className="w-[22px] h-[22px] text-gray-600" strokeWidth={1.4} />
-                    <span className="text-[15px] font-medium text-gray-800 flex-1 text-left tracking-wide">
+                    <Icon className="w-[22px] h-[22px] text-muted-foreground" strokeWidth={1.4} />
+                    <span className="text-[15px] font-medium text-foreground flex-1 text-left tracking-wide">
                       {item.name}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
                   </motion.button>
                 );
               })}
@@ -159,13 +159,13 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: menuItems.length * 0.05 }}
                   onClick={() => handleNavigation("#logout")}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50"
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors border-b border-border/50"
                 >
-                  <LogOut className="w-[22px] h-[22px] text-gray-600" strokeWidth={1.4} />
-                  <span className="text-[15px] font-medium text-gray-800 flex-1 text-left tracking-wide">
+                  <LogOut className="w-[22px] h-[22px] text-muted-foreground" strokeWidth={1.4} />
+                  <span className="text-[15px] font-medium text-foreground flex-1 text-left tracking-wide">
                     Logout
                   </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" strokeWidth={1.5} />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
                 </motion.button>
               )}
             </div>

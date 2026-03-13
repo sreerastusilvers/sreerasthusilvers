@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
-import { Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, useInView } from "framer-motion";
+import { Star } from "lucide-react";
 import avatar1 from "@/assets/avatars/avatar-1.jpg";
 import avatar2 from "@/assets/avatars/avatar-2.jpg";
 import avatar3 from "@/assets/avatars/avatar-3.jpg";
@@ -29,170 +29,134 @@ const resolveAvatar = (t: Testimonial): string => {
   return t.avatarUrl;
 };
 
+const CARD_WIDTH = 340;
+const CARD_GAP = 24;
+
+const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
+  <div
+    className="bg-card rounded-2xl p-6 md:p-8 shadow-sm border border-border flex-shrink-0 hover:shadow-md transition-shadow duration-300"
+    style={{ width: `${CARD_WIDTH}px` }}
+  >
+    <div className="flex items-center gap-1 mb-4">
+      {[...Array(5)].map((_, i) => (
+        <Star
+          key={i}
+          className={`w-4 h-4 ${
+            i < testimonial.rating
+              ? "fill-amber-400 text-amber-400"
+              : "fill-muted text-muted"
+          }`}
+        />
+      ))}
+    </div>
+    <h4 className="text-base font-semibold mb-3 text-foreground font-serif">
+      " {testimonial.title} "
+    </h4>
+    <p className="text-sm text-muted-foreground mb-6 leading-relaxed line-clamp-3 font-light">
+      {testimonial.quote}
+    </p>
+    <div className="flex items-center gap-3 pt-4 border-t border-border">
+      <img
+        src={resolveAvatar(testimonial)}
+        alt={testimonial.author}
+        className="w-10 h-10 rounded-full object-cover ring-2 ring-[#832729]/10"
+      />
+      <div>
+        <p className="font-medium text-sm text-foreground">{testimonial.author}</p>
+        <p className="text-xs text-muted-foreground">{testimonial.role}</p>
+      </div>
+    </div>
+  </div>
+);
+
 const TestimonialsCarousel = () => {
   const ref = useRef(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, amount: 0.1 });
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const animationRef = useRef<number>();
+  const scrollPos = useRef(0);
 
   useEffect(() => {
     const unsub = subscribeToTestimonials((data) => {
       setTestimonials(data);
-      setCurrentIndex(0);
       setHasLoaded(true);
     }, true);
     return unsub;
   }, []);
 
-  // Always animate in once data is loaded and in view (or already was in view)
-  const shouldAnimate = isInView || hasLoaded;
+  // JS-based smooth scroll animation for reliable marquee
+  useEffect(() => {
+    if (testimonials.length === 0 || !scrollRef.current) return;
 
-  const next = () => setCurrentIndex((prev) => (prev + 1) % testimonials.length);
-  const prev = () => setCurrentIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+    const el = scrollRef.current;
+    const singleSetWidth = testimonials.length * (CARD_WIDTH + CARD_GAP);
+    const speed = 0.5; // pixels per frame
+
+    const animate = () => {
+      if (!isPaused) {
+        scrollPos.current += speed;
+        if (scrollPos.current >= singleSetWidth) {
+          scrollPos.current -= singleSetWidth;
+        }
+        el.style.transform = `translateX(-${scrollPos.current}px)`;
+      }
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [testimonials, isPaused]);
+
+  const shouldAnimate = isInView || hasLoaded;
 
   if (hasLoaded && testimonials.length === 0) return null;
 
+  // Triple the items for seamless looping
+  const marqueeItems = [...testimonials, ...testimonials, ...testimonials];
+
   return (
-    <section ref={ref} className="py-16 md:py-20 bg-white">
+    <section ref={ref} className="py-14 md:py-20 bg-secondary/50 dark:bg-muted overflow-hidden">
       {testimonials.length > 0 && (
-      <div className="container-custom">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={shouldAnimate ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-          style={{ fontFamily: "'Poppins', sans-serif" }}
-        >
-          <h2 className="text-3xl md:text-4xl font-semibold text-foreground mb-3" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-            What Our Clients Say
-          </h2>
-          <p className="text-base text-muted-foreground">
-            Adorn Yourself in Glamour: Find Your Perfect Piece Today
-          </p>
-        </motion.div>
+        <>
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={shouldAnimate ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-10 px-4"
+          >
+            <h2 className="text-2xl md:text-3xl font-semibold text-foreground mb-2 font-serif">
+              What Our Clients Say
+            </h2>
+            <p className="text-sm text-muted-foreground font-light">
+              Hear from our happy customers across India
+            </p>
+          </motion.div>
 
-        {/* Testimonials Grid - Desktop */}
-        <div className="hidden lg:grid grid-cols-3 gap-6">
-          {testimonials.map((testimonial, index) => (
-            <motion.div
-              key={testimonial.id || index}
-              initial={{ opacity: 0, y: 30 }}
-              animate={shouldAnimate ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="bg-white rounded-2xl p-8 shadow-md border border-border/30"
-              style={{ fontFamily: "'Poppins', sans-serif" }}
+          {/* Marquee Container */}
+          <div
+            className="relative overflow-hidden"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onTouchStart={() => setIsPaused(true)}
+            onTouchEnd={() => setIsPaused(false)}
+          >
+            <div
+              ref={scrollRef}
+              className="flex will-change-transform"
+              style={{ gap: `${CARD_GAP}px`, paddingLeft: `${CARD_GAP}px` }}
             >
-              {/* Rating */}
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`w-4 h-4 ${
-                      i < testimonial.rating
-                        ? "fill-orange-400 text-orange-400"
-                        : "fill-muted text-muted"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {/* Title */}
-              <h4 className="text-lg font-semibold mb-4 text-foreground">
-                " {testimonial.title} "
-              </h4>
-
-              {/* Quote */}
-              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                {testimonial.quote}
-              </p>
-
-              {/* Author */}
-              <div className="flex items-center gap-3">
-                <img
-                  src={resolveAvatar(testimonial)}
-                  alt={testimonial.author}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-                <div>
-                  <p className="font-semibold text-sm text-foreground">{testimonial.author}</p>
-                  <p className="text-xs text-muted-foreground">{testimonial.role}</p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Testimonials Carousel - Mobile */}
-        <div className="lg:hidden relative">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white rounded-2xl p-6 shadow-md border border-border/30"
-              style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-              {/* Rating */}
-              <div className="flex items-center gap-1 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className={`w-4 h-4 ${i < testimonials[currentIndex].rating ? 'fill-orange-400 text-orange-400' : 'fill-muted text-muted'}`} />
-                ))}
-              </div>
-              <h4 className="text-lg font-semibold mb-3 text-foreground">
-                " {testimonials[currentIndex].title} "
-              </h4>
-              <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
-                {testimonials[currentIndex].quote}
-              </p>
-              <div className="flex items-center gap-3">
-                <img
-                  src={resolveAvatar(testimonials[currentIndex])}
-                  alt={testimonials[currentIndex].author}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div>
-                  <p className="font-semibold text-sm text-foreground">{testimonials[currentIndex].author}</p>
-                  <p className="text-xs text-muted-foreground">{testimonials[currentIndex].role}</p>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Mobile Navigation */}
-          <div className="flex items-center justify-center gap-4 mt-6">
-            <button
-              onClick={prev}
-              className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-              aria-label="Previous testimonial"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="flex gap-2">
-              {testimonials.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentIndex(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    i === currentIndex ? "bg-primary w-6" : "bg-muted-foreground/30"
-                  }`}
-                  aria-label={`Go to testimonial ${i + 1}`}
-                />
+              {marqueeItems.map((testimonial, index) => (
+                <TestimonialCard key={`t-${index}`} testimonial={testimonial} />
               ))}
             </div>
-            <button
-              onClick={next}
-              className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-              aria-label="Next testimonial"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
           </div>
-        </div>
-      </div>
+        </>
       )}
     </section>
   );

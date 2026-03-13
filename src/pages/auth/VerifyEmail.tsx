@@ -6,10 +6,12 @@ import { Loader2, Mail, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-rea
 import { toast } from 'sonner';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/config/firebase';
+import logo from '@/assets/logo-new.png';
 
 const VerifyEmail = () => {
   const [resendCountdown, setResendCountdown] = useState(30);
   const [resendLoading, setResendLoading] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -31,7 +33,7 @@ const VerifyEmail = () => {
           if (auth.currentUser.emailVerified) {
             sessionStorage.removeItem('pendingVerificationEmail');
             toast.success('Email already verified!');
-            navigate('/', { replace: true });
+            navigate('/account', { replace: true });
           }
         } catch (error) {
           console.error('Error checking verification:', error);
@@ -136,7 +138,7 @@ const VerifyEmail = () => {
       if (currentUser.emailVerified) {
         sessionStorage.removeItem('pendingVerificationEmail');
         toast.success('Email verified successfully! Welcome to Sree Rasthu Silvers!');
-        navigate('/', { replace: true });
+        navigate('/account', { replace: true });
       } else {
         toast.error('Email not verified yet. Please check your inbox.');
       }
@@ -170,12 +172,21 @@ const VerifyEmail = () => {
     );
   }
 
+  if (dismissed) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center p-4 font-poppins">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex flex-col items-center justify-center p-4 font-poppins">
+      {/* Brand Logo */}
+      <div className="mb-6">
+        <img src={logo} alt="Sreerasthu Silvers" className="h-12 md:h-14 w-auto" />
+      </div>
+
       <div className="relative w-full max-w-md bg-white/80 backdrop-blur-sm rounded-2xl p-8 sm:p-10">
-        {/* Close Button */}
+        {/* Close Button - just dismisses the card, no navigation */}
         <button
-          onClick={() => navigate('/')}
+          onClick={() => setDismissed(true)}
           className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

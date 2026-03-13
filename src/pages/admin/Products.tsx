@@ -10,6 +10,8 @@ import {
   EyeOff,
   Filter,
   Package,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +41,7 @@ const Products = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -163,139 +166,173 @@ const Products = () => {
           <Filter className="h-4 w-4 mr-2" />
           Filters
         </Button>
+        <div className="flex border border-gray-300 rounded-md overflow-hidden">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-2 ${viewMode === 'grid' ? 'bg-amber-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            className={`p-2 ${viewMode === 'table' ? 'bg-amber-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            <List className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin h-8 w-8 border-2 border-amber-600 border-t-transparent rounded-full mx-auto"></div>
-            <p className="text-gray-600 mt-4">Loading products...</p>
-          </div>
-        ) : filteredProducts.length > 0 ? (
+      {/* Products View */}
+      {loading ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-amber-600 border-t-transparent rounded-full mx-auto"></div>
+          <p className="text-gray-600 mt-4">Loading products...</p>
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+          <p className="text-gray-600 mb-6">
+            {searchQuery
+              ? 'Try adjusting your search query'
+              : 'Get started by adding your first product'}
+          </p>
+          {!searchQuery && (
+            <Link to="/admin/products/new">
+              <Button className="bg-amber-600 hover:bg-amber-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
+            </Link>
+          )}
+        </div>
+      ) : viewMode === 'grid' ? (
+        /* Grid View */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredProducts.map((product) => (
+            <div
+              key={product.id}
+              className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => navigate(`/admin/products/${product.id}`)}
+            >
+              <div className="relative aspect-square bg-gray-50">
+                <img
+                  src={product.media?.thumbnail || '/placeholder.png'}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+                <span
+                  className={`absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    product.flags?.isActive
+                      ? 'bg-green-50 text-green-600'
+                      : 'bg-red-50 text-red-600'
+                  }`}
+                >
+                  {product.flags?.isActive ? 'Active' : 'Inactive'}
+                </span>
+                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="bg-white/80 hover:bg-white h-8 w-8 p-0 rounded-full shadow">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="bg-white border-gray-200">
+                      <DropdownMenuItem asChild>
+                        <Link to={`/admin/products/${product.id}`} className="text-gray-700 cursor-pointer">
+                          <Edit className="h-4 w-4 mr-2" /> Edit
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-gray-700 cursor-pointer" onClick={() => handleToggleVisibility(product)}>
+                        {product.flags?.isActive ? <><EyeOff className="h-4 w-4 mr-2" /> Hide</> : <><Eye className="h-4 w-4 mr-2" /> Show</>}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={() => handleDeleteClick(product)}>
+                        <Trash2 className="h-4 w-4 mr-2" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="text-sm font-medium text-gray-900 truncate">{product.name}</h3>
+                <p className="text-xs text-gray-500 mt-1">{product.category}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <div>
+                    <span className="text-amber-600 font-semibold">₹{product.price}</span>
+                    {product.originalPrice && product.originalPrice > product.price && (
+                      <span className="text-gray-400 text-xs line-through ml-1">₹{product.originalPrice}</span>
+                    )}
+                  </div>
+                  <span className={`text-xs ${(product.inventory?.stock || 0) > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    Stock: {product.inventory?.stock || 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Table View */
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Product
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Category
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Price
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Stock
-                  </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">
-                    Status
-                  </th>
-                  <th className="text-right px-6 py-4 text-sm font-medium text-gray-700">
-                    Actions
-                  </th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Product</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Category</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Price</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Stock</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-gray-700">Status</th>
+                  <th className="text-right px-6 py-4 text-sm font-medium text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredProducts.map((product) => (
-                  <tr 
-                    key={product.id} 
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/admin/products/${product.id}`)}
-                  >
+                  <tr key={product.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/products/${product.id}`)}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
-                        <img
-                          src={product.media?.thumbnail || '/placeholder.png'}
-                          alt={product.name}
-                          className="w-12 h-12 rounded-lg object-cover bg-gray-100"
-                        />
+                        <img src={product.media?.thumbnail || '/placeholder.png'} alt={product.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100" />
                         <div>
                           <p className="text-gray-900 font-medium">{product.name}</p>
                           <p className="text-gray-500 text-sm">SKU: {product.inventory?.sku || 'N/A'}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-700">{product.category}</span>
-                    </td>
+                    <td className="px-6 py-4"><span className="text-gray-700">{product.category}</span></td>
                     <td className="px-6 py-4">
                       <span className="text-amber-600 font-medium">₹{product.price}</span>
                       {product.originalPrice && product.originalPrice > product.price && (
-                        <span className="text-gray-500 text-sm line-through ml-2">
-                          ₹{product.originalPrice}
-                        </span>
+                        <span className="text-gray-500 text-sm line-through ml-2">₹{product.originalPrice}</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`${
-                          (product.inventory?.stock || 0) > 0
-                            ? 'text-green-400'
-                            : 'text-red-400'
-                        }`}
-                      >
+                      <span className={`${(product.inventory?.stock || 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {product.inventory?.stock || 0}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          product.flags?.isActive
-                            ? 'bg-green-50 text-green-600'
-                            : 'bg-red-50 text-red-600'
-                        }`}
-                      >
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${product.flags?.isActive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                         {product.flags?.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-600 hover:text-gray-900"
-                          >
+                          <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="bg-white border-gray-200"
-                        >
+                        <DropdownMenuContent align="end" className="bg-white border-gray-200">
                           <DropdownMenuItem asChild>
-                            <Link
-                              to={`/admin/products/${product.id}`}
-                              className="text-gray-700 hover:text-gray-900 cursor-pointer"
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
+                            <Link to={`/admin/products/${product.id}`} className="text-gray-700 hover:text-gray-900 cursor-pointer">
+                              <Edit className="h-4 w-4 mr-2" /> Edit
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-gray-700 hover:text-gray-900 cursor-pointer"
-                            onClick={() => handleToggleVisibility(product)}
-                          >
-                            {product.flags?.isActive ? (
-                              <>
-                                <EyeOff className="h-4 w-4 mr-2" />
-                                Hide
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Show
-                              </>
-                            )}
+                          <DropdownMenuItem className="text-gray-700 hover:text-gray-900 cursor-pointer" onClick={() => handleToggleVisibility(product)}>
+                            {product.flags?.isActive ? <><EyeOff className="h-4 w-4 mr-2" /> Hide</> : <><Eye className="h-4 w-4 mr-2" /> Show</>}
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600 hover:text-red-700 cursor-pointer"
-                            onClick={() => handleDeleteClick(product)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
+                          <DropdownMenuItem className="text-red-600 hover:text-red-700 cursor-pointer" onClick={() => handleDeleteClick(product)}>
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -305,26 +342,8 @@ const Products = () => {
               </tbody>
             </table>
           </div>
-        ) : (
-          <div className="p-12 text-center">
-            <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-            <p className="text-gray-600 mb-6">
-              {searchQuery
-                ? 'Try adjusting your search query'
-                : 'Get started by adding your first product'}
-            </p>
-            {!searchQuery && (
-              <Link to="/admin/products/new">
-                <Button className="bg-amber-600 hover:bg-amber-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Product
-                </Button>
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

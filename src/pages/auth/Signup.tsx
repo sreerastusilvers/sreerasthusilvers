@@ -5,16 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Eye, EyeOff, Loader2, Mail, Lock, User } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail, Lock, User, Phone } from 'lucide-react';
 import { toast } from 'sonner';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+import logo from '@/assets/logo-new.png';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [sameForWhatsApp, setSameForWhatsApp] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,10 @@ const Signup = () => {
       setError('Passwords do not match.');
       return false;
     }
+    if (phone && !/^[6-9]\d{9}$/.test(phone)) {
+      setError('Please enter a valid 10-digit Indian mobile number.');
+      return false;
+    }
     if (!agreeTerms) {
       setError('Please agree to the Terms and Privacy Policy.');
       return false;
@@ -52,7 +57,7 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      await signup(email, password, username);
+      await signup(email, password, username, phone || undefined, sameForWhatsApp);
       toast.success('Account created! Please verify your email.');
       // Store email in sessionStorage for verification page
       sessionStorage.setItem('pendingVerificationEmail', email);
@@ -75,14 +80,20 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex items-center justify-center py-20 px-4">
+    <div className="min-h-[100dvh] bg-gray-50 flex flex-col">
+      <div className="flex-1 flex items-center justify-center py-6 px-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* Brand Logo */}
+          <div className="flex justify-center mb-4">
+            <Link to="/">
+              <img src={logo} alt="Sreerasthu Silvers" className="h-12 md:h-14 w-auto" />
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
             {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-light text-gray-900 mb-2">Create Account</h1>
+            <div className="text-center mb-6">
+              <h1 className="text-2xl md:text-3xl font-light text-gray-900 mb-2">Create Account</h1>
               <p className="text-gray-600">Join Sree Rasthu Silvers today</p>
             </div>
 
@@ -94,7 +105,7 @@ const Signup = () => {
             )}
 
             {/* Signup Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="username" className="text-gray-700">Username</Label>
                 <div className="relative mt-2">
@@ -126,6 +137,33 @@ const Signup = () => {
                     required
                     disabled={loading}
                   />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="phone" className="text-gray-700">Phone Number</Label>
+                <div className="relative mt-2">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="Enter your phone number"
+                    className="pl-10"
+                    disabled={loading}
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <Checkbox
+                    id="whatsapp"
+                    checked={sameForWhatsApp}
+                    onCheckedChange={(checked) => setSameForWhatsApp(checked as boolean)}
+                    disabled={loading}
+                  />
+                  <Label htmlFor="whatsapp" className="text-xs text-gray-500 cursor-pointer">
+                    Same number for WhatsApp
+                  </Label>
                 </div>
               </div>
 
@@ -206,7 +244,7 @@ const Signup = () => {
             </form>
 
             {/* Divider */}
-            <div className="relative my-8">
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200"></div>
               </div>
@@ -227,8 +265,6 @@ const Signup = () => {
           </div>
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 };

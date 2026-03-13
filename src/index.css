@@ -1,64 +1,64 @@
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+/* Import Google Fonts - Premium Typography */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Sreerasthu Silvers Jewelry Store Design System */
+/* Sreerasthu Silvers Jewelry Store Design System — Premium Edition */
 @layer base {
   :root {
-    /* Core Colors - Cream and Gold Luxury Palette */
-    --background: 30 33% 98%;
-    --foreground: 0 0% 7%;
+    /* Core Colors - Refined Luxury Palette */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
     
-    --cream: 30 33% 97%;
-    --cream-dark: 30 20% 94%;
+    --cream: 40 25% 97%;
+    --cream-dark: 35 18% 93%;
     
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 7%;
+    --card-foreground: 0 0% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 7%;
+    --popover-foreground: 0 0% 10%;
 
-    /* Gold Accent Colors */
-    --primary: 38 58% 53%;
+    /* Deep Maroon/Burgundy Accent — Signature Color */
+    --primary: 358 52% 33%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 42 75% 68%;
-    --primary-dark: 35 55% 45%;
+    --primary-light: 355 45% 42%;
+    --primary-dark: 358 55% 26%;
 
-    --secondary: 30 33% 97%;
-    --secondary-foreground: 0 0% 7%;
+    --secondary: 40 25% 97%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: 30 15% 92%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 220 10% 94%;
+    --muted-foreground: 220 8% 46%;
 
-    --accent: 38 58% 53%;
+    --accent: 358 52% 33%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 20% 90%;
-    --input: 30 20% 90%;
-    --ring: 38 58% 53%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 358 52% 33%;
 
     --radius: 0.75rem;
 
     /* Typography */
-    --font-heading: 'Poppins', system-ui, sans-serif;
+    --font-heading: 'Playfair Display', 'Georgia', serif;
     --font-body: 'Poppins', system-ui, sans-serif;
 
     /* Shadows */
-    --shadow-sm: 0 2px 8px rgba(17, 17, 17, 0.04);
-    --shadow-md: 0 6px 20px rgba(17, 17, 17, 0.06);
-    --shadow-lg: 0 12px 32px rgba(17, 17, 17, 0.08);
-    --shadow-xl: 0 20px 40px rgba(17, 17, 17, 0.1);
-    --shadow-gold: 0 8px 24px rgba(201, 154, 72, 0.15);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.06);
+    --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.08);
+    --shadow-gold: 0 4px 16px rgba(131, 39, 41, 0.12);
 
-    /* Gold Gradient */
-    --gradient-gold: linear-gradient(135deg, hsl(38, 58%, 53%) 0%, hsl(42, 75%, 68%) 50%, hsl(38, 58%, 53%) 100%);
-    --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(255, 210, 122, 0.4) 50%, transparent 100%);
+    /* Gradient */
+    --gradient-gold: linear-gradient(135deg, hsl(358, 52%, 33%) 0%, hsl(355, 45%, 42%) 50%, hsl(358, 52%, 33%) 100%);
+    --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
 
     /* Sidebar */
     --sidebar-background: 0 0% 98%;
@@ -119,12 +119,25 @@
   html {
     scroll-behavior: smooth;
     overflow-x: clip;
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
   }
 
   html::-webkit-scrollbar {
-    display: none;
+    width: 6px;
+  }
+
+  html::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  html::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  html::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
   }
 
   body {
@@ -132,6 +145,8 @@
     font-family: 'Poppins', system-ui, sans-serif;
     overflow-x: clip;
     width: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Mobile Image Optimization */
@@ -146,7 +161,8 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Poppins', system-ui, sans-serif;
+    font-family: 'Playfair Display', 'Georgia', serif;
+    letter-spacing: -0.01em;
   }
 }
 

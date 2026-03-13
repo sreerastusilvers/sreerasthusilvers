@@ -625,7 +625,7 @@ const JewelryCollections = () => {
         </div>
 
         {/* Category Grid */}
-        <section className="py-4 md:py-20 bg-white">
+        <section className="py-4 md:py-8 bg-white">
           <div className="container-custom">
             {/* Mobile: Horizontal Scroll */}
             <div className="md:hidden flex gap-4 overflow-x-auto pb-4 px-4 scrollbar-hide">

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
 import { ArrowLeft, Tag, Gift, ChevronDown, Shield, ChevronRight, Plus, Minus, Zap, CreditCard, MapPin, MoreVertical, Sparkles, ShoppingBag, Truck, Home, Edit, X, Loader2, Trash2, Search, ScanLine, Mic, Check } from 'lucide-react';
 import { getActiveProducts } from '@/services/productService';
@@ -16,6 +17,7 @@ import { getUserAddresses, getDefaultAddress, Address, addAddress, AddressFormDa
 import { createOrder, generateOrderNumber, OrderFormData, OrderItem } from '@/services/orderService';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import { useWishlist } from '@/hooks/useWishlist';
 
 // ─── Slide to Pay Button Component ───
 const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
@@ -239,7 +241,7 @@ const MobileCheckout = () => {
 
   // Calculations
   const deliveryCharge = items.length === 0 ? 0 : (subtotal >= 5000 ? 0 : 60);
-  const taxAmount = Math.round(subtotal * 0.03); // 3% tax
+  const taxAmount = Math.round(subtotal * 0.03); // GST 3%
   const savings = items.reduce((acc, item) => {
     const originalPrice = Math.round(item.price * 1.3);
     return acc + (originalPrice - item.price) * item.quantity;
@@ -908,7 +910,7 @@ const MobileCheckout = () => {
               </div>
               
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600" style={{ fontFamily: "'Poppins', sans-serif" }}>Tax (3%)</span>
+                <span className="text-gray-600" style={{ fontFamily: "'Poppins', sans-serif" }}>GST (3%)</span>
                 <span className="text-gray-900 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(taxAmount)}</span>
               </div>
 
@@ -1225,8 +1227,9 @@ const MobileCheckout = () => {
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
-              <div className="flex items-center gap-3">
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
+              <MobileHeader />
+              <div className="flex items-center gap-3 px-4 py-2">
                 <button
                   onClick={() => setShowOrderSuccess(false)}
                   className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -1417,8 +1420,9 @@ const MobileCheckout = () => {
 const Checkout = () => {
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
-  const { items, subtotal, clearCart } = useCart();
+  const { items, subtotal, clearCart, removeFromCart } = useCart();
   const { toast } = useToast();
+  const { toggleWishlist } = useWishlist();
   const [couponCode, setCouponCode] = useState('');
   const [showOffers, setShowOffers] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -1569,7 +1573,7 @@ const Checkout = () => {
 
   // Calculate delivery charge (free for orders above ₹5000)
   const deliveryCharge = items.length === 0 ? 0 : (subtotal >= 5000 ? 0 : 60);
-  const taxAmount = Math.round(subtotal * 0.03); // 3% tax
+  const taxAmount = Math.round(subtotal * 0.03); // GST 3%
   const discount = 20; // Coupon discount
   const desktopTotal = subtotal + deliveryCharge + taxAmount - discount;
 
@@ -1703,7 +1707,7 @@ const Checkout = () => {
     'Free Silver Polishing Kit with orders above ₹10,000',
   ];
 
-  const donationAmounts = [10, 20, 50, 100];
+  const donationAmounts: number[] = [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -2120,10 +2124,21 @@ const Checkout = () => {
                   {items.length}/{items.length} ITEMS SELECTED
                 </h2>
                 <div className="flex gap-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  <button className="text-sm text-muted-foreground hover:text-foreground">
+                  <button
+                    onClick={() => items.forEach(item => removeFromCart(item.id))}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
                     REMOVE
                   </button>
-                  <button className="text-sm text-muted-foreground hover:text-foreground">
+                  <button
+                    onClick={() => {
+                      items.forEach(item => {
+                        toggleWishlist(item.id, item.name);
+                        removeFromCart(item.id);
+                      });
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
                     MOVE TO WISHLIST
                   </button>
                 </div>
@@ -2143,7 +2158,7 @@ const Checkout = () => {
                       <h3 className="font-medium mb-1">{item.name}</h3>
                       {item.category && (
                         <p className="text-sm text-muted-foreground mb-2">
-                          Sold by: Sree Rasthu Silvers
+                          Sold by: Sreerasthu Silvers
                         </p>
                       )}
                       <div className="flex items-center gap-3">
@@ -2176,31 +2191,6 @@ const Checkout = () => {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Support Section */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Gift className="w-5 h-5 text-muted-foreground" />
-                <h3 className="font-semibold" style={{ fontFamily: "'Poppins', sans-serif" }}>SUPPORT TRANSFORMATIVE SOCIAL WORK IN INDIA</h3>
-              </div>
-              <div className="flex items-center gap-2 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                <input type="checkbox" className="w-4 h-4" />
-                <span className="text-sm text-muted-foreground">
-                  Donate and make a difference
-                </span>
-              </div>
-              <div className="flex gap-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                {donationAmounts.map((amount) => (
-                  <button
-                    key={amount}
-                    className="px-4 py-2 border border-border rounded-full text-sm hover:border-primary hover:text-primary transition-colors"
-                  >
-                    ₹{amount}
-                  </button>
-                ))}
-              </div>
-              <button className="text-sm text-primary mt-2" style={{ fontFamily: "'Poppins', sans-serif" }}>Know More</button>
             </div>
           </div>
 
@@ -2251,7 +2241,7 @@ const Checkout = () => {
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tax (3%)</span>
+                  <span className="text-muted-foreground">GST (3%)</span>
                   <span>{formatPrice(taxAmount)}</span>
                 </div>
 

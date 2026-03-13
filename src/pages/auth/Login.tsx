@@ -15,7 +15,7 @@ import { Eye, EyeOff, Loader2, Mail, Lock, User, Truck, X, RefreshCw, CheckCircl
 import { toast } from 'sonner';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/config/firebase';
-import Header from '@/components/Header';
+import logo from '@/assets/logo-new.png';
 
 type LoginTab = 'user' | 'delivery';
 
@@ -41,7 +41,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as any)?.from?.pathname || '/';
+  const from = (location.state as any)?.from?.pathname || '/account';
 
   // Redirect if already logged in AND email is verified
   useEffect(() => {
@@ -298,15 +298,21 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Header />
-      <div className="flex items-center justify-center py-8 md:py-20 px-4">
+    <div className="h-[100dvh] overflow-auto md:overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+      <div className="flex-1 flex items-center justify-center py-6 md:py-4 px-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8 relative">
+          {/* Brand Logo */}
+          <div className="flex justify-center mb-4">
+            <Link to="/">
+              <img src={logo} alt="Sreerasthu Silvers" className="h-12 md:h-14 w-auto" />
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 relative">
             {/* Mobile Back Arrow */}
             <button
               onClick={() => navigate(-1)}
-              className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors lg:hidden"
+              className="mb-3 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors lg:hidden"
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Back</span>
@@ -339,8 +345,8 @@ const Login = () => {
             </div>
 
             {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+            <div className="text-center mb-5">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
               <p className="text-gray-600">
                 {activeTab === 'user' 
                   ? 'Sign in to access your account' 
@@ -356,7 +362,7 @@ const Login = () => {
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="email" className="text-gray-700">Email</Label>
                 <div className="relative mt-2">
@@ -466,7 +472,7 @@ const Login = () => {
 
             {/* Sign Up Link - Only for User tab */}
             {activeTab === 'user' && (
-              <div className="text-center mt-6">
+              <div className="text-center mt-4">
                 <span className="text-gray-600">Don't have an account? </span>
                 <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
                   Sign Up Now

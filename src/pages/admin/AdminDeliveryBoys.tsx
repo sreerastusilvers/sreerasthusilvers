@@ -21,6 +21,8 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,6 +78,7 @@ const AdminDeliveryBoys = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
   // Stats
   const [stats, setStats] = useState({
@@ -430,16 +433,30 @@ const AdminDeliveryBoys = () => {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex border border-gray-200 rounded-md overflow-hidden">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Delivery Boys Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          </div>
-        ) : filteredDeliveryBoys.length === 0 ? (
+      {/* Delivery Boys View */}
+      {loading ? (
+        <div className="bg-white rounded-lg shadow-sm flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      ) : filteredDeliveryBoys.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-sm">
           <div className="flex flex-col items-center justify-center py-12">
             <Users className="h-16 w-16 text-gray-300 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -465,145 +482,124 @@ const AdminDeliveryBoys = () => {
               </Button>
             )}
           </div>
-        ) : (
+        </div>
+      ) : viewMode === 'grid' ? (
+        /* Grid View */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredDeliveryBoys.map((deliveryBoy) => (
+            <motion.div
+              key={deliveryBoy.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                {deliveryBoy.profileImage ? (
+                  <img src={deliveryBoy.profileImage} alt={deliveryBoy.name} className="h-12 w-12 rounded-full object-cover" />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-blue-600 font-semibold">{deliveryBoy.name.charAt(0).toUpperCase()}</span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-gray-900 truncate">{deliveryBoy.name}</h3>
+                  <div className="flex items-center text-xs text-gray-500 mt-0.5">
+                    <Star className="h-3 w-3 text-yellow-400 mr-1 fill-current" />
+                    {deliveryBoy.rating.toFixed(1)} ({deliveryBoy.totalDeliveries} deliveries)
+                  </div>
+                </div>
+                <Badge
+                  variant={deliveryBoy.isActive ? 'default' : 'secondary'}
+                  className={deliveryBoy.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-gray-100 text-gray-800 hover:bg-gray-100'}
+                >
+                  {deliveryBoy.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
+              <div className="space-y-1.5 text-xs text-gray-600 mb-4">
+                <div className="flex items-center gap-2"><Phone className="h-3 w-3 text-gray-400" />{deliveryBoy.phone}</div>
+                <div className="flex items-center gap-2"><Mail className="h-3 w-3 text-gray-400" /><span className="truncate">{deliveryBoy.email}</span></div>
+                <div className="flex items-center justify-between">
+                  <span className="capitalize">{getVehicleIcon(deliveryBoy.vehicleType)} {deliveryBoy.vehicleType}</span>
+                  <span><Package className="h-3 w-3 inline mr-1" />{deliveryBoy.currentOrdersCount} orders</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                <Button variant="ghost" size="sm" onClick={() => handleEdit(deliveryBoy)} className="text-blue-600 hover:bg-blue-50 flex-1">
+                  <Edit className="h-4 w-4 mr-1" /> Edit
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(deliveryBoy)} className={deliveryBoy.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}>
+                  {deliveryBoy.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setSelectedDeliveryBoy(deliveryBoy); setShowDeleteDialog(true); }} className="text-red-600 hover:bg-red-50">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        /* Table View */
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Delivery Boy
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Vehicle
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Current Orders
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Delivery Boy</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Vehicle</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Current Orders</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredDeliveryBoys.map((deliveryBoy) => (
-                  <motion.tr
-                    key={deliveryBoy.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
+                  <motion.tr key={deliveryBoy.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           {deliveryBoy.profileImage ? (
-                            <img
-                              src={deliveryBoy.profileImage}
-                              alt={deliveryBoy.name}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
+                            <img src={deliveryBoy.profileImage} alt={deliveryBoy.name} className="h-10 w-10 rounded-full object-cover" />
                           ) : (
                             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <span className="text-blue-600 font-semibold text-sm">
-                                {deliveryBoy.name.charAt(0).toUpperCase()}
-                              </span>
+                              <span className="text-blue-600 font-semibold text-sm">{deliveryBoy.name.charAt(0).toUpperCase()}</span>
                             </div>
                           )}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {deliveryBoy.name}
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{deliveryBoy.name}</div>
                           <div className="text-sm text-gray-500 flex items-center mt-1">
                             <Star className="h-3 w-3 text-yellow-400 mr-1 fill-current" />
-                            {deliveryBoy.rating.toFixed(1)} ({deliveryBoy.totalDeliveries}{' '}
-                            deliveries)
+                            {deliveryBoy.rating.toFixed(1)} ({deliveryBoy.totalDeliveries} deliveries)
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 flex items-center mb-1">
-                        <Mail className="h-3 w-3 mr-2 text-gray-400" />
-                        {deliveryBoy.email}
-                      </div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <Phone className="h-3 w-3 mr-2 text-gray-400" />
-                        {deliveryBoy.phone}
-                      </div>
+                      <div className="text-sm text-gray-900 flex items-center mb-1"><Mail className="h-3 w-3 mr-2 text-gray-400" />{deliveryBoy.email}</div>
+                      <div className="text-sm text-gray-500 flex items-center"><Phone className="h-3 w-3 mr-2 text-gray-400" />{deliveryBoy.phone}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <span className="text-2xl mr-2">
-                          {getVehicleIcon(deliveryBoy.vehicleType)}
-                        </span>
-                        <span className="text-sm text-gray-900 capitalize">
-                          {deliveryBoy.vehicleType}
-                        </span>
+                        <span className="text-2xl mr-2">{getVehicleIcon(deliveryBoy.vehicleType)}</span>
+                        <span className="text-sm text-gray-900 capitalize">{deliveryBoy.vehicleType}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Package className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm font-semibold text-gray-900">
-                          {deliveryBoy.currentOrdersCount}
-                        </span>
-                      </div>
+                      <div className="flex items-center"><Package className="h-4 w-4 text-gray-400 mr-2" /><span className="text-sm font-semibold text-gray-900">{deliveryBoy.currentOrdersCount}</span></div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge
-                        variant={deliveryBoy.isActive ? 'default' : 'secondary'}
-                        className={
-                          deliveryBoy.isActive
-                            ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-                        }
-                      >
+                      <Badge variant={deliveryBoy.isActive ? 'default' : 'secondary'} className={deliveryBoy.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-gray-100 text-gray-800 hover:bg-gray-100'}>
                         {deliveryBoy.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(deliveryBoy)}
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                        >
-                          <Edit className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(deliveryBoy)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(deliveryBoy)} className={deliveryBoy.isActive ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50' : 'text-green-600 hover:text-green-700 hover:bg-green-50'}>
+                          {deliveryBoy.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleStatus(deliveryBoy)}
-                          className={
-                            deliveryBoy.isActive
-                              ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50'
-                              : 'text-green-600 hover:text-green-700 hover:bg-green-50'
-                          }
-                        >
-                          {deliveryBoy.isActive ? (
-                            <PowerOff className="h-4 w-4" />
-                          ) : (
-                            <Power className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDeliveryBoy(deliveryBoy);
-                            setShowDeleteDialog(true);
-                          }}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setSelectedDeliveryBoy(deliveryBoy); setShowDeleteDialog(true); }} className="text-red-600 hover:text-red-700 hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </td>
                   </motion.tr>
@@ -611,8 +607,8 @@ const AdminDeliveryBoys = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       <Dialog open={showAddModal || showEditModal} onOpenChange={(open) => {

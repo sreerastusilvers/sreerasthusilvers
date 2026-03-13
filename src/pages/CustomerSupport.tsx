@@ -24,7 +24,7 @@ const CustomerSupport = () => {
 
   // Contact details
   const contactInfo = {
-    email: 'sreerastusilvers@gmail.com',
+    email: 'sreerasthusilvers@gmail.com',
     phone: '+91 98198 73745',
     whatsapp: '+919819873745', // WhatsApp format (no spaces)
   };
@@ -265,7 +265,7 @@ const CustomerSupport = () => {
                     </div>
                     <div>
                       <h3 className="text-sm lg:text-base font-semibold text-gray-900 mb-1 lg:mb-2">Visit Our Store</h3>
-                      <p className="text-xs lg:text-sm text-gray-600">Sree Rasthu Silvers</p>
+                      <p className="text-xs lg:text-sm text-gray-600">Sreerasthu Silvers</p>
                       <p className="text-xs lg:text-sm text-gray-600">92.5% Pure Silver Specialists</p>
                     </div>
                   </div>

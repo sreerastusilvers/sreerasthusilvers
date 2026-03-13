@@ -82,7 +82,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="product-card group cursor-pointer border border-gray-200 rounded-xl p-2 lg:p-0 lg:border-0"
+      className="product-card group cursor-pointer border border-border rounded-xl p-2 lg:p-0 lg:border-0"
       onClick={handleCardClick}
     >
       {/* Image Container */}
@@ -104,14 +104,14 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
         {/* Wishlist Heart - Top Right */}
         <button
           onClick={handleWishlistClick}
-          className="absolute top-1.5 right-1.5 lg:top-2 lg:right-2 p-1.5 lg:p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
+          className="absolute top-1.5 right-1.5 lg:top-2 lg:right-2 p-1.5 lg:p-2 bg-background/90 dark:bg-card/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background transition-all"
           aria-label={isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
         >
           <Heart 
             className={`w-4 h-4 lg:w-5 lg:h-5 transition-colors ${
               isInWishlist(product.id) 
                 ? "text-red-500 fill-red-500" 
-                : "text-gray-700 hover:text-red-500"
+                : "text-foreground/70 hover:text-red-500"
             }`}
           />
         </button>
@@ -125,7 +125,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
         </span>
 
         {/* Title - Single Line with Ellipsis */}
-        <h4 className="font-medium text-xs lg:text-base leading-snug text-gray-900 truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <h4 className="font-medium text-xs lg:text-base leading-snug text-foreground truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
           {product.title}
         </h4>
 
@@ -137,7 +137,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
               className={`w-3 h-3 lg:w-4 lg:h-4 ${
                 i < Math.floor(product.rating)
                   ? "fill-yellow-400 text-yellow-400"
-                  : "fill-gray-200 text-gray-200"
+                  : "fill-muted text-muted"
               }`}
             />
           ))}
@@ -145,9 +145,9 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
 
         {/* Price */}
         <div className="flex items-center gap-1.5 lg:gap-2 pt-0.5 lg:pt-1">
-          <span className="text-sm lg:text-xl font-bold text-gray-900">₹{product.price.toLocaleString('en-IN')}</span>
+          <span className="text-sm lg:text-xl font-bold text-foreground">₹{product.price.toLocaleString('en-IN')}</span>
           {product.oldPrice && (
-            <span className="text-[10px] lg:text-sm text-gray-400 line-through">
+            <span className="text-[10px] lg:text-sm text-muted-foreground line-through">
               ₹{product.oldPrice.toLocaleString('en-IN')}
             </span>
           )}
@@ -156,7 +156,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
         {/* Add to Cart Button */}
         <button
           onClick={handleAddToCart}
-          className="w-full mt-1 lg:mt-2 py-1.5 lg:py-2.5 px-3 lg:px-4 bg-black/5 text-gray-900 text-[11px] lg:text-sm font-medium rounded-full hover:bg-black/10 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-1.5 lg:gap-2 border border-gray-200"
+          className="w-full mt-1 lg:mt-2 py-1.5 lg:py-2.5 px-3 lg:px-4 bg-foreground/5 text-foreground text-[11px] lg:text-sm font-medium rounded-full hover:bg-foreground/10 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-1.5 lg:gap-2 border border-border"
         >
           <ShoppingBag className="w-3 h-3 lg:w-4 lg:h-4" />
           Add to Cart

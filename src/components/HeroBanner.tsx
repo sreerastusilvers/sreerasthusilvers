@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { subscribeToActiveBanners, Banner } from "@/services/bannerService";
 import { useNavigate } from "react-router-dom";
 
@@ -17,7 +17,6 @@ const HeroBanner = () => {
   const touchEndX = useRef(0);
   const isSwiping = useRef(false);
 
-  // Real-time subscription to active banners
   useEffect(() => {
     const unsubscribe = subscribeToActiveBanners(
       (activeBanners) => {
@@ -32,42 +31,29 @@ const HeroBanner = () => {
     return () => unsubscribe();
   }, []);
 
-  // Preload ALL banner images when banners are loaded
   useEffect(() => {
     if (banners.length === 0) return;
-    
     let loadedCount = 0;
     const totalImages = banners.length;
-    
     banners.forEach((banner) => {
       if (preloadedImages.current.has(banner.imageUrl)) {
         loadedCount++;
         if (loadedCount >= totalImages) setImagesReady(true);
         return;
       }
-      
       const img = new Image();
       img.onload = () => {
         preloadedImages.current.set(banner.imageUrl, img);
         loadedCount++;
-        if (loadedCount >= totalImages) {
-          setImagesReady(true);
-        }
+        if (loadedCount >= totalImages) setImagesReady(true);
       };
       img.onerror = () => {
         loadedCount++;
-        if (loadedCount >= totalImages) {
-          setImagesReady(true);
-        }
+        if (loadedCount >= totalImages) setImagesReady(true);
       };
       img.src = banner.imageUrl;
     });
-    
-    // Fallback: show images after 3s even if not all loaded
-    const fallbackTimer = setTimeout(() => {
-      setImagesReady(true);
-    }, 3000);
-    
+    const fallbackTimer = setTimeout(() => setImagesReady(true), 3000);
     return () => clearTimeout(fallbackTimer);
   }, [banners]);
 
@@ -81,30 +67,23 @@ const HeroBanner = () => {
     setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
   }, [banners.length]);
 
-  // Auto-play carousel - only start when images are ready
   useEffect(() => {
     if (banners.length <= 1 || isPaused || !imagesReady) return;
     const timer = setInterval(nextSlide, 3500);
     return () => clearInterval(timer);
   }, [banners.length, isPaused, nextSlide, imagesReady]);
 
-  const handleBannerClick = (index: number) => {
-    if (index === currentSlide) {
-      const banner = banners[index];
-      // Only navigate if redirectLink exists
-      if (banner.redirectLink) {
-        if (banner.redirectLink.startsWith('http')) {
-          window.open(banner.redirectLink, '_blank');
-        } else {
-          navigate(banner.redirectLink);
-        }
+  const handleBannerClick = () => {
+    const banner = banners[currentSlide];
+    if (banner.redirectLink) {
+      if (banner.redirectLink.startsWith('http')) {
+        window.open(banner.redirectLink, '_blank');
+      } else {
+        navigate(banner.redirectLink);
       }
-    } else {
-      setCurrentSlide(index);
     }
   };
 
-  // Touch/swipe handling
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.targetTouches[0].clientX;
     touchEndX.current = e.targetTouches[0].clientX;
@@ -124,148 +103,59 @@ const HeroBanner = () => {
     }
   };
 
-  const getSlideIndex = (offset: number) => {
-    return (currentSlide + offset + banners.length) % banners.length;
-  };
-
   if (loading || !imagesReady) {
     return (
-      <section className="relative h-[220px] lg:h-[420px] flex items-center justify-center bg-gray-100">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      <section className="relative h-[340px] lg:h-[520px] flex items-center justify-center bg-muted">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="text-xs text-muted-foreground font-light tracking-wider">Loading</span>
+        </div>
       </section>
-    );  }
+    );
+  }
 
   if (banners.length === 0) return null;
 
   return (
     <section
-      className="relative overflow-hidden"
-      style={{ 
-        transform: 'translateZ(0)',
-        WebkitTransform: 'translateZ(0)'
-      }}
+      className="relative overflow-hidden bg-background"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
     >
-      {/* ====== MOBILE LAYOUT - Tanishq Style ====== */}
+      {/* ====== MOBILE LAYOUT ====== */}
       <div
-        className="lg:hidden relative pt-4 pb-2"
+        className="lg:hidden relative px-3 pt-1"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Hidden preload: render ALL images offscreen so browser decodes them once */}
-        <div className="absolute w-0 h-0 overflow-hidden" aria-hidden="true">
-          {banners.map((banner, i) => (
-            <img key={i} src={banner.imageUrl} alt="" />
-          ))}
+        <div className="relative w-full overflow-hidden rounded-2xl shadow-sm" style={{ aspectRatio: '4/5' }}>
+          <AnimatePresence initial={false} custom={direction}>
+            <motion.div
+              key={currentSlide}
+              custom={direction}
+              initial={{ x: direction > 0 ? "100%" : "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: direction > 0 ? "-100%" : "100%" }}
+              transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+              className="absolute inset-0 cursor-pointer"
+              style={{ willChange: 'transform' }}
+              onClick={() => { if (!isSwiping.current) handleBannerClick(); }}
+            >
+              <img
+                src={banners[currentSlide].imageUrl}
+                alt="Banner"
+                className="w-full h-full object-cover"
+                loading="eager"
+                decoding="async"
+              />
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        {/* Banner Container with side peeks */}
-        <div className="relative w-full overflow-hidden" style={{ height: "clamp(270px, 85vw, 400px)", transform: 'translateZ(0)' }}>
-          {/* Render ALL slides, position them via translateX */}
-          {banners.map((banner, index) => {
-            // Calculate offset from current slide
-            let offset = index - currentSlide;
-            // Handle wrapping
-            if (offset > banners.length / 2) offset -= banners.length;
-            if (offset < -banners.length / 2) offset += banners.length;
-            
-            const isVisible = Math.abs(offset) <= 1;
-            
-            return (
-              <motion.div
-                key={index}
-                animate={{ 
-                  x: `${offset * 100}%`,
-                }}
-                transition={{ 
-                  duration: 0.4,
-                  ease: "easeOut"
-                }}
-                className="absolute inset-0 flex items-center"
-                style={{ 
-                  willChange: 'transform',
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
-                  visibility: isVisible ? 'visible' : 'hidden',
-                }}
-                drag={index === currentSlide ? "x" : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(_, info) => {
-                  isSwiping.current = true;
-                  if (info.offset.x > 50) {
-                    prevSlide();
-                  } else if (info.offset.x < -50) {
-                    nextSlide();
-                  }
-                }}
-                onTap={() => {
-                  // Only trigger navigation when tapping (not swiping) current slide
-                  if (index === currentSlide && !isSwiping.current) {
-                    handleBannerClick(index);
-                  }
-                }}
-              >
-                {/* Previous slide peek (left edge) */}
-                {banners.length > 1 && (
-                  <div
-                    className="absolute left-0 top-0 h-full w-[12px] cursor-pointer overflow-hidden rounded-r-lg"
-                    onClick={prevSlide}
-                  >
-                    <img
-                      src={banners[getSlideIndex(index - currentSlide - 1)].imageUrl}
-                      alt=""
-                      className="h-full w-[95vw] object-cover object-right"
-                      loading="eager"
-                      style={{ transform: 'translate3d(0, 0, 0)' }}
-                    />
-                  </div>
-                )}
-
-                {/* Main slide */}
-                <div
-                  className="absolute inset-0 mx-[16px] cursor-pointer rounded-xl overflow-hidden bg-gray-100"
-                  style={{
-                    transform: 'translate3d(0, 0, 0)',
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden'
-                  }}
-                >
-                  <img
-                    src={banner.imageUrl}
-                    alt="Banner"
-                    className="w-full h-full object-cover pointer-events-none"
-                    loading="eager"
-                    decoding="async"
-                    style={{
-                      transform: 'translate3d(0, 0, 0)',
-                    }}
-                  />
-                </div>
-
-                {/* Next slide peek (right edge) */}
-                {banners.length > 1 && (
-                  <div
-                    className="absolute right-0 top-0 h-full w-[12px] cursor-pointer overflow-hidden rounded-l-lg"
-                    onClick={nextSlide}
-                  >
-                    <img
-                      src={banners[getSlideIndex(index - currentSlide + 1)].imageUrl}
-                      alt=""
-                      className="h-full w-[95vw] object-cover object-left"
-                      loading="eager"
-                      style={{ transform: 'translate3d(0, 0, 0)' }}
-                    />
-                  </div>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Dot Indicators - Below the banner */}
+        {/* Mobile Dot Indicators */}
         {banners.length > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-8 pb-4">
+          <div className="flex items-center justify-center gap-1.5 py-3">
             {banners.map((_, index) => (
               <button
                 key={index}
@@ -276,117 +166,83 @@ const HeroBanner = () => {
                 className="p-0.5"
                 aria-label={`Go to slide ${index + 1}`}
               >
-                {index === currentSlide ? (
-                  <span className="block w-[10px] h-[10px] rotate-45 bg-[#832729] border border-[#832729]" />
-                ) : (
-                  <span className="block w-[8px] h-[8px] rounded-full bg-gray-300" />
-                )}
+                <span
+                  className={`block rounded-full transition-all duration-300 ${
+                    index === currentSlide
+                      ? "w-6 h-[5px] bg-primary"
+                      : "w-[5px] h-[5px] bg-muted"
+                  }`}
+                />
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* ====== DESKTOP LAYOUT - Tanishq Style ====== */}
-      <div className="hidden lg:block relative pt-8 pb-6">
-        <div className="relative h-[380px] xl:h-[420px] 2xl:h-[450px] w-full overflow-hidden">
+      {/* ====== DESKTOP LAYOUT ====== */}
+      <div className="hidden lg:block relative bg-background group pt-1">
+        <div className="relative h-[440px] xl:h-[500px] 2xl:h-[560px] mx-4 overflow-hidden rounded-2xl">
           <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={currentSlide}
               custom={direction}
-              initial={{ x: direction > 0 ? "100%" : "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: direction > 0 ? "-100%" : "100%" }}
-              transition={{ 
-                duration: 0.8,
-                ease: [0.32, 0.72, 0, 1]
-              }}
-              className="absolute inset-0 flex items-center justify-center"
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.2}
-              onDragEnd={(_, info) => {
-                if (info.offset.x > 100) {
-                  prevSlide();
-                } else if (info.offset.x < -100) {
-                  nextSlide();
-                }
-              }}
+              initial={{ x: direction > 0 ? "100%" : "-100%", scale: 1.02 }}
+              animate={{ x: 0, scale: 1 }}
+              exit={{ x: direction > 0 ? "-100%" : "100%", scale: 0.98 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-0 cursor-pointer"
+              onClick={handleBannerClick}
             >
-              {/* Previous slide peek - Left side */}
-              {banners.length > 1 && (
-                <motion.div
-                  className="absolute left-0 top-0 h-full cursor-pointer"
-                  style={{ width: "80px" }}
-                  onClick={prevSlide}
-                  whileHover={{ opacity: 0.7 }}
-                >
-                  <div className="h-full w-full overflow-hidden rounded-r-2xl">
-                    <img
-                      src={banners[getSlideIndex(-1)].imageUrl}
-                      alt=""
-                      className="h-full w-[1400px] object-cover object-right"
-                    />
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Main Center Slide */}
-              <div className="relative h-full flex-1 mx-[140px]">
-                <div
-                  className="absolute inset-0 cursor-grab active:cursor-grabbing rounded-3xl overflow-hidden shadow-lg"
-                  onClick={(e) => {
-                    const target = e.target as HTMLElement;
-                    if (!target.closest('[data-dragging]')) {
-                      handleBannerClick(currentSlide);
-                    }
-                  }}
-                >
-                  <img
-                    src={banners[currentSlide].imageUrl}
-                    alt="Banner"
-                    className="w-full h-full object-cover pointer-events-none"
-                    loading="eager"
-                  />
-                </div>
-              </div>
-
-              {/* Next slide peek - Right side */}
-              {banners.length > 1 && (
-                <motion.div
-                  className="absolute right-0 top-0 h-full cursor-pointer"
-                  style={{ width: "80px" }}
-                  onClick={nextSlide}
-                  whileHover={{ opacity: 0.7 }}
-                >
-                  <div className="h-full w-full overflow-hidden rounded-l-2xl">
-                    <img
-                      src={banners[getSlideIndex(1)].imageUrl}
-                      alt=""
-                      className="h-full w-[1400px] object-cover object-left"
-                    />
-                  </div>
-                </motion.div>
-              )}
+              <img
+                src={banners[currentSlide].imageUrl}
+                alt="Banner"
+                className="w-full h-full object-cover"
+                loading="eager"
+              />
             </motion.div>
           </AnimatePresence>
+
+          {/* Left Arrow */}
+          {banners.length > 1 && (
+            <button
+              onClick={prevSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-background/80 dark:bg-card/80 backdrop-blur-sm hover:bg-background flex items-center justify-center shadow-lg transition-all duration-300 opacity-0 group-hover:opacity-100 hover:scale-105"
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="w-5 h-5 text-foreground/80" />
+            </button>
+          )}
+
+          {/* Right Arrow */}
+          {banners.length > 1 && (
+            <button
+              onClick={nextSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-background/80 dark:bg-card/80 backdrop-blur-sm hover:bg-background flex items-center justify-center shadow-lg transition-all duration-300 opacity-0 group-hover:opacity-100 hover:scale-105"
+              aria-label="Next slide"
+            >
+              <ChevronRight className="w-5 h-5 text-foreground/80" />
+            </button>
+          )}
         </div>
 
-        {/* Diamond Dot Indicators - Desktop - Outside banner */}
+        {/* Dot Indicators */}
         {banners.length > 1 && (
-          <div className="flex items-center justify-center gap-3 pt-4">
+          <div className="flex items-center justify-center gap-2 py-5">
             {banners.map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentSlide(index)}
-                className="p-1 group"
+                onClick={() => {
+                  setDirection(index > currentSlide ? 1 : -1);
+                  setCurrentSlide(index);
+                }}
+                className="group/dot p-1"
                 aria-label={`Go to slide ${index + 1}`}
               >
                 <span
-                  className={`block w-2.5 h-2.5 rotate-45 transition-all duration-300 border ${
+                  className={`block rounded-full transition-all duration-400 ${
                     index === currentSlide
-                      ? "bg-[#832729] border-[#832729] scale-110"
-                      : "bg-transparent border-[#832729]/40 group-hover:border-[#832729]/70 group-hover:bg-[#832729]/20"
+                      ? "w-8 h-2 bg-primary"
+                      : "w-2 h-2 bg-muted-foreground/30 group-hover/dot:bg-muted-foreground/50"
                   }`}
                 />
               </button>
