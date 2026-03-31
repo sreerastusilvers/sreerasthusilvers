@@ -4,7 +4,7 @@ import { Search, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { getAllProducts, Product } from '@/services/productService';
-import logo from '@/assets/logo-new.png';
+import logo from '@/assets/dark.png';
 
 // Define main categories with their subcategories
 const mainCategories = [

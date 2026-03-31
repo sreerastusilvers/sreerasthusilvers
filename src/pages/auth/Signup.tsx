@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, EyeOff, Loader2, Mail, Lock, User, Phone } from 'lucide-react';
 import { toast } from 'sonner';
-import logo from '@/assets/logo-new.png';
+import logo from '@/assets/dark.png';
 
 const Signup = () => {
   const [username, setUsername] = useState('');

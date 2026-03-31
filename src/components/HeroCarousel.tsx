@@ -44,12 +44,15 @@ const slides = [
 const HeroCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
 
   const nextSlide = useCallback(() => {
+    setDirection(1);
     setCurrentSlide((prev) => (prev + 1) % slides.length);
   }, []);
 
   const prevSlide = useCallback(() => {
+    setDirection(-1);
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   }, []);
 
@@ -63,42 +66,36 @@ const HeroCarousel = () => {
     <section
       className="relative min-h-screen w-full overflow-hidden bg-foreground/10"
     >
-      {/* Background Images - All slides rendered, only current one visible */}
+      {/* Background Images - Crossfade only */}
       {slides.map((slide, index) => (
-        <motion.div
+        <div
           key={slide.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: index === currentSlide ? 1 : 0 }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-          className="absolute inset-0 w-full h-full"
+          className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${
+            index === currentSlide ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ zIndex: index === currentSlide ? 1 : 0 }}
         >
-          {/* Background Image with Parallax - Full width no gaps */}
-          <motion.div
-            className="absolute inset-0 w-full h-full parallax-slow"
-            initial={{ scale: 1.05 }}
-            animate={{ scale: index === currentSlide ? 1 : 1.05 }}
-            transition={{ duration: 1.2 }}
-          >
+          <div className="absolute inset-0 w-full h-full">
             <img
               src={slide.image}
               alt="Luxury jewelry collection"
               className="w-full h-full object-cover object-center"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/40 to-transparent" />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       ))}
 
       {/* Content */}
       <div className="relative z-10 px-4 md:px-8 lg:px-16 h-full min-h-screen flex items-center">
         <div className="max-w-2xl py-16 lg:py-0">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={currentSlide}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
-              transition={{ duration: 0.5, staggerChildren: 0.1 }}
+              initial={{ opacity: 0, x: direction * 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: direction * -40 }}
+              transition={{ duration: 0.5 }}
             >
               {/* Eyebrow */}
               <motion.span
@@ -177,7 +174,10 @@ const HeroCarousel = () => {
         {slides.map((_, index) => (
           <button
             key={index}
-            onClick={() => setCurrentSlide(index)}
+            onClick={() => {
+              setDirection(index > currentSlide ? 1 : -1);
+              setCurrentSlide(index);
+            }}
             className={`h-3 rounded-full transition-all focus-gold shadow-md ${
               index === currentSlide
                 ? "bg-primary w-8"

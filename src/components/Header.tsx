@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Search, Heart, ShoppingBag, User, Mic, Gift } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import logo from "../assets/logo-new.png";
+import darkLogo from "../assets/dark.png";
+import whiteLogo from "../assets/white.png";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAllProducts, Product } from "@/services/productService";
@@ -14,6 +16,7 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, userProfile } = useAuth();
+  const { resolvedTheme } = useTheme();
   const { totalItems, toggleCart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -159,7 +162,7 @@ const Header = () => {
           <div className="flex items-center justify-between gap-8 h-[68px]">
             {/* Logo */}
             <a href="/" className="flex items-center flex-shrink-0">
-              <img src={logo} alt="Sreerasthu Silvers" className="h-8 lg:h-10 w-auto" />
+              <img src={resolvedTheme === 'dark' ? darkLogo : whiteLogo} alt="Sreerasthu Silvers" className="h-8 lg:h-10 w-auto" />
             </a>
 
             {/* Search Bar - Premium Style */}

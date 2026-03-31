@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
-import logo from "../assets/mobile-logo.png";
+import darkLogo from "../assets/dark.png";
+import whiteLogo from "../assets/white.png";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const MobileHeader = () => {
   const navigate = useNavigate();
   const { totalItems, toggleCart } = useCart();
   const { user } = useAuth();
+  const { resolvedTheme } = useTheme();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -46,7 +49,7 @@ const MobileHeader = () => {
             <Menu className="w-[24px] h-[24px] text-foreground/80" strokeWidth={1.5} />
           </button>
           <a href="/" className="flex items-center">
-            <img src={logo} alt="Logo" className="h-10 w-auto object-contain" />
+            <img src={resolvedTheme === 'dark' ? darkLogo : whiteLogo} alt="Logo" className="h-10 w-auto object-contain" />
           </a>
         </div>
 

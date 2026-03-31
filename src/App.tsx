@@ -40,7 +40,6 @@ import MobileOrders from "./pages/MobileOrders";
 import OrderDetailsPage from "./pages/OrderDetailsPage";
 import CancelOrderPage from "./pages/CancelOrderPage";
 import ProfileEditPage from "./pages/ProfileEditPage";
-import MobileCategories from "./pages/MobileCategories";
 import MobileSearch from "./pages/MobileSearch";
 import SearchResults from "./pages/SearchResults";
 
@@ -70,8 +69,7 @@ import AdminOrders from "./pages/AdminOrders";
 import AdminDeliveryBoys from "./pages/admin/AdminDeliveryBoys";
 import AdminGiftCards from "./pages/admin/AdminGiftCards";
 import AdminReviews from "./pages/admin/AdminReviews";
-import AdminSettings from "./pages/admin/AdminSettings";
-import WriteReview from "./pages/WriteReview";
+import AdminSettings from "./pages/admin/AdminSettings";import AdminCustomers from './pages/admin/AdminCustomers';import WriteReview from "./pages/WriteReview";
 import ThankYouReview from "./pages/ThankYouReview";
 
 // Delivery Partner Pages
@@ -110,9 +108,6 @@ const App = () => {
               
               {/* Mobile Cart Page */}
               <Route path="/cart" element={<MobileCart />} />
-              
-              {/* Mobile Categories Page */}
-              <Route path="/categories" element={<MobileCategories />} />
               
               {/* Mobile Search Pages */}
               <Route path="/search" element={<MobileSearch />} />
@@ -219,6 +214,7 @@ const App = () => {
                 <Route path="gift-cards" element={<AdminGiftCards />} />
                 <Route path="reviews" element={<AdminReviews />} />
                 <Route path="settings" element={<AdminSettings />} />
+                <Route path="customers" element={<AdminCustomers />} />
               </Route>
 
               {/* Delivery Partner Routes */}

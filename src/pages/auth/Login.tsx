@@ -15,7 +15,7 @@ import { Eye, EyeOff, Loader2, Mail, Lock, User, Truck, X, RefreshCw, CheckCircl
 import { toast } from 'sonner';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/config/firebase';
-import logo from '@/assets/logo-new.png';
+import logo from '@/assets/dark.png';
 
 type LoginTab = 'user' | 'delivery';
 

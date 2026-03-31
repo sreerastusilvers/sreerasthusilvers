@@ -8,7 +8,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { getProductReviews, getProductReviewStats, hasUserPurchasedProduct, hasUserReviewedProduct, Review } from "@/services/reviewService";
-import logo from "@/assets/logo-new.png";
+import logo from "@/assets/dark.png";
 import Header from "@/components/Header";
 import MobileHeader from "@/components/MobileHeader";
 import MobileSearchBar from "@/components/MobileSearchBar";
@@ -18,7 +18,7 @@ import CategoryIconNav from "@/components/CategoryIconNav";
 const ProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, toggleCart } = useCart();
   const { toast } = useToast();
   const { user } = useAuth();
   const [quantity, setQuantity] = useState(1);
@@ -161,6 +161,9 @@ const ProductDetail = () => {
         title: "Added to cart",
         description: `${product.title} (${quantity}) has been added to your cart.`,
       });
+
+      // Open cart drawer/sidebar
+      toggleCart();
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({
@@ -629,10 +632,10 @@ const ProductDetail = () => {
                   <motion.button
                     onClick={handleAddToCart}
                     whileTap={{ scale: 0.95 }}
-                    className={`flex-1 min-w-[180px] px-8 py-3.5 font-medium text-sm rounded-full transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 min-w-[160px] px-6 py-3.5 font-medium text-sm rounded-full transition-all flex items-center justify-center gap-2 border-2 ${
                       addedToCart
-                        ? "bg-green-500 text-white"
-                        : "bg-foreground text-background hover:bg-foreground/90"
+                        ? "bg-green-500 text-white border-green-500"
+                        : "bg-background text-foreground border-border hover:bg-muted"
                     }`}
                   >
                     {addedToCart ? (
@@ -646,6 +649,15 @@ const ProductDetail = () => {
                         Add to Cart
                       </>
                     )}
+                  </motion.button>
+
+                  {/* Buy Now Button */}
+                  <motion.button
+                    onClick={handleBuyNow}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex-1 min-w-[160px] px-6 py-3.5 font-semibold text-sm rounded-full bg-foreground text-background hover:bg-foreground/90 transition-all flex items-center justify-center gap-2"
+                  >
+                    Buy Now
                   </motion.button>
                 </div>
 

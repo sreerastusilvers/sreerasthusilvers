@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Gift, Search, Plus, X, Loader2, CreditCard, Clock, 
   CheckCircle2, XCircle, Trash2, User, Mail, AlertCircle,
-  IndianRupee, Calendar, RefreshCcw, Copy, Check
+  IndianRupee, Calendar, RefreshCcw, Copy, Check, LayoutGrid, List
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,6 +74,7 @@ const AdminGiftCards: React.FC = () => {
   // Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired' | 'used'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Load users and gift cards
@@ -274,15 +275,15 @@ const AdminGiftCards: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gift Cards</h1>
-          <p className="text-sm text-gray-500 mt-1">Create and manage gift cards for users</p>
+          <h1 className="text-2xl font-bold text-gray-900">Coupons</h1>
+          <p className="text-sm text-gray-500 mt-1">Create and manage coupons for users</p>
         </div>
         <Button
           onClick={() => setShowForm(!showForm)}
           className="bg-pink-600 hover:bg-pink-700 text-white gap-2"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'New Gift Card'}
+          {showForm ? 'Cancel' : 'New Coupon'}
         </Button>
       </div>
 
@@ -335,7 +336,7 @@ const AdminGiftCards: React.FC = () => {
             <div className="bg-white rounded-xl border-2 border-pink-200 p-6 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Gift className="w-5 h-5 text-pink-600" />
-                Create Gift Card
+                Create Coupon
               </h3>
 
               {/* User Search */}
@@ -461,7 +462,7 @@ const AdminGiftCards: React.FC = () => {
                 {formLoading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</>
                 ) : (
-                  <><Gift className="w-4 h-4" /> Create Gift Card</>
+                  <><Gift className="w-4 h-4" /> Create Coupon</>
                 )}
               </Button>
             </div>
@@ -469,7 +470,7 @@ const AdminGiftCards: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Search & Filter */}
+      {/* Search, Filter & View Toggle */}
       <div className="flex gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -481,30 +482,43 @@ const AdminGiftCards: React.FC = () => {
             className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-pink-500 outline-none bg-white"
           />
         </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'expired' | 'used')}
+          className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-pink-500 outline-none"
+        >
+          <option value="all">All</option>
+          <option value="active">Active</option>
+          <option value="expired">Expired</option>
+          <option value="used">Used</option>
+        </select>
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-          {(['all', 'active', 'expired', 'used'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
-                filterStatus === status ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            title="Grid view"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            title="List view"
+          >
+            <List className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      {/* Gift Cards List */}
-      <div className="space-y-3">
+      {/* Coupons Grid/List */}
+      <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4' : 'space-y-3'}>
         {filteredCards.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center col-span-full">
             <div className="w-16 h-16 bg-gray-50 rounded-full mx-auto mb-4 flex items-center justify-center">
               <Gift className="w-8 h-8 text-gray-300" />
             </div>
-            <p className="text-sm font-medium text-gray-700">No gift cards found</p>
-            <p className="text-xs text-gray-400 mt-1">Create your first gift card using the button above</p>
+            <p className="text-sm font-medium text-gray-700">No coupons found</p>
+            <p className="text-xs text-gray-400 mt-1">Create your first coupon using the button above</p>
           </div>
         ) : (
           filteredCards.map((card) => {

@@ -266,6 +266,13 @@ service cloud.firestore {
                request.resource.data.cancelledBy == 'user';
       }
       
+      // Helper: Check if customer is requesting a return for a delivered order
+      function isValidReturnRequest() {
+        let currentStatus = resource.data.status;
+        let newStatus = request.resource.data.status;
+        return currentStatus == 'delivered' && newStatus == 'returnRequested';
+      }
+      
       // READ: Admins see all; Customers see their orders; Delivery boys see assigned orders
       allow read: if isAuthenticated() && 
         (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || isAdmin());
@@ -277,9 +284,11 @@ service cloud.firestore {
       // UPDATE: Complex rules for different roles
       // - Admin can update anything
       // - Customers can cancel their own orders (pending/processing only)
+      // - Customers can request returns for delivered orders
       // - Delivery boys can only update their assigned orders with valid status transitions
       allow update: if isAdmin() || 
         (isOrderOwner() && isValidCancellation()) ||
+        (isOrderOwner() && isValidReturnRequest()) ||
         (isAssignedDeliveryBoy() && isValidStatusTransition() && isValidOTPUpdate());
       
       // DELETE: Only admin can delete orders

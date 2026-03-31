@@ -106,7 +106,9 @@ const ShoppingCart = () => {
                 </div>
               </div>
 
-              {/* Search Bar */}
+              {/* Search Bar & Step Timeline - only show when cart has items */}
+              {user && items.length > 0 && !loading && (
+              <>
               <div className="px-4 pb-3">
                 <div className="relative flex items-center">
                   <Search className="absolute left-3 text-muted-foreground" size={20} strokeWidth={1.5} />
@@ -207,6 +209,8 @@ const ShoppingCart = () => {
                   </div>
                 </div>
               </div>
+              </>
+              )}
             </div>
 
             {/* ─── CART CONTENT (everything scrolls together) ─── */}

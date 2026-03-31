@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToUserOrders, Order } from '@/services/orderService';
+import Header from '@/components/Header';
+import MobileHeader from '@/components/MobileHeader';
+import MobileSearchBar from '@/components/MobileSearchBar';
+import CategoryIconNav from '@/components/CategoryIconNav';
+import Footer from '@/components/Footer';
 import {
   Loader2,
   Package,
@@ -138,8 +143,19 @@ const MobileOrders = () => {
 
     return (
     <div className="min-h-screen bg-gray-50 pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* Header */}
-      <div className="sticky top-0 bg-white z-50 px-4 py-4 flex items-center shadow-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      {/* Desktop Header + Nav */}
+      <div className="hidden lg:block">
+        <Header />
+        <CategoryIconNav />
+      </div>
+      {/* Mobile Header */}
+      <div className="lg:hidden">
+        <MobileHeader />
+        <MobileSearchBar />
+      </div>
+      
+      {/* Page Header */}
+      <div className="sticky top-16 bg-white z-40 px-4 py-4 flex items-center shadow-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>
         <button
           onClick={() => navigate('/account')}
           className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -150,7 +166,7 @@ const MobileOrders = () => {
       </div>
 
       {/* Order Tabs */}
-      <div className="bg-white border-b border-gray-200 px-4 pt-4 sticky top-[60px] z-40" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <div className="bg-white border-b border-gray-200 px-4 pt-4 sticky top-[120px] z-30" style={{ fontFamily: "'Poppins', sans-serif" }}>
         <div className="flex gap-2">
           <button
             onClick={() => setSelectedOrderTab('current')}
@@ -182,9 +198,18 @@ const MobileOrders = () => {
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="text-center py-8">
-            <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-600">No orders found</p>
+          <div className="text-center py-12">
+            <Package className="w-14 h-14 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-base font-semibold text-gray-800 mb-1">No orders yet!</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              {selectedOrderTab === 'current' ? 'Your bag is waiting — explore our silver collection!' : 'Discover stunning silver jewellery crafted just for you'}
+            </p>
+            <button
+              onClick={() => navigate('/category/jewellery')}
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-full hover:bg-gray-800 transition-colors"
+            >
+              ✨ Start Shopping
+            </button>
           </div>
         ) : (
           filteredOrders.map((order) => (
@@ -230,6 +255,7 @@ const MobileOrders = () => {
           ))
         )}
       </div>
+      <Footer />
     </div>
   );
 };

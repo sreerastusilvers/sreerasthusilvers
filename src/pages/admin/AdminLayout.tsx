@@ -1,7 +1,7 @@
 import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import logo from '@/assets/logo-new.png';
+import logo from '@/assets/dark.png';
 import {
   LayoutDashboard,
   Package,
@@ -17,6 +17,7 @@ import {
   Gift,
   Star,
   Settings,
+  Users2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -29,27 +30,35 @@ import {
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [contentMediaOpen, setContentMediaOpen] = React.useState(false);
   const { userProfile, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
     navigate('/admin');
   };
 
-  const navItems = [
+  const contentMediaPaths = ['/admin/banners', '/admin/showcases', '/admin/testimonials', '/admin/gallery', '/admin/reviews'];
+  const isContentMediaActive = contentMediaPaths.some(p => location.pathname.startsWith(p));
+
+  const mainNavItems = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/products', icon: Package, label: 'Products' },
     { path: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
     { path: '/admin/delivery-boys', icon: Truck, label: 'Delivery Boys' },
+    { path: '/admin/customers', icon: Users2, label: 'Customers' },
+    { path: '/admin/gift-cards', icon: Gift, label: 'Coupons' },
+    { path: '/admin/settings', icon: Settings, label: 'Settings' },
+  ];
+
+  const contentMediaItems = [
     { path: '/admin/banners', icon: Layers, label: 'Banners' },
     { path: '/admin/showcases', icon: Layers, label: 'Showcases' },
     { path: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials' },
     { path: '/admin/gallery', icon: Image, label: 'Gallery' },
-    { path: '/admin/gift-cards', icon: Gift, label: 'Gift Cards' },
     { path: '/admin/reviews', icon: Star, label: 'Reviews' },
-    { path: '/admin/media', icon: Image, label: 'Media' },
-    { path: '/admin/settings', icon: Settings, label: 'Settings' },
   ];
 
   return (
@@ -94,7 +103,8 @@ const AdminLayout = () => {
               display: none;
             }
           `}</style>
-          {navItems.map((item) => (
+          {/* Main nav items (all except Settings) */}
+          {mainNavItems.slice(0, -1).map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -111,7 +121,62 @@ const AdminLayout = () => {
               <span>{item.label}</span>
             </NavLink>
           ))}
-          
+
+          {/* Content & Media Dropdown */}
+          <div>
+            <button
+              onClick={() => setContentMediaOpen(!contentMediaOpen)}
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${
+                isContentMediaActive
+                  ? 'bg-[#FFF9E6] text-amber-700 font-medium'
+                  : 'text-gray-700 hover:bg-[#FFF9E6]/50 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Image className="h-5 w-5" />
+                <span>Content & Media</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${contentMediaOpen || isContentMediaActive ? 'rotate-180' : ''}`} />
+            </button>
+            {(contentMediaOpen || isContentMediaActive) && (
+              <div className="ml-4 mt-1 space-y-1 border-l-2 border-[#F5EFE6] pl-3">
+                {contentMediaItems.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                        isActive
+                          ? 'bg-[#FFF9E6] text-amber-700 font-medium'
+                          : 'text-gray-600 hover:bg-[#FFF9E6]/50 hover:text-gray-900'
+                      }`
+                    }
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Settings */}
+          <NavLink
+            to={mainNavItems[mainNavItems.length - 1].path}
+            onClick={() => setSidebarOpen(false)}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-[#FFF9E6] text-amber-700 font-medium'
+                  : 'text-gray-700 hover:bg-[#FFF9E6]/50 hover:text-gray-900'
+              }`
+            }
+          >
+            <Settings className="h-5 w-5" />
+            <span>Settings</span>
+          </NavLink>
+
           {/* Logout Button - Inside Scroll Area */}
           <div className="pt-4 mt-4 border-t border-[#F5EFE6]">
             <button

@@ -23,7 +23,12 @@ import {
   AlertCircle,
   LayoutGrid,
   List,
+  UserCheck,
+  ChevronRight,
+  Clock,
 } from 'lucide-react';
+import { db } from '@/config/firebase';
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -79,7 +84,11 @@ const AdminDeliveryBoys = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  
+  const [profileDeliveryBoy, setProfileDeliveryBoy] = useState<DeliveryBoy | null>(null);
+  const [profileOrders, setProfileOrders] = useState<any[]>([]);
+  const [profileRatings, setProfileRatings] = useState<any[]>([]);
+  const [profileLoading, setProfileLoading] = useState(false);
+
   // Stats
   const [stats, setStats] = useState({
     total: 0,
@@ -120,6 +129,24 @@ const AdminDeliveryBoys = () => {
 
     return () => unsubscribe();
   }, []);
+
+  const openProfile = async (boy: DeliveryBoy) => {
+    setProfileDeliveryBoy(boy);
+    setProfileLoading(true);
+    try {
+      const [ordersSnap, ratingsSnap] = await Promise.all([
+        getDocs(query(collection(db, 'orders'), where('deliveryBoyId', '==', boy.id), orderBy('createdAt', 'desc'))),
+        getDocs(query(collection(db, 'deliveryRatings'), where('deliveryBoyId', '==', boy.id), orderBy('createdAt', 'desc'))),
+      ]);
+      setProfileOrders(ordersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setProfileRatings(ratingsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch {
+      setProfileOrders([]);
+      setProfileRatings([]);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -523,16 +550,25 @@ const AdminDeliveryBoys = () => {
                   <span><Package className="h-3 w-3 inline mr-1" />{deliveryBoy.currentOrdersCount} orders</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                <Button variant="ghost" size="sm" onClick={() => handleEdit(deliveryBoy)} className="text-blue-600 hover:bg-blue-50 flex-1">
-                  <Edit className="h-4 w-4 mr-1" /> Edit
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(deliveryBoy)} className={deliveryBoy.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}>
-                  {deliveryBoy.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => { setSelectedDeliveryBoy(deliveryBoy); setShowDeleteDialog(true); }} className="text-red-600 hover:bg-red-50">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <button
+                  onClick={() => openProfile(deliveryBoy)}
+                  className="w-full py-1.5 text-xs font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <UserCheck className="h-3.5 w-3.5" />
+                  View Profile & Deliveries
+                </button>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(deliveryBoy)} className="text-blue-600 hover:bg-blue-50 flex-1">
+                    <Edit className="h-4 w-4 mr-1" /> Edit
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(deliveryBoy)} className={deliveryBoy.isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}>
+                    {deliveryBoy.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setSelectedDeliveryBoy(deliveryBoy); setShowDeleteDialog(true); }} className="text-red-600 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -595,6 +631,7 @@ const AdminDeliveryBoys = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => openProfile(deliveryBoy)} className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"><UserCheck className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="sm" onClick={() => handleEdit(deliveryBoy)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"><Edit className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(deliveryBoy)} className={deliveryBoy.isActive ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50' : 'text-green-600 hover:text-green-700 hover:bg-green-50'}>
                           {deliveryBoy.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
@@ -846,6 +883,153 @@ const AdminDeliveryBoys = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Profile Drawer */}
+      <AnimatePresence>
+        {profileDeliveryBoy && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black z-40"
+              onClick={() => setProfileDeliveryBoy(null)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col"
+            >
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                <h2 className="text-lg font-semibold">Delivery Boy Profile</h2>
+                <button onClick={() => setProfileDeliveryBoy(null)} className="p-1 rounded-full hover:bg-white/20 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {/* Profile Info */}
+                <div className="px-6 py-5 flex items-center gap-4 border-b border-gray-100">
+                  {profileDeliveryBoy.profileImage ? (
+                    <img src={profileDeliveryBoy.profileImage} alt={profileDeliveryBoy.name} className="h-16 w-16 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                      <span className="text-blue-600 text-xl font-bold">{profileDeliveryBoy.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{profileDeliveryBoy.name}</h3>
+                    <p className="text-sm text-gray-500 capitalize">{profileDeliveryBoy.vehicleType}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                      <span className="text-sm font-medium text-gray-700">{profileDeliveryBoy.rating.toFixed(1)}</span>
+                      <span className="text-xs text-gray-400">({profileDeliveryBoy.totalDeliveries} deliveries)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                <div className="px-6 py-4 space-y-2 border-b border-gray-100">
+                  <div className="flex items-center gap-3 text-sm text-gray-600"><Mail className="h-4 w-4 text-gray-400" />{profileDeliveryBoy.email}</div>
+                  <div className="flex items-center gap-3 text-sm text-gray-600"><Phone className="h-4 w-4 text-gray-400" />{profileDeliveryBoy.phone}</div>
+                  {profileDeliveryBoy.address && <div className="flex items-center gap-3 text-sm text-gray-600"><MapPin className="h-4 w-4 text-gray-400" />{profileDeliveryBoy.address}</div>}
+                </div>
+
+                {/* Stats Row */}
+                <div className="px-6 py-4 grid grid-cols-3 gap-3 border-b border-gray-100">
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xl font-bold text-blue-600">{profileDeliveryBoy.totalDeliveries}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Deliveries</p>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-xl font-bold text-yellow-600">{profileDeliveryBoy.rating.toFixed(1)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Avg Rating</p>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <p className="text-xl font-bold text-green-600">{profileDeliveryBoy.currentOrdersCount}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Active</p>
+                  </div>
+                </div>
+
+                {profileLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                  </div>
+                ) : (
+                  <>
+                    {/* Recent Deliveries */}
+                    <div className="px-6 py-4 border-b border-gray-100">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <Package className="h-4 w-4 text-gray-500" />
+                        Recent Deliveries ({profileOrders.length})
+                      </h4>
+                      {profileOrders.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">No deliveries yet</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {profileOrders.slice(0, 10).map((ord) => (
+                            <div key={ord.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                              <div>
+                                <p className="text-xs font-medium text-gray-900">ORD-{ord.orderId || ord.id.slice(0, 6).toUpperCase()}</p>
+                                <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                                  <Clock className="h-3 w-3" />
+                                  {ord.createdAt?.seconds
+                                    ? new Date(ord.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                                    : '—'}
+                                </p>
+                              </div>
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                ord.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                                ord.status === 'outForDelivery' ? 'bg-blue-100 text-blue-700' :
+                                ord.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {ord.status === 'outForDelivery' ? 'Out for Delivery' : ord.status?.charAt(0).toUpperCase() + ord.status?.slice(1)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Customer Ratings */}
+                    <div className="px-6 py-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <Star className="h-4 w-4 text-yellow-400" />
+                        Customer Ratings ({profileRatings.length})
+                      </h4>
+                      {profileRatings.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">No ratings yet</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {profileRatings.map((r) => (
+                            <div key={r.id} className="p-3 border border-gray-100 rounded-lg">
+                              <div className="flex items-center gap-1 mb-1">
+                                {[1,2,3,4,5].map(n => (
+                                  <Star key={n} className={`h-3.5 w-3.5 ${n <= r.rating ? 'text-yellow-400 fill-current' : 'text-gray-200'}`} />
+                                ))}
+                                <span className="text-xs text-gray-400 ml-1">
+                                  {r.createdAt?.seconds
+                                    ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                                    : ''}
+                                </span>
+                              </div>
+                              {r.comment && <p className="text-xs text-gray-600">{r.comment}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

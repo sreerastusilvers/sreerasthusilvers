@@ -5,12 +5,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/config/firebase';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
+import CategoryIconNav from '@/components/CategoryIconNav';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn } from '@/services/orderService';
 import { uploadToCloudinary, UploadProgress } from '@/services/cloudinaryService';
 import { toast } from 'sonner';
-import logo from '@/assets/logo-new.png';
+import logo from '@/assets/dark.png';
 import {
   Loader2,
   User,
@@ -708,8 +709,6 @@ const AccountPage = () => {
     { id: 'editProfile', label: 'Edit Profile', icon: Edit, path: '/account/profile-edit' },
     { id: 'addresses', label: 'Your addresses', icon: MapPin, path: '/account/addresses' },
     { id: 'security', label: 'Login & security', icon: Shield, path: '/security' },
-    { id: 'payments', label: 'My Jewellery Journey', icon: CreditCard, path: '/purchase-summary' },
-    { id: 'archived', label: 'Archived orders', icon: Package, path: null },
     { id: 'saved', label: 'Saved items', icon: Heart, path: '/wishlist' },
     { id: 'support', label: 'Customer support', icon: MessageCircle, path: '/customer-support' },
     { id: 'logout', label: 'Log out', icon: LogOut, path: null, action: 'logout' },
@@ -1044,21 +1043,6 @@ const AccountPage = () => {
               </div>
             )}
 
-            {selectedMenu === 'payments' && (
-              <div className="bg-card rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-foreground mb-2">My Jewellery Journey</h3>
-                <p className="text-sm text-muted-foreground mb-4">Track your investment and order history with exclusive rewards.</p>
-                <Button onClick={() => navigate('/purchase-summary')} className="w-full">View Summary</Button>
-              </div>
-            )}
-
-            {selectedMenu === 'archived' && (
-              <div className="bg-card rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-foreground mb-2">Archived Orders</h3>
-                <p className="text-sm text-muted-foreground">View your archived orders.</p>
-              </div>
-            )}
-
             {selectedMenu === 'support' && (
               <div className="bg-card rounded-lg shadow-sm p-4">
                 <h3 className="text-lg font-bold text-foreground mb-2">Customer Support</h3>
@@ -1241,7 +1225,8 @@ const AccountPage = () => {
   return (
     <>
       <Header />
-      <div className="min-h-screen pt-16 bg-muted" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <CategoryIconNav />
+      <div className="pt-6 bg-muted" style={{ fontFamily: "'Poppins', sans-serif" }}>
         <div className="container mx-auto px-6 pb-8">
           <div className="grid grid-cols-12 gap-6 -mt-4">
             {/* Sidebar */}
@@ -1250,7 +1235,8 @@ const AccountPage = () => {
                 {/* User Info */}
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-foreground mb-1">Your Account</h2>
-                  <p className="text-sm text-muted-foreground">{userProfile?.username || 'Alex John'}, Email: {userProfile?.email || user?.email}</p>
+                  <p className="text-sm text-muted-foreground font-medium" style={{ wordBreak: 'break-all' }}>{userProfile?.username || 'User'}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5" style={{ wordBreak: 'break-all' }}>{userProfile?.email || user?.email}</p>
                 </div>
 
                 {/* Menu Items */}
@@ -1312,7 +1298,14 @@ const AccountPage = () => {
                     ) : filteredOrders.length === 0 ? (
                       <div className="text-center py-12">
                         <Package className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-                        <p className="text-muted-foreground">No orders found</p>
+                        <h3 className="text-lg font-semibold text-foreground mb-1">No orders yet!</h3>
+                        <p className="text-sm text-muted-foreground mb-6">Discover stunning silver jewellery crafted just for you</p>
+                        <button
+                          onClick={() => navigate('/category/jewellery')}
+                          className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                        >
+                          ✨ Start Shopping
+                        </button>
                       </div>
                     ) : (
                       filteredOrders.map((order) => (
@@ -1411,21 +1404,6 @@ const AccountPage = () => {
                   <h3 className="text-xl font-bold text-foreground mb-4">Login & Security</h3>
                   <p className="text-muted-foreground mb-4">Manage your login credentials and security settings.</p>
                   <Button onClick={() => navigate('/security')}>Manage Security</Button>
-                </div>
-              )}
-
-              {selectedMenu === 'payments' && (
-                <div className="bg-card rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-foreground mb-4">My Jewellery Journey</h3>
-                  <p className="text-muted-foreground mb-4">Track your investment and order history with exclusive rewards.</p>
-                  <Button onClick={() => navigate('/purchase-summary')}>View Summary</Button>
-                </div>
-              )}
-
-              {selectedMenu === 'archived' && (
-                <div className="bg-card rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-foreground mb-4">Archived Orders</h3>
-                  <p className="text-muted-foreground">View your archived orders.</p>
                 </div>
               )}
 

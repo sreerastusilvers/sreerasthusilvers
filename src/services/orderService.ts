@@ -833,16 +833,14 @@ export const requestReturn = async (
     }
 
     // Check if delivered within 7 days (168 hours)
-    if (!orderData.deliveredAt) {
-      throw new Error('Delivery date not found');
-    }
+    if (orderData.deliveredAt) {
+      const deliveredDate = orderData.deliveredAt.toDate();
+      const now = new Date();
+      const hoursSinceDelivery = (now.getTime() - deliveredDate.getTime()) / (1000 * 60 * 60);
 
-    const deliveredDate = orderData.deliveredAt.toDate();
-    const now = new Date();
-    const hoursSinceDelivery = (now.getTime() - deliveredDate.getTime()) / (1000 * 60 * 60);
-
-    if (hoursSinceDelivery > 168) {
-      throw new Error('Return window has expired. Returns are only accepted within 7 days of delivery.');
+      if (hoursSinceDelivery > 168) {
+        throw new Error('Return window has expired. Returns are only accepted within 7 days of delivery.');
+      }
     }
 
     const timestamp = Timestamp.now();

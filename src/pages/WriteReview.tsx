@@ -1,7 +1,8 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Star, X, Loader2, Camera, Video, ArrowLeft } from 'lucide-react';
+import { Star, X, Loader2, Camera, Video, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   createReview, 
   uploadReviewImages, 
@@ -15,6 +16,10 @@ interface LocationState {
   productName: string;
   productImage: string;
 }
+
+const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+const ratingColors = ['', 'text-red-500', 'text-orange-500', 'text-amber-500', 'text-lime-500', 'text-emerald-500'];
+const ratingBg = ['', 'bg-red-50 border-red-200', 'bg-orange-50 border-orange-200', 'bg-amber-50 border-amber-200', 'bg-lime-50 border-lime-200', 'bg-emerald-50 border-emerald-200'];
 
 const WriteReview = () => {
   const navigate = useNavigate();
@@ -32,7 +37,6 @@ const WriteReview = () => {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    // Verify user has purchased the product
     const verifyPurchase = async () => {
       if (!user || !productId) {
         navigate('/');
@@ -60,16 +64,12 @@ const WriteReview = () => {
     const validFiles = files.filter(file => {
       const isImage = file.type.startsWith('image/');
       const isUnder5MB = file.size <= 5 * 1024 * 1024;
-      
       if (!isImage) toast.error(`${file.name} is not an image`);
       if (!isUnder5MB) toast.error(`${file.name} is larger than 5MB`);
-      
       return isImage && isUnder5MB;
     });
     
     setImages(prev => [...prev, ...validFiles]);
-    
-    // Create previews
     validFiles.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -82,27 +82,11 @@ const WriteReview = () => {
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    const isVideo = file.type.startsWith('video/');
-    const isUnder200MB = file.size <= 200 * 1024 * 1024;
-    
-    if (!isVideo) {
-      toast.error('Please upload a video file');
-      return;
-    }
-    
-    if (!isUnder200MB) {
-      toast.error('Video must be under 200MB');
-      return;
-    }
-    
+    if (!file.type.startsWith('video/')) { toast.error('Please upload a video file'); return; }
+    if (file.size > 200 * 1024 * 1024) { toast.error('Video must be under 200MB'); return; }
     setVideo(file);
-    
-    // Create preview
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setVideoPreview(reader.result as string);
-    };
+    reader.onloadend = () => setVideoPreview(reader.result as string);
     reader.readAsDataURL(file);
   };
 
@@ -111,63 +95,34 @@ const WriteReview = () => {
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const removeVideo = () => {
-    setVideo(null);
-    setVideoPreview('');
-  };
-
-  const getRatingText = () => {
-    if (rating === 0) return '';
-    if (rating === 1) return 'Was Poor!';
-    if (rating === 2) return 'Was Fair!';
-    if (rating === 3) return 'Was Good!';
-    if (rating === 4) return 'Very Good!';
-    if (rating === 5) return 'Excellent!';
-    return '';
-  };
+  const removeVideo = () => { setVideo(null); setVideoPreview(''); };
 
   const handleSubmit = async () => {
-    if (!user || !productId) {
-      toast.error('Please login to submit a review');
-      return;
-    }
-    
-    if (rating === 0) {
-      toast.error('Please select a rating');
-      return;
-    }
-    
-    if (!reviewText.trim()) {
-      toast.error('Please write your review');
-      return;
-    }
+    if (!user || !productId) { toast.error('Please login to submit a review'); return; }
+    if (rating === 0) { toast.error('Please select a rating'); return; }
+    if (!reviewText.trim()) { toast.error('Please write your review'); return; }
     
     try {
       setUploading(true);
       
-      // Upload images (gracefully handle CORS/upload failures)
       let imageUrls: string[] = [];
       if (images.length > 0) {
         try {
           imageUrls = await uploadReviewImages(images, user.uid, productId);
-        } catch (uploadError) {
-          console.warn('Image upload failed, submitting review without images:', uploadError);
+        } catch {
           toast.error('Images could not be uploaded, but your review will still be submitted.');
         }
       }
       
-      // Upload video (gracefully handle failures)
       let videoUrl: string | undefined;
       if (video) {
         try {
           videoUrl = await uploadReviewVideo(video, user.uid, productId);
-        } catch (uploadError) {
-          console.warn('Video upload failed, submitting review without video:', uploadError);
+        } catch {
           toast.error('Video could not be uploaded, but your review will still be submitted.');
         }
       }
       
-      // Create review
       await createReview({
         productId,
         productName: productName || 'Product',
@@ -179,17 +134,10 @@ const WriteReview = () => {
         images: imageUrls,
         ...(videoUrl ? { videoUrl } : {}),
         isVerifiedPurchase: true,
-        status: 'pending', // Will be approved by admin
+        status: 'pending',
       });
       
-      // Navigate to thank you page
-      navigate('/thank-you-review', {
-        state: {
-          productId,
-          productName,
-          productImage,
-        }
-      });
+      navigate('/thank-you-review', { state: { productId, productName, productImage } });
     } catch (error) {
       console.error('Error submitting review:', error);
       toast.error('Failed to submit review. Please try again.');
@@ -198,189 +146,212 @@ const WriteReview = () => {
     }
   };
 
-  if (!productId || !user) {
-    return null;
-  }
+  if (!productId || !user) return null;
+
+  const activeRating = hoverRating || rating;
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-[#FFFBF5] to-white" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Header */}
-      <div className="px-4 py-4 border-b flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3.5 flex items-center gap-3 shadow-sm">
         <button
           onClick={() => navigate(-1)}
-          className="text-gray-700"
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-700"
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-bold">Write a Review</h1>
+        <div>
+          <h1 className="text-base font-semibold text-gray-900">Write a Review</h1>
+          <p className="text-xs text-gray-400">Your feedback matters</p>
+        </div>
       </div>
 
-      <div className="px-4 py-4 space-y-4">
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-6 pb-32">
         {/* Product Card */}
-        <div className="flex items-center gap-3 py-2">
-          <img
-            src={productImage}
-            alt={productName}
-            className="w-16 h-16 object-cover rounded-xl"
-          />
-          <div>
-            <h2 className="font-semibold text-base">{productName}</h2>
-            <p className="text-sm text-gray-500">Share your experience</p>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
+        >
+          <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 border border-gray-100">
+            <img src={productImage} alt={productName} className="w-full h-full object-cover" />
           </div>
-        </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-amber-600 font-medium uppercase tracking-wide mb-0.5">Reviewing</p>
+            <h2 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">{productName}</h2>
+            <div className="flex items-center gap-1 mt-1">
+              <CheckCircle2 size={12} className="text-emerald-500" />
+              <p className="text-xs text-emerald-600 font-medium">Verified Purchase</p>
+            </div>
+          </div>
+        </motion.div>
 
-        {/* Rate this product */}
-        <div className="py-4">
-          <h3 className="font-semibold mb-3">Rate this product</h3>
-          <div className="flex gap-2">
+        {/* Rating Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm"
+        >
+          <p className="text-sm font-semibold text-gray-900 mb-4">Rate this product</p>
+          <div className="flex justify-center gap-3 mb-4">
             {[1, 2, 3, 4, 5].map((star) => (
-              <button
+              <motion.button
                 key={star}
                 onClick={() => setRating(star)}
                 onMouseEnter={() => setHoverRating(star)}
                 onMouseLeave={() => setHoverRating(0)}
-                className="transition-transform hover:scale-110"
+                whileTap={{ scale: 0.85 }}
+                className="transition-transform"
               >
                 <Star
-                  size={44}
+                  size={40}
                   strokeWidth={1.5}
-                  className={`${
-                    star <= (hoverRating || rating)
-                      ? 'fill-gray-300 text-gray-400'
-                      : 'fill-none text-gray-300'
+                  className={`transition-all duration-150 ${
+                    star <= activeRating
+                      ? 'fill-amber-400 text-amber-400 drop-shadow-sm'
+                      : 'fill-none text-gray-200'
                   }`}
                 />
-              </button>
+              </motion.button>
             ))}
           </div>
-        </div>
 
-        {/* Write a Review */}
-        <div className="py-4">
-          <h3 className="font-semibold mb-3">Write a Review</h3>
+          <AnimatePresence mode="wait">
+            {activeRating > 0 && (
+              <motion.div
+                key={activeRating}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.15 }}
+                className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium w-fit mx-auto ${ratingBg[activeRating]}`}
+              >
+                <span className={ratingColors[activeRating]}>{ratingLabels[activeRating]}!</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Review Text */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm"
+        >
+          <p className="text-sm font-semibold text-gray-900 mb-3">Your Experience</p>
           <textarea
             value={reviewText}
             onChange={(e) => setReviewText(e.target.value)}
-            placeholder="Add description about the product"
-            className="w-full h-32 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 text-sm"
+            placeholder="Share what you loved or didn't love about this product. Would you recommend it to others?"
+            className="w-full h-36 p-4 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent text-sm text-gray-800 placeholder:text-gray-400 transition-all"
             maxLength={1000}
           />
-        </div>
+          <div className="flex justify-end mt-1.5">
+            <span className="text-xs text-gray-400">{reviewText.length}/1000</span>
+          </div>
+        </motion.div>
 
         {/* Photos & Video */}
-        <div className="py-2">
-          <div className="space-y-3 mb-4">
-            <h4 className="font-semibold text-sm">Photos & Video</h4>
-            <p className="text-xs text-gray-500">Capture and add your product experience!</p>
-
-            {/* Upload Buttons Side by Side */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Add Photos Button */}
-              <label className="block">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  disabled={images.length >= 4}
-                />
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-400 transition-colors h-full">
-                  <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
-                    <Camera size={20} className="text-gray-500" />
-                  </div>
-                  <div className="text-center">
-                    <p className="font-medium text-sm">Add photos</p>
-                    <p className="text-xs text-gray-500">(Up to 4)</p>
-                  </div>
-                </div>
-              </label>
-
-              {/* Add Video Button */}
-              <label className="block">
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoUpload}
-                  className="hidden"
-                  disabled={!!video}
-                />
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gray-400 transition-colors h-full">
-                  <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
-                    <Video size={20} className="text-gray-500" />
-                  </div>
-                  <div className="text-center">
-                    <p className="font-medium text-sm">Add a video</p>
-                    <p className="text-xs text-gray-500">(1 min | 200 mb)</p>
-                  </div>
-                </div>
-              </label>
-            </div>
-
-            {/* Image Previews */}
-            {imagePreviews.length > 0 && (
-              <div className="grid grid-cols-4 gap-2">
-                {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative aspect-square">
-                    <img
-                      src={preview}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute -top-1 -right-1 bg-black text-white rounded-full p-1"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Video Preview */}
-            {videoPreview && (
-              <div className="relative">
-                <video
-                  src={videoPreview}
-                  controls
-                  className="w-full max-h-48 rounded-lg"
-                />
-                <button
-                  onClick={removeVideo}
-                  className="absolute top-2 right-2 bg-black text-white rounded-full p-1"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm"
+        >
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-gray-900">Photos & Video</p>
+            <p className="text-xs text-gray-400 mt-0.5">Show others what you experienced</p>
           </div>
-        </div>
 
-        {/* Submit Button */}
-        <button
+          <div className="grid grid-cols-2 gap-3">
+            {/* Add Photos */}
+            <label className={`block cursor-pointer ${images.length >= 4 ? 'opacity-50 pointer-events-none' : ''}`}>
+              <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" disabled={images.length >= 4} />
+              <div className="border-2 border-dashed border-amber-200 bg-amber-50/50 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-amber-400 hover:bg-amber-50 transition-all">
+                <div className="w-11 h-11 bg-amber-100 rounded-full flex items-center justify-center">
+                  <Camera size={20} className="text-amber-600" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-800">Add Photos</p>
+                  <p className="text-xs text-gray-400">{images.length}/4 uploaded</p>
+                </div>
+              </div>
+            </label>
+
+            {/* Add Video */}
+            <label className={`block cursor-pointer ${video ? 'opacity-50 pointer-events-none' : ''}`}>
+              <input type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" disabled={!!video} />
+              <div className="border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-blue-400 hover:bg-blue-50 transition-all">
+                <div className="w-11 h-11 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Video size={20} className="text-blue-600" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-800">Add Video</p>
+                  <p className="text-xs text-gray-400">Up to 200MB</p>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          {/* Image Previews */}
+          {imagePreviews.length > 0 && (
+            <div className="grid grid-cols-4 gap-2 mt-3">
+              {imagePreviews.map((preview, index) => (
+                <div key={index} className="relative aspect-square">
+                  <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-xl" />
+                  <button
+                    onClick={() => removeImage(index)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-900 text-white rounded-full flex items-center justify-center shadow"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Video Preview */}
+          {videoPreview && (
+            <div className="relative mt-3">
+              <video src={videoPreview} controls className="w-full max-h-48 rounded-xl object-cover" />
+              <button
+                onClick={removeVideo}
+                className="absolute top-2 right-2 w-6 h-6 bg-gray-900/80 text-white rounded-full flex items-center justify-center"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Fixed Bottom Submit Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 safe-area-inset-bottom shadow-lg">
+        <motion.button
           onClick={handleSubmit}
           disabled={uploading || rating === 0 || !reviewText.trim()}
-          className="w-full bg-gray-300 text-gray-600 py-4 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 mt-6"
+          whileTap={{ scale: 0.97 }}
+          className={`w-full max-w-lg mx-auto flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm transition-all ${
+            rating > 0 && reviewText.trim()
+              ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-lg'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}
         >
           {uploading ? (
             <>
-              <Loader2 className="animate-spin" size={20} />
-              Submitting...
+              <Loader2 className="animate-spin" size={18} />
+              Submitting Review...
             </>
           ) : (
-            <>
-              Submit ➜
-            </>
+            'Submit Review ?'
           )}
-        </button>
-
-        <p className="text-xs text-center text-gray-500 mt-4 leading-relaxed">
-          By submitting this review, you give us consent to{' '}
-          <span className="text-black underline">publish</span> and{' '}
-          <span className="text-black underline">promote</span> it in accordance with{' '}
-          <span className="text-blue-600 underline">Terms Of Use</span> and{' '}
-          <span className="text-blue-600 underline">Privacy Policy</span>.
+        </motion.button>
+        <p className="text-[10px] text-center text-gray-400 mt-2 leading-relaxed">
+          By submitting, you agree to our{' '}
+          <span className="text-gray-600 underline">Terms of Use</span> and{' '}
+          <span className="text-gray-600 underline">Privacy Policy</span>
         </p>
       </div>
     </div>

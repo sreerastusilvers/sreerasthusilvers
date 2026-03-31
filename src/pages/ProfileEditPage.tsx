@@ -7,12 +7,8 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import Cropper from 'react-easy-crop';
 import { Area } from 'react-easy-crop';
 import { motion } from 'framer-motion';
+import darkLogo from '@/assets/dark.png';
 import {
-  ArrowLeft,
-  Camera,
-  Edit3,
-  Check,
-  X,
   ZoomIn,
   ZoomOut,
   User,
@@ -234,7 +230,7 @@ const ProfileEditPage = () => {
 
             {/* Logo in banner */}
             <img
-              src="/logo-new.png"
+              src={darkLogo}
               alt="Sreerasthu"
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-14 object-contain opacity-[0.08] pointer-events-none"
             />

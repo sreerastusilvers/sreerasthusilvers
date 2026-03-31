@@ -147,9 +147,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update display name
     await updateProfile(userCredential.user, { displayName: username });
 
-    // Send email verification (non-blocking - don't fail signup if this fails)
+    // Send email verification with action code settings
     try {
-      await sendEmailVerification(userCredential.user);
+      await sendEmailVerification(userCredential.user, {
+        url: window.location.origin + '/account',
+        handleCodeInApp: false,
+      });
     } catch (verificationError) {
       console.error('Failed to send verification email:', verificationError);
       // Continue with signup even if verification email fails

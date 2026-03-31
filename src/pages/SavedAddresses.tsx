@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import Header from '@/components/Header';
+import MobileHeader from '@/components/MobileHeader';
+import MobileSearchBar from '@/components/MobileSearchBar';
+import CategoryIconNav from '@/components/CategoryIconNav';
+import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
 import {
   getUserAddresses,
@@ -219,6 +224,16 @@ const SavedAddresses = () => {
 
   return (
     <>
+      {/* Desktop Header */}
+      <div className="hidden lg:block">
+        <Header />
+        <CategoryIconNav />
+      </div>
+      {/* Mobile Header */}
+      <div className="lg:hidden">
+        <MobileHeader />
+        <MobileSearchBar />
+      </div>
       <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
         <div className="container mx-auto px-4 py-4 max-w-4xl pb-24">
           {/* Header */}
@@ -546,6 +561,7 @@ const SavedAddresses = () => {
           )}
         </div>
       </div>
+      <Footer />
       <MobileBottomNav />
     </>
   );

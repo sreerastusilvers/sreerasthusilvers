@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Order, cancelOrder, subscribeToUserOrders } from '@/services/orderService';
+import Header from '@/components/Header';
 import { getUserAddresses, Address } from '@/services/addressService';
 import { toast } from 'sonner';
 import { ArrowLeft, Ban, Loader2, ChevronRight, X, MapPin, Check } from 'lucide-react';
@@ -134,8 +135,11 @@ const CancelOrderPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* Header */}
-      <div className="bg-white sticky top-0 z-50 border-b border-gray-100">
+      {/* Top Site Navigation */}
+      <Header />
+      
+      {/* Page Header */}
+      <div className="bg-white sticky top-16 z-40 border-b border-gray-100">
         <div className="flex items-center gap-3 px-4 py-4">
           <button
             onClick={() => navigate(`/account/orders/${orderId}`)}

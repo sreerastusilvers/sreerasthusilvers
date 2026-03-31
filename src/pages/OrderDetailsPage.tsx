@@ -3,11 +3,18 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToUserOrders, Order, requestReturn } from '@/services/orderService';
+import Header from '@/components/Header';
+import MobileHeader from '@/components/MobileHeader';
+import MobileSearchBar from '@/components/MobileSearchBar';
+import CategoryIconNav from '@/components/CategoryIconNav';
+import Footer from '@/components/Footer';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import logoImage from '@/assets/logo-new.png';
+import logoImage from '@/assets/dark.png';
+import { db } from '@/config/firebase';
+import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import {
   Loader2,
   Package,
@@ -27,6 +34,7 @@ import {
   RotateCcw as ReturnIcon,
   Share2,
   MessageCircle,
+  Star,
 } from 'lucide-react';
 
 // Order Status Stepper Component
@@ -131,6 +139,12 @@ const OrderDetailsPage = () => {
   const [returnStep, setReturnStep] = useState<'reason' | 'details'>('reason');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Delivery rating states
+  const [deliveryRating, setDeliveryRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [hasRated, setHasRated] = useState(false);
+  const [submittingRating, setSubmittingRating] = useState(false);
+
   // Subscribe to user orders and find the specific order
   useEffect(() => {
     if (!user || !orderId) {
@@ -161,6 +175,38 @@ const OrderDetailsPage = () => {
 
     return () => unsubscribe();
   }, [user, orderId, navigate]);
+
+  // Check if user has already rated this delivery
+  useEffect(() => {
+    if (!order || order.status !== 'delivered' || !user || !order.deliveryBoyId) return;
+    getDocs(query(collection(db, 'deliveryRatings'), where('orderId', '==', order.id), where('userId', '==', user.uid)))
+      .then(snap => { if (!snap.empty) setHasRated(true); })
+      .catch(() => {});
+  }, [order, user]);
+
+  const submitDeliveryRating = async () => {
+    if (!order?.deliveryBoyId || !user || deliveryRating === 0) {
+      toast.error('Please select a star rating');
+      return;
+    }
+    setSubmittingRating(true);
+    try {
+      await addDoc(collection(db, 'deliveryRatings'), {
+        deliveryBoyId: order.deliveryBoyId,
+        orderId: order.id,
+        userId: user.uid,
+        rating: deliveryRating,
+        comment: ratingComment.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setHasRated(true);
+      toast.success('Thank you for your rating!');
+    } catch {
+      toast.error('Failed to submit rating. Please try again.');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   // Format date
   const formatDate = (date: Date | { seconds: number; nanoseconds: number } | undefined) => {
@@ -448,7 +494,7 @@ const OrderDetailsPage = () => {
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(249, 115, 22);
-        doc.text('SREE RASTHU SILVERS', margin, yPos + 10);
+        doc.text('SREERASTHU SILVERS', margin, yPos + 10);
       }
       
       doc.setFontSize(14);
@@ -475,7 +521,7 @@ const OrderDetailsPage = () => {
       doc.setFontSize(8);
       
       const soldByLines = [
-        'Sree Rasthu Silvers',
+        'Sreerasthu Silvers',
         'Ramasomayajulu St, Rama Rao Peta',
         'Kakinada, Andhra Pradesh 533001',
         'India',
@@ -548,10 +594,30 @@ const OrderDetailsPage = () => {
         return amount.toFixed(2);
       };
       
+      // Determine tax type based on shipping state (CGST+SGST for intra-state AP, IGST for inter-state)
+      const isIntraState = order.shippingAddress.state === 'Andhra Pradesh';
+      
       const tableData = order.items.map((item, idx) => {
         const netAmount = item.price * item.quantity;
         const taxRate = 3;
         const taxAmount = (netAmount * taxRate) / 100;
+        if (isIntraState) {
+          const halfTax = taxAmount / 2;
+          return [
+            (idx + 1).toString(),
+            item.name,
+            formatAmount(item.price),
+            item.quantity.toString(),
+            formatAmount(netAmount),
+            `${taxRate / 2}%`,
+            'CGST',
+            formatAmount(halfTax),
+            `${taxRate / 2}%`,
+            'SGST',
+            formatAmount(halfTax),
+            formatAmount(netAmount + taxAmount)
+          ];
+        }
         return [
           (idx + 1).toString(),
           item.name,
@@ -561,6 +627,9 @@ const OrderDetailsPage = () => {
           `${taxRate}%`,
           'IGST',
           formatAmount(taxAmount),
+          '',
+          '',
+          '',
           formatAmount(netAmount + taxAmount)
         ];
       });
@@ -575,15 +644,22 @@ const OrderDetailsPage = () => {
           '0%',
           '-',
           '0.00',
+          '',
+          '',
+          '',
           formatAmount(order.deliveryCharge)
         ]);
       }
       
       const totalTax = order.taxAmount;
       
+      const tableHead = isIntraState
+        ? [['S.No', 'Description', 'Unit Price', 'Qty', 'Net Amt', 'CGST %', 'CGST', 'CGST Amt', 'SGST %', 'SGST', 'SGST Amt', 'Total']]
+        : [['S.No', 'Description', 'Unit Price', 'Qty', 'Net Amt', 'Tax %', 'Tax Type', 'Tax Amt', '', '', '', 'Total']];
+      
       autoTable(doc, {
         startY: yPos,
-        head: [['S.No', 'Description', 'Unit Price (Rs)', 'Qty', 'Net Amt (Rs)', 'Tax Rate', 'Tax Type', 'Tax Amt (Rs)', 'Total (Rs)']],
+        head: tableHead,
         body: tableData,
         theme: 'grid',
         headStyles: {
@@ -598,15 +674,18 @@ const OrderDetailsPage = () => {
           textColor: [50, 50, 50]
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 10 },
-          1: { cellWidth: 42 },
-          2: { halign: 'right', cellWidth: 22 },
-          3: { halign: 'center', cellWidth: 10 },
-          4: { halign: 'right', cellWidth: 22 },
-          5: { halign: 'center', cellWidth: 14 },
-          6: { halign: 'center', cellWidth: 14 },
-          7: { halign: 'right', cellWidth: 20 },
-          8: { halign: 'right', cellWidth: 22 }
+          0: { halign: 'center', cellWidth: 8 },
+          1: { cellWidth: 30 },
+          2: { halign: 'right', cellWidth: 16 },
+          3: { halign: 'center', cellWidth: 8 },
+          4: { halign: 'right', cellWidth: 16 },
+          5: { halign: 'center', cellWidth: 10 },
+          6: { halign: 'center', cellWidth: 10 },
+          7: { halign: 'right', cellWidth: 14 },
+          8: { halign: 'center', cellWidth: 10 },
+          9: { halign: 'center', cellWidth: 10 },
+          10: { halign: 'right', cellWidth: 14 },
+          11: { halign: 'right', cellWidth: 18 }
         },
         margin: { left: margin, right: margin },
         didDrawPage: (data) => {
@@ -646,7 +725,7 @@ const OrderDetailsPage = () => {
       
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.text('For Sree Rasthu Silvers:', sigBoxX + 5, yPos + 6);
+      doc.text('For Sreerasthu Silvers:', sigBoxX + 5, yPos + 6);
       
       doc.setFont('helvetica', 'bold');
       doc.text('Authorized Signatory', sigBoxX + sigBoxWidth / 2, yPos + 20, { align: 'center' });
@@ -693,10 +772,21 @@ const OrderDetailsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 z-10">
+      {/* Desktop Header + Nav */}
+      <div className="hidden lg:block">
+        <Header />
+        <CategoryIconNav />
+      </div>
+      {/* Mobile Header */}
+      <div className="lg:hidden">
+        <MobileHeader />
+        <MobileSearchBar />
+      </div>
+      
+      {/* Page Header */}
+      <div className="sticky top-16 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 z-50">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/account/orders')}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft className="w-5 h-5 text-gray-700" />
@@ -916,8 +1006,53 @@ const OrderDetailsPage = () => {
           </div>
         </div>
 
-        {/* Price Details Section */}
-        <div className="bg-white mt-2 border-t border-b border-gray-100">
+        {/* Rate Delivery Boy - Only for delivered orders with a delivery boy assigned */}
+        {order.status === 'delivered' && order.deliveryBoyId && (
+          <div className="bg-white mt-2 border-t border-b border-gray-100">
+            <h3 className="px-4 py-3 text-base font-semibold text-gray-900 border-b border-gray-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Rate your delivery</h3>
+            <div className="px-4 py-4">
+              {hasRated ? (
+                <div className="flex flex-col items-center py-4 gap-2">
+                  <div className="flex items-center gap-1">
+                    {[1,2,3,4,5].map(n => (
+                      <Star key={n} className={`h-6 w-6 ${n <= deliveryRating ? 'text-yellow-400 fill-current' : 'text-gray-200 fill-current'}`} />
+                    ))}
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">Rating submitted!</p>
+                  <p className="text-xs text-gray-400">Thank you for your feedback</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 mb-3">How was your delivery experience?</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    {[1,2,3,4,5].map(n => (
+                      <button key={n} onClick={() => setDeliveryRating(n)}>
+                        <Star className={`h-8 w-8 transition-colors ${n <= deliveryRating ? 'text-yellow-400 fill-current' : 'text-gray-200 fill-current hover:text-yellow-300'}`} />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={ratingComment}
+                    onChange={e => setRatingComment(e.target.value)}
+                    placeholder="Leave a comment (optional)"
+                    rows={2}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 mb-3"
+                  />
+                  <button
+                    onClick={submitDeliveryRating}
+                    disabled={submittingRating || deliveryRating === 0}
+                    className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {submittingRating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Submit Rating
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Price Details Section */}        <div className="bg-white mt-2 border-t border-b border-gray-100">
           <h3 className="px-4 py-3 text-base font-semibold text-gray-900 border-b border-gray-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Price details</h3>
           
           <div className="px-4 py-3 space-y-3">
@@ -1516,7 +1651,7 @@ const OrderDetailsPage = () => {
                     }`}
                     style={{ fontFamily: "'Poppins', sans-serif" }}
                   >
-                    {isSubmitting ? 'Submitting...' : 'Continue'}
+                    {isSubmitting ? 'Submitting...' : 'Submit Return Request'}
                   </button>
                 </div>
               </>
@@ -1524,6 +1659,7 @@ const OrderDetailsPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Footer />
     </div>
   );
 };
