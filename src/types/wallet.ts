@@ -1,7 +1,7 @@
 // ============================================
 // WALLET & PAYMENT SYSTEM TYPES
 // Production-grade type definitions for
-// Sree Rasthu Silvers eCommerce Platform
+// Sreerasthu Silvers eCommerce Platform
 // ============================================
 
 import { Timestamp } from 'firebase/firestore';

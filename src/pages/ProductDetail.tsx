@@ -201,7 +201,7 @@ const ProductDetail = () => {
     const productUrl = window.location.href;
     const productTitle = product.title;
     const productImage = product.image.startsWith('http') ? product.image : `${window.location.origin}${product.image}`;
-    const shareText = `Check out ${productTitle} at Sree Rasthu Silvers! ₹${product.price.toLocaleString("en-IN")}`;
+    const shareText = `Check out ${productTitle} at Sreerasthu Silvers! ₹${product.price.toLocaleString("en-IN")}`;
 
     // Helper function to share with image via native share API
     const shareWithImage = async (text: string) => {
@@ -266,7 +266,7 @@ const ProductDetail = () => {
         const shared = await shareWithImage(shareText);
         if (!shared) {
           const emailBody = `${shareText}\n\nProduct Link: ${productUrl}`;
-          window.open(`mailto:?subject=${encodeURIComponent(productTitle + ' - Sree Rasthu Silvers')}&body=${encodeURIComponent(emailBody)}`, '_blank');
+          window.open(`mailto:?subject=${encodeURIComponent(productTitle + ' - Sreerasthu Silvers')}&body=${encodeURIComponent(emailBody)}`, '_blank');
         }
         break;
       }

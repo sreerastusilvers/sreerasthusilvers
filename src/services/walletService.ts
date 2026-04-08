@@ -1,6 +1,6 @@
 // ============================================
 // WALLET SERVICE — Production-Grade
-// Sree Rasthu Silvers eCommerce Platform
+// Sreerasthu Silvers eCommerce Platform
 // ============================================
 // ARCHITECTURE NOTES:
 // 1. Wallet balance is ALWAYS computed server-side via Firestore transactions

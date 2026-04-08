@@ -182,12 +182,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Login function
   const login = async (email: string, password: string): Promise<UserProfile> => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const profile = await fetchUserProfile(userCredential.user.uid);
-    
+    const { uid } = userCredential.user;
+    let profile = await fetchUserProfile(uid);
+
     if (!profile) {
-      throw new Error('User profile not found');
+      // No Firestore document yet — create admin profile automatically.
+      // This covers admins created directly in Firebase Auth console.
+      const newProfile: UserProfile = {
+        uid,
+        email: userCredential.user.email,
+        username: userCredential.user.displayName || email.split('@')[0],
+        role: 'admin',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await setDoc(doc(db, 'users', uid), {
+        ...newProfile,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      profile = newProfile;
     }
-    
+
     setUserProfile(profile);
     return profile;
   };

@@ -12,7 +12,7 @@ const ShippingPolicy = () => {
             {/* Introduction */}
             <section>
               <p className="text-gray-700 leading-relaxed">
-                At Sree Rasthu Silvers, we aim to deliver your jewellery safely and promptly.
+                At Sreerasthu Silvers, we aim to deliver your jewellery safely and promptly.
               </p>
             </section>
 

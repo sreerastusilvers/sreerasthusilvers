@@ -18,6 +18,7 @@ import {
   Star,
   Settings,
   Users2,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -50,6 +51,7 @@ const AdminLayout = () => {
     { path: '/admin/delivery-boys', icon: Truck, label: 'Delivery Boys' },
     { path: '/admin/customers', icon: Users2, label: 'Customers' },
     { path: '/admin/gift-cards', icon: Gift, label: 'Coupons' },
+    { path: '/admin/image-prompts', icon: Sparkles, label: 'AI Prompts' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
   ];
 
@@ -86,7 +88,7 @@ const AdminLayout = () => {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-[#F5EFE6] flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Sree Rasthu Silvers" className="h-8 w-auto" />
+            <img src={logo} alt="Sreerasthu Silvers" className="h-8 w-auto" />
           </div>
           <button
             onClick={() => setSidebarOpen(false)}

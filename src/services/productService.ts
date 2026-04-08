@@ -262,6 +262,9 @@ export const subscribeToProductsBySubcategory = (
     });
     
     callback(products);
+  }, (error) => {
+    console.error('[productService] SubcategorySubscription error:', error);
+    callback([]);
   });
 };
 
@@ -321,6 +324,9 @@ export const subscribeToProducts = (
       ...doc.data()
     } as Product));
     callback(products);
+  }, (error) => {
+    console.error('[productService] Subscription error:', error);
+    callback([]); // resolve with empty so loading stops
   });
 };
 
@@ -342,6 +348,9 @@ export const subscribeToBestSellers = (
       ...doc.data()
     } as Product));
     callback(products);
+  }, (error) => {
+    console.error('[productService] BestSellers subscription error:', error);
+    callback([]);
   });
 };
 

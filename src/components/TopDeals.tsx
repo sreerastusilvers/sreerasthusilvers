@@ -67,15 +67,7 @@ const TopDeals = () => {
   };
 
   if (loading) {
-    return (
-      <section className="py-12 bg-muted">
-        <div className="container-custom">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   if (products.length === 0) return null;

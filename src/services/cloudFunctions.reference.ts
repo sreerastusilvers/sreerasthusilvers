@@ -1,6 +1,6 @@
 // ============================================
 // CLOUD FUNCTIONS — Production Architecture
-// Sree Rasthu Silvers eCommerce Platform
+// Sreerasthu Silvers eCommerce Platform
 // ============================================
 // These are PSEUDO/REFERENCE implementations.
 // Deploy to Firebase Cloud Functions when ready.

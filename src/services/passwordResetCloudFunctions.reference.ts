@@ -288,7 +288,7 @@ async function sendPasswordResetNotificationEmail(email: string) {
   const msg = {
     to: email,
     from: 'security@sreerasthusilvers.com', // Your verified sender
-    subject: '🔒 Your password has been changed - Sree Rasthu Silvers',
+    subject: '🔒 Your password has been changed - Sreerasthu Silvers',
     html: `
       <!DOCTYPE html>
       <html>
@@ -316,7 +316,7 @@ async function sendPasswordResetNotificationEmail(email: string) {
           <div class="content">
             <p>Hello,</p>
             
-            <p>We're writing to confirm that your password for Sree Rasthu Silvers was recently changed.</p>
+            <p>We're writing to confirm that your password for Sreerasthu Silvers was recently changed.</p>
             
             <div class="alert">
               <strong>⚠️ Security Notice:</strong>
@@ -340,11 +340,11 @@ async function sendPasswordResetNotificationEmail(email: string) {
             
             <a href="https://yourapp.com/customer-support" class="button">Contact Support</a>
             
-            <p>Stay safe,<br><strong>Sree Rasthu Silvers Security Team</strong></p>
+            <p>Stay safe,<br><strong>Sreerasthu Silvers Security Team</strong></p>
           </div>
           <div class="footer">
             <p>This is an automated security notification.</p>
-            <p>&copy; ${new Date().getFullYear()} Sree Rasthu Silvers. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Sreerasthu Silvers. All rights reserved.</p>
           </div>
         </div>
       </body>

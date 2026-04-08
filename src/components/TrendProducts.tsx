@@ -256,8 +256,8 @@ const TrendProducts = () => {
             onMouseLeave={handleMouseLeave}
           >
             {loading ? (
-              // Loading skeleton
-              Array.from({ length: 10 }).map((_, index) => (
+              // Loading skeleton - show only 4
+              Array.from({ length: 4 }).map((_, index) => (
                 <div 
                   key={`skeleton-${index}`} 
                   className="flex-shrink-0 w-[130px] md:w-[220px] snap-start"
@@ -272,8 +272,9 @@ const TrendProducts = () => {
             ) : products.length === 0 ? (
               // Empty state
               <div className="w-full py-12 text-center">
-                <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">No trending products available yet.</p>
+                <Package className="w-12 h-12 mx-auto mb-3 text-primary/40" />
+                <p className="text-base font-medium text-foreground/70 mb-1">New Arrivals Coming Soon</p>
+                <p className="text-sm text-muted-foreground">Fresh designs are on their way. Stay tuned!</p>
               </div>
             ) : (
               displayProducts.map((product, index) => (

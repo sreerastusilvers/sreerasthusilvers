@@ -137,7 +137,7 @@ const VerifyEmail = () => {
       
       if (currentUser.emailVerified) {
         sessionStorage.removeItem('pendingVerificationEmail');
-        toast.success('Email verified successfully! Welcome to Sree Rasthu Silvers!');
+        toast.success('Email verified successfully! Welcome to Sreerasthu Silvers!');
         navigate('/account', { replace: true });
       } else {
         toast.error('Email not verified yet. Please check your inbox.');

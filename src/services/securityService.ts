@@ -1,6 +1,6 @@
 // ============================================
 // SECURITY SERVICE — Enterprise-Grade
-// Sree Rasthu Silvers eCommerce Platform
+// Sreerasthu Silvers eCommerce Platform
 // ============================================
 // Handles: Login history, session management,
 // device tracking, account lock, 2FA prep,

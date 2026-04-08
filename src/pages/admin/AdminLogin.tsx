@@ -62,7 +62,7 @@ const AdminLogin = () => {
               <Shield className="h-10 w-10 text-amber-600" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Portal</h1>
-            <p className="text-gray-600 text-sm">Sree Rasthu Silvers Management</p>
+            <p className="text-gray-600 text-sm">Sreerasthu Silvers Management</p>
           </div>
 
           {/* Error Message */}

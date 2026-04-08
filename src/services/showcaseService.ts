@@ -108,6 +108,7 @@ export const subscribeToShowcases = (
     callback(showcases);
   }, (error) => {
     console.error('Error subscribing to showcases:', error);
+    callback([]); // resolve with empty so loading stops
   });
 };
 

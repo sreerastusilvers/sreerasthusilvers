@@ -69,7 +69,8 @@ import AdminOrders from "./pages/AdminOrders";
 import AdminDeliveryBoys from "./pages/admin/AdminDeliveryBoys";
 import AdminGiftCards from "./pages/admin/AdminGiftCards";
 import AdminReviews from "./pages/admin/AdminReviews";
-import AdminSettings from "./pages/admin/AdminSettings";import AdminCustomers from './pages/admin/AdminCustomers';import WriteReview from "./pages/WriteReview";
+import AdminSettings from "./pages/admin/AdminSettings";
+import AdminImagePrompts from "./pages/admin/AdminImagePrompts";import AdminCustomers from './pages/admin/AdminCustomers';import WriteReview from "./pages/WriteReview";
 import ThankYouReview from "./pages/ThankYouReview";
 
 // Delivery Partner Pages
@@ -213,6 +214,7 @@ const App = () => {
                 <Route path="gallery" element={<AdminGallery />} />
                 <Route path="gift-cards" element={<AdminGiftCards />} />
                 <Route path="reviews" element={<AdminReviews />} />
+                <Route path="image-prompts" element={<AdminImagePrompts />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="customers" element={<AdminCustomers />} />
               </Route>

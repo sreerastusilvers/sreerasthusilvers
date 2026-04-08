@@ -12,7 +12,7 @@ const PrivacyPolicy = () => {
             {/* Introduction */}
             <section>
               <p className="text-gray-700 leading-relaxed">
-                Sree Rasthu Silvers ("we", "our", "us") operates the website <a href="https://sreerasthusilvers.vercel.app/" className="text-blue-600 hover:underline">https://sreerasthusilvers.vercel.app/</a>. 
+                Sreerasthu Silvers ("we", "our", "us") operates the website <a href="https://sreerasthusilvers.vercel.app/" className="text-blue-600 hover:underline">https://sreerasthusilvers.vercel.app/</a>. 
                 We value your privacy and are committed to protecting your personal information.
               </p>
             </section>
@@ -91,7 +91,7 @@ const PrivacyPolicy = () => {
                 <p className="text-gray-700 mt-2"><strong>Phone:</strong> +91 63049 60489</p>
                 <div className="mt-4">
                   <p className="text-gray-700 font-semibold">Address:</p>
-                  <p className="text-gray-700">Sree Rasthu Silvers</p>
+                  <p className="text-gray-700">Sreerasthu Silvers</p>
                   <p className="text-gray-700">Ramasomayajulu St,</p>
                   <p className="text-gray-700">Rama Rao Peta, Kakinada,</p>
                   <p className="text-gray-700">Andhra Pradesh – 533001, India</p>

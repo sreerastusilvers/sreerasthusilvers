@@ -105,6 +105,9 @@ export const subscribeToCategories = (callback: (cats: Category[]) => void) => {
   return onSnapshot(q, (snapshot) => {
     const cats = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Category));
     callback(cats);
+  }, (error) => {
+    console.error('[categoryService] Subscription error:', error);
+    callback([]); // resolve with empty so loading stops
   });
 };
 

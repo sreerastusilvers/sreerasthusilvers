@@ -12,7 +12,7 @@ const CancellationRefundPolicy = () => {
             {/* Introduction */}
             <section>
               <p className="text-gray-700 leading-relaxed">
-                At Sree Rasthu Silvers, customer satisfaction is our priority.
+                At Sreerasthu Silvers, customer satisfaction is our priority.
               </p>
             </section>
 

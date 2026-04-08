@@ -104,7 +104,7 @@ const Dashboard = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Welcome to Sree Rasthu Silvers Admin Panel</p>
+          <p className="text-gray-500 text-sm mt-0.5">Welcome to Sreerasthu Silvers Admin Panel</p>
         </div>
         <Link to="/admin/products/new">
           <Button className="bg-amber-600 hover:bg-amber-700">

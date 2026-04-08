@@ -81,8 +81,14 @@ const CategoryPage = () => {
 
   // Seed + subscribe to categories
   useEffect(() => {
-    seedDefaultCategories();
-    const unsub = subscribeToCategories(setCategories);
+    seedDefaultCategories().catch(console.error);
+    const unsub = subscribeToCategories((cats) => {
+      setCategories(cats);
+      // If Firestore returned empty (new DB or permission error), stop loading
+      if (cats.length === 0) {
+        setLoading(false);
+      }
+    });
     return unsub;
   }, []);
 
@@ -590,10 +596,10 @@ const CategoryPage = () => {
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <ShoppingBag className="w-16 h-16 text-muted-foreground/40 mb-4" />
-                <h3 className="text-lg font-semibold text-foreground/80 mb-2">No products found</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Try adjusting your filters or check back later.
+                <ShoppingBag className="w-16 h-16 text-primary/30 mb-4" />
+                <h3 className="text-lg font-semibold text-foreground/80 mb-2">Products Coming Soon</h3>
+                <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                  We're adding exciting new products to this category. Check back soon for our latest collection!
                 </p>
                 {activeFilterCount > 0 && (
                   <button

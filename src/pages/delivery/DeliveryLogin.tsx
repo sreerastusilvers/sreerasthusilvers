@@ -157,7 +157,7 @@ const DeliveryLogin = () => {
                   transition={{ delay: 0.2 }}
                   className="text-2xl font-bold text-white mb-1"
                 >
-                  Sree Rasthu Silvers
+                  Sreerasthu Silvers
                 </motion.h1>
                 <motion.p
                   initial={{ y: 10, opacity: 0 }}
@@ -385,7 +385,7 @@ const DeliveryLogin = () => {
       {/* Footer */}
       <footer className="p-4 text-center">
         <p className="text-xs text-gray-600">
-          © 2026 Sree Rasthu Silvers. All rights reserved.
+          © 2026 Sreerasthu Silvers. All rights reserved.
         </p>
       </footer>
     </div>

@@ -32,7 +32,10 @@ const HeroBanner = () => {
   }, []);
 
   useEffect(() => {
-    if (banners.length === 0) return;
+    if (banners.length === 0) {
+      setImagesReady(true);
+      return;
+    }
     let loadedCount = 0;
     const totalImages = banners.length;
     banners.forEach((banner) => {
@@ -114,7 +117,23 @@ const HeroBanner = () => {
     );
   }
 
-  if (banners.length === 0) return null;
+  if (banners.length === 0) {
+    return (
+      <section className="relative h-[340px] lg:h-[520px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
+        <div className="flex flex-col items-center gap-4 px-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-3xl">✨</span>
+          </div>
+          <h2 className="text-2xl md:text-3xl font-semibold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+            Welcome to Sreerasthu Silvers
+          </h2>
+          <p className="text-sm md:text-base text-muted-foreground max-w-md">
+            We're setting up our store with amazing collections. Stay tuned — something beautiful is on its way!
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

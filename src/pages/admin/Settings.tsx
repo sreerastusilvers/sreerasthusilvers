@@ -27,7 +27,7 @@ const Settings = () => {
             <div>
               <Label className="text-gray-700">Store Name</Label>
               <Input
-                defaultValue="Sree Rasthu Silvers"
+                defaultValue="Sreerasthu Silvers"
                 className="mt-2 bg-gray-100 border-gray-300 text-gray-900"
                 readOnly
               />

@@ -24,7 +24,6 @@ export const uploadToCloudinary = async (
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-  formData.append('cloud_name', cloudinaryConfig.cloudName);
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

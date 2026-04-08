@@ -1,7 +1,7 @@
 // Cloudinary configuration
 export const cloudinaryConfig = {
-  cloudName: "doxwyrp8n",
-  uploadPreset: "sreerasthusilvers",
+  cloudName: "dpphmsx1m",
+  uploadPreset: "ssdatabase",
 };
 
 // Cloudinary upload URL

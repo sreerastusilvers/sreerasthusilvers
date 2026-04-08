@@ -30,19 +30,8 @@ const CategoryShowcase = () => {
     return `/shop/${category}`;
   };
 
-  // Show loading state while data is being fetched
-  if (loading) {
-    return (
-      <section className="w-full py-20">
-        <div className="flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </section>
-    );
-  }
-
-  // Don't render if no showcases
-  if (showcases.length === 0) {
+  // Don't render if loading or no showcases
+  if (loading || showcases.length === 0) {
     return null;
   }
 
