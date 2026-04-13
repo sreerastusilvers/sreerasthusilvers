@@ -148,6 +148,80 @@ function ImageDropZone({
   );
 }
 
+// ─── Multi-Image Drop Zone (Hero) ────────────────────────────────────────
+
+function HeroImageDropZone({
+  onSelectMultiple,
+  onSelectSingle,
+  imageCount,
+}: {
+  onSelectMultiple: (files: FileList) => void;
+  onSelectSingle: (file: File) => void;
+  imageCount: number;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const files = e.dataTransfer.files;
+      if (files.length > 1) {
+        onSelectMultiple(files);
+      } else if (files.length === 1 && files[0].type.startsWith('image/')) {
+        onSelectSingle(files[0]);
+      } else {
+        toast.error('Please drop image files');
+      }
+    },
+    [onSelectMultiple, onSelectSingle]
+  );
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      onSelectMultiple(files);
+    }
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  return (
+    <>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+          dragOver
+            ? 'border-amber-500 bg-amber-50'
+            : 'border-[#F5EFE6] hover:border-amber-400 hover:bg-[#FFF9E6]/30'
+        }`}
+      >
+        <Upload className="h-5 w-5 mx-auto text-gray-400 mb-1" />
+        <p className="text-xs text-gray-500">
+          {imageCount === 0
+            ? <>Drop images or <span className="text-amber-600 font-medium">click to upload</span> (select multiple)</>
+            : <>Add more images — <span className="text-amber-600 font-medium">click or drop</span></>
+          }
+        </p>
+        <p className="text-[10px] text-gray-400 mt-1">
+          Upload jewelry products, style references, banner inspiration — AI studies all and creates one banner
+        </p>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleFileChange}
+        className="hidden"
+      />
+    </>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────
 
 const AdminImagePrompts = () => {
@@ -181,6 +255,9 @@ const AdminImagePrompts = () => {
   const [logoPreview, setLogoPreview] = useState('');
   const [referenceImage, setReferenceImage] = useState<ImageInput | null>(null);
   const [referencePreview, setReferencePreview] = useState('');
+  // Hero multi-image state
+  const [heroImages, setHeroImages] = useState<ImageInput[]>([]);
+  const [heroPreviews, setHeroPreviews] = useState<string[]>([]);
 
   // Auto-load logo
   useEffect(() => {
@@ -204,6 +281,27 @@ const AdminImagePrompts = () => {
     const img = await fileToImageInput(file);
     setReferenceImage(img);
     setReferencePreview(URL.createObjectURL(file));
+  };
+
+  const handleHeroImageAdd = async (file: File) => {
+    const img = await fileToImageInput(file);
+    setHeroImages(prev => [...prev, img]);
+    setHeroPreviews(prev => [...prev, URL.createObjectURL(file)]);
+  };
+
+  const handleHeroImageAddMultiple = async (files: FileList) => {
+    for (const file of Array.from(files)) {
+      if (file.type.startsWith('image/')) {
+        const img = await fileToImageInput(file);
+        setHeroImages(prev => [...prev, img]);
+        setHeroPreviews(prev => [...prev, URL.createObjectURL(file)]);
+      }
+    }
+  };
+
+  const handleHeroImageRemove = (index: number) => {
+    setHeroImages(prev => prev.filter((_, i) => i !== index));
+    setHeroPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleLogoSelect = async (file: File) => {
@@ -275,7 +373,7 @@ const AdminImagePrompts = () => {
           prompt = await generateHeroSectionPrompt(
             festivalOrEvent, offerTitle, offerInfo,
             bannerHeadline || '', includeModel,
-            referenceImage || undefined, logoImage || undefined
+            heroImages.length > 0 ? heroImages : undefined, logoImage || undefined
           );
           inputs = { festivalOrEvent, offerTitle, offerInfo, bannerHeadline, includeModel };
           break;
@@ -459,12 +557,12 @@ const AdminImagePrompts = () => {
 
                 {activeTab === 'product-model' && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
-                    <p className="text-xs text-amber-800 font-semibold">Celebrity Model Photoshoot</p>
+                    <p className="text-xs text-amber-800 font-semibold">Real DSLR Model Photoshoot</p>
                     <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
-                      <li>Stunningly beautiful celebrity-level Indian model</li>
+                      <li>Stunning Indian model — DSLR photographed, not AI-looking</li>
+                      <li>Real skin pores, catchlights, hair flyaways, natural imperfections</li>
                       <li>Professional makeup & styling done specifically for this jewelry</li>
                       <li>Your EXACT product preserved 100% — only environment enhanced</li>
-                      <li>Ultra realistic DSLR camera capture + premium graphic design</li>
                       <li>After generating, click <strong>"Different Angle / Pose"</strong> for variations</li>
                       <li>Use <strong>"Refine"</strong> to modify any detail you want changed</li>
                     </ul>
@@ -488,14 +586,48 @@ const AdminImagePrompts = () => {
             {/* Hero Section Form */}
             {activeTab === 'hero-section' && (
               <>
-                <ImageDropZone
-                  label="Reference Banner (optional)"
-                  image={referenceImage}
-                  preview={referencePreview}
-                  onSelect={handleReferenceImageSelect}
-                  onClear={() => { setReferenceImage(null); setReferencePreview(''); }}
-                  hint="Upload a Tanishq-style reference — AI will match its style, layout & typography"
-                />
+                {/* Multi-Image Upload for Hero */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Reference / Jewelry Images <span className="text-gray-400 text-xs font-normal">(upload multiple)</span>
+                  </label>
+                  {heroPreviews.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      {heroPreviews.map((preview, idx) => (
+                        <div key={idx} className="relative group rounded-lg border border-[#F5EFE6] overflow-hidden bg-gray-50">
+                          <img src={preview} alt={`ref-${idx + 1}`} className="w-full h-24 object-contain bg-white" />
+                          <button
+                            type="button"
+                            onClick={() => handleHeroImageRemove(idx)}
+                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] text-center py-0.5">
+                            Image {idx + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <HeroImageDropZone
+                    onSelectMultiple={handleHeroImageAddMultiple}
+                    onSelectSingle={handleHeroImageAdd}
+                    imageCount={heroPreviews.length}
+                  />
+                  {heroPreviews.length > 0 && (
+                    <div className="flex items-center justify-between mt-1.5">
+                      <p className="text-[10px] text-amber-600 font-medium">{heroPreviews.length} image{heroPreviews.length > 1 ? 's' : ''} uploaded — AI will study all and create one cohesive banner</p>
+                      <button
+                        type="button"
+                        onClick={() => { setHeroImages([]); setHeroPreviews([]); }}
+                        className="text-[10px] text-red-500 hover:text-red-700"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div>
                   <label className={labelStyles}>Festival / Event / Offer Type <span className="text-red-500">*</span></label>
                   <input
@@ -604,12 +736,13 @@ const AdminImagePrompts = () => {
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
                   <p className="text-xs text-amber-800 font-semibold">Complete Banner Design</p>
                   <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
+                    <li><strong>Upload multiple images</strong> — jewelry, references, inspiration. AI studies ALL</li>
                     <li>Text rendered IN the image with aesthetic typography</li>
                     <li>Offer styled as a premium design element (not plain text)</li>
                     <li>SHOP NOW / CTA button included in the design</li>
                     <li>Logo placed where it fits best (not always bottom-right)</li>
-                    <li>AI dynamically decides composition, style & model</li>
-                    <li>Ultra-wide 4K, Tanishq-quality luxury aesthetic</li>
+                    <li>AI decides model vs product-only — both equally premium</li>
+                    <li>Ultra-wide 4K, luxury aesthetic, real DSLR camera quality</li>
                   </ul>
                 </div>
               </>
