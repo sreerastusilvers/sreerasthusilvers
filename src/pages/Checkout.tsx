@@ -110,6 +110,7 @@ const MobileCheckout = () => {
   const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [slideResetKey, setSlideResetKey] = useState(0);
   
   // Form state
   const [formData, setFormData] = useState<AddressFormData>({
