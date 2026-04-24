@@ -170,6 +170,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const dataPayload: Record<string, string> = {
     orderId,
     audience,
+    title,
+    body: message,
+    tag: `order-${orderId}`,
     ...(body.url ? { url: body.url } : {}),
     ...(body.data || {}),
   };
@@ -178,11 +181,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const messaging = admin.messaging(app);
     const resp = await messaging.sendEachForMulticast({
       tokens,
-      notification: { title, body: message },
       data: dataPayload,
       webpush: {
         fcmOptions: body.url ? { link: body.url } : undefined,
-        notification: { tag: `order-${orderId}` },
       },
     });
 
