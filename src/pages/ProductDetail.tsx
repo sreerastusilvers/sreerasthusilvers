@@ -12,6 +12,7 @@ import { getProductReviews, getProductReviewStats, hasUserPurchasedProduct, hasU
 import logo from "@/assets/dark.png";
 import Header from "@/components/Header";
 import MobileHeader from "@/components/MobileHeader";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import MobileSearchBar from "@/components/MobileSearchBar";
 import Footer from "@/components/Footer";
 import CategoryIconNav from "@/components/CategoryIconNav";
@@ -1119,6 +1120,7 @@ const ProductDetail = () => {
 
       {/* Bottom padding for mobile to account for fixed bar */}
       <div className="md:hidden h-20"></div>
+      <MobileBottomNav />
     </div>
   );
 };

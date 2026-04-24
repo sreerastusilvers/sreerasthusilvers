@@ -121,9 +121,6 @@ const MobileCheckout = () => {
     isDefault: false,
   });
 
-  // Defensive guard — ProtectedRoute already blocks, but just in case
-  if (!user) return <Navigate to="/login" state={{ from: { pathname: '/checkout' } }} replace />;
-
   // Fetch addresses and suggested products
   const loadAddresses = async () => {
     if (user) {
@@ -254,6 +251,9 @@ const MobileCheckout = () => {
   }, 0);
   const discount = pricing.discount;
   const total = pricing.total;
+
+  // Defensive guard — must come AFTER all hooks (Rules of Hooks)
+  if (!user) return <Navigate to="/login" state={{ from: { pathname: '/checkout' } }} replace />;
 
   const addOnTabs = ['Did you forget?', 'Best Sellers', 'New Arrivals'];
 
@@ -1466,9 +1466,6 @@ const Checkout = () => {
     isDefault: false,
   });
 
-  // Defensive guard — ProtectedRoute already blocks, but just in case
-  if (!user) return <Navigate to="/login" state={{ from: { pathname: '/checkout' } }} replace />;
-
   // Load addresses
   const loadAddresses = async () => {
     if (user) {
@@ -1584,17 +1581,20 @@ const Checkout = () => {
     return `₹ ${price.toFixed(2)}`;
   };
 
-  // Render mobile checkout if on small screen
-  if (isMobile) {
-    return <MobileCheckout />;
-  }
-
-  // Admin-driven pricing
+  // Admin-driven pricing (must be called before any conditional returns — Rules of Hooks)
   const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod);
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
   const discount = pricing.discount;
   const desktopTotal = pricing.total;
+
+  // Defensive guard — must come AFTER all hooks (Rules of Hooks)
+  if (!user) return <Navigate to="/login" state={{ from: { pathname: '/checkout' } }} replace />;
+
+  // Render mobile checkout if on small screen
+  if (isMobile) {
+    return <MobileCheckout />;
+  }
 
   // Handle order placement
   const handlePlaceOrder = async () => {

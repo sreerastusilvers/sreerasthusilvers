@@ -5,6 +5,7 @@ import { Heart, ShoppingBag, Trash2, ArrowLeft, Package, Search, SlidersHorizont
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileHeader from "@/components/MobileHeader";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import MobileSearchBar from "@/components/MobileSearchBar";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -521,6 +522,7 @@ const Wishlist = () => {
           )}
         </div>
       </div>
+      <MobileBottomNav />
     </>
   );
 };

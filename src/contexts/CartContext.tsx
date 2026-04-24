@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore';
 import { db, auth } from '@/config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -173,15 +173,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (currentUserId) {
       try {
         const cartRef = doc(db, 'carts', currentUserId);
-        const cartSnap = await getDoc(cartRef);
-        if (cartSnap.exists()) {
-          const updatedItems = { ...cartSnap.data().items };
-          delete updatedItems[id];
-          await setDoc(cartRef, {
-            items: updatedItems,
-            updatedAt: new Date().toISOString(),
-          }, { merge: true });
-        }
+        await updateDoc(cartRef, {
+          [`items.${id}`]: deleteField(),
+          updatedAt: new Date().toISOString(),
+        });
       } catch (error) {
         console.error('Firebase sync failed for removeFromCart:', error);
       } finally {
