@@ -231,11 +231,10 @@ const AdminOrders = () => {
         selectedDeliveryBoyId,
         selectedPartner.name
       );
-      
-      // Update order status to processing if it's pending
-      if (selectedOrder.status === 'pending') {
-        await updateOrderStatus(selectedOrder.id, 'processing');
-      }
+      // NOTE: assignOrderToDeliveryBoy already sets status → 'outForDelivery'
+      // and fires dispatchStatusNotifications internally. Do NOT call
+      // updateOrderStatus here — it would send a second notification and
+      // revert the status back to 'processing'.
 
       toast.success(
         <div className="flex items-center gap-2">

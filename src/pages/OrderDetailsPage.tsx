@@ -269,7 +269,7 @@ const OrderDetailsPage = () => {
     setSubmittingProductRating(true);
     try {
       await addDoc(collection(db, 'productRatings'), {
-        productId: order.items[0]?.id || order.items[0]?.productId || order.id,
+        productId: order.items[0]?.productId || order.id,
         productName: order.items[0]?.name,
         orderId: order.id,
         userId: user.uid,
