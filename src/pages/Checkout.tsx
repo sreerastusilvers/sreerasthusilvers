@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -90,6 +91,7 @@ const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: 
 const MobileCheckout = () => {
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
+  const { resolvedTheme } = useTheme();
   const { items, subtotal, updateQuantity, removeFromCart, totalItems, addToCart, clearCart, openCart, loading: cartLoading } = useCart();
   const [currentStep] = useState(2); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
   const { toast } = useToast();
@@ -395,9 +397,15 @@ const MobileCheckout = () => {
       <div className="bg-white dark:bg-zinc-900 sticky top-0 z-50 shadow-sm">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={() => openCart()} className="p-1">
+          <button onClick={() => navigate(-1)} className="p-1">
             <ArrowLeft className="w-6 h-6 text-gray-800 dark:text-zinc-200" />
           </button>
+          <img
+            src={resolvedTheme === 'dark' ? '/white_logo.png' : '/black_logo.png'}
+            alt="Sreerasthu Silvers"
+            className="h-9 w-auto object-contain"
+          />
+          <div className="w-8" />
         </div>
         <MobileSearchBar />
       </div>

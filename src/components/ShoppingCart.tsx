@@ -6,11 +6,13 @@ import { useCallback, useEffect, useState } from 'react';
 import shoppingBags from '@/assets/shopping-bags.png';
 import loginCartImage from '@/assets/login-cart.png';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const ShoppingCart = () => {
   const { items, isCartOpen, closeCart, updateQuantity, removeFromCart, subtotal, totalItems, loading } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { resolvedTheme } = useTheme();
   const [isCouponExpanded, setIsCouponExpanded] = useState(false);
   const [currentStep] = useState(1); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
 
@@ -66,12 +68,9 @@ const ShoppingCart = () => {
                 {/* Left: Logo */}
                 <div className="flex-1 flex justify-start">
                   <img 
-                    src="/src/assets/logo.svg" 
-                    alt="Logo" 
-                    className="h-8 w-auto"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
+                    src={resolvedTheme === 'dark' ? '/white_logo.png' : '/black_logo.png'}
+                    alt="Sreerasthu Silvers" 
+                    className="h-8 w-auto object-contain"
                   />
                 </div>
 

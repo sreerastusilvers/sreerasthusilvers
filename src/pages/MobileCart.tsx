@@ -4,6 +4,7 @@ import { ArrowLeft, MoreVertical, Star, Plus, Minus, Trash2, ChevronRight } from
 import { useCart } from '@/contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // ─── Slide to Proceed Button Component ───
 const SlideToProceedButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
@@ -75,6 +76,7 @@ const MobileCart = () => {
   const { items, updateQuantity, removeFromCart, subtotal, totalItems } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { resolvedTheme } = useTheme();
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [appliedCode, setAppliedCode] = useState('');
@@ -119,7 +121,11 @@ const MobileCart = () => {
         >
           <ArrowLeft className="w-6 h-6 text-gray-800 dark:text-zinc-200" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>My Cart List</h1>
+        <img
+          src={resolvedTheme === 'dark' ? '/white_logo.png' : '/black_logo.png'}
+          alt="Sreerasthu Silvers"
+          className="h-9 w-auto object-contain"
+        />
         <button className="p-2 -mr-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors">
           <MoreVertical className="w-6 h-6 text-gray-800 dark:text-zinc-200" />
         </button>
