@@ -59,11 +59,11 @@ const SlideToProceedButton = ({ amount, onComplete }: { amount: string; onComple
           dragMomentum={false}
           onDragEnd={handleDragEnd}
           style={{ x }}
-          className="absolute left-1 top-1 w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing z-10"
+          className="absolute left-1 top-1 w-12 h-12 rounded-full bg-white dark:bg-zinc-900 shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing z-10"
           whileTap={{ scale: 0.95 }}
         >
-          <ChevronRight className="w-5 h-5 text-gray-900" />
-          <ChevronRight className="w-5 h-5 text-gray-900 -ml-3" />
+          <ChevronRight className="w-5 h-5 text-gray-900 dark:text-zinc-100" />
+          <ChevronRight className="w-5 h-5 text-gray-900 dark:text-zinc-100 -ml-3" />
         </motion.div>
       )}
     </motion.div>
@@ -108,18 +108,18 @@ const MobileCart = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-zinc-900 flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 bg-white z-50 px-4 py-4 flex items-center justify-between shadow-sm">
+      <div className="sticky top-0 bg-white dark:bg-zinc-900 z-50 px-4 py-4 flex items-center justify-between shadow-sm">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+          className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
         >
-          <ArrowLeft className="w-6 h-6 text-gray-800" />
+          <ArrowLeft className="w-6 h-6 text-gray-800 dark:text-zinc-200" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>My Cart List</h1>
-        <button className="p-2 -mr-2 hover:bg-gray-100 rounded-full transition-colors">
-          <MoreVertical className="w-6 h-6 text-gray-800" />
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>My Cart List</h1>
+        <button className="p-2 -mr-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors">
+          <MoreVertical className="w-6 h-6 text-gray-800 dark:text-zinc-200" />
         </button>
       </div>
 
@@ -134,7 +134,7 @@ const MobileCart = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -100, height: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
-              className="flex gap-4 py-4 border-b border-gray-100 last:border-0 relative"
+              className="flex gap-4 py-4 border-b border-gray-100 dark:border-zinc-800 last:border-0 relative"
             >
               {/* Delete Icon - Positioned Absolutely */}
               <button
@@ -151,7 +151,7 @@ const MobileCart = () => {
               </button>
 
               {/* Product Image */}
-              <div className="relative w-20 h-20 bg-white rounded-2xl overflow-hidden flex-shrink-0 shadow-md">
+              <div className="relative w-20 h-20 bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden flex-shrink-0 shadow-md">
                 <img
                   src={item.image}
                   alt={item.name}
@@ -161,19 +161,19 @@ const MobileCart = () => {
 
               {/* Product Details */}
               <div className="flex-1 min-w-0 pr-8">{/* Added padding-right for delete button space */}
-                <h3 className="text-base font-semibold text-gray-900 line-clamp-1 mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1 mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   {item.name}
                 </h3>
 
                 {/* Rating Info */}
-                <div className="flex items-center gap-1 mb-3 text-gray-500">
+                <div className="flex items-center gap-1 mb-3 text-gray-500 dark:text-zinc-500">
                   <Star className="w-3.5 h-3.5 fill-orange-400 text-orange-400" />
                   <span className="text-xs font-medium">4.9</span>
-                  <span className="text-xs text-gray-400">(125)</span>
+                  <span className="text-xs text-gray-400 dark:text-zinc-500">(125)</span>
                 </div>
 
                 {/* Price */}
-                <div className="text-base font-bold text-gray-900">
+                <div className="text-base font-bold text-gray-900 dark:text-zinc-100">
                   {formatPrice(item.price * item.quantity)}
                 </div>
               </div>
@@ -189,20 +189,20 @@ const MobileCart = () => {
                       removeFromCart(item.id);
                     }
                   }}
-                  className="w-7 h-7 rounded-full bg-transparent border border-gray-300 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
+                  className="w-7 h-7 rounded-full bg-transparent border border-gray-300 dark:border-zinc-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 active:scale-95 transition-all"
                 >
-                  <Minus className="w-3.5 h-3.5 text-gray-700" />
+                  <Minus className="w-3.5 h-3.5 text-gray-700 dark:text-zinc-300" />
                 </button>
 
                 {/* Quantity display - transparent and small */}
-                <span className="text-sm font-semibold text-gray-900 min-w-[20px] text-center">{item.quantity}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 min-w-[20px] text-center">{item.quantity}</span>
 
                 {/* Plus button - transparent */}
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  className="w-7 h-7 rounded-full bg-transparent border border-gray-300 flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all"
+                  className="w-7 h-7 rounded-full bg-transparent border border-gray-300 dark:border-zinc-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 active:scale-95 transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5 text-gray-700" />
+                  <Plus className="w-3.5 h-3.5 text-gray-700 dark:text-zinc-300" />
                 </button>
               </div>
             </motion.div>
@@ -212,11 +212,11 @@ const MobileCart = () => {
         {/* Empty State */}
         {items.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+            <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
               <div className="text-4xl">🛒</div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Your cart is empty</h3>
-            <p className="text-sm text-gray-500 mb-6">Add some items to get started</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-2">Your cart is empty</h3>
+            <p className="text-sm text-gray-500 dark:text-zinc-500 mb-6">Add some items to get started</p>
             <button
               onClick={() => navigate('/')}
               className="px-6 py-3 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800"
@@ -238,7 +238,7 @@ const MobileCart = () => {
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                     placeholder="Enter promo code"
-                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="flex-1 px-4 py-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   <button
                     onClick={handleApplyPromo}
@@ -252,7 +252,7 @@ const MobileCart = () => {
                     Apply
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2 ml-1">Try: 3H-K-KU7O, SAVE10, or WELCOME</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-500 mt-2 ml-1">Try: 3H-K-KU7O, SAVE10, or WELCOME</p>
               </div>
             ) : (
               <div className="flex items-center justify-between mb-4 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
@@ -275,47 +275,47 @@ const MobileCart = () => {
             )}
 
             {/* Order Summary */}
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <h3 className="text-base font-bold text-gray-900 mb-3">Order Summary</h3>
+            <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl p-4">
+              <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3">Order Summary</h3>
               
               <div className="space-y-2.5">
                 {/* Individual Product Prices */}
                 {items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
-                    <span className="text-gray-600 flex-1 truncate pr-2">{item.name} (x{item.quantity})</span>
-                    <span className="text-gray-900 font-medium">{formatPrice(item.price * item.quantity)}</span>
+                    <span className="text-gray-600 dark:text-zinc-400 flex-1 truncate pr-2">{item.name} (x{item.quantity})</span>
+                    <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(item.price * item.quantity)}</span>
                   </div>
                 ))}
                 
-                <div className="h-px bg-gray-200 my-2" />
+                <div className="h-px bg-gray-200 dark:bg-zinc-800 my-2" />
                 
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Order Amount</span>
-                  <span className="text-gray-900 font-medium">{formatPrice(subtotal)}</span>
+                  <span className="text-gray-600 dark:text-zinc-400">Order Amount</span>
+                  <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(subtotal)}</span>
                 </div>
                 
                 {promoApplied && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Promo-code</span>
+                    <span className="text-gray-600 dark:text-zinc-400">Promo-code</span>
                     <span className="text-green-600 font-medium">-{formatPrice(promoDiscount)}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Delivery</span>
-                  <span className="text-gray-900 font-medium">{formatPrice(deliveryFee)}</span>
+                  <span className="text-gray-600 dark:text-zinc-400">Delivery</span>
+                  <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(deliveryFee)}</span>
                 </div>
                 
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax</span>
-                  <span className="text-gray-900 font-medium">{formatPrice(taxAmount)}</span>
+                  <span className="text-gray-600 dark:text-zinc-400">Tax</span>
+                  <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(taxAmount)}</span>
                 </div>
 
-                <div className="h-px bg-gray-200 my-2" />
+                <div className="h-px bg-gray-200 dark:bg-zinc-800 my-2" />
 
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-700">Total Amount</span>
-                  <span className="text-xl font-bold text-gray-900">{formatPrice(totalAmount)}</span>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Total Amount</span>
+                  <span className="text-xl font-bold text-gray-900 dark:text-zinc-100">{formatPrice(totalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -325,7 +325,7 @@ const MobileCart = () => {
 
       {/* Fixed Button at Bottom */}
       {items.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-40">
+        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-40">
           <SlideToProceedButton
             amount={formatPrice(totalAmount)}
             onComplete={() => navigate('/checkout')}

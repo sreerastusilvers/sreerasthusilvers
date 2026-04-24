@@ -183,11 +183,11 @@ const VerifyEmail = () => {
         <img src={logo} alt="Sreerasthu Silvers" className="h-12 md:h-14 w-auto" />
       </div>
 
-      <div className="relative w-full max-w-md bg-white/80 backdrop-blur-sm rounded-2xl p-8 sm:p-10">
+      <div className="relative w-full max-w-md bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm rounded-2xl p-8 sm:p-10">
         {/* Close Button - just dismisses the card, no navigation */}
         <button
           onClick={() => setDismissed(true)}
-          className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute top-5 right-5 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:text-zinc-400 transition-colors"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -207,17 +207,17 @@ const VerifyEmail = () => {
 
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mb-3">
             Verify Your Email
           </h1>
-          <p className="text-gray-600 text-sm leading-relaxed">
+          <p className="text-gray-600 dark:text-zinc-400 text-sm leading-relaxed">
             Your email address is not verified yet. Please check your inbox and click the verification link.
           </p>
         </div>
 
         {/* Email Display */}
         <div className="mb-6 text-center">
-          <p className="text-sm text-gray-500 mb-2">Verification email sent to:</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-500 mb-2">Verification email sent to:</p>
           <p className="text-blue-600 font-semibold text-base break-all">
             {userEmail}
           </p>
@@ -230,7 +230,7 @@ const VerifyEmail = () => {
             variant="outline"
             onClick={handleResendVerification}
             disabled={resendCountdown > 0 || resendLoading}
-            className="w-full h-12 bg-white border border-blue-300 text-blue-600 hover:bg-blue-50 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-12 bg-white dark:bg-zinc-900 border border-blue-300 text-blue-600 hover:bg-blue-50 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {resendLoading ? (
               <>
@@ -284,7 +284,7 @@ const VerifyEmail = () => {
         <div className="text-center">
           <button
             onClick={handleLogout}
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors underline"
+            className="text-sm text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:text-zinc-300 transition-colors underline"
           >
             Logout and try different account
           </button>

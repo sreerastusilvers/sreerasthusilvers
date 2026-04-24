@@ -99,19 +99,23 @@ const Dashboard = () => {
   const recentProducts = products.slice(0, 5);
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Welcome to Sreerasthu Silvers Admin Panel</p>
+    <div className="space-y-5">
+      {/* Premium Page Header */}
+      <div className="relative overflow-hidden rounded-2xl border border-amber-200/40 bg-gradient-to-br from-amber-50 via-white to-orange-50/30 p-5 shadow-sm">
+        <div className="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-amber-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-serif font-semibold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>Dashboard</h1>
+            <p className="text-gray-600 text-sm mt-1">Welcome back — here's what's happening at <span className="text-amber-700 font-medium">Sreerasthu Silvers</span> today.</p>
+          </div>
+          <Link to="/admin/products/new">
+            <Button className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-md">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Product
+            </Button>
+          </Link>
         </div>
-        <Link to="/admin/products/new">
-          <Button className="bg-amber-600 hover:bg-amber-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </Button>
-        </Link>
       </div>
 
       {/* Stats Grid */}
@@ -119,13 +123,14 @@ const Dashboard = () => {
         {stats.map((stat, index) => (
           <Card 
             key={index} 
-            className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer"
+            className="group relative overflow-hidden bg-white border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
             onClick={() => stat.link && navigate(stat.link)}
           >
+            <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-amber-400 to-amber-600 scale-y-0 group-hover:scale-y-100 transition-transform duration-300 origin-top" />
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-2">
-                <h3 className="text-gray-600 text-xs font-medium">{stat.title}</h3>
-                <div className={`${stat.iconBgColor} p-2 rounded-lg`}>
+                <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wider">{stat.title}</h3>
+                <div className={`${stat.iconBgColor} p-2 rounded-lg group-hover:scale-110 transition-transform duration-300`}>
                   <stat.icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
               </div>

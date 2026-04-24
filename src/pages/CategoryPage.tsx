@@ -6,6 +6,9 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
+  PanelLeftClose,
+  PanelLeft,
   Loader2,
   Heart,
   Star,
@@ -78,6 +81,14 @@ const CategoryPage = () => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  // Desktop sidebar collapse — persisted per user
+  const [desktopFiltersCollapsed, setDesktopFiltersCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('categoryFiltersCollapsed') === '1';
+  });
+  useEffect(() => {
+    localStorage.setItem('categoryFiltersCollapsed', desktopFiltersCollapsed ? '1' : '0');
+  }, [desktopFiltersCollapsed]);
 
   // Seed + subscribe to categories
   useEffect(() => {
@@ -98,15 +109,24 @@ const CategoryPage = () => {
     [categories, categorySlug]
   );
 
-  // Subscribe to products filtered by category name
+  // Subscribe to products filtered by category name OR subcategory (graceful fallback for un-migrated products)
   useEffect(() => {
     if (!currentCategory) return;
     setLoading(true);
+    const catName = currentCategory.name.toLowerCase();
+    const catSlug = currentCategory.slug.toLowerCase();
     const unsub = subscribeToProducts((fbProducts) => {
       const ui = adaptFirebaseArrayToUI(fbProducts);
-      const filtered = ui.filter(
-        (p) => p.category?.toLowerCase() === currentCategory.name.toLowerCase()
-      );
+      const filtered = ui.filter((p) => {
+        const pc = (p.category || '').toLowerCase();
+        const psc = ((p as any).subcategory || '').toLowerCase();
+        return (
+          pc === catName ||
+          pc === catSlug ||
+          psc === catName ||
+          psc === catSlug
+        );
+      });
       setAllProducts(filtered);
       setLoading(false);
     }, true);
@@ -341,11 +361,6 @@ const CategoryPage = () => {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
-          {product.discount && product.discount > 0 && (
-            <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
-              -{product.discount}%
-            </span>
-          )}
           {product.badge && (
             <span className="absolute top-2 right-2 bg-primary text-white text-xs font-medium px-2 py-1 rounded">
               {product.badge}
@@ -402,6 +417,11 @@ const CategoryPage = () => {
             {product.oldPrice && (
               <span className="text-xs text-muted-foreground line-through">
                 ₹{product.oldPrice.toLocaleString("en-IN")}
+              </span>
+            )}
+            {product.discount && product.discount > 0 && (
+              <span className="text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73]">
+                {product.discount}% Off
               </span>
             )}
           </div>
@@ -551,33 +571,64 @@ const CategoryPage = () => {
 
       {/* Main content */}
       <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-8">
-          {/* Desktop sidebar */}
-          <aside className="hidden lg:block w-64 flex-shrink-0">
-            <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 space-y-2 scrollbar-thin">
-              <h2 className="text-xl font-bold text-foreground mb-4">
-                Filters
-              </h2>
-
-              {/* Sort */}
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-2">
-                  Sort By
-                </h3>
-                <select
-                  value={activeSortBy}
-                  onChange={(e) => setFilter("sort", e.target.value)}
-                  className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground/80 bg-background"
+        <div className="flex gap-6 lg:gap-8">
+          {/* Desktop sidebar — collapsible */}
+          <aside
+            className={`hidden lg:block flex-shrink-0 transition-all duration-300 ease-in-out ${
+              desktopFiltersCollapsed ? 'w-12' : 'w-64'
+            }`}
+          >
+            <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-thin">
+              {desktopFiltersCollapsed ? (
+                /* Collapsed rail */
+                <button
+                  onClick={() => setDesktopFiltersCollapsed(false)}
+                  className="group w-10 h-10 mx-auto flex items-center justify-center rounded-lg border border-border bg-background hover:bg-primary/10 hover:border-primary/40 transition-colors"
+                  aria-label="Show filters"
+                  title="Show filters"
                 >
-                  {sortOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <PanelLeft className="w-4 h-4 text-foreground/70 group-hover:text-primary" />
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-foreground">Filters</h2>
+                    <button
+                      onClick={() => setDesktopFiltersCollapsed(true)}
+                      className="p-1.5 rounded-md hover:bg-muted text-foreground/60 hover:text-foreground transition-colors"
+                      aria-label="Hide filters"
+                      title="Hide filters"
+                    >
+                      <PanelLeftClose className="w-4 h-4" />
+                    </button>
+                  </div>
 
-              <FilterContent />
+                  {/* Sort */}
+                  <div className="mb-4">
+                    <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-2">
+                      Sort By
+                    </h3>
+                    <select
+                      value={activeSortBy}
+                      onChange={(e) => setFilter("sort", e.target.value)}
+                      className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground/80 bg-background"
+                    >
+                      {sortOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <FilterContent />
+                </div>
+              )}
             </div>
           </aside>
 

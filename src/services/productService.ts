@@ -354,6 +354,102 @@ export const subscribeToBestSellers = (
   });
 };
 
+// Real-time top deals listener
+export const subscribeToTopDeals = (
+  callback: (products: Product[]) => void,
+  limitCount = 10
+) => {
+  const q = query(
+    collection(db, PRODUCTS_COLLECTION),
+    where('flags.isActive', '==', true),
+    where('flags.isTopDeal', '==', true),
+    limit(limitCount)
+  );
+
+  return onSnapshot(q, (querySnapshot) => {
+    const products = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Product));
+    callback(products);
+  }, (error) => {
+    console.error('[productService] TopDeals subscription error:', error);
+    callback([]);
+  });
+};
+
+// Real-time featured products listener
+export const subscribeToFeatured = (
+  callback: (products: Product[]) => void,
+  limitCount = 10
+) => {
+  const q = query(
+    collection(db, PRODUCTS_COLLECTION),
+    where('flags.isActive', '==', true),
+    where('flags.isFeatured', '==', true),
+    limit(limitCount)
+  );
+
+  return onSnapshot(q, (querySnapshot) => {
+    const products = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Product));
+    callback(products);
+  }, (error) => {
+    console.error('[productService] Featured subscription error:', error);
+    callback([]);
+  });
+};
+
+// Real-time new arrivals listener
+export const subscribeToNewArrivals = (
+  callback: (products: Product[]) => void,
+  limitCount = 10
+) => {
+  const q = query(
+    collection(db, PRODUCTS_COLLECTION),
+    where('flags.isActive', '==', true),
+    where('flags.isNewArrival', '==', true),
+    limit(limitCount)
+  );
+
+  return onSnapshot(q, (querySnapshot) => {
+    const products = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Product));
+    callback(products);
+  }, (error) => {
+    console.error('[productService] NewArrivals subscription error:', error);
+    callback([]);
+  });
+};
+
+// Real-time trend products listener
+export const subscribeToTrendProducts = (
+  callback: (products: Product[]) => void,
+  limitCount = 10
+) => {
+  const q = query(
+    collection(db, PRODUCTS_COLLECTION),
+    where('flags.isActive', '==', true),
+    where('flags.isTrendProduct', '==', true),
+    limit(limitCount)
+  );
+
+  return onSnapshot(q, (querySnapshot) => {
+    const products = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Product));
+    callback(products);
+  }, (error) => {
+    console.error('[productService] TrendProducts subscription error:', error);
+    callback([]);
+  });
+};
+
 // Generate slug from name
 export const generateSlug = (name: string): string => {
   return name

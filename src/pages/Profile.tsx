@@ -58,7 +58,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900">
       <div className="hidden lg:block">
         <Header />
       </div>
@@ -76,13 +76,13 @@ const Profile = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+                  className="bg-white dark:bg-zinc-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800 hover:shadow-md transition-all"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-lg ${card.bg} flex items-center justify-center`}>
                       <Icon className={`w-5 h-5 ${card.color}`} />
                     </div>
-                    <span className="text-sm font-semibold text-gray-900">{card.label}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{card.label}</span>
                   </div>
                 </motion.button>
               );
@@ -112,8 +112,8 @@ const Profile = () => {
 
         {/* Account Settings */}
         <div className="px-4 pb-4">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Account Settings</h2>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100 mb-4">Account Settings</h2>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden">
             {accountSettings.map((setting, index) => {
               const Icon = setting.icon;
               return (
@@ -122,13 +122,13 @@ const Profile = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 + index * 0.05 }}
-                  className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                  className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors border-b border-gray-100 dark:border-zinc-800 last:border-b-0"
                 >
                   <Icon className={`w-5 h-5 ${setting.color}`} />
-                  <span className="text-sm font-medium text-gray-900 flex-1 text-left">
+                  <span className="text-sm font-medium text-gray-900 dark:text-zinc-100 flex-1 text-left">
                     {setting.label}
                   </span>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                  <ChevronRight className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
                 </motion.button>
               );
             })}
@@ -137,8 +137,8 @@ const Profile = () => {
 
         {/* My Activity */}
         <div className="px-4 pb-4">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">My Activity</h2>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100 mb-4">My Activity</h2>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden">
             {myActivity.map((activity, index) => {
               const Icon = activity.icon;
               return (
@@ -147,13 +147,13 @@ const Profile = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.8 + index * 0.05 }}
-                  className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                  className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors border-b border-gray-100 dark:border-zinc-800 last:border-b-0"
                 >
                   <Icon className={`w-5 h-5 ${activity.color}`} />
-                  <span className="text-sm font-medium text-gray-900 flex-1 text-left">
+                  <span className="text-sm font-medium text-gray-900 dark:text-zinc-100 flex-1 text-left">
                     {activity.label}
                   </span>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                  <ChevronRight className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
                 </motion.button>
               );
             })}
@@ -167,11 +167,11 @@ const Profile = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 }}
             onClick={handleLogout}
-            className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:bg-gray-50 transition-colors"
+            className="w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-4 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
           >
             <div className="flex items-center justify-center gap-2">
-              <LogOut className="w-5 h-5 text-gray-700" />
-              <span className="text-sm font-medium text-gray-900">
+              <LogOut className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
+              <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">
                 Sign Out
               </span>
             </div>
@@ -182,7 +182,7 @@ const Profile = () => {
       {/* Desktop View */}
       <div className="hidden lg:block">
         <div className="container-custom py-8">
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
             <h1 className="text-3xl font-bold mb-8">My Account</h1>
             
             {/* Quick Access Cards */}
@@ -192,12 +192,12 @@ const Profile = () => {
                 return (
                   <button
                     key={card.id}
-                    className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-primary transition-all"
+                    className="bg-white dark:bg-zinc-900 border-2 border-gray-200 dark:border-zinc-800 rounded-xl p-6 hover:border-primary transition-all"
                   >
                     <div className={`w-12 h-12 rounded-lg ${card.bg} flex items-center justify-center mb-4`}>
                       <Icon className={`w-6 h-6 ${card.color}`} />
                     </div>
-                    <span className="text-lg font-semibold text-gray-900">{card.label}</span>
+                    <span className="text-lg font-semibold text-gray-900 dark:text-zinc-100">{card.label}</span>
                   </button>
                 );
               })}
@@ -212,13 +212,13 @@ const Profile = () => {
                   return (
                     <button
                       key={setting.id}
-                      className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors"
                     >
                       <Icon className={`w-6 h-6 ${setting.color}`} />
-                      <span className="text-base font-medium text-gray-900 flex-1 text-left">
+                      <span className="text-base font-medium text-gray-900 dark:text-zinc-100 flex-1 text-left">
                         {setting.label}
                       </span>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                      <ChevronRight className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     </button>
                   );
                 })}
@@ -234,13 +234,13 @@ const Profile = () => {
                   return (
                     <button
                       key={activity.id}
-                      className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors"
                     >
                       <Icon className={`w-6 h-6 ${activity.color}`} />
-                      <span className="text-base font-medium text-gray-900 flex-1 text-left">
+                      <span className="text-base font-medium text-gray-900 dark:text-zinc-100 flex-1 text-left">
                         {activity.label}
                       </span>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                      <ChevronRight className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     </button>
                   );
                 })}
@@ -251,10 +251,10 @@ const Profile = () => {
             <div className="mt-8">
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-3 p-4 rounded-lg border-2 border-gray-200 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-center gap-3 p-4 rounded-lg border-2 border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors"
               >
-                <LogOut className="w-6 h-6 text-gray-700" />
-                <span className="text-base font-medium text-gray-900">
+                <LogOut className="w-6 h-6 text-gray-700 dark:text-zinc-300" />
+                <span className="text-base font-medium text-gray-900 dark:text-zinc-100">
                   Sign Out
                 </span>
               </button>

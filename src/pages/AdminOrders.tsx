@@ -442,7 +442,14 @@ const AdminOrders = () => {
           /* Grid View */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredOrders.map((order) => (
-              <div key={order.id} className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow">
+              <div
+                key={order.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/admin/orders/${order.id}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/admin/orders/${order.id}`); }}
+                className="group bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg hover:border-amber-300 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+              >
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-semibold text-gray-900">ORD-{order.orderId}</span>
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${getStatusBadgeClass(order.status)}`}>
@@ -469,16 +476,13 @@ const AdminOrders = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                  <Button onClick={() => openAssignDrawer(order)} variant="outline" size="sm" disabled={order.status === 'delivered' || order.status === 'cancelled'} className="text-xs flex-1">
-                    <UserPlus className="w-3 h-3 mr-1" />
-                    {order.delivery_boy_id ? 'Reassign' : 'Assign'}
-                  </Button>
-                  <Button onClick={() => openTrackingDrawer(order)} variant="outline" size="sm" className="text-xs flex-1 bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100">
-                    <Truck className="w-3 h-3 mr-1" />
-                    Track
-                  </Button>
-                  <button onClick={() => handleDeleteOrder(order.id)} className="p-1.5 text-white bg-red-500 hover:bg-red-600 rounded-md" title="Delete">
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <span className="text-[11px] uppercase tracking-wider text-gray-400 group-hover:text-amber-600 transition-colors">Open details →</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteOrder(order.id); }}
+                    className="p-1.5 text-red-500 hover:text-white hover:bg-red-500 rounded-md transition-colors"
+                    title="Delete order"
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -521,7 +525,11 @@ const AdminOrders = () => {
               </thead>
               <tbody className="bg-white">
                 {filteredOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr
+                      key={order.id}
+                      onClick={() => navigate(`/admin/orders/${order.id}`)}
+                      className="border-b border-gray-100 hover:bg-amber-50/40 cursor-pointer"
+                    >
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
                           ORD-{order.orderId}
@@ -538,7 +546,7 @@ const AdminOrders = () => {
                           {order.items.length} items
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={order.status}
                           onChange={(e) => handleStatusChange(order.id, e.target.value as Order['status'])}
@@ -575,34 +583,11 @@ const AdminOrders = () => {
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-gray-900">{formatPrice(order.total)}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
-                          <Button
-                            onClick={() => openAssignDrawer(order)}
-                            variant="outline"
-                            size="sm"
-                            disabled={order.status === 'delivered' || order.status === 'cancelled'}
-                            className={`text-sm ${
-                              order.delivery_boy_id 
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' 
-                                : 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
-                            } ${(order.status === 'delivered' || order.status === 'cancelled') ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          >
-                            <UserPlus className="w-4 h-4 mr-1" />
-                            {order.delivery_boy_id ? 'Reassign' : 'Assign'}
-                          </Button>
-                          <Button
-                            onClick={() => openTrackingDrawer(order)}
-                            variant="outline"
-                            size="sm"
-                            className="text-sm bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-                          >
-                            <Truck className="w-4 h-4 mr-1" />
-                            Manage Tracking
-                          </Button>
                           <button
                             onClick={() => handleDeleteOrder(order.id)}
-                            className="p-2 text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors"
+                            className="p-2 text-red-500 hover:text-white hover:bg-red-500 rounded-md transition-colors"
                             title="Delete Order"
                           >
                             <Trash2 className="w-4 h-4" />

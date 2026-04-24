@@ -1,81 +1,184 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import useAutoScroll from "@/hooks/useAutoScroll";
+import { DEFAULT_HOME_COLLECTIONS } from "@/data/defaultHomeCollections";
+import { subscribeHomeCollections, HomeCollection } from "@/services/homeContentService";
 
-const promos = [
-  {
-    id: 1,
-    eyebrow: "LUXURY NECKLACE",
-    title: "Best Friend Jewelry",
-    subtitle: "A wide range of exquisite necklaces",
-    cta: "Shop Now",
-    image: "https://t3.ftcdn.net/jpg/00/83/61/32/360_F_83613230_H6tLsTMziCU2cY1QIJufVuBbZRYhyDf6.jpg",
-    link: "/shop/necklaces",
-  },
-  {
-    id: 2,
-    eyebrow: "OUR EARRINGS",
-    title: "Diamond Stud Earrings",
-    subtitle: "A wide range of exquisite earrings",
-    cta: "Shop Now",
-    image: "https://img.freepik.com/premium-photo/elegant-silver-jewelry-with-detailed-design_1353959-17672.jpg?semt=ais_hybrid&w=740&q=80",
-    link: "/shop/earrings",
-  },
-];
+interface CollectionCard {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  ctaLabel: string;
+  ctaLink: string;
+  imageUrl: string;
+  /** Tailwind gradient classes for the overlay tint per card. */
+  tint: string;
+}
 
 const PromoSection = () => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
+  const ref = useRef<HTMLElement>(null);
+  const isInView = useInView(ref, { once: true, amount: 0.15 });
+  const [remoteItems, setRemoteItems] = useState<HomeCollection[] | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeHomeCollections((items) => {
+      const active = items.filter((i) => i.active !== false);
+      setRemoteItems(active);
+    });
+    return unsub;
+  }, []);
+
+  const sourceCards: CollectionCard[] =
+    remoteItems && remoteItems.length > 0
+      ? remoteItems.map((i) => ({
+          eyebrow: i.eyebrow || "Curated",
+          title: i.title,
+          subtitle: i.subtitle || "",
+          ctaLabel: i.ctaLabel || "Explore",
+          ctaLink: i.ctaLink || "/",
+          imageUrl: i.imageUrl,
+          tint: i.tint || "from-[#2a1810]/85 via-[#2a1810]/30 to-transparent",
+        }))
+      : DEFAULT_HOME_COLLECTIONS.map((i) => ({
+          eyebrow: i.eyebrow || "Curated",
+          title: i.title,
+          subtitle: i.subtitle || "",
+          ctaLabel: i.ctaLabel || "Explore",
+          ctaLink: i.ctaLink || "/",
+          imageUrl: i.imageUrl,
+          tint: i.tint || "from-[#2a1810]/85 via-[#2a1810]/30 to-transparent",
+        }));
+  const cards = sourceCards;
+  const { scrollerRef, scrollByPage, canScroll } = useAutoScroll({
+    speed: 0.45,
+    resumeDelay: 2600,
+    loop: true,
+    direction: 1,
+    loopItemCount: cards.length,
+  });
+  const loopingCards = canScroll && cards.length > 1 ? [...cards, ...cards] : cards;
 
   return (
-    <section ref={ref} className="w-full hidden lg:block py-10">
+    <section ref={ref} className="relative w-full py-12 md:py-20">
+      {/* ambient gold/maroon glow */}
+      <div className="pointer-events-none absolute inset-x-0 top-10 h-48 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.14)_0%,rgba(212,175,55,0)_70%)] blur-3xl" />
+
       <div className="container-custom">
-        <div className="grid md:grid-cols-2 gap-6">
-          {promos.map((promo, index) => (
-            <motion.div
-              key={promo.id}
-              initial={{ opacity: 0, y: 30 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: index * 0.15 }}
-              className="group relative overflow-hidden rounded-2xl"
+        {/* Header */}
+        <div className="mb-6 md:mb-10 flex items-end justify-between gap-4 px-1 md:px-0">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.55 }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="h-px w-8 bg-primary/50" />
+              <span className="text-[10px] uppercase tracking-[0.32em] text-primary/80 font-medium">
+                The Sreerasthu Edit
+              </span>
+            </div>
+            <h2
+              className="text-2xl md:text-4xl font-semibold text-foreground"
+              style={{ fontFamily: "'Playfair Display', serif" }}
             >
-              {/* Background Image */}
-              <div className="absolute inset-0">
+              Our Collections
+            </h2>
+            <p className="hidden md:block text-sm text-muted-foreground mt-2 max-w-xl font-light">
+              Five worlds, one atelier. Glide through each story — jewellery,
+              furniture, articles, gifts, and sacred pooja silverware.
+            </p>
+          </motion.div>
+
+          {/* Arrow controls */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              aria-label="Scroll collections left"
+              onClick={() => scrollByPage("prev")}
+              disabled={!canScroll}
+              className="w-9 h-9 md:w-11 md:h-11 rounded-full border border-border/70 bg-background/80 dark:bg-zinc-900/80 backdrop-blur flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-colors shadow-sm disabled:cursor-default disabled:opacity-40"
+            >
+              <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Scroll collections right"
+              onClick={() => scrollByPage("next")}
+              disabled={!canScroll}
+              className="w-9 h-9 md:w-11 md:h-11 rounded-full border border-border/70 bg-background/80 dark:bg-zinc-900/80 backdrop-blur flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-colors shadow-sm disabled:cursor-default disabled:opacity-40"
+            >
+              <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scroller */}
+        <div className="relative">
+          {/* edge fades */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 md:w-20 bg-gradient-to-r from-background via-background/70 to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 md:w-20 bg-gradient-to-l from-background via-background/70 to-transparent" />
+
+          <div
+            ref={scrollerRef}
+            className="collections-scroller flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide pb-3 px-1 md:px-2"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            {loopingCards.map((card, idx) => (
+              <motion.div
+                key={`${card.title}-${idx}`}
+                initial={{ opacity: 0, y: 24 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.55, delay: Math.min(idx * 0.06, 0.4) }}
+                className="group relative flex-shrink-0 w-[78vw] sm:w-[58vw] md:w-[420px] lg:w-[460px] aspect-[4/5] md:aspect-[3/4] rounded-[28px] overflow-hidden border border-white/40 dark:border-white/5 shadow-[0_24px_60px_-30px_rgba(60,30,10,0.55)] dark:shadow-[0_28px_70px_-32px_rgba(0,0,0,0.85)]"
+              >
                 <img
-                  src={promo.image}
-                  alt={promo.title}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  src={card.imageUrl}
+                  alt={card.title}
                   loading="lazy"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.06]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              </div>
-              
-              {/* Content Overlay */}
-              <div className="relative z-10 p-10 lg:p-14 min-h-[380px] flex flex-col justify-end">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-white/70 block mb-2 font-medium">
-                  {promo.eyebrow}
-                </span>
-                <h3 className="text-xl font-semibold text-white mb-2 font-serif">
-                  {promo.title}
-                </h3>
-                <p className="text-sm text-white/70 mb-5 max-w-[220px] leading-relaxed font-light">
-                  {promo.subtitle}
-                </p>
-                <div>
-                  <Link
-                    to={promo.link}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-gray-900 text-xs font-semibold tracking-wide rounded-full hover:bg-primary hover:text-white transition-colors"
+                <div className={`absolute inset-0 bg-gradient-to-t ${card.tint}`} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+
+                {/* gold corner accent */}
+                <div className="absolute top-4 right-4 flex items-center gap-1.5 rounded-full bg-white/15 dark:bg-white/10 backdrop-blur-md border border-white/25 px-2.5 py-1 text-[9px] uppercase tracking-[0.22em] text-white font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_rgba(255,200,80,0.9)]" />
+                  Curated
+                </div>
+
+                <div className="absolute inset-x-0 bottom-0 p-5 md:p-7 lg:p-8">
+                  <span className="block text-[10px] uppercase tracking-[0.28em] text-white/75 font-medium mb-2">
+                    {card.eyebrow}
+                  </span>
+                  <h3
+                    className="text-white text-xl md:text-2xl lg:text-[26px] font-semibold leading-tight mb-2"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
                   >
-                    {promo.cta}
+                    {card.title}
+                  </h3>
+                  <p className="text-white/75 text-xs md:text-sm font-light leading-relaxed mb-4 max-w-[280px]">
+                    {card.subtitle}
+                  </p>
+                  <Link
+                    to={card.ctaLink}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-100 text-gray-900 text-[11px] md:text-xs font-semibold tracking-wide rounded-full hover:bg-primary hover:text-white transition-colors shadow-md"
+                  >
+                    {card.ctaLabel}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))}
+          </div>
         </div>
       </div>
+
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </section>
   );
 };

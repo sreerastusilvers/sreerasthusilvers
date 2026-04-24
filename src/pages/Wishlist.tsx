@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, ShoppingBag, Trash2, ArrowLeft, Package, Search, SlidersHorizontal, Plus, Minus, ChevronRight, SquarePen, MapPin, ShieldCheck, CreditCard, MessageCircle, LogOut } from "lucide-react";
+import { Heart, ShoppingBag, Trash2, ArrowLeft, Package, Search, SlidersHorizontal, ChevronRight } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileHeader from "@/components/MobileHeader";
@@ -19,16 +19,6 @@ const Wishlist = () => {
   const [products, setProducts] = useState<UIProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [accountExpanded, setAccountExpanded] = useState(() => {
-    // Initialize from sessionStorage to persist across back navigation
-    const saved = sessionStorage.getItem('accountDropdownExpanded');
-    return saved === 'true';
-  });
-
-  // Save dropdown state to sessionStorage whenever it changes
-  useEffect(() => {
-    sessionStorage.setItem('accountDropdownExpanded', String(accountExpanded));
-  }, [accountExpanded]);
 
   useEffect(() => {
     const loadWishlistProducts = async () => {
@@ -119,6 +109,16 @@ const Wishlist = () => {
             </div>
             
             <div className="relative z-20 container mx-auto px-4 text-center">
+              {/* Desktop Back Button */}
+              <div className="absolute left-4 top-0 md:top-4">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all duration-300 border border-white/20"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="text-sm font-medium">Back</span>
+                </button>
+              </div>
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -157,13 +157,13 @@ const Wishlist = () => {
                 <div className="w-32 h-32 bg-gradient-to-br from-red-50 to-pink-50 rounded-full flex items-center justify-center mb-6">
                   <Heart className="w-16 h-16 text-red-300" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">Login to View Wishlist</h2>
-                <p className="text-gray-500 text-center mb-8 max-w-md">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mb-3">Login to View Wishlist</h2>
+                <p className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-center mb-8 max-w-md">
                   Sign in to access your saved items and manage your wishlist.
                 </p>
                 <Button
                   onClick={() => navigate('/login')}
-                  className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-6 text-base rounded-lg"
+                  className="bg-gray-900 dark:bg-zinc-100 hover:bg-gray-800 dark:bg-zinc-100 text-white px-8 py-6 text-base rounded-lg"
                 >
                   Login / Sign Up
                 </Button>
@@ -194,8 +194,8 @@ const Wishlist = () => {
                 </h2>
                 <p className="text-muted-foreground text-center mb-8 max-w-md">
                   {user 
-                    ? "Feels heavy to even start adding your favorite items!"
-                    : "Please login to start adding your favorite items to wishlist"
+                    ? "You haven't saved any items yet. Start adding your favorite jewellery to your wishlist!"
+                    : "Please login to start saving your favorite items to your wishlist."
                   }
                 </p>
                 <div className="flex gap-4">
@@ -328,129 +328,37 @@ const Wishlist = () => {
       </div>
 
       {/* Mobile View */}
-      <div className="lg:hidden min-h-screen bg-white pb-20">
+      <div className="lg:hidden min-h-screen bg-white dark:bg-zinc-900 pb-20 dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]">
         {/* Tanishq-style Header + Search */}
         <MobileHeader />
         <MobileSearchBar />
 
         {/* Breadcrumb */}
-        <div className="px-4 py-4 flex items-center gap-1 text-sm flex-wrap">
-          <button onClick={() => navigate("/")} className="text-gray-900 font-medium hover:underline">Home</button>
-          <span className="text-gray-400">|</span>
-          <button onClick={() => navigate("/account")} className="text-gray-900 font-medium hover:underline">My Account</button>
-          <span className="text-gray-400">|</span>
-          <span className="text-gray-400 text-xs">Wishlist</span>
-        </div>
-
-        {/* My Account Expandable Section */}
-        {user && (
-          <div className="mx-4 mb-4">
+        <div className="px-4 py-4">
           <button
-            onClick={() => setAccountExpanded(!accountExpanded)}
-            className="w-full flex items-center justify-between px-5 py-4 border border-gray-200 rounded-md bg-white"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                sessionStorage.setItem('openMobileSidebar', '1');
+                navigate('/');
+              } else {
+                navigate(-1);
+              }
+            }}
+            className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#d4af37]/15 bg-white/85 px-3 py-2 text-xs font-medium text-gray-700 dark:text-zinc-300 shadow-sm backdrop-blur transition-colors hover:bg-white dark:border-[#d4af37]/20 dark:bg-zinc-900/85 dark:hover:bg-zinc-900"
           >
-            <span className="text-sm font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
-              My Account
-            </span>
-            {accountExpanded ? (
-              <Minus className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
-            ) : (
-              <Plus className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
-            )}
+            <ArrowLeft className="h-4 w-4" />
+            Back
           </button>
-          
-          <AnimatePresence>
-            {accountExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden border border-t-0 border-gray-200 rounded-b-md"
-              >
-                {/* Quick tabs */}
-                <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100">
-                  {[
-                    { label: "Orders", path: "/account/orders" },
-                    { label: "Buy Again", path: "/buy-again" },
-                    { label: "Lists", path: "/wishlist" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.label}
-                      onClick={() => {
-                        // If clicking "Lists" while already on wishlist, just toggle the dropdown
-                        if (tab.path === "/wishlist") {
-                          setAccountExpanded(false);
-                        } else {
-                          navigate(tab.path);
-                        }
-                      }}
-                      className="px-4 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
-                      style={{ fontFamily: "'Poppins', sans-serif" }}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Menu items */}
-                <div className="py-1">
-                  {[
-                    { label: "Edit Profile", icon: SquarePen, path: "/account/profile-edit" },
-                    { label: "Your addresses", icon: MapPin, path: "/account/addresses" },
-                    { label: "Login & security", icon: ShieldCheck, path: "/security" },
-                    { label: "My Jewellery Journey", icon: CreditCard, path: "/wallet" },
-                    { label: "Customer support", icon: MessageCircle, path: "/customer-support" },
-                  ].map((item) => (
-                    <button
-                      key={item.label}
-                      onClick={() => navigate(item.path)}
-                      className="w-full text-left px-5 py-3.5 text-sm flex items-center gap-3 text-gray-800 hover:bg-gray-50 transition-colors"
-                      style={{ fontFamily: "'Poppins', sans-serif" }}
-                    >
-                      <item.icon className="w-5 h-5 text-gray-600" strokeWidth={1.5} />
-                      {item.label}
-                    </button>
-                  ))}
-
-                  {/* Log out */}
-                  {user && (
-                    <button
-                      onClick={async () => {
-                        sessionStorage.removeItem('accountDropdownExpanded');
-                        await logout();
-                        navigate('/');
-                      }}
-                      className="w-full text-left px-5 py-3.5 text-sm flex items-center gap-3 text-[#832729] hover:bg-gray-50 transition-colors border-t border-gray-100"
-                      style={{ fontFamily: "'Poppins', sans-serif" }}
-                    >
-                      <LogOut className="w-5 h-5 text-[#832729]" strokeWidth={1.5} />
-                      Log out
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="flex flex-wrap items-center gap-1 text-sm">
+            <button onClick={() => navigate("/")} className="font-medium text-gray-900 dark:text-zinc-100 hover:underline">Home</button>
+            <span className="text-gray-400 dark:text-zinc-500">|</span>
+            <span className="text-xs text-gray-400 dark:text-zinc-500">Wishlist</span>
+          </div>
         </div>
-        )}
-
-        {/* Customer Service Info Box */}
-        {user && (
-          <div className="mx-4 mb-6 bg-gray-100 rounded-md px-5 py-4">
-          <p className="text-xs text-gray-600 text-center leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            If you have any questions or issues with an order,<br />
-            please contact our Customer Service team at sreerasthusilvers@gmail.com
-            or by calling the free number <span className="font-bold text-gray-900">+91 6304960489</span>.<br />
-            This toll free number is not applicable for<br />
-            International shipments.
-          </p>
-        </div>
-        )}
 
         {/* Wishlist Section Title */}
         <div className="px-4 mb-4">
-          <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Wishlist
           </h2>
         </div>
@@ -467,7 +375,7 @@ const Wishlist = () => {
               
               {/* Box illustration */}
               <div className="relative mb-8">
-                <div className="w-48 h-40 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                <div className="w-48 h-40 bg-gray-100 dark:bg-zinc-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-zinc-700 flex items-center justify-center">
                   <div className="text-center">
                     <div className="w-16 h-3 bg-gray-300 rounded mx-auto mb-2" />
                     <div className="w-12 h-3 bg-gray-300 rounded mx-auto mb-4" />
@@ -479,13 +387,13 @@ const Wishlist = () => {
                 </div>
               </div>
               
-              <p className="text-gray-500 text-sm text-center mb-6" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <p className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-sm text-center mb-6" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Please login to view your wishlist
               </p>
               <Button
                 onClick={() => navigate("/login")}
                 size="sm"
-                className="gap-2 bg-gray-900 hover:bg-gray-800 text-white rounded-lg"
+                className="gap-2 bg-gray-900 dark:bg-zinc-100 hover:bg-gray-800 dark:bg-zinc-100 text-white rounded-lg"
               >
                 Login / Sign Up
               </Button>
@@ -500,7 +408,7 @@ const Wishlist = () => {
               
               {/* Box illustration */}
               <div className="relative mb-8">
-                <div className="w-48 h-40 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                <div className="w-48 h-40 bg-gray-100 dark:bg-zinc-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-zinc-700 flex items-center justify-center">
                   <div className="text-center">
                     <div className="w-16 h-3 bg-gray-300 rounded mx-auto mb-2" />
                     <div className="w-12 h-3 bg-gray-300 rounded mx-auto mb-4" />
@@ -512,7 +420,7 @@ const Wishlist = () => {
                 </div>
               </div>
               
-              <p className="text-gray-500 text-sm text-center mb-6" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <p className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-sm text-center mb-6" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 Your wishlist is empty. Start adding items you love!
               </p>
               <Button
@@ -535,11 +443,11 @@ const Wishlist = () => {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ delay: index * 0.03 }}
-                    className="bg-white rounded-lg overflow-hidden border border-gray-100 shadow-sm"
+                    className="overflow-hidden rounded-lg border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/88"
                   >
                     {/* Product Image */}
                     <div
-                      className="relative aspect-square overflow-hidden cursor-pointer bg-gray-50"
+                      className="relative aspect-square overflow-hidden cursor-pointer bg-gray-50 dark:bg-zinc-900/50"
                       onClick={() => handleProductClick(product.id)}
                     >
                       {product.image ? (
@@ -560,7 +468,7 @@ const Wishlist = () => {
                           e.stopPropagation();
                           handleRemove(product.id, product.title);
                         }}
-                        className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm"
+                        className="absolute top-2 right-2 rounded-full bg-white/90 p-1.5 shadow-sm dark:bg-zinc-900/90"
                       >
                         <Heart className="w-4 h-4 text-red-500" fill="currentColor" />
                       </button>
@@ -575,7 +483,7 @@ const Wishlist = () => {
                     {/* Product Info */}
                     <div className="p-3">
                       <h3
-                        className="text-xs font-normal text-gray-900 mb-1 line-clamp-2 leading-relaxed"
+                        className="mb-1 line-clamp-2 text-xs font-normal leading-relaxed text-gray-900 dark:text-zinc-100"
                         style={{ fontFamily: "'Poppins', sans-serif" }}
                         onClick={() => handleProductClick(product.id)}
                       >
@@ -583,11 +491,11 @@ const Wishlist = () => {
                       </h3>
                       
                       <div className="flex items-center gap-1.5 mb-2.5">
-                        <span className="text-sm font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           ₹{product.price.toLocaleString('en-IN')}
                         </span>
                         {product.oldPrice && product.oldPrice > product.price && (
-                          <span className="text-[10px] text-gray-400 line-through">
+                          <span className="text-[10px] text-gray-400 dark:text-zinc-500 line-through">
                             ₹{product.oldPrice.toLocaleString('en-IN')}
                           </span>
                         )}

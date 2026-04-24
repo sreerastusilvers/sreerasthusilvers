@@ -132,7 +132,7 @@ const MobileSearchBar = () => {
         {/* Right Icons: Gift + Mic */}
         <div className="flex items-center gap-0 pr-3">
           <button 
-            onClick={() => navigate('/articles/gift-articles')}
+            onClick={() => navigate('/category/gifting')}
             className="p-1 hover:bg-muted rounded-full transition-colors" 
             aria-label="Gift articles"
           >

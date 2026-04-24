@@ -199,7 +199,7 @@ const PurchaseSummary: React.FC = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -207,9 +207,9 @@ const PurchaseSummary: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Please log in to view your purchase summary</p>
+          <p className="text-gray-600 dark:text-zinc-400 mb-4">Please log in to view your purchase summary</p>
           <Button onClick={() => navigate('/account')}>Go to Account</Button>
         </div>
       </div>
@@ -217,15 +217,15 @@ const PurchaseSummary: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <div className="hidden lg:block"><Header /></div>
 
       {/* Desktop Back Button */}
-      <div className="hidden lg:block bg-white border-b border-gray-200">
+      <div className="hidden lg:block bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800">
         <div className="max-w-4xl mx-auto px-4">
           <button
             onClick={() => navigate('/account')}
-            className="flex items-center gap-2 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 py-3 text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:text-zinc-100 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">Back to Account</span>
@@ -234,11 +234,11 @@ const PurchaseSummary: React.FC = () => {
       </div>
 
       {/* Mobile Header */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-1 hover:bg-gray-100 rounded-full">
-          <ArrowLeft className="w-5 h-5 text-gray-700" />
+      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-center gap-3">
+        <button onClick={() => navigate(-1)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full">
+          <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-900">My Jewellery Journey</h1>
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">My Jewellery Journey</h1>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 lg:py-10 pb-24 lg:pb-10">
@@ -266,22 +266,22 @@ const PurchaseSummary: React.FC = () => {
                 </div>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Your Status</p>
-                <h2 className="text-lg font-bold text-gray-900">{currentTier.name}</h2>
+                <p className="text-xs text-gray-600 dark:text-zinc-400">Your Status</p>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">{currentTier.name}</h2>
               </div>
             </div>
 
             {/* Tier Stages Display */}
             <div className="space-y-3 mt-4">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600 font-medium">Membership Progress</span>
-                <span className="text-gray-900 font-semibold">₹{stats.totalSpent.toLocaleString('en-IN')} / ₹3,00,000</span>
+                <span className="text-gray-600 dark:text-zinc-400 font-medium">Membership Progress</span>
+                <span className="text-gray-900 dark:text-zinc-100 font-semibold">₹{stats.totalSpent.toLocaleString('en-IN')} / ₹3,00,000</span>
               </div>
 
               {/* All Stages with Progress Bar */}
               <div className="relative py-2">
                 {/* Progress Bar connecting badges */}
-                <div className="absolute top-[22px] left-[5%] right-[5%] h-2 bg-white/50 backdrop-blur rounded-full shadow-inner border border-gray-200">
+                <div className="absolute top-[22px] left-[5%] right-[5%] h-2 bg-white/50 backdrop-blur rounded-full shadow-inner border border-gray-200 dark:border-zinc-800">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min((stats.totalSpent / 300000) * 100, 100)}%` }}
@@ -326,13 +326,13 @@ const PurchaseSummary: React.FC = () => {
 
               {/* Next Tier Info */}
               {nextTier ? (
-                <p className="text-xs text-gray-600 font-medium text-center">
+                <p className="text-xs text-gray-600 dark:text-zinc-400 font-medium text-center">
                   Spend ₹{remaining.toLocaleString('en-IN')} more to unlock {nextTier.name}
                 </p>
               ) : (
                 <div className="flex items-center justify-center gap-2 bg-white/60 backdrop-blur rounded-lg p-2 border border-purple-200">
                   <Sparkles className="w-4 h-4 text-yellow-500" />
-                  <p className="text-xs text-gray-700 font-medium">
+                  <p className="text-xs text-gray-700 dark:text-zinc-300 font-medium">
                     You've reached the highest tier!
                   </p>
                 </div>
@@ -346,31 +346,31 @@ const PurchaseSummary: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 shadow-sm border border-gray-200 mb-6"
+          className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-zinc-800 mb-6"
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md">
                 <TrendingUp className="w-5 h-5" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900">Total Investment</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Total Investment</h3>
             </div>
             <button 
               onClick={() => setShowAmount(!showAmount)} 
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
             >
-              {showAmount ? <Eye className="w-4 h-4 text-gray-500" /> : <EyeOff className="w-4 h-4 text-gray-500" />}
+              {showAmount ? <Eye className="w-4 h-4 text-gray-500 dark:text-zinc-500" /> : <EyeOff className="w-4 h-4 text-gray-500 dark:text-zinc-500" />}
             </button>
           </div>
 
           <div className="mb-6">
             <div className="flex items-baseline gap-1 mb-1">
-              <IndianRupee className="w-6 h-6 text-gray-700 mt-1" />
+              <IndianRupee className="w-6 h-6 text-gray-700 dark:text-zinc-300 mt-1" />
               <span className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 {showAmount ? stats.totalSpent.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '••••••'}
               </span>
             </div>
-            <p className="text-xs text-gray-600 font-medium">From delivered orders only</p>
+            <p className="text-xs text-gray-600 dark:text-zinc-400 font-medium">From delivered orders only</p>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -378,24 +378,24 @@ const PurchaseSummary: React.FC = () => {
               <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-lg flex items-center justify-center text-white mx-auto mb-2 shadow-md">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.deliveredCount}</p>
-              <p className="text-xs text-gray-600 font-medium">Delivered</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-zinc-100">{stats.deliveredCount}</p>
+              <p className="text-xs text-gray-600 dark:text-zinc-400 font-medium">Delivered</p>
             </div>
             
             <div className="text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center text-white mx-auto mb-2 shadow-md">
                 <Clock className="w-6 h-6" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingCount}</p>
-              <p className="text-xs text-gray-600 font-medium">Pending</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-zinc-100">{stats.pendingCount}</p>
+              <p className="text-xs text-gray-600 dark:text-zinc-400 font-medium">Pending</p>
             </div>
             
             <div className="text-center">
               <div className="w-12 h-12 bg-gradient-to-br from-red-400 to-rose-500 rounded-lg flex items-center justify-center text-white mx-auto mb-2 shadow-md">
                 <XCircle className="w-6 h-6" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.cancelledCount}</p>
-              <p className="text-xs text-gray-600 font-medium">Cancelled</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-zinc-100">{stats.cancelledCount}</p>
+              <p className="text-xs text-gray-600 dark:text-zinc-400 font-medium">Cancelled</p>
             </div>
           </div>
         </motion.div>
@@ -425,7 +425,7 @@ const PurchaseSummary: React.FC = () => {
                 <Gift className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">Gift Cards</h3>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Gift Cards</h3>
                 {totalGiftBalance > 0 && (
                   <p className="text-xs text-green-600 font-medium">₹{totalGiftBalance.toLocaleString('en-IN')} available</p>
                 )}
@@ -439,11 +439,11 @@ const PurchaseSummary: React.FC = () => {
             </div>
           ) : giftCards.length === 0 ? (
             <div className="text-center py-6">
-              <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-14 h-14 bg-gray-50 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Gift className="w-7 h-7 text-gray-300" />
               </div>
-              <p className="text-sm font-medium text-gray-600">No gift cards yet</p>
-              <p className="text-xs text-gray-400 mt-1">Gift cards from the store will appear here</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-zinc-400">No gift cards yet</p>
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Gift cards from the store will appear here</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -462,8 +462,8 @@ const PurchaseSummary: React.FC = () => {
                     }`}
                   >
                     {/* Decorative circles */}
-                    <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full" />
-                    <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full" />
+                    <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white dark:bg-zinc-900 rounded-full" />
+                    <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white dark:bg-zinc-900 rounded-full" />
 
                     <div className="relative">
                       {/* Header row */}
@@ -471,17 +471,17 @@ const PurchaseSummary: React.FC = () => {
                         <div>
                           <div className="flex items-center gap-2">
                             <CreditCard className="w-4 h-4 text-pink-600" />
-                            <span className="text-xs font-bold text-gray-700 tracking-wider font-mono">{card.code}</span>
+                            <span className="text-xs font-bold text-gray-700 dark:text-zinc-300 tracking-wider font-mono">{card.code}</span>
                           </div>
                           {card.description && (
-                            <p className="text-xs text-gray-500 mt-1">{card.description}</p>
+                            <p className="text-xs text-gray-500 dark:text-zinc-500 mt-1">{card.description}</p>
                           )}
                         </div>
                         <div className="text-right">
                           {expired ? (
                             <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">Expired</span>
                           ) : fullyUsed ? (
-                            <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-medium">Fully Used</span>
+                            <span className="text-[10px] bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 px-2 py-0.5 rounded-full font-medium">Fully Used</span>
                           ) : (
                             <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Active</span>
                           )}
@@ -490,27 +490,27 @@ const PurchaseSummary: React.FC = () => {
 
                       {/* Amount */}
                       <div className="flex items-baseline gap-1 mb-2">
-                        <span className="text-xl font-bold text-gray-900">₹{card.remainingAmount.toLocaleString('en-IN')}</span>
+                        <span className="text-xl font-bold text-gray-900 dark:text-zinc-100">₹{card.remainingAmount.toLocaleString('en-IN')}</span>
                         {card.usedAmount > 0 && (
-                          <span className="text-xs text-gray-400">/ ₹{card.amount.toLocaleString('en-IN')}</span>
+                          <span className="text-xs text-gray-400 dark:text-zinc-500">/ ₹{card.amount.toLocaleString('en-IN')}</span>
                         )}
                       </div>
 
                       {/* Usage bar */}
                       {card.usedAmount > 0 && (
                         <div className="mb-2">
-                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-pink-500 rounded-full transition-all"
                               style={{ width: `${usagePercent}%` }}
                             />
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-1">₹{card.usedAmount.toLocaleString('en-IN')} used</p>
+                          <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-1">₹{card.usedAmount.toLocaleString('en-IN')} used</p>
                         </div>
                       )}
 
                       {/* Expiry */}
-                      <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                      <div className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-zinc-500">
                         <Clock className="w-3 h-3" />
                         <span>Expires {new Date(card.expiryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                       </div>
@@ -534,7 +534,7 @@ const PurchaseSummary: React.FC = () => {
               <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md">
                 <Calendar className="w-5 h-5" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900">Recent Orders</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Recent Orders</h3>
             </div>
             {stats.deliveredCount > 0 && (
               <button 
@@ -560,11 +560,11 @@ const PurchaseSummary: React.FC = () => {
             
             return recentDeliveredOrders.length === 0 ? (
               <div className="text-center py-8">
-                <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                  <Package className="w-7 h-7 text-gray-400" />
+                <div className="w-14 h-14 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <Package className="w-7 h-7 text-gray-400 dark:text-zinc-500" />
                 </div>
-                <p className="text-sm font-medium text-gray-700 mb-1">No delivered orders this month</p>
-                <p className="text-xs text-gray-400 mb-4">Recent delivered orders will appear here</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">No delivered orders this month</p>
+                <p className="text-xs text-gray-400 dark:text-zinc-500 mb-4">Recent delivered orders will appear here</p>
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -587,11 +587,11 @@ const PurchaseSummary: React.FC = () => {
                   return (
                     <div 
                       key={order.id} 
-                      className="flex gap-3 p-3 bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
+                      className="flex gap-3 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
                       onClick={() => navigate(`/account/orders/${order.id}`)}
                     >
                       {/* Product Image */}
-                      <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                      <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800">
                         {firstItem?.image ? (
                           <img 
                             src={firstItem.image} 
@@ -600,14 +600,14 @@ const PurchaseSummary: React.FC = () => {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-6 h-6 text-gray-400" />
+                            <Package className="w-6 h-6 text-gray-400 dark:text-zinc-500" />
                           </div>
                         )}
                       </div>
 
                       {/* Order Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate mb-1">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate mb-1">
                           {displayTitle}
                         </p>
                         <div className="flex items-center gap-2 mb-1">
@@ -615,7 +615,7 @@ const PurchaseSummary: React.FC = () => {
                             {order.status}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-400 dark:text-zinc-500">
                           {order.createdAt?.toDate?.()?.toLocaleDateString('en-IN', { 
                             day: 'numeric', 
                             month: 'short',

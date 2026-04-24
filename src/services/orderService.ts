@@ -15,6 +15,49 @@ import {
   DocumentData
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { sendOrderStatusAlert } from '@/services/whatsappService';
+
+/**
+ * Best-effort delivery of WhatsApp + web-push notifications when an order's
+ * status changes. Never throws — Firestore writes are the source of truth.
+ *
+ * Per product requirement: order status updates go out via BOTH WhatsApp and
+ * web push. OTPs / security messages are intentionally excluded and routed
+ * through dedicated endpoints instead.
+ */
+const dispatchStatusNotifications = async (
+  orderId: string,
+  status: Order['status'],
+  ctx?: { phone?: string; customerName?: string; tokens?: string[] },
+): Promise<void> => {
+  try {
+    if (ctx?.phone) {
+      void sendOrderStatusAlert({
+        to: ctx.phone,
+        orderId,
+        status,
+        customerName: ctx.customerName,
+      });
+    }
+    // Push notification — fire-and-forget. Adminless path: only send if we
+    // have explicit tokens (admin paths use /api/send-notification directly).
+    if (ctx?.tokens?.length) {
+      void fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokens: ctx.tokens,
+          title: 'Order update',
+          body: `Order #${orderId.slice(-6).toUpperCase()} is now ${status}`,
+          url: `/account/orders/${orderId}`,
+          data: { orderId, status },
+        }),
+      }).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('[orderService] notification dispatch failed:', err);
+  }
+};
 
 export interface OrderItem {
   productId: string;
@@ -132,6 +175,39 @@ export const getOrder = async (orderId: string): Promise<Order | null> => {
   } catch (error) {
     console.error('Error getting order:', error);
     throw new Error('Failed to get order');
+  }
+};
+
+/**
+ * Subscribe to a single order in real-time.
+ */
+export const subscribeToOrder = (
+  orderId: string,
+  callback: (order: Order | null) => void,
+  onError?: (error: Error) => void,
+): (() => void) => {
+  try {
+    return onSnapshot(
+      doc(db, ORDERS_COLLECTION, orderId),
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          callback(null);
+          return;
+        }
+
+        callback({
+          id: snapshot.id,
+          ...snapshot.data(),
+        } as Order);
+      },
+      (error) => {
+        console.error('Error subscribing to order:', error);
+        if (onError) onError(error);
+      },
+    );
+  } catch (error) {
+    console.error('Error setting up order subscription:', error);
+    throw new Error('Failed to subscribe to order');
   }
 };
 
@@ -278,6 +354,12 @@ export const updateOrderStatus = async (
     }
     
     await updateDoc(docRef, updateData);
+
+    // Notify customer (WhatsApp + push). Best effort — never blocks the write.
+    void dispatchStatusNotifications(orderId, status, {
+      phone: currentData?.shippingAddress?.mobile || currentData?.customerPhone,
+      customerName: currentData?.customerName || currentData?.shippingAddress?.fullName,
+    });
   } catch (error) {
     console.error('Error updating order status:', error);
     throw new Error('Failed to update order status');
@@ -346,6 +428,11 @@ export const updateOrderTracking = async (
     console.log('🔄 [Update] Update data:', updateData);
     await updateDoc(docRef, updateData);
     console.log('✅ [Update] Order tracking updated successfully');
+
+    void dispatchStatusNotifications(orderId, trackingData.status, {
+      phone: currentData?.shippingAddress?.mobile || currentData?.customerPhone,
+      customerName: currentData?.customerName || currentData?.shippingAddress?.fullName,
+    });
   } catch (error) {
     console.error('❌ [Update] Error updating order tracking:', error);
     throw new Error('Failed to update order tracking');

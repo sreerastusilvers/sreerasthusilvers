@@ -1,21 +1,24 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { subscribeToActiveBanners, Banner } from "@/services/bannerService";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Seamless looping hero carousel.
+ *
+ * Advances one banner at a time with a standard jewellery-site carousel feel.
+ * The first slide is cloned at the end of the track so looping from the last
+ * banner back to the first does not produce a visible reset.
+ */
 const HeroBanner = () => {
   const navigate = useNavigate();
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
-  const [direction, setDirection] = useState(0);
   const [imagesReady, setImagesReady] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [transitionsEnabled, setTransitionsEnabled] = useState(true);
   const preloadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
-  const isSwiping = useRef(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToActiveBanners(
@@ -24,7 +27,7 @@ const HeroBanner = () => {
         setLoading(false);
       },
       (error) => {
-        console.error('Error loading banners:', error);
+        console.error("Error loading banners:", error);
         setLoading(false);
       }
     );
@@ -37,22 +40,22 @@ const HeroBanner = () => {
       return;
     }
     let loadedCount = 0;
-    const totalImages = banners.length;
+    const total = banners.length;
     banners.forEach((banner) => {
       if (preloadedImages.current.has(banner.imageUrl)) {
         loadedCount++;
-        if (loadedCount >= totalImages) setImagesReady(true);
+        if (loadedCount >= total) setImagesReady(true);
         return;
       }
       const img = new Image();
       img.onload = () => {
         preloadedImages.current.set(banner.imageUrl, img);
         loadedCount++;
-        if (loadedCount >= totalImages) setImagesReady(true);
+        if (loadedCount >= total) setImagesReady(true);
       };
       img.onerror = () => {
         loadedCount++;
-        if (loadedCount >= totalImages) setImagesReady(true);
+        if (loadedCount >= total) setImagesReady(true);
       };
       img.src = banner.imageUrl;
     });
@@ -60,55 +63,59 @@ const HeroBanner = () => {
     return () => clearTimeout(fallbackTimer);
   }, [banners]);
 
-  const nextSlide = useCallback(() => {
-    setDirection(1);
-    setCurrentSlide((prev) => (prev + 1) % banners.length);
-  }, [banners.length]);
+  const handleBannerClick = (banner: Banner) => {
+    if (!banner.redirectLink) return;
+    if (banner.redirectLink.startsWith("http")) {
+      window.open(banner.redirectLink, "_blank");
+    } else {
+      navigate(banner.redirectLink);
+    }
+  };
 
-  const prevSlide = useCallback(() => {
-    setDirection(-1);
-    setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
+  const hasMultipleBanners = banners.length > 1;
+  const displayBanners = useMemo(
+    () => (hasMultipleBanners ? [...banners, banners[0]] : banners),
+    [banners, hasMultipleBanners]
+  );
+
+  useEffect(() => {
+    setCurrentIndex(0);
+    setTransitionsEnabled(true);
   }, [banners.length]);
 
   useEffect(() => {
-    if (banners.length <= 1 || isPaused || !imagesReady) return;
-    const timer = setInterval(nextSlide, 3500);
-    return () => clearInterval(timer);
-  }, [banners.length, isPaused, nextSlide, imagesReady]);
+    if (!hasMultipleBanners || isPaused || loading || !imagesReady) return;
 
-  const handleBannerClick = () => {
-    const banner = banners[currentSlide];
-    if (banner.redirectLink) {
-      if (banner.redirectLink.startsWith('http')) {
-        window.open(banner.redirectLink, '_blank');
-      } else {
-        navigate(banner.redirectLink);
-      }
-    }
+    const interval = window.setInterval(() => {
+      setCurrentIndex((prev) => prev + 1);
+    }, 4200);
+
+    return () => window.clearInterval(interval);
+  }, [hasMultipleBanners, isPaused, loading, imagesReady]);
+
+  const jumpToSlide = (index: number) => {
+    setTransitionsEnabled(true);
+    setCurrentIndex(index);
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.targetTouches[0].clientX;
-    touchEndX.current = e.targetTouches[0].clientX;
-    isSwiping.current = false;
+  const handleTrackTransitionEnd = () => {
+    if (!hasMultipleBanners || currentIndex < banners.length) return;
+
+    setTransitionsEnabled(false);
+    setCurrentIndex(0);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        setTransitionsEnabled(true);
+      });
+    });
   };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-    if (Math.abs(touchStartX.current - touchEndX.current) > 10) {
-      isSwiping.current = true;
-    }
-  };
-  const handleTouchEnd = () => {
-    const diff = touchStartX.current - touchEndX.current;
-    if (Math.abs(diff) > 50) {
-      if (diff > 0) nextSlide();
-      else prevSlide();
-    }
-  };
+
+  const activeDotIndex = banners.length === 0 ? 0 : currentIndex % banners.length;
 
   if (loading || !imagesReady) {
     return (
-      <section className="relative h-[340px] lg:h-[520px] flex items-center justify-center bg-muted">
+      <section className="relative aspect-[4/5] lg:aspect-auto lg:h-[520px] flex items-center justify-center bg-muted">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
           <span className="text-xs text-muted-foreground font-light tracking-wider">Loading</span>
@@ -119,12 +126,15 @@ const HeroBanner = () => {
 
   if (banners.length === 0) {
     return (
-      <section className="relative h-[340px] lg:h-[520px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
+      <section className="relative aspect-[4/5] lg:aspect-auto lg:h-[520px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <div className="flex flex-col items-center gap-4 px-6 text-center">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="text-3xl">✨</span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-semibold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+          <h2
+            className="text-2xl md:text-3xl font-semibold text-foreground"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
             Welcome to Sreerasthu Silvers
           </h2>
           <p className="text-sm md:text-base text-muted-foreground max-w-md">
@@ -141,133 +151,63 @@ const HeroBanner = () => {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* ====== MOBILE LAYOUT ====== */}
-      <div
-        className="lg:hidden relative px-3 pt-1"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="relative w-full overflow-hidden rounded-2xl shadow-sm" style={{ aspectRatio: '4/5' }}>
-          <AnimatePresence initial={false} custom={direction}>
-            <motion.div
-              key={currentSlide}
-              custom={direction}
-              initial={{ x: direction > 0 ? "100%" : "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: direction > 0 ? "-100%" : "100%" }}
-              transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-              className="absolute inset-0 cursor-pointer"
-              style={{ willChange: 'transform' }}
-              onClick={() => { if (!isSwiping.current) handleBannerClick(); }}
-            >
-              <img
-                src={banners[currentSlide].imageUrl}
-                alt="Banner"
-                className="w-full h-full object-cover"
-                loading="eager"
-                decoding="async"
-              />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Mobile Dot Indicators */}
-        {banners.length > 1 && (
-          <div className="flex items-center justify-center gap-1.5 py-3">
-            {banners.map((_, index) => (
+      <div className="relative px-3 pt-1 lg:px-4">
+        <div
+          className="relative overflow-hidden rounded-[28px] shadow-[0_30px_80px_-55px_rgba(0,0,0,0.55)]"
+          onTouchStart={() => setIsPaused(true)}
+          onTouchEnd={() => setIsPaused(false)}
+        >
+          <div
+            className="flex"
+            onTransitionEnd={handleTrackTransitionEnd}
+            style={{
+              transform: `translate3d(-${currentIndex * 100}%, 0, 0)`,
+              transition: transitionsEnabled ? "transform 850ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
+            }}
+          >
+            {displayBanners.map((banner, idx) => (
               <button
-                key={index}
-                onClick={() => {
-                  setDirection(index > currentSlide ? 1 : -1);
-                  setCurrentSlide(index);
-                }}
-                className="p-0.5"
-                aria-label={`Go to slide ${index + 1}`}
+                type="button"
+                key={`${banner.id || banner.imageUrl}-${idx}`}
+                onClick={() => handleBannerClick(banner)}
+                className="relative aspect-[4/5] w-full flex-shrink-0 cursor-pointer overflow-hidden bg-black text-left lg:aspect-auto lg:h-[500px] xl:h-[560px]"
+                aria-label={`Hero banner ${((idx % banners.length) || 0) + 1}`}
               >
-                <span
-                  className={`block rounded-full transition-all duration-300 ${
-                    index === currentSlide
-                      ? "w-6 h-[5px] bg-primary"
-                      : "w-[5px] h-[5px] bg-muted"
-                  }`}
+                <img
+                  src={banner.imageUrl}
+                  alt={`Hero banner ${((idx % banners.length) || 0) + 1}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  loading="eager"
+                  decoding="async"
+                  draggable={false}
                 />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/15 to-black/20 lg:from-black/55 lg:via-black/10 lg:to-black/25" />
+                <div className="absolute inset-x-0 bottom-0 top-auto p-5 lg:p-8">
+                  <div className="flex items-center gap-2">
+                    <span className="h-px w-8 bg-white/45" />
+                    <span className="text-[10px] uppercase tracking-[0.32em] text-white/70">Sreerasthu Silvers</span>
+                  </div>
+                </div>
               </button>
             ))}
           </div>
-        )}
-      </div>
 
-      {/* ====== DESKTOP LAYOUT ====== */}
-      <div className="hidden lg:block relative bg-background group pt-1">
-        <div className="relative h-[440px] xl:h-[500px] 2xl:h-[560px] mx-4 overflow-hidden rounded-2xl">
-          <AnimatePresence initial={false} custom={direction}>
-            <motion.div
-              key={currentSlide}
-              custom={direction}
-              initial={{ x: direction > 0 ? "100%" : "-100%", scale: 1.02 }}
-              animate={{ x: 0, scale: 1 }}
-              exit={{ x: direction > 0 ? "-100%" : "100%", scale: 0.98 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-0 cursor-pointer"
-              onClick={handleBannerClick}
-            >
-              <img
-                src={banners[currentSlide].imageUrl}
-                alt="Banner"
-                className="w-full h-full object-cover"
-                loading="eager"
-              />
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Left Arrow */}
-          {banners.length > 1 && (
-            <button
-              onClick={prevSlide}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-background/80 dark:bg-card/80 backdrop-blur-sm hover:bg-background flex items-center justify-center shadow-lg transition-all duration-300 opacity-0 group-hover:opacity-100 hover:scale-105"
-              aria-label="Previous slide"
-            >
-              <ChevronLeft className="w-5 h-5 text-foreground/80" />
-            </button>
-          )}
-
-          {/* Right Arrow */}
-          {banners.length > 1 && (
-            <button
-              onClick={nextSlide}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-background/80 dark:bg-card/80 backdrop-blur-sm hover:bg-background flex items-center justify-center shadow-lg transition-all duration-300 opacity-0 group-hover:opacity-100 hover:scale-105"
-              aria-label="Next slide"
-            >
-              <ChevronRight className="w-5 h-5 text-foreground/80" />
-            </button>
+          {hasMultipleBanners && (
+            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-2 backdrop-blur-md lg:bottom-5">
+              {banners.map((_, index) => (
+                <button
+                  key={`hero-dot-${index}`}
+                  type="button"
+                  onClick={() => jumpToSlide(index)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    activeDotIndex === index ? "w-8 bg-white" : "w-1.5 bg-white/45"
+                  }`}
+                  aria-label={`Go to banner ${index + 1}`}
+                />
+              ))}
+            </div>
           )}
         </div>
-
-        {/* Dot Indicators */}
-        {banners.length > 1 && (
-          <div className="flex items-center justify-center gap-2 py-5">
-            {banners.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setDirection(index > currentSlide ? 1 : -1);
-                  setCurrentSlide(index);
-                }}
-                className="group/dot p-1"
-                aria-label={`Go to slide ${index + 1}`}
-              >
-                <span
-                  className={`block rounded-full transition-all duration-400 ${
-                    index === currentSlide
-                      ? "w-8 h-2 bg-primary"
-                      : "w-2 h-2 bg-muted-foreground/30 group-hover/dot:bg-muted-foreground/50"
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </section>
   );

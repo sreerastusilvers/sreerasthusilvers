@@ -78,7 +78,7 @@ const ImageUploader = ({ onImageSelected, existingImageUrl, onRemove, isUploadin
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="relative w-full h-64 rounded-xl overflow-hidden border-2 border-gray-200"
+            className="relative w-full h-64 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-zinc-800"
           >
             <img
               src={preview}
@@ -115,11 +115,11 @@ const ImageUploader = ({ onImageSelected, existingImageUrl, onRemove, isUploadin
             >
               <input {...getInputProps()} />
               <Upload className={`w-12 h-12 mb-4 ${isDragActive ? 'text-blue-500' : 'text-gray-400'}`} />
-              <p className="text-sm font-medium text-gray-700 mb-1">
+              <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
                 {isDragActive ? 'Drop the image here' : 'Drag & drop banner image'}
               </p>
-              <p className="text-xs text-gray-500">or click to browse</p>
-              <p className="text-xs text-gray-400 mt-2">Max size: 10MB • All image formats supported</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500">or click to browse</p>
+              <p className="text-xs text-gray-400 dark:text-zinc-500 mt-2">Max size: 10MB • All image formats supported</p>
             </div>
           </motion.div>
         )}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search, Users as UsersIcon, Mail, Calendar, Package,
   ShoppingBag, TrendingUp, X, LayoutGrid, List, Trash2,
@@ -76,6 +77,7 @@ const getDaysRemaining = (trashedAt: any): number => {
 };
 
 const AdminCustomers: React.FC = () => {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -382,7 +384,7 @@ const AdminCustomers: React.FC = () => {
                 <button className="absolute top-3 left-3 z-10" onClick={e => { e.stopPropagation(); toggleSelect(customer.uid); }}>
                   <CheckIcon checked={sel} />
                 </button>
-                <div className="p-5 pt-4 cursor-pointer" onClick={() => setSelectedProfile(customer)}>
+                <div className="p-5 pt-4 cursor-pointer" onClick={() => navigate(`/admin/customers/${customer.uid}`)}>
                   <div className="flex flex-col items-center text-center mt-4">
                     <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mb-3">
                       <span className="text-amber-700 font-bold text-xl">{(customer.name || customer.username || 'U').charAt(0).toUpperCase()}</span>
@@ -416,12 +418,8 @@ const AdminCustomers: React.FC = () => {
                         className="text-red-600 hover:bg-red-50 text-xs"><Trash2 className="h-3.5 w-3.5 mr-1" />Delete</Button>
                     </>
                   ) : (
-                    <>
-                      <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setSelectedProfile(customer); }}
-                        className="text-blue-600 hover:bg-blue-50 text-xs"><ChevronRight className="h-3.5 w-3.5 mr-1" />View</Button>
-                      <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setDeleteConfirm({ type: 'soft', customer }); }}
-                        className="text-red-500 hover:bg-red-50 text-xs"><Trash2 className="h-3.5 w-3.5 mr-1" />Trash</Button>
-                    </>
+                    <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setDeleteConfirm({ type: 'soft', customer }); }}
+                      className="text-red-500 hover:bg-red-50 text-xs"><Trash2 className="h-3.5 w-3.5 mr-1" />Trash</Button>
                   )}
                 </div>
               </motion.div>
@@ -444,7 +442,7 @@ const AdminCustomers: React.FC = () => {
               <div key={customer.uid}
                 className={`flex items-center gap-4 px-5 py-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors group ${sel ? 'bg-amber-50/50' : ''}`}>
                 <button onClick={() => toggleSelect(customer.uid)} className="flex-shrink-0"><CheckIcon checked={sel} /></button>
-                <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedProfile(customer)}>
+                <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/admin/customers/${customer.uid}`)}>
                   <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-amber-700 font-semibold text-sm">{(customer.name || customer.username || 'U').charAt(0).toUpperCase()}</span>
                   </div>
@@ -474,10 +472,7 @@ const AdminCustomers: React.FC = () => {
                       <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm({ type: 'permanent', customer })} className="text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>
                     </>
                   ) : (
-                    <>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedProfile(customer)} className="text-blue-600 hover:bg-blue-50"><ChevronRight className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm({ type: 'soft', customer })} className="text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>
-                    </>
+                    <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm({ type: 'soft', customer })} className="text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>
                   )}
                 </div>
               </div>

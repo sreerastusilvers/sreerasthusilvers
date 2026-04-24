@@ -153,16 +153,16 @@ const WriteReview = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FFFBF5] to-white" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3.5 flex items-center gap-3 shadow-sm">
+      <div className="sticky top-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-zinc-800 px-4 py-3.5 flex items-center gap-3 shadow-sm">
         <button
           onClick={() => navigate(-1)}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-700"
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 transition-colors text-gray-700 dark:text-zinc-300"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-base font-semibold text-gray-900">Write a Review</h1>
-          <p className="text-xs text-gray-400">Your feedback matters</p>
+          <h1 className="text-base font-semibold text-gray-900 dark:text-zinc-100">Write a Review</h1>
+          <p className="text-xs text-gray-400 dark:text-zinc-500">Your feedback matters</p>
         </div>
       </div>
 
@@ -171,14 +171,14 @@ const WriteReview = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
+          className="flex items-center gap-4 bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm"
         >
-          <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 border border-gray-100">
+          <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800">
             <img src={productImage} alt={productName} className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-amber-600 font-medium uppercase tracking-wide mb-0.5">Reviewing</p>
-            <h2 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">{productName}</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-zinc-100 text-sm leading-tight line-clamp-2">{productName}</h2>
             <div className="flex items-center gap-1 mt-1">
               <CheckCircle2 size={12} className="text-emerald-500" />
               <p className="text-xs text-emerald-600 font-medium">Verified Purchase</p>
@@ -191,9 +191,9 @@ const WriteReview = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm"
+          className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm"
         >
-          <p className="text-sm font-semibold text-gray-900 mb-4">Rate this product</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-4">Rate this product</p>
           <div className="flex justify-center gap-3 mb-4">
             {[1, 2, 3, 4, 5].map((star) => (
               <motion.button
@@ -238,18 +238,18 @@ const WriteReview = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm"
+          className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm"
         >
-          <p className="text-sm font-semibold text-gray-900 mb-3">Your Experience</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-3">Your Experience</p>
           <textarea
             value={reviewText}
             onChange={(e) => setReviewText(e.target.value)}
             placeholder="Share what you loved or didn't love about this product. Would you recommend it to others?"
-            className="w-full h-36 p-4 bg-gray-50 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent text-sm text-gray-800 placeholder:text-gray-400 transition-all"
+            className="w-full h-36 p-4 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent text-sm text-gray-800 dark:text-zinc-200 placeholder:text-gray-400 dark:placeholder:text-zinc-500 dark:text-zinc-500 transition-all"
             maxLength={1000}
           />
           <div className="flex justify-end mt-1.5">
-            <span className="text-xs text-gray-400">{reviewText.length}/1000</span>
+            <span className="text-xs text-gray-400 dark:text-zinc-500">{reviewText.length}/1000</span>
           </div>
         </motion.div>
 
@@ -258,11 +258,11 @@ const WriteReview = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm"
+          className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm"
         >
           <div className="mb-4">
-            <p className="text-sm font-semibold text-gray-900">Photos & Video</p>
-            <p className="text-xs text-gray-400 mt-0.5">Show others what you experienced</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Photos & Video</p>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">Show others what you experienced</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -274,8 +274,8 @@ const WriteReview = () => {
                   <Camera size={20} className="text-amber-600" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-gray-800">Add Photos</p>
-                  <p className="text-xs text-gray-400">{images.length}/4 uploaded</p>
+                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Add Photos</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">{images.length}/4 uploaded</p>
                 </div>
               </div>
             </label>
@@ -288,8 +288,8 @@ const WriteReview = () => {
                   <Video size={20} className="text-blue-600" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-gray-800">Add Video</p>
-                  <p className="text-xs text-gray-400">Up to 200MB</p>
+                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Add Video</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">Up to 200MB</p>
                 </div>
               </div>
             </label>
@@ -328,7 +328,7 @@ const WriteReview = () => {
       </div>
 
       {/* Fixed Bottom Submit Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 safe-area-inset-bottom shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 px-4 py-4 safe-area-inset-bottom shadow-lg">
         <motion.button
           onClick={handleSubmit}
           disabled={uploading || rating === 0 || !reviewText.trim()}
@@ -348,10 +348,10 @@ const WriteReview = () => {
             'Submit Review ?'
           )}
         </motion.button>
-        <p className="text-[10px] text-center text-gray-400 mt-2 leading-relaxed">
+        <p className="text-[10px] text-center text-gray-400 dark:text-zinc-500 mt-2 leading-relaxed">
           By submitting, you agree to our{' '}
-          <span className="text-gray-600 underline">Terms of Use</span> and{' '}
-          <span className="text-gray-600 underline">Privacy Policy</span>
+          <span className="text-gray-600 dark:text-zinc-400 underline">Terms of Use</span> and{' '}
+          <span className="text-gray-600 dark:text-zinc-400 underline">Privacy Policy</span>
         </p>
       </div>
     </div>

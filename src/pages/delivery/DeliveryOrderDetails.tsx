@@ -340,7 +340,7 @@ const DeliveryOrderDetails = () => {
   return (
     <div className="min-h-screen bg-stone-50 pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-stone-100 shadow-sm">
+      <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-stone-100 shadow-sm">
         <div className="flex items-center gap-3 px-4 py-3 max-w-4xl mx-auto">
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -373,7 +373,7 @@ const DeliveryOrderDetails = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white rounded-2xl border border-stone-100 p-6 shadow-sm"
+          className="bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 p-6 shadow-sm"
         >
           <h3 className="text-[10px] uppercase tracking-widest text-stone-400 font-semibold mb-4">
             Customer Information
@@ -420,7 +420,7 @@ const DeliveryOrderDetails = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-white rounded-2xl border border-stone-100 p-6 shadow-sm"
+          className="bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 p-6 shadow-sm"
         >
           <h3 className="text-[10px] uppercase tracking-widest text-stone-400 font-semibold mb-4">
             Delivery Address
@@ -480,7 +480,7 @@ const DeliveryOrderDetails = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl border border-stone-100 p-6 shadow-sm"
+          className="bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 p-6 shadow-sm"
         >
           <h3 className="text-[10px] uppercase tracking-widest text-stone-400 font-semibold mb-4">
             Items ({order.items.length})
@@ -508,7 +508,7 @@ const DeliveryOrderDetails = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="bg-white rounded-2xl border border-stone-100 p-6 shadow-sm"
+          className="bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 p-6 shadow-sm"
         >
           <h3 className="text-[10px] uppercase tracking-widest text-stone-400 font-semibold mb-4">
             Payment Summary
@@ -585,7 +585,7 @@ const DeliveryOrderDetails = () => {
 
             {/* Step 3: OTP Verification (outForDelivery -> delivered) */}
             {order.status === 'outForDelivery' && (
-              <div className="space-y-3 bg-white rounded-2xl border border-stone-100 p-6 shadow-sm">
+              <div className="space-y-3 bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 p-6 shadow-sm">
                 {/* OTP Input */}
                 <div className="space-y-2">
                   <label className="text-xs sm:text-[10px] uppercase tracking-widest text-stone-400 font-semibold">
@@ -647,7 +647,7 @@ const DeliveryOrderDetails = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl border border-stone-100 p-6 shadow-sm"
+            className="bg-white dark:bg-zinc-900 rounded-2xl border border-stone-100 p-6 shadow-sm"
           >
             <div className="flex items-center gap-3 justify-center p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
               <ShieldCheck className="h-6 w-6 text-emerald-600" />

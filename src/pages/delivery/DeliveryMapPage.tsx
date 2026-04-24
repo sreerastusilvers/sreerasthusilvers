@@ -688,7 +688,7 @@ const DeliveryMapPage = () => {
         animate={{ opacity: 1, x: 0 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => navigate(`/delivery/order/${orderId}`)}
-        className="absolute top-4 left-4 z-[999] p-2.5 rounded-full bg-white/90 backdrop-blur-md shadow-lg text-stone-700 hover:bg-white transition-all"
+        className="absolute top-4 left-4 z-[999] p-2.5 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-lg text-stone-700 hover:bg-white transition-all"
       >
         <ChevronLeft className="h-5 w-5" />
       </motion.button>
@@ -700,7 +700,7 @@ const DeliveryMapPage = () => {
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setShowStylePicker(!showStylePicker)}
-            className="p-2.5 rounded-full bg-white/90 backdrop-blur-md shadow-lg text-stone-700 hover:bg-white transition-all"
+            className="p-2.5 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-lg text-stone-700 hover:bg-white transition-all"
           >
             <Layers className="h-5 w-5" />
           </motion.button>
@@ -712,7 +712,7 @@ const DeliveryMapPage = () => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.85, y: -4 }}
                 transition={{ duration: 0.15 }}
-                className="absolute top-12 right-0 bg-white rounded-2xl shadow-xl border border-stone-200 p-1.5 min-w-[140px]"
+                className="absolute top-12 right-0 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-stone-200 p-1.5 min-w-[140px]"
               >
                 {(Object.keys(TILE_CONFIGS) as MapStyle[]).map((key) => (
                   <button
@@ -754,7 +754,7 @@ const DeliveryMapPage = () => {
           whileTap={{ scale: 0.9 }}
           onClick={getCurrentLocation}
           disabled={updatingLocation}
-          className="p-2.5 rounded-full bg-white/90 backdrop-blur-md shadow-lg text-stone-600 hover:bg-white transition-all disabled:opacity-50"
+          className="p-2.5 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md shadow-lg text-stone-600 hover:bg-white transition-all disabled:opacity-50"
         >
           {updatingLocation ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -800,7 +800,7 @@ const DeliveryMapPage = () => {
         initial={{ y: '100%' }}
         animate={{ y: isSheetOpen ? 0 : 'calc(100% - 88px)' }}
         transition={{ type: 'spring', damping: 30, stiffness: 300, mass: 0.8 }}
-        className="absolute bottom-0 left-0 right-0 z-[998] bg-white rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.15)]"
+        className="absolute bottom-0 left-0 right-0 z-[998] bg-white dark:bg-zinc-900 rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.15)]"
         style={{ maxHeight: '78vh' }}
       >
         {/* Handle */}

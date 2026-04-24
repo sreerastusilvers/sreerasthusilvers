@@ -164,7 +164,7 @@ const ResetPassword = () => {
         <div className="flex items-center justify-center py-20 px-4">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-amber-600 mx-auto mb-4" />
-            <p className="text-gray-600">Verifying reset link...</p>
+            <p className="text-gray-600 dark:text-zinc-400">Verifying reset link...</p>
           </div>
         </div>
         <Footer />
@@ -179,12 +179,12 @@ const ResetPassword = () => {
         <Header />
         <div className="flex items-center justify-center py-20 px-4">
           <div className="w-full max-w-md">
-            <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-8 text-center">
               <div className="bg-red-100 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                 <AlertCircle className="h-10 w-10 text-red-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid Reset Link</h1>
-              <p className="text-gray-600 mb-6">{error}</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mb-4">Invalid Reset Link</h1>
+              <p className="text-gray-600 dark:text-zinc-400 mb-6">{error}</p>
               <Button
                 onClick={() => navigate('/forgot-password')}
                 className="w-full bg-amber-600 hover:bg-amber-700 text-white"
@@ -206,18 +206,18 @@ const ResetPassword = () => {
         <Header />
         <div className="flex items-center justify-center py-20 px-4">
           <div className="w-full max-w-md">
-            <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-8 text-center">
               <div className="bg-green-100 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                 <CheckCircle className="h-10 w-10 text-green-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Password Reset Successful!</h1>
-              <p className="text-gray-600 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 mb-4">Password Reset Successful!</h1>
+              <p className="text-gray-600 dark:text-zinc-400 mb-6">
                 Your password has been updated successfully. You can now sign in with your new password.
               </p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
                 <div className="flex gap-3">
                   <Shield className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-gray-700">
+                  <div className="text-sm text-gray-700 dark:text-zinc-300">
                     <p className="font-semibold mb-1">Security Notice:</p>
                     <ul className="space-y-1 text-xs">
                       <li>• All previous sessions have been logged out for security</li>
@@ -227,7 +227,7 @@ const ResetPassword = () => {
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-gray-500 dark:text-zinc-500 mb-4">
                 Redirecting to sign in page...
               </p>
               <Button
@@ -250,14 +250,14 @@ const ResetPassword = () => {
       <Header />
       <div className="flex items-center justify-center py-20 px-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-8">
             {/* Header */}
             <div className="text-center mb-8">
               <div className="bg-amber-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                 <Lock className="h-10 w-10 text-amber-600" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Reset Your Password</h1>
-              <p className="text-gray-600">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-zinc-100 mb-2">Reset Your Password</h1>
+              <p className="text-gray-600 dark:text-zinc-400">
                 Enter a new strong password for <strong className="text-blue-600">{email}</strong>
               </p>
             </div>
@@ -274,9 +274,9 @@ const ResetPassword = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* New Password */}
               <div>
-                <Label htmlFor="newPassword" className="text-gray-700 font-medium">New Password</Label>
+                <Label htmlFor="newPassword" className="text-gray-700 dark:text-zinc-300 font-medium">New Password</Label>
                 <div className="relative mt-2">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-zinc-500" />
                   <Input
                     id="newPassword"
                     type={showPassword ? 'text' : 'password'}
@@ -291,7 +291,7 @@ const ResetPassword = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:text-zinc-400"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -301,19 +301,19 @@ const ResetPassword = () => {
                 {passwordStrength && (
                   <div className="mt-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-600">Password strength:</span>
+                      <span className="text-xs text-gray-600 dark:text-zinc-400">Password strength:</span>
                       <span className={`text-xs font-semibold ${getStrengthTextColorClass(passwordStrength.strength)}`}>
                         {passwordStrength.strength.replace('-', ' ').toUpperCase()}
                       </span>
                     </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-2 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                       <div
                         className={`h-full ${getStrengthColorClass(passwordStrength.strength)} transition-all duration-300`}
                         style={{ width: `${passwordStrength.percentage}%` }}
                       />
                     </div>
                     {passwordStrength.feedback.length > 0 && (
-                      <p className="text-xs text-gray-600 mt-2">{passwordStrength.feedback[0]}</p>
+                      <p className="text-xs text-gray-600 dark:text-zinc-400 mt-2">{passwordStrength.feedback[0]}</p>
                     )}
                   </div>
                 )}
@@ -321,9 +321,9 @@ const ResetPassword = () => {
 
               {/* Confirm Password */}
               <div>
-                <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">Confirm Password</Label>
+                <Label htmlFor="confirmPassword" className="text-gray-700 dark:text-zinc-300 font-medium">Confirm Password</Label>
                 <div className="relative mt-2">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-zinc-500" />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -338,7 +338,7 @@ const ResetPassword = () => {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:text-zinc-400"
                   >
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -346,11 +346,11 @@ const ResetPassword = () => {
               </div>
 
               {/* Password Requirements */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-xs font-semibold text-gray-700 mb-2">Password must contain:</p>
+              <div className="bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4">
+                <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-2">Password must contain:</p>
                 <ul className="space-y-1">
                   {getPasswordRequirementsText().map((req, idx) => (
-                    <li key={idx} className="text-xs text-gray-600 flex items-center gap-2">
+                    <li key={idx} className="text-xs text-gray-600 dark:text-zinc-400 flex items-center gap-2">
                       <span className="w-1 h-1 bg-gray-400 rounded-full" />
                       {req}
                     </li>

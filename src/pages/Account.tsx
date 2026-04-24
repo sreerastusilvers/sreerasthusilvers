@@ -4,12 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/config/firebase';
 import { Button } from '@/components/ui/button';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import Header from '@/components/Header';
 import CategoryIconNav from '@/components/CategoryIconNav';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn } from '@/services/orderService';
 import { uploadToCloudinary, UploadProgress } from '@/services/cloudinaryService';
+import { useWhatsAppOtpVerification } from '@/hooks/useWhatsAppOtpVerification';
 import { toast } from 'sonner';
 import logo from '@/assets/dark.png';
 import {
@@ -89,6 +91,7 @@ const LoginForm = () => {
   const [emailLoading, setEmailLoading] = useState(false);
   const [error, setError] = useState('');
   const [resetSent, setResetSent] = useState(false);
+  const whatsappOtp = useWhatsAppOtpVerification(phone, activeTab === 'user' && isSignUp && sameForWhatsApp);
 
   const { loginWithGoogle, login, signup, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -178,6 +181,11 @@ const LoginForm = () => {
 
     if (isSignUp && phone && !/^[6-9]\d{9}$/.test(phone)) {
       setError('Please enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+
+    if (isSignUp && sameForWhatsApp && phone && !whatsappOtp.isVerified) {
+      setError('Please verify your WhatsApp number before signing up.');
       return;
     }
 
@@ -398,6 +406,66 @@ const LoginForm = () => {
                   />
                   <span className="text-xs text-muted-foreground">Same number for WhatsApp</span>
                 </div>
+                {phone && sameForWhatsApp && (
+                  <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Verify this number on WhatsApp so order updates and alerts can reach you there.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void whatsappOtp.sendOtp()}
+                        disabled={emailLoading || whatsappOtp.isBusy}
+                      >
+                        {whatsappOtp.phase === 'sent' || whatsappOtp.isVerified ? 'Resend Code' : 'Send Code'}
+                      </Button>
+                    </div>
+
+                    {(whatsappOtp.phase === 'sent' || whatsappOtp.isVerified) && (
+                      <div className="space-y-3">
+                        <InputOTP
+                          maxLength={6}
+                          value={whatsappOtp.otpCode}
+                          onChange={whatsappOtp.setOtpCode}
+                          disabled={emailLoading || whatsappOtp.isBusy || whatsappOtp.isVerified}
+                          containerClassName="justify-center"
+                        >
+                          <InputOTPGroup className="justify-center">
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <p className={`text-xs ${whatsappOtp.isVerified ? 'text-green-700' : 'text-muted-foreground'}`}>
+                            {whatsappOtp.isVerified
+                              ? 'WhatsApp number verified.'
+                              : 'Enter the 6-digit code we sent to your WhatsApp.'}
+                          </p>
+                          {!whatsappOtp.isVerified && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => void whatsappOtp.confirmOtp()}
+                              disabled={emailLoading || whatsappOtp.isBusy || whatsappOtp.otpCode.length !== 6}
+                            >
+                              Verify Code
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {whatsappOtp.otpError && (
+                      <p className="text-xs text-red-600">{whatsappOtp.otpError}</p>
+                    )}
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -467,7 +535,7 @@ const LoginForm = () => {
             {/* Sign In / Sign Up Button */}
             <Button
               type="submit"
-              disabled={emailLoading}
+              disabled={emailLoading || whatsappOtp.isBusy}
               className="w-full py-3 h-12 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-primary/25"
             >
               {emailLoading ? (
@@ -697,11 +765,28 @@ const AccountPage = () => {
   }, [isMobile, navigate]);
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    if (!window.confirm('Log out of your account?')) return;
+    let cancelled = false;
+    const t = toast('Logging you out…', {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          cancelled = true;
+          toast.success('Logout cancelled');
+        },
+      },
+    });
+    setTimeout(async () => {
+      if (cancelled) return;
+      try {
+        await logout();
+        toast.success('Logged out');
+      } catch (error) {
+        console.error('Logout error:', error);
+        toast.error('Failed to log out');
+      }
+    }, 5000);
   };
 
   const menuItems = [
@@ -1585,17 +1670,11 @@ const AccountPage = () => {
                       Cancel Order
                     </button>
                     <button 
-                      onClick={() => {
-                        const phoneNumber = '919819873745';
-                        const message = encodeURIComponent(
-                          `Hello! I need assistance regarding my order:\n\nOrder ID: ORD-${selectedOrder.orderId}\nProduct: ${selectedOrder.items[0]?.name}${selectedOrder.items.length > 1 ? ` +${selectedOrder.items.length - 1} more items` : ''}\nStatus: ${getStatusLabel(selectedOrder.status)}\n\nPlease help me with my product enquiry.`
-                        );
-                        window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
-                      }}
+                      onClick={() => navigate(`/account/orders/${selectedOrder.id}`)}
                       className="flex-1 py-3 px-4 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      Chat with us
+                      Open order chat
                     </button>
                   </div>
                 )}
@@ -1611,17 +1690,11 @@ const AccountPage = () => {
                       Return Items
                     </button>
                     <button 
-                      onClick={() => {
-                        const phoneNumber = '919819873745';
-                        const message = encodeURIComponent(
-                          `Hello! I need assistance regarding my order:\n\nOrder ID: ORD-${selectedOrder.orderId}\nProduct: ${selectedOrder.items[0]?.name}${selectedOrder.items.length > 1 ? ` +${selectedOrder.items.length - 1} more items` : ''}\nStatus: ${getStatusLabel(selectedOrder.status)}\n\nPlease help me with my product enquiry.`
-                        );
-                        window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
-                      }}
+                      onClick={() => navigate(`/account/orders/${selectedOrder.id}`)}
                       className="flex-1 py-3 px-4 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      Chat with us
+                      Open order chat
                     </button>
                   </div>
                 )}
@@ -1632,17 +1705,11 @@ const AccountPage = () => {
                  !canReturnOrder(selectedOrder) &&
                  selectedOrder.status !== 'cancelled' && (
                   <button 
-                    onClick={() => {
-                      const phoneNumber = '919819873745';
-                      const message = encodeURIComponent(
-                        `Hello! I need assistance regarding my order:\n\nOrder ID: ORD-${selectedOrder.orderId}\nProduct: ${selectedOrder.items[0]?.name}${selectedOrder.items.length > 1 ? ` +${selectedOrder.items.length - 1} more items` : ''}\nStatus: ${getStatusLabel(selectedOrder.status)}\n\nPlease help me with my product enquiry.`
-                      );
-                      window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
-                    }}
+                    onClick={() => navigate(`/account/orders/${selectedOrder.id}`)}
                     className="w-full py-3 px-4 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors"
                   >
                     <MessageCircle className="w-4 h-4" />
-                    Chat with us
+                    Open order chat
                   </button>
                 )}
               </div>

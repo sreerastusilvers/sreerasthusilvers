@@ -60,7 +60,7 @@ export const ProductDebug = () => {
     testFirestore();
   }, []);
 
-  if (!debug) return <div className="p-4 bg-gray-100">Loading debug info...</div>;
+  if (!debug) return <div className="p-4 bg-gray-100 dark:bg-zinc-800">Loading debug info...</div>;
 
   if (debug.error) {
     return (

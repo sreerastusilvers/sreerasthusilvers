@@ -11,6 +11,7 @@ import {
   signInWithPopup,
   sendEmailVerification,
 } from 'firebase/auth';
+import { PushNotifications } from '@/services/pushNotificationService';
 import {
   doc,
   setDoc,
@@ -101,6 +102,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (updatedUser) {
             const profile = await fetchUserProfile(updatedUser.uid);
+
+            // Register for FCM push notifications (best-effort, non-blocking)
+            PushNotifications.requestPermissionAndRegisterToken(updatedUser.uid).catch(() => {});
+            PushNotifications.subscribeForegroundMessages(({ title, body }) => {
+              if (typeof window === 'undefined' || !title) return;
+              // Lightweight in-page surfacing via Notification API if allowed
+              if ('Notification' in window && Notification.permission === 'granted') {
+                try { new Notification(title, { body }); } catch { /* ignore */ }
+              }
+            }).catch(() => {});
             
             // Only sync Google photoURL if user doesn't have a custom avatar (Cloudinary URL)
             // This prevents overwriting custom uploaded avatars

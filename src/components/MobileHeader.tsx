@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
-import darkLogo from "../assets/dark.png";
-import whiteLogo from "../assets/white.png";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const MobileHeader = () => {
+  const lightModeLogo = "/black_logo.png";
+  const darkModeLogo = "/white_logo.png";
   const navigate = useNavigate();
   const { totalItems, toggleCart } = useCart();
   const { user } = useAuth();
@@ -49,7 +49,7 @@ const MobileHeader = () => {
             <Menu className="w-[24px] h-[24px] text-foreground/80" strokeWidth={1.5} />
           </button>
           <a href="/" className="flex items-center">
-            <img src={resolvedTheme === 'dark' ? darkLogo : whiteLogo} alt="Logo" className="h-10 w-auto object-contain" />
+            <img src={resolvedTheme === 'dark' ? darkModeLogo : lightModeLogo} alt="Sreerasthu Silvers" className="h-10 w-auto object-contain" />
           </a>
         </div>
 

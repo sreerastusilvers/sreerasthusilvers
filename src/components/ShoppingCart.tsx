@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Loader2, Shield, RotateCcw, Truck, ChevronDown, Tag, Menu, LayoutGrid, Heart, Search, ScanLine, Mic, Check } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Loader2, Shield, RotateCcw, Truck, ChevronDown, Tag, Heart, Search, ScanLine, Mic, Check } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
@@ -63,13 +63,8 @@ const ShoppingCart = () => {
             <div className="border-b border-border">
               {/* Top Navbar */}
               <div className="flex items-center justify-between px-4 py-3">
-                {/* Left: Menu Icon */}
-                <button className="p-2 -ml-2 text-foreground/80 hover:text-foreground">
-                  <Menu size={24} strokeWidth={1.5} />
-                </button>
-
-                {/* Center: Logo */}
-                <div className="flex-1 flex justify-start ml-2">
+                {/* Left: Logo */}
+                <div className="flex-1 flex justify-start">
                   <img 
                     src="/src/assets/logo.svg" 
                     alt="Logo" 
@@ -82,9 +77,6 @@ const ShoppingCart = () => {
 
                 {/* Right: Icons */}
                 <div className="flex items-center gap-3">
-                  <button className="p-2 text-foreground/80 hover:text-foreground">
-                    <LayoutGrid size={22} strokeWidth={1.5} />
-                  </button>
                   <button className="p-2 text-foreground/80 hover:text-foreground">
                     <Heart size={22} strokeWidth={1.5} />
                   </button>

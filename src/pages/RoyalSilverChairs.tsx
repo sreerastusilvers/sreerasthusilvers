@@ -66,7 +66,7 @@ const RoyalSilverChairs = () => {
   });
 
   return (
-    <div className="min-h-screen w-full overflow-x-clip bg-white">
+    <div className="min-h-screen w-full overflow-x-clip bg-white dark:bg-zinc-900">
       {/* Full Page Filter Modal */}
       {showFilters && (
         <motion.div
@@ -74,14 +74,14 @@ const RoyalSilverChairs = () => {
           animate={{ x: 0 }}
           exit={{ x: "-100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="fixed inset-0 bg-white z-[60] flex flex-col"
+          className="fixed inset-0 bg-white dark:bg-zinc-900 z-[60] flex flex-col"
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-            <h2 className="text-base font-semibold text-gray-900">Filters</h2>
-            <button onClick={() => setSelectedFilters([])} className="text-xs font-semibold text-gray-900 hover:text-gray-700 tracking-wide">CLEAR ALL</button>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-zinc-800">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-zinc-100">Filters</h2>
+            <button onClick={() => setSelectedFilters([])} className="text-xs font-semibold text-gray-900 dark:text-zinc-100 hover:text-gray-700 dark:text-zinc-300 tracking-wide">CLEAR ALL</button>
           </div>
           <div className="flex-1 flex overflow-hidden">
-            <div className="w-[110px] md:w-[140px] bg-gray-50 border-r border-gray-200 overflow-y-auto shrink-0">
+            <div className="w-[110px] md:w-[140px] bg-gray-50 dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 overflow-y-auto shrink-0">
               {['Quick Filters', 'Rating', 'Price Range', 'Discount'].map((cat) => (
                 <button key={cat} onClick={() => setActiveFilterCategory(cat)} className={`w-full text-left px-3 py-3.5 text-xs font-medium border-b border-gray-100 ${activeFilterCategory === cat ? 'bg-white text-gray-900 border-l-[3px] border-l-gray-900' : 'text-gray-500 hover:bg-gray-100'}`}>{cat}</button>
               ))}
@@ -94,12 +94,12 @@ const RoyalSilverChairs = () => {
                     { id: 'best-sellers', label: 'Best Sellers', count: products.filter(p => (p.reviews || 0) > 50).length.toString() },
                     { id: 'trend-products', label: 'Trend Products', count: products.length.toString() },
                   ].map((filter) => (
-                    <button key={filter.id} onClick={() => setSelectedFilters(prev => prev.includes(filter.id) ? prev.filter(f => f !== filter.id) : [...prev, filter.id])} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50">
+                    <button key={filter.id} onClick={() => setSelectedFilters(prev => prev.includes(filter.id) ? prev.filter(f => f !== filter.id) : [...prev, filter.id])} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900">
                       <div className="flex items-center gap-3">
                         <Check className={`w-4 h-4 ${selectedFilters.includes(filter.id) ? 'text-gray-900' : 'text-gray-300'}`} />
                         <span className={`text-sm ${selectedFilters.includes(filter.id) ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>{filter.label}</span>
                       </div>
-                      <span className="text-xs text-gray-400">{filter.count}</span>
+                      <span className="text-xs text-gray-400 dark:text-zinc-500">{filter.count}</span>
                     </button>
                   ))}
                 </div>
@@ -112,12 +112,12 @@ const RoyalSilverChairs = () => {
                     { id: 'rating-3', label: '3.0 to 5.0', count: products.filter(p => (p.rating || 0) >= 3.0).length.toString() },
                     { id: 'rating-4', label: '4.0 to 5.0', count: products.filter(p => (p.rating || 0) >= 4.0).length.toString() },
                   ].map((filter) => (
-                    <button key={filter.id} onClick={() => setSelectedFilters(prev => prev.includes(filter.id) ? prev.filter(f => f !== filter.id) : [...prev, filter.id])} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50">
+                    <button key={filter.id} onClick={() => setSelectedFilters(prev => prev.includes(filter.id) ? prev.filter(f => f !== filter.id) : [...prev, filter.id])} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900">
                       <div className="flex items-center gap-3">
                         <Check className={`w-4 h-4 ${selectedFilters.includes(filter.id) ? 'text-gray-900' : 'text-gray-300'}`} />
                         <span className={`text-sm ${selectedFilters.includes(filter.id) ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>{filter.label}</span>
                       </div>
-                      <span className="text-xs text-gray-400">{filter.count}</span>
+                      <span className="text-xs text-gray-400 dark:text-zinc-500">{filter.count}</span>
                     </button>
                   ))}
                 </div>
@@ -135,12 +135,12 @@ const RoyalSilverChairs = () => {
                     { id: 'discount-80', label: '80% and above', count: products.filter(p => Number(p.discount || 0) >= 80).length.toString() },
                     { id: 'discount-90', label: '90% and above', count: products.filter(p => Number(p.discount || 0) >= 90).length.toString() },
                   ].map((filter) => (
-                    <button key={filter.id} onClick={() => setSelectedFilters(prev => prev.includes(filter.id) ? prev.filter(f => f !== filter.id) : [...prev, filter.id])} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50">
+                    <button key={filter.id} onClick={() => setSelectedFilters(prev => prev.includes(filter.id) ? prev.filter(f => f !== filter.id) : [...prev, filter.id])} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900">
                       <div className="flex items-center gap-3">
                         <Check className={`w-4 h-4 ${selectedFilters.includes(filter.id) ? 'text-gray-900' : 'text-gray-300'}`} />
                         <span className={`text-sm ${selectedFilters.includes(filter.id) ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>{filter.label}</span>
                       </div>
-                      <span className="text-xs text-gray-400">{filter.count}</span>
+                      <span className="text-xs text-gray-400 dark:text-zinc-500">{filter.count}</span>
                     </button>
                   ))}
                 </div>
@@ -148,27 +148,27 @@ const RoyalSilverChairs = () => {
               {activeFilterCategory === 'Price Range' && (
                 <div className="px-4 py-6">
                   <div className="mb-4">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Selected Price range</h3>
-                    <p className="text-base font-semibold text-gray-900">₹{priceRange[0].toLocaleString('en-IN')} - ₹{priceRange[1].toLocaleString('en-IN')}+</p>
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">Selected Price range</h3>
+                    <p className="text-base font-semibold text-gray-900 dark:text-zinc-100">₹{priceRange[0].toLocaleString('en-IN')} - ₹{priceRange[1].toLocaleString('en-IN')}+</p>
                   </div>
                   <div className="mb-6">
                     <div className="relative h-2 mt-8 mb-8">
-                      <div className="absolute w-full h-2 bg-gray-200 rounded-lg"></div>
+                      <div className="absolute w-full h-2 bg-gray-200 dark:bg-zinc-800 rounded-lg"></div>
                       <div className="absolute h-2 bg-gray-900 rounded-lg" style={{ left: `${((priceRange[0] - minPrice) / (maxPrice - minPrice)) * 100}%`, right: `${100 - ((priceRange[1] - minPrice) / (maxPrice - minPrice)) * 100}%` }}></div>
                       <input type="range" min={minPrice} max={maxPrice} value={priceRange[0]} onChange={(e) => { const v = Number(e.target.value); if (v <= priceRange[1]) setPriceRange([v, priceRange[1]]); }} className="absolute w-full h-2 bg-transparent rounded-lg appearance-none cursor-pointer" style={{ zIndex: priceRange[1] - priceRange[0] < (maxPrice - minPrice) * 0.05 ? 3 : 5 }} />
                       <input type="range" min={minPrice} max={maxPrice} value={priceRange[1]} onChange={(e) => { const v = Number(e.target.value); if (v >= priceRange[0]) setPriceRange([priceRange[0], v]); }} className="absolute w-full h-2 bg-transparent rounded-lg appearance-none cursor-pointer" style={{ zIndex: priceRange[1] - priceRange[0] < (maxPrice - minPrice) * 0.05 ? 5 : 4 }} />
                     </div>
                   </div>
-                  <div className="text-sm text-gray-500 mt-8">{products.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]).length} Products found</div>
+                  <div className="text-sm text-gray-500 dark:text-zinc-500 mt-8">{products.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]).length} Products found</div>
                 </div>
               )}
               {activeFilterCategory !== 'Quick Filters' && activeFilterCategory !== 'Rating' && activeFilterCategory !== 'Discount' && activeFilterCategory !== 'Price Range' && (
-                <div className="flex items-center justify-center h-full text-sm text-gray-400">No options available</div>
+                <div className="flex items-center justify-center h-full text-sm text-gray-400 dark:text-zinc-500">No options available</div>
               )}
             </div>
           </div>
-          <div className="border-t border-gray-200 px-4 py-3 flex gap-3">
-            <button onClick={() => setShowFilters(false)} className="flex-1 py-3 text-sm font-semibold text-gray-700 border border-gray-300 rounded hover:bg-gray-50">CLOSE</button>
+          <div className="border-t border-gray-200 dark:border-zinc-800 px-4 py-3 flex gap-3">
+            <button onClick={() => setShowFilters(false)} className="flex-1 py-3 text-sm font-semibold text-gray-700 dark:text-zinc-300 border border-gray-300 dark:border-zinc-700 rounded hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900">CLOSE</button>
             <button onClick={() => setShowFilters(false)} className="flex-1 py-3 text-sm font-semibold text-white bg-gray-900 rounded hover:bg-gray-800">APPLY</button>
           </div>
         </motion.div>
@@ -178,46 +178,46 @@ const RoyalSilverChairs = () => {
       
       <main>
         {/* Mobile Header */}
-        <div className="md:hidden sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800">
           {showSearch ? (
             <div className="flex items-center gap-2 px-4 py-3">
-              <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
-                <Search className="w-4 h-4 text-gray-400" />
+              <div className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-zinc-800 rounded-lg px-3 py-2">
+                <Search className="w-4 h-4 text-gray-400 dark:text-zinc-500" />
                 <input type="text" placeholder={`Search ${PAGE_TITLE.toLowerCase()}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1 bg-transparent border-none outline-none text-sm" autoFocus />
-                {searchQuery && <button onClick={() => setSearchQuery('')}><X className="w-4 h-4 text-gray-400" /></button>}
+                {searchQuery && <button onClick={() => setSearchQuery('')}><X className="w-4 h-4 text-gray-400 dark:text-zinc-500" /></button>}
               </div>
-              <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="text-sm text-gray-600">Cancel</button>
+              <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="text-sm text-gray-600 dark:text-zinc-400">Cancel</button>
             </div>
           ) : (
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-3">
-                <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"><ArrowLeft className="w-5 h-5 text-gray-700" /></button>
-                <h1 className="text-lg font-semibold text-gray-900">{PAGE_TITLE}</h1>
+                <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"><ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" /></button>
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">{PAGE_TITLE}</h1>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setShowSearch(true)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><Search className="w-5 h-5 text-gray-700" /></button>
-                <button onClick={() => navigate('/cart')} className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
-                  <ShoppingCart className="w-5 h-5 text-gray-700" />
+                <button onClick={() => setShowSearch(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"><Search className="w-5 h-5 text-gray-700 dark:text-zinc-300" /></button>
+                <button onClick={() => navigate('/cart')} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors relative">
+                  <ShoppingCart className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
                   {totalItems > 0 && <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">{totalItems}</span>}
                 </button>
               </div>
             </div>
           )}
           {!showSearch && (
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
+            <div className="px-4 py-2 bg-gray-50 dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-600">{filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'items'}</span>
+                <span className="text-xs text-gray-600 dark:text-zinc-400">{filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'items'}</span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setShowFilters(true)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"><SlidersHorizontal className="w-4 h-4 text-gray-700" /></button>
+                  <button onClick={() => setShowFilters(true)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-lg transition-colors"><SlidersHorizontal className="w-4 h-4 text-gray-700 dark:text-zinc-300" /></button>
                   <div className="relative">
-                    <button onClick={() => setShowSortDropdown(!showSortDropdown)} className="flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900">Sort by<ChevronDown className="w-3 h-3" /></button>
+                    <button onClick={() => setShowSortDropdown(!showSortDropdown)} className="flex items-center gap-1 text-xs text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:text-zinc-100">Sort by<ChevronDown className="w-3 h-3" /></button>
                     {showSortDropdown && (
                       <>
                         <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setShowSortDropdown(false)} />
-                        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 md:absolute md:right-0 md:left-auto md:top-full md:bottom-auto md:mt-1 md:rounded-lg md:min-w-[160px]">
+                        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-2xl shadow-2xl z-50 md:absolute md:right-0 md:left-auto md:top-full md:bottom-auto md:mt-1 md:rounded-lg md:min-w-[160px]">
                           <div className="md:hidden w-12 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1" />
                           <div className="py-4 md:py-1">
-                            <div className="px-4 pb-2 md:hidden"><h3 className="text-sm font-semibold text-gray-900">Sort by</h3></div>
+                            <div className="px-4 pb-2 md:hidden"><h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Sort by</h3></div>
                             <button onClick={() => { setSortBy('recent'); setShowSortDropdown(false); }} className={`w-full text-left px-4 py-3 md:py-2 text-sm md:text-xs hover:bg-gray-50 ${sortBy === 'recent' ? 'text-orange-600 font-medium bg-orange-50' : 'text-gray-700'}`}>Most Recent</button>
                             <button onClick={() => { setSortBy('price-low'); setShowSortDropdown(false); }} className={`w-full text-left px-4 py-3 md:py-2 text-sm md:text-xs hover:bg-gray-50 ${sortBy === 'price-low' ? 'text-orange-600 font-medium bg-orange-50' : 'text-gray-700'}`}>Price: Low to High</button>
                             <button onClick={() => { setSortBy('price-high'); setShowSortDropdown(false); }} className={`w-full text-left px-4 py-3 md:py-2 text-sm md:text-xs hover:bg-gray-50 ${sortBy === 'price-high' ? 'text-orange-600 font-medium bg-orange-50' : 'text-gray-700'}`}>Price: High to Low</button>
@@ -234,13 +234,13 @@ const RoyalSilverChairs = () => {
 
         {/* Desktop Back Button */}
         <div className="hidden md:block">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-6 py-4 hover:bg-gray-50 transition-colors"><ArrowLeft className="w-5 h-5" /><span className="font-medium">Back</span></button>
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-6 py-4 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors"><ArrowLeft className="w-5 h-5" /><span className="font-medium">Back</span></button>
         </div>
 
         {/* Breadcrumb */}
-        <div className="bg-gray-50 border-b border-gray-200 hidden md:block">
+        <div className="bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 hidden md:block">
           <div className="container-custom py-4">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-zinc-400">
               <Link to="/" className="flex items-center gap-1 hover:text-primary transition-colors"><Home className="w-4 h-4" /><span>Home</span></Link>
               <span>/</span>
               <Link to={PARENT_PATH} className="hover:text-primary transition-colors">{PARENT_CATEGORY}</Link>
@@ -251,45 +251,45 @@ const RoyalSilverChairs = () => {
         </div>
 
         {/* Products Grid */}
-        <section className="py-4 bg-white">
+        <section className="py-4 bg-white dark:bg-zinc-900">
           <div className="container-custom px-4">
             {loading ? (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                 {[...Array(8)].map((_, i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="bg-gray-200 aspect-[3/4] rounded-lg mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
-                    <div className="h-8 bg-gray-200 rounded"></div>
+                    <div className="bg-gray-200 dark:bg-zinc-800 aspect-[3/4] rounded-lg mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-zinc-800 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-zinc-800 rounded w-2/3 mb-2"></div>
+                    <div className="h-8 bg-gray-200 dark:bg-zinc-800 rounded"></div>
                   </div>
                 ))}
               </div>
             ) : sortedProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"><Search className="w-8 h-8 text-gray-400" /></div>
-                <p className="text-gray-500 text-sm">No {PAGE_TITLE.toLowerCase()} found</p>
+                <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4"><Search className="w-8 h-8 text-gray-400 dark:text-zinc-500" /></div>
+                <p className="text-gray-500 dark:text-zinc-500 text-sm">No {PAGE_TITLE.toLowerCase()} found</p>
                 {searchQuery && <button onClick={() => setSearchQuery('')} className="mt-2 text-xs text-orange-600 hover:text-orange-700">Clear search</button>}
               </div>
             ) : (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                 {sortedProducts.map((product) => (
-                  <motion.div key={product.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <div className="relative aspect-square bg-gray-100 cursor-pointer group" onClick={() => navigate(`/product/${product.id}`)}>
+                  <motion.div key={product.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white dark:bg-zinc-900 rounded-lg border border-gray-200 dark:border-zinc-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div className="relative aspect-square bg-gray-100 dark:bg-zinc-800 cursor-pointer group" onClick={() => navigate(`/product/${product.id}`)}>
                       <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                      <button onClick={(e) => { e.stopPropagation(); if (isInWishlist(product.id)) { removeFromWishlist(product.id); } else { addToWishlist(product.id); } }} className="absolute top-2 left-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors z-10">
+                      <button onClick={(e) => { e.stopPropagation(); if (isInWishlist(product.id)) { removeFromWishlist(product.id); } else { addToWishlist(product.id); } }} className="absolute top-2 left-2 p-1.5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors z-10">
                         <Heart className={`w-3.5 h-3.5 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
                       </button>
-                      {Number(product.discount) > 0 && <div className="absolute top-2 right-2 bg-orange-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm">{product.discount}% OFF</div>}
                     </div>
                     <div className="p-2">
                       <div className="flex items-center justify-between mb-1.5">
                         <button onClick={(e) => { e.stopPropagation(); addToCart({ id: product.id, name: product.title, price: product.price, image: product.image, category: product.category }); toast({ title: "Added to cart", description: `${product.title} has been added to your cart.` }); }} className="p-1 bg-orange-50 text-orange-600 rounded hover:bg-orange-100 transition-colors"><ShoppingCart className="w-3.5 h-3.5" /></button>
                         <div className="flex items-center gap-0.5 bg-green-600 text-white px-1.5 py-0.5 rounded text-[10px] font-semibold">{product.rating || 4.5}<Star className="w-2.5 h-2.5 fill-white" />{product.reviews ? ` (${product.reviews})` : ''}</div>
                       </div>
-                      <h3 className="text-xs font-medium text-gray-900 truncate mb-1">{product.title}</h3>
+                      <h3 className="text-xs font-medium text-gray-900 dark:text-zinc-100 truncate mb-1">{product.title}</h3>
                       <div className="flex items-center gap-1.5 mb-2">
-                        <p className="text-sm font-bold text-gray-900">₹{product.price.toLocaleString('en-IN')}</p>
-                        {product.oldPrice && <p className="text-[10px] text-gray-400 line-through">₹{product.oldPrice.toLocaleString('en-IN')}</p>}
+                        <p className="text-sm font-bold text-gray-900 dark:text-zinc-100">₹{product.price.toLocaleString('en-IN')}</p>
+                        {product.oldPrice && <p className="text-[10px] text-gray-400 dark:text-zinc-500 line-through">₹{product.oldPrice.toLocaleString('en-IN')}</p>}
+                        {Number(product.discount) > 0 && <span className="text-[10px] font-semibold text-green-600">{product.discount}% off</span>}
                       </div>
                       <button onClick={(e) => { e.stopPropagation(); addToCart({ id: product.id, name: product.title, price: product.price, image: product.image, category: product.category }); toast({ title: "Added to cart", description: `${product.title} has been added to your cart.` }); }} className="w-full py-2 bg-gray-900 hover:bg-gray-800 text-white rounded text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5"><ShoppingCart className="w-3.5 h-3.5" />ADD TO CART</button>
                     </div>

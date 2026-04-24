@@ -1,19 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
-
-const GEMINI_API_KEY = "AIzaSyDoYRqC55jj-iWuyal6iUKTOwohe5KjFXo";
-
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
-// Models in priority order — if one fails, try the next
-const MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-flash-latest",
-  "gemini-flash-lite-latest",
-  "gemini-3.1-flash-lite-preview",
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
-];
+import { auth } from "@/config/firebase";
 
 export interface ImageInput {
   base64: string;
@@ -37,23 +22,32 @@ function buildContents(text: string, images: ImageInput[]) {
 async function generateWithFallback(
   contents: string | ReturnType<typeof buildContents>
 ): Promise<string> {
-  let lastError: any;
-
-  for (const model of MODELS) {
-    try {
-      const response = await ai.models.generateContent({ model, contents });
-      const text = response.text;
-      if (text) {
-        console.log(`[Gemini] Success with model: ${model}`);
-        return text;
-      }
-    } catch (err: any) {
-      console.warn(`[Gemini] Model "${model}" failed:`, err?.message?.slice(0, 120));
-      lastError = err;
-    }
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Please sign in again before generating prompts.');
   }
 
-  throw lastError || new Error("All Gemini models failed. Please try again later.");
+  const idToken = await user.getIdToken();
+  const response = await fetch('/api/gemini-generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ contents }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    text?: string;
+    error?: string;
+    detail?: string;
+  };
+
+  if (!response.ok || !payload.text) {
+    throw new Error(payload.detail || payload.error || 'Failed to generate prompt with Gemini');
+  }
+
+  return payload.text;
 }
 
 const LOGO_WATERMARK_INSTRUCTION = `LOGO RULE — SIMPLE AND ABSOLUTE:

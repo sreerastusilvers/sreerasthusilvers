@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Search, Heart, ShoppingBag, User, Mic, Gift } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import darkLogo from "../assets/dark.png";
-import whiteLogo from "../assets/white.png";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +11,8 @@ import MobileHeader from "./MobileHeader";
 import ThemeToggle from "./ThemeToggle";
 
 const Header = () => {
+  const lightModeLogo = "/black_logo.png";
+  const darkModeLogo = "/white_logo.png";
   const navigate = useNavigate();
   const location = useLocation();
   const { user, userProfile } = useAuth();
@@ -72,19 +72,21 @@ const Header = () => {
     const filtered = allProducts.filter(product => 
       product.title.toLowerCase().includes(query) ||
       product.category?.toLowerCase().includes(query) ||
-      product.description?.toLowerCase().includes(query)
+      product.alt?.toLowerCase().includes(query)
     ).slice(0, 8); // Limit to 8 results
 
     setSearchResults(filtered);
     setShowSearchResults(true);
   }, [searchQuery, allProducts]);
 
-  // Handle scroll
-  if (typeof window !== "undefined") {
-    window.addEventListener("scroll", () => {
+  // Handle scroll - properly in useEffect with cleanup
+  useEffect(() => {
+    const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
-    });
-  }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Handle voice search
   const handleVoiceSearch = (e: React.MouseEvent) => {
@@ -162,7 +164,7 @@ const Header = () => {
           <div className="flex items-center justify-between gap-8 h-[68px]">
             {/* Logo */}
             <a href="/" className="flex items-center flex-shrink-0">
-              <img src={resolvedTheme === 'dark' ? darkLogo : whiteLogo} alt="Sreerasthu Silvers" className="h-8 lg:h-10 w-auto" />
+              <img src={resolvedTheme === 'dark' ? darkModeLogo : lightModeLogo} alt="Sreerasthu Silvers" className="h-8 lg:h-10 w-auto" />
             </a>
 
             {/* Search Bar - Premium Style */}
@@ -200,7 +202,7 @@ const Header = () => {
                   {/* Gift and Mic icons on right */}
                   <div className="absolute right-3 flex items-center gap-2">
                     <button 
-                      onClick={() => navigate('/articles/gift-articles')}
+                      onClick={() => navigate('/category/gifting')}
                       className="p-1 hover:bg-muted rounded-full transition-colors" 
                       aria-label="Gift articles"
                     >

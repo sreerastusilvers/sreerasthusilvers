@@ -135,17 +135,17 @@ const MobileCategories = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Header */}
-      <div className="sticky top-0 bg-white z-40 px-4 py-3 flex items-center justify-between border-b border-gray-100">
+      <div className="sticky top-0 bg-white dark:bg-zinc-900 z-40 px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-zinc-800">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate('/')}
             className="p-1"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
+            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>Top Categories</h1>
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Top Categories</h1>
         </div>
         <img 
           src={logo} 
@@ -157,7 +157,7 @@ const MobileCategories = () => {
       {/* Main Content */}
       <div className="flex">
         {/* Left Sidebar - Categories */}
-        <div className="w-20 bg-white border-r border-gray-100 min-h-[calc(100vh-120px)]">
+        <div className="w-20 bg-white dark:bg-zinc-900 border-r border-gray-100 dark:border-zinc-800 min-h-[calc(100vh-120px)]">
           {mainCategories.map((category) => (
             <button
               key={category.id}
@@ -193,7 +193,7 @@ const MobileCategories = () => {
         {/* Right Content - Subcategories */}
         <div className="flex-1 p-4">
           {/* Category Title */}
-          <h2 className="text-lg font-semibold text-gray-900 mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedCategory.name}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedCategory.name}</h2>
 
           {/* Subcategory Grid */}
           <div className="grid grid-cols-3 gap-3">
@@ -206,14 +206,14 @@ const MobileCategories = () => {
                 onClick={() => navigate(subcategory.path)}
                 className="flex flex-col items-center"
               >
-                <div className="w-full aspect-[4/5] rounded-xl overflow-hidden bg-gray-100 mb-2 shadow-sm">
+                <div className="w-full aspect-[4/5] rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 mb-2 shadow-sm">
                   <img
                     src={getSubcategoryImage(subcategory.name, subcategory.image)}
                     alt={subcategory.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <span className="text-xs text-gray-700 text-center font-medium truncate w-full" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                <span className="text-xs text-gray-700 dark:text-zinc-300 text-center font-medium truncate w-full" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   {subcategory.name.length > 12 ? subcategory.name.slice(0, 12) + '...' : subcategory.name}
                 </span>
               </motion.button>

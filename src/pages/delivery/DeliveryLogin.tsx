@@ -123,7 +123,7 @@ const DeliveryLogin = () => {
       <header className="p-4 flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-gray-400 dark:text-zinc-500 hover:text-white transition-colors"
         >
           <ArrowLeft className="h-5 w-5" />
           <span className="text-sm">Home</span>
@@ -163,7 +163,7 @@ const DeliveryLogin = () => {
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="text-gray-400 text-sm"
+                  className="text-gray-400 dark:text-zinc-500 text-sm"
                 >
                   Delivery Partner Portal
                 </motion.p>
@@ -194,11 +194,11 @@ const DeliveryLogin = () => {
 
                 {/* Email Field */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-400">
+                  <label className="text-sm font-medium text-gray-400 dark:text-zinc-500">
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 dark:text-zinc-500" />
                     <Input
                       type="email"
                       value={email}
@@ -212,11 +212,11 @@ const DeliveryLogin = () => {
 
                 {/* Password Field */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-400">
+                  <label className="text-sm font-medium text-gray-400 dark:text-zinc-500">
                     Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 dark:text-zinc-500" />
                     <Input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
@@ -228,7 +228,7 @@ const DeliveryLogin = () => {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-zinc-500 hover:text-gray-300 transition-colors"
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
@@ -253,7 +253,7 @@ const DeliveryLogin = () => {
                         )}
                       </div>
                     </div>
-                    <span className="text-sm text-gray-400">Remember me</span>
+                    <span className="text-sm text-gray-400 dark:text-zinc-500">Remember me</span>
                   </label>
 
                   <button
@@ -290,7 +290,7 @@ const DeliveryLogin = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
-                className="text-center text-sm text-gray-500 mt-8"
+                className="text-center text-sm text-gray-500 dark:text-zinc-500 mt-8"
               >
                 Contact admin if you need your account credentials.
               </motion.p>
@@ -309,7 +309,7 @@ const DeliveryLogin = () => {
                   setShowForgotPassword(false);
                   setError(null);
                 }}
-                className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
+                className="flex items-center gap-2 text-gray-400 dark:text-zinc-500 hover:text-white transition-colors mb-8"
               >
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back to Login</span>
@@ -323,7 +323,7 @@ const DeliveryLogin = () => {
                 <h2 className="text-2xl font-bold text-white mb-2">
                   Reset Password
                 </h2>
-                <p className="text-gray-400 text-sm">
+                <p className="text-gray-400 dark:text-zinc-500 text-sm">
                   Enter your email and we'll send you a reset link.
                 </p>
               </div>
@@ -346,11 +346,11 @@ const DeliveryLogin = () => {
                 </AnimatePresence>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-400">
+                  <label className="text-sm font-medium text-gray-400 dark:text-zinc-500">
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 dark:text-zinc-500" />
                     <Input
                       type="email"
                       value={forgotPasswordEmail}
@@ -384,7 +384,7 @@ const DeliveryLogin = () => {
 
       {/* Footer */}
       <footer className="p-4 text-center">
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-gray-600 dark:text-zinc-400">
           © 2026 Sreerasthu Silvers. All rights reserved.
         </p>
       </footer>

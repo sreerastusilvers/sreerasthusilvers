@@ -96,19 +96,19 @@ const SearchResults = () => {
   }, [highlightId, loading, sortedProducts]);
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-screen bg-white dark:bg-zinc-900 pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white shadow-sm">
+      <div className="sticky top-0 z-50 bg-white dark:bg-zinc-900 shadow-sm">
         <div className="flex items-center gap-2 px-3 py-2.5">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-1 rounded-full hover:bg-gray-100 transition-colors">
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
+          <button onClick={() => navigate(-1)} className="p-2 -ml-1 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 transition-colors">
+            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
           </button>
           <button
             onClick={() => navigate("/search")}
-            className="flex-1 flex items-center gap-2 bg-gray-50 rounded-lg border border-gray-200 px-3 py-2.5"
+            className="flex-1 flex items-center gap-2 bg-gray-50 dark:bg-zinc-900 rounded-lg border border-gray-200 dark:border-zinc-800 px-3 py-2.5"
           >
-            <Search className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-700 truncate">{query}</span>
+            <Search className="w-4 h-4 text-gray-400 dark:text-zinc-500" />
+            <span className="text-sm text-gray-700 dark:text-zinc-300 truncate">{query}</span>
           </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -124,9 +124,9 @@ const SearchResults = () => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-gray-100 px-4 py-3 bg-gray-50"
+            className="border-t border-gray-100 dark:border-zinc-800 px-4 py-3 bg-gray-50 dark:bg-zinc-900"
           >
-            <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-2">Sort By</p>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider font-medium mb-2">Sort By</p>
             <div className="flex flex-wrap gap-2">
               {[
                 { value: "relevance", label: "Relevance" },
@@ -155,14 +155,14 @@ const SearchResults = () => {
       </div>
 
       {/* Results Count */}
-      <div className="px-4 py-3 border-b border-gray-100">
-        <p className="text-sm text-gray-500">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
+        <p className="text-sm text-gray-500 dark:text-zinc-500">
           {loading ? (
             "Searching..."
           ) : (
             <>
-              <span className="font-semibold text-gray-900">{sortedProducts.length}</span> results for "
-              <span className="font-medium text-gray-900">{query}</span>"
+              <span className="font-semibold text-gray-900 dark:text-zinc-100">{sortedProducts.length}</span> results for "
+              <span className="font-medium text-gray-900 dark:text-zinc-100">{query}</span>"
             </>
           )}
         </p>
@@ -173,9 +173,9 @@ const SearchResults = () => {
         <div className="grid grid-cols-2 gap-3 p-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="aspect-square bg-gray-200 rounded-xl mb-2" />
-              <div className="h-3 bg-gray-200 rounded w-3/4 mb-1" />
-              <div className="h-3 bg-gray-200 rounded w-1/2" />
+              <div className="aspect-square bg-gray-200 dark:bg-zinc-800 rounded-xl mb-2" />
+              <div className="h-3 bg-gray-200 dark:bg-zinc-800 rounded w-3/4 mb-1" />
+              <div className="h-3 bg-gray-200 dark:bg-zinc-800 rounded w-1/2" />
             </div>
           ))}
         </div>
@@ -184,7 +184,7 @@ const SearchResults = () => {
       {/* Results Grid */}
       {!loading && sortedProducts.length > 0 && (
         <div className="p-3">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 border border-gray-200 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden">
             {sortedProducts.map((product, index) => (
               <motion.div
                 key={product.id}
@@ -205,8 +205,8 @@ const SearchResults = () => {
       {!loading && sortedProducts.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 px-6">
           <ShoppingBag className="w-16 h-16 text-gray-200 mb-4" />
-          <p className="text-lg font-medium text-gray-700 mb-1">No products found</p>
-          <p className="text-sm text-gray-400 text-center mb-6">
+          <p className="text-lg font-medium text-gray-700 dark:text-zinc-300 mb-1">No products found</p>
+          <p className="text-sm text-gray-400 dark:text-zinc-500 text-center mb-6">
             We couldn't find any products matching "{query}". Try a different search term.
           </p>
           <button

@@ -7,6 +7,7 @@ import { UIProductDetail, adaptFirebaseToUIDetail, adaptFirebaseArrayToUI } from
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useWishlist } from "@/hooks/useWishlist";
 import { getProductReviews, getProductReviewStats, hasUserPurchasedProduct, hasUserReviewedProduct, Review } from "@/services/reviewService";
 import logo from "@/assets/dark.png";
 import Header from "@/components/Header";
@@ -18,11 +19,11 @@ import CategoryIconNav from "@/components/CategoryIconNav";
 const ProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
-  const { addToCart, toggleCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isInWishlist, toggleWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [product, setProduct] = useState<UIProductDetail | null>(null);
@@ -34,6 +35,9 @@ const ProductDetail = () => {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  // Desktop hover-zoom on main image
+  const [isZooming, setIsZooming] = useState(false);
+  const [zoomPos, setZoomPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
   // Review states
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewStats, setReviewStats] = useState<{ averageRating: number; totalReviews: number; ratingDistribution: Record<number, number> }>({ averageRating: 0, totalReviews: 0, ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } });
@@ -81,10 +85,12 @@ const ProductDetail = () => {
         const uiProduct = adaptFirebaseToUIDetail(fbProduct);
         setProduct(uiProduct);
 
-        // Fetch all active products for related products
+        // Fetch related products: same-category first, fall back to others to fill 4 slots
         const allActiveProducts = await getActiveProducts();
-        const related = allActiveProducts
-          .filter(p => p.id !== productId)
+        const otherProducts = allActiveProducts.filter(p => p.id !== productId);
+        const sameCategory = otherProducts.filter(p => p.category === fbProduct.category);
+        const otherCategory = otherProducts.filter(p => p.category !== fbProduct.category);
+        const related = [...sameCategory, ...otherCategory]
           .slice(0, 4)
           .map(adaptFirebaseToUIDetail);
         setRelatedProducts(related);
@@ -162,8 +168,8 @@ const ProductDetail = () => {
         description: `${product.title} (${quantity}) has been added to your cart.`,
       });
 
-      // Open cart drawer/sidebar
-      toggleCart();
+      // Open cart drawer/sidebar (right-side popup)
+      openCart();
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({
@@ -402,12 +408,6 @@ const ProductDetail = () => {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <a href="/" className="hover:text-primary transition-colors">Home</a>
               <ChevronRight className="w-4 h-4" />
-              {product.category && (
-                <>
-                  <a href={`/category/${product.category.toLowerCase().replace(/\s+/g, '-')}`} className="hover:text-primary transition-colors">{product.category}</a>
-                  <ChevronRight className="w-4 h-4" />
-                </>
-              )}
               <span className="text-foreground">
                 {product.title.length > 30 ? product.title.slice(0, 30) + '...' : product.title}
               </span>
@@ -435,8 +435,17 @@ const ProductDetail = () => {
               >
                 {/* Main Media */}
                 <div 
-                  className="relative bg-muted rounded-2xl overflow-hidden aspect-[4/3] max-w-lg mx-auto mb-4 cursor-pointer md:cursor-default"
+                  className="group relative bg-muted rounded-2xl overflow-hidden aspect-square max-w-lg mx-auto mb-4 cursor-pointer md:cursor-zoom-in"
                   onClick={() => window.innerWidth < 768 && setShowImagePopup(true)}
+                  onMouseEnter={() => allMedia[selectedImage]?.type !== 'video' && setIsZooming(true)}
+                  onMouseLeave={() => setIsZooming(false)}
+                  onMouseMove={(e) => {
+                    if (allMedia[selectedImage]?.type === 'video') return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = ((e.clientX - rect.left) / rect.width) * 100;
+                    const y = ((e.clientY - rect.top) / rect.height) * 100;
+                    setZoomPos({ x, y });
+                  }}
                 >
                   {allMedia[selectedImage]?.type === 'video' ? (
                     <iframe
@@ -450,26 +459,40 @@ const ProductDetail = () => {
                     <img
                       src={allMedia[selectedImage]?.src || product.image}
                       alt={product.alt}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-200 ease-out hidden md:block"
+                      style={{
+                        transform: isZooming ? 'scale(2)' : 'scale(1)',
+                        transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                      }}
                     />
                   )}
+                  {/* Mobile image (no zoom) */}
+                  {allMedia[selectedImage]?.type !== 'video' && (
+                    <img
+                      src={allMedia[selectedImage]?.src || product.image}
+                      alt={product.alt}
+                      className="w-full h-full object-cover md:hidden"
+                    />
+                  )}
+                  {/* Subtle gold ring on hover (desktop) */}
+                  <div className="hidden md:block absolute inset-0 ring-1 ring-inset ring-primary/0 group-hover:ring-primary/30 rounded-2xl transition-all pointer-events-none" />
                   
                   {/* Wishlist & Share Icons */}
                   <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setIsWishlisted(!isWishlisted);
+                        if (product) toggleWishlist(product.id, product.title);
                       }}
                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg ${
-                        isWishlisted
+                        product && isInWishlist(product.id)
                           ? "bg-red-500 text-white"
                           : "bg-background/90 dark:bg-card/90 text-foreground hover:bg-muted"
                       }`}
                     >
                       <Heart
                         className="w-5 h-5"
-                        fill={isWishlisted ? "currentColor" : "none"}
+                        fill={product && isInWishlist(product.id) ? "currentColor" : "none"}
                       />
                     </button>
 
@@ -888,15 +911,6 @@ const ProductDetail = () => {
                   )}
                 </div>
 
-                {/* Category */}
-                <div className="text-sm">
-                  <p>
-                    <span className="text-muted-foreground">Category:</span>{" "}
-                    <a href="/shop/necklaces" className="text-primary hover:underline">
-                      {product.category}
-                    </a>
-                  </p>
-                </div>
               </motion.div>
             </div>
           </div>

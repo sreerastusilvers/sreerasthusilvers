@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadToCloudinary } from '@/services/cloudinaryService';
 import { toast } from 'sonner';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import Cropper from 'react-easy-crop';
 import { Area } from 'react-easy-crop';
@@ -11,9 +13,16 @@ import darkLogo from '@/assets/dark.png';
 import {
   ZoomIn,
   ZoomOut,
+  ArrowLeft,
+  Camera,
+  Check,
+  Edit3,
   User,
   Mail,
   Calendar,
+  Phone,
+  ShieldCheck,
+  X,
 } from 'lucide-react';
 
 // Helper function to create image from cropped area
@@ -172,17 +181,33 @@ const ProfileEditPage = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 pb-24" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      {/* Desktop site header */}
+      <div className="hidden lg:block"><Header /></div>
+
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-900/50 pb-24 lg:pb-16 dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        {/* Desktop page wrapper for centered card width */}
+        <div className="lg:max-w-3xl lg:mx-auto lg:px-6 lg:pt-8">
+        <button
+          onClick={() => {
+            if (window.innerWidth >= 1024) { navigate('/account'); return; }
+            sessionStorage.setItem('openMobileSidebar', '1');
+            navigate('/');
+          }}
+          className="mb-4 hidden items-center gap-2 rounded-full border border-[#d4af37]/15 bg-white/90 dark:bg-zinc-900/90 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 shadow-sm transition-colors hover:bg-white dark:border-[#d4af37]/20 dark:bg-zinc-900/88 dark:text-zinc-100 dark:hover:bg-zinc-900 lg:inline-flex"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
         {/* ── Banner + Avatar Section ── */}
-        <div className="relative">
+        <div className="relative lg:overflow-hidden lg:rounded-3xl lg:border lg:border-gray-100 dark:border-zinc-800 lg:bg-white dark:bg-zinc-900 lg:shadow-sm dark:lg:border-zinc-800 dark:lg:bg-zinc-900/88">
           {/* Banner Background with geometric pattern */}
-          <div className="relative h-40 bg-gray-100 overflow-hidden">
-            {/* Back Button */}
+          <div className="relative h-40 bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+            {/* Back Button — mobile only (desktop has site header) */}
             <button
               onClick={() => navigate(-1)}
-              className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors shadow-sm"
+              className="lg:hidden absolute top-4 left-4 z-10 rounded-full bg-white/80 dark:bg-zinc-900/80 p-2 shadow-sm transition-colors hover:bg-white dark:bg-zinc-900/85 dark:hover:bg-zinc-900"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
+              <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300 dark:text-zinc-100" />
             </button>
 
             {/* Geometric Network Pattern SVG */}
@@ -244,21 +269,21 @@ const ProfileEditPage = () => {
                   key={avatarUrl}
                   src={avatarUrl}
                   alt="Profile"
-                  className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-lg bg-white"
+                  className="w-28 h-28 rounded-full object-cover border-4 border-white dark:border-zinc-800 shadow-lg bg-white dark:bg-zinc-900"
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-28 h-28 rounded-full bg-gray-200 flex items-center justify-center border-4 border-white shadow-lg">
-                  <span className="text-gray-500 text-3xl font-bold">{initials}</span>
+                <div className="w-28 h-28 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700 flex items-center justify-center border-4 border-white dark:border-zinc-800 shadow-lg">
+                  <span className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-3xl font-bold">{initials}</span>
                 </div>
               )}
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingPhoto}
-                className="absolute bottom-1 right-1 w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-800 transition-colors border-2 border-white"
+                className="absolute bottom-1 right-1 w-8 h-8 bg-gray-900 dark:bg-zinc-100 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-800 dark:bg-zinc-100 transition-colors border-2 border-white dark:border-zinc-800"
               >
                 {uploadingPhoto ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white dark:border-zinc-800 border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Camera className="w-4 h-4 text-white" />
                 )}
@@ -280,32 +305,32 @@ const ProfileEditPage = () => {
                     type="text"
                     value={nameInput}
                     onChange={(e) => setNameInput(e.target.value)}
-                    className="bg-gray-100 text-gray-900 text-lg font-bold text-center px-3 py-1 rounded-lg border border-gray-300 focus:outline-none focus:border-gray-500"
+                    className="bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 text-lg font-bold text-center px-3 py-1 rounded-lg border border-gray-300 dark:border-zinc-700 focus:outline-none focus:border-gray-500"
                     autoFocus
                     disabled={savingName}
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
                   />
-                  <button onClick={handleSaveName} disabled={savingName} className="p-1 rounded-full bg-gray-200">
-                    <Check className="w-4 h-4 text-gray-700" />
+                  <button onClick={handleSaveName} disabled={savingName} className="p-1 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700">
+                    <Check className="w-4 h-4 text-gray-700 dark:text-zinc-300" />
                   </button>
-                  <button onClick={() => setIsEditingName(false)} className="p-1 rounded-full bg-gray-200">
-                    <X className="w-4 h-4 text-gray-700" />
+                  <button onClick={() => setIsEditingName(false)} className="p-1 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700">
+                    <X className="w-4 h-4 text-gray-700 dark:text-zinc-300" />
                   </button>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-gray-900 text-lg font-bold">{displayName}</h2>
+                  <h2 className="text-gray-900 dark:text-zinc-100 text-lg font-bold">{displayName}</h2>
                   <button
                     onClick={() => setIsEditingName(true)}
-                    className="p-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                    className="p-1 rounded-full bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:bg-zinc-700 transition-colors"
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-gray-500" />
+                    <Edit3 className="w-3.5 h-3.5 text-gray-500 dark:text-zinc-500 dark:text-zinc-400" />
                   </button>
                 </>
               )}
             </div>
-            <p className="text-gray-500 text-xs">{user?.email}</p>
-            <p className="text-gray-400 text-[10px] mt-0.5">Member since {memberSince}</p>
+            <p className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-xs">{user?.email}</p>
+            <p className="text-gray-400 dark:text-zinc-500 text-[10px] mt-0.5">Member since {memberSince}</p>
           </div>
         </div>
 
@@ -316,16 +341,16 @@ const ProfileEditPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <h3 className="text-sm font-bold text-gray-900 mb-3 px-1">Personal Information</h3>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-3 px-1">Personal Information</h3>
+            <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm divide-y divide-gray-100 dark:border-zinc-800 dark:bg-zinc-900/88 dark:divide-zinc-800">
               {/* Full Name */}
               <div className="flex items-center gap-3 px-4 py-3.5">
                 <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
                   <User className="w-5 h-5 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Full Name</p>
-                  <p className="text-sm text-gray-900 font-medium truncate">{displayName}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-zinc-500 font-semibold">Full Name</p>
+                  <p className="text-sm text-gray-900 dark:text-zinc-100 font-medium truncate">{displayName}</p>
                 </div>
                 <button
                   onClick={() => setIsEditingName(true)}
@@ -341,8 +366,8 @@ const ProfileEditPage = () => {
                   <Mail className="w-5 h-5 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Email</p>
-                  <p className="text-sm text-gray-900 font-medium truncate">{user?.email || 'Not set'}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-zinc-500 font-semibold">Email</p>
+                  <p className="text-sm text-gray-900 dark:text-zinc-100 font-medium truncate">{user?.email || 'Not set'}</p>
                 </div>
                 {user?.emailVerified && (
                   <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Verified</span>
@@ -355,33 +380,62 @@ const ProfileEditPage = () => {
                   <Calendar className="w-5 h-5 text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Member Since</p>
-                  <p className="text-sm text-gray-900 font-medium">{memberSince}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-zinc-500 font-semibold">Member Since</p>
+                  <p className="text-sm text-gray-900 dark:text-zinc-100 font-medium">{memberSince}</p>
                 </div>
+              </div>
+
+              {/* WhatsApp helper / guidance */}
+              <div className="flex items-start gap-3 px-4 py-3.5">
+                <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-zinc-500 font-semibold">WhatsApp</p>
+                  {userProfile?.whatsappNumber ? (
+                    <p className="text-sm text-gray-900 dark:text-zinc-100 font-medium truncate">+91 {userProfile.whatsappNumber.replace(/^\+?91/, '')}</p>
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-zinc-500 dark:text-zinc-400">Not linked yet</p>
+                  )}
+                  <p className="text-[11px] text-gray-500 dark:text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">
+                    Verify a WhatsApp number to receive order updates, OTPs, and turn on two-factor sign-in.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate('/security')}
+                  className="text-emerald-600 text-xs font-semibold inline-flex items-center gap-1 self-center whitespace-nowrap"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {userProfile?.whatsappNumber ? 'Manage' : 'Verify'}
+                </button>
               </div>
             </div>
           </motion.div>
         </div>
 
         {/* App Version */}
-        <p className="text-center text-[10px] text-gray-400 pb-2 mt-8">Sreerasthu Silvers v1.0.0</p>
+        <p className="text-center text-[10px] text-gray-400 dark:text-zinc-500 pb-2 mt-8">Sreerasthu Silvers v1.0.0</p>
+        </div>
       </div>
+
+      {/* Desktop site footer */}
+      <div className="hidden lg:block"><Footer /></div>
 
       {/* ── Crop Modal ── */}
       {showCropModal && imageToCrop && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-0 sm:p-4">
-          <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-w-md overflow-hidden flex flex-col sm:block">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-              <h2 className="text-gray-900 text-lg font-semibold">Edit Photo</h2>
+          <div className="bg-white dark:bg-zinc-900 rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-w-md overflow-hidden flex flex-col sm:block">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-zinc-800">
+              <h2 className="text-gray-900 dark:text-zinc-100 text-lg font-semibold">Edit Photo</h2>
               <button
                 onClick={handleCropCancel}
-                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="relative bg-gray-100 flex-1 sm:h-[400px]">
+            <div className="relative bg-gray-100 dark:bg-zinc-800 flex-1 sm:h-[400px]">
               <Cropper
                 image={imageToCrop}
                 crop={crop}
@@ -395,9 +449,9 @@ const ProfileEditPage = () => {
               />
             </div>
 
-            <div className="px-6 py-5 bg-white border-t border-gray-200">
+            <div className="px-6 py-5 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800">
               <div className="flex items-center gap-3 mb-4">
-                <ZoomOut className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                <ZoomOut className="w-5 h-5 text-gray-500 dark:text-zinc-500 dark:text-zinc-400 flex-shrink-0" />
                 <input
                   type="range"
                   min={1}
@@ -405,13 +459,13 @@ const ProfileEditPage = () => {
                   step={0.01}
                   value={zoom}
                   onChange={(e) => setZoom(Number(e.target.value))}
-                  className="flex-1 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer"
+                  className="flex-1 h-1.5 bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700 rounded-full appearance-none cursor-pointer"
                   style={{
                     background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${((zoom - 1) / 2) * 100}%, #E5E7EB ${((zoom - 1) / 2) * 100}%, #E5E7EB 100%)`
                   }}
                 />
-                <ZoomIn className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-600 min-w-[3rem] text-right">
+                <ZoomIn className="w-5 h-5 text-gray-500 dark:text-zinc-500 dark:text-zinc-400 flex-shrink-0" />
+                <span className="text-sm font-medium text-gray-600 dark:text-zinc-400 min-w-[3rem] text-right">
                   {Math.round((zoom - 1) / 2 * 100)}%
                 </span>
               </div>

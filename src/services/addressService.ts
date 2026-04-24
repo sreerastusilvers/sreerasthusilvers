@@ -22,6 +22,7 @@ export interface Address {
   pinCode: string;
   locality: string;
   address: string;
+  googleMapsUrl?: string;
   city: string;
   state: string;
   isDefault: boolean;
@@ -35,6 +36,7 @@ export interface AddressFormData {
   pinCode: string;
   locality: string;
   address: string;
+  googleMapsUrl?: string;
   city: string;
   state: string;
   isDefault?: boolean;

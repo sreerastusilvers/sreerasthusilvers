@@ -27,6 +27,11 @@ import {
   refinePrompt,
   type ImageInput,
 } from '@/services/geminiService';
+import {
+  savePromptToHistory,
+  subscribePromptHistory,
+  deletePromptFromHistory,
+} from '@/services/promptHistoryService';
 
 type PromptCategory = 'product-model' | 'product-studio' | 'hero-section' | 'custom';
 
@@ -271,6 +276,22 @@ const AdminImagePrompts = () => {
       });
   }, []);
 
+  // Subscribe to Firestore prompt history (persistent across sessions)
+  useEffect(() => {
+    const unsub = subscribePromptHistory((entries) => {
+      setHistory(
+        entries.map((e) => ({
+          id: e.id,
+          category: e.category,
+          prompt: e.prompt,
+          inputs: e.inputs ?? {},
+          timestamp: e.createdAt,
+        }))
+      );
+    }, 50);
+    return () => unsub();
+  }, []);
+
   const handleProductImageSelect = async (file: File) => {
     const img = await fileToImageInput(file);
     setProductImage(img);
@@ -399,6 +420,14 @@ const AdminImagePrompts = () => {
       };
       setHistory(prev => [newEntry, ...prev].slice(0, 20));
 
+      // Persist to Firestore (fire-and-forget; subscription will refresh)
+      savePromptToHistory({
+        category: activeTab,
+        prompt,
+        inputs,
+        ...(activeTab === 'hero-section' ? { modelMode: includeModel } : {}),
+      }).catch((e) => console.warn('[promptHistory] save failed:', e));
+
       toast.success('Prompt generated successfully!');
     } catch (error: any) {
       console.error('Gemini API error:', error);
@@ -442,6 +471,8 @@ const AdminImagePrompts = () => {
         timestamp: new Date(),
       };
       setHistory(prev => [newEntry, ...prev].slice(0, 20));
+      savePromptToHistory({ category: activeTab, prompt: refined, inputs: { type: 'Refined' } })
+        .catch((e) => console.warn('[promptHistory] save failed:', e));
     } catch (error: any) {
       toast.error(error?.message || 'Failed to refine prompt');
     } finally {
@@ -464,6 +495,8 @@ const AdminImagePrompts = () => {
         timestamp: new Date(),
       };
       setHistory(prev => [newEntry, ...prev].slice(0, 20));
+      savePromptToHistory({ category: 'product-model', prompt: variation, inputs: { type: 'Variation' } })
+        .catch((e) => console.warn('[promptHistory] save failed:', e));
     } catch (error: any) {
       toast.error(error?.message || 'Failed to generate variation');
     } finally {
@@ -1006,12 +1039,12 @@ const AdminImagePrompts = () => {
               {showHistory && (
                 <div className="border-t border-[#F5EFE6] divide-y divide-[#F5EFE6] max-h-[400px] overflow-y-auto">
                   {history.map((entry) => (
-                    <button
+                    <div
                       key={entry.id}
+                      className="group relative w-full text-left px-6 py-3 hover:bg-[#FFF9E6]/50 transition-colors cursor-pointer"
                       onClick={() => loadFromHistory(entry)}
-                      className="w-full text-left px-6 py-3 hover:bg-[#FFF9E6]/50 transition-colors"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between pr-8">
                         <span className="text-xs font-medium text-amber-700 capitalize">
                           {entry.category.replace('-', ' ')}
                         </span>
@@ -1019,10 +1052,23 @@ const AdminImagePrompts = () => {
                           {entry.timestamp.toLocaleTimeString()}
                         </span>
                       </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePromptFromHistory(entry.id)
+                            .then(() => toast.success('Removed from history'))
+                            .catch(() => toast.error('Failed to delete'));
+                        }}
+                        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center"
+                        aria-label="Delete from history"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                       <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                         {entry.prompt.slice(0, 120)}...
                       </p>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}

@@ -308,18 +308,18 @@ const Login = () => {
             </Link>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 relative">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 md:p-8 relative">
             {/* Mobile Back Arrow */}
             <button
               onClick={() => navigate(-1)}
-              className="mb-3 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors lg:hidden"
+              className="mb-3 flex items-center gap-2 text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:text-zinc-100 transition-colors lg:hidden"
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Back</span>
             </button>
 
             {/* Tabs */}
-            <div className="flex mb-6 bg-gray-100 rounded-xl p-1">
+            <div className="flex mb-6 bg-gray-100 dark:bg-zinc-800 rounded-xl p-1">
               <button
                 onClick={() => handleTabChange('user')}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-medium transition-all ${
@@ -346,8 +346,8 @@ const Login = () => {
 
             {/* Header */}
             <div className="text-center mb-5">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-              <p className="text-gray-600">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-zinc-100 mb-2">Welcome Back</h1>
+              <p className="text-gray-600 dark:text-zinc-400">
                 {activeTab === 'user' 
                   ? 'Sign in to access your account' 
                   : 'Sign in to the Delivery Partner Portal'}
@@ -364,16 +364,16 @@ const Login = () => {
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="email" className="text-gray-700">Email</Label>
+                <Label htmlFor="email" className="text-gray-700 dark:text-zinc-300">Email</Label>
                 <div className="relative mt-2">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-zinc-500" />
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
-                    className="pl-10 h-12 border-gray-300 rounded-lg"
+                    className="pl-10 h-12 border-gray-300 dark:border-zinc-700 rounded-lg"
                     required
                     disabled={loading}
                   />
@@ -381,23 +381,23 @@ const Login = () => {
               </div>
 
               <div>
-                <Label htmlFor="password" className="text-gray-700">Password</Label>
+                <Label htmlFor="password" className="text-gray-700 dark:text-zinc-300">Password</Label>
                 <div className="relative mt-2">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-zinc-500" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="pl-10 pr-10 h-12 border-gray-300 rounded-lg"
+                    className="pl-10 pr-10 h-12 border-gray-300 dark:border-zinc-700 rounded-lg"
                     required
                     disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:text-zinc-400"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -422,7 +422,7 @@ const Login = () => {
 
             {/* Forgot Password Link */}
             <div className="text-center mt-4">
-              <span className="text-gray-600">Forgot Login Detail? </span>
+              <span className="text-gray-600 dark:text-zinc-400">Forgot Login Detail? </span>
               <Link 
                 to="/forgot-password" 
                 className="text-blue-600 hover:text-blue-700 font-medium"
@@ -437,10 +437,10 @@ const Login = () => {
                 {/* Divider */}
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
+                    <div className="w-full border-t border-gray-200 dark:border-zinc-800"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white text-gray-500">OR</span>
+                    <span className="px-4 bg-white dark:bg-zinc-900 text-gray-500 dark:text-zinc-500">OR</span>
                   </div>
                 </div>
 
@@ -450,7 +450,7 @@ const Login = () => {
                   variant="outline"
                   onClick={handleGoogleSignIn}
                   disabled={loading}
-                  className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium"
+                  className="w-full h-12 border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 rounded-lg font-medium"
                 >
                   <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -465,7 +465,7 @@ const Login = () => {
 
             {/* Delivery Help Text */}
             {activeTab === 'delivery' && (
-              <p className="text-center text-sm text-gray-500 mt-6">
+              <p className="text-center text-sm text-gray-500 dark:text-zinc-500 mt-6">
                 Contact admin if you need your delivery account credentials.
               </p>
             )}
@@ -473,7 +473,7 @@ const Login = () => {
             {/* Sign Up Link - Only for User tab */}
             {activeTab === 'user' && (
               <div className="text-center mt-4">
-                <span className="text-gray-600">Don't have an account? </span>
+                <span className="text-gray-600 dark:text-zinc-400">Don't have an account? </span>
                 <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
                   Sign Up Now
                 </Link>
@@ -485,11 +485,11 @@ const Login = () => {
 
       {/* Email Verification Modal */}
       <Dialog open={showVerificationModal} onOpenChange={setShowVerificationModal}>
-        <DialogContent className="sm:max-w-md rounded-2xl border-0 shadow-2xl backdrop-blur-sm bg-white/95 p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-md rounded-2xl border-0 shadow-2xl backdrop-blur-sm bg-white/95 dark:bg-zinc-900/95 p-0 gap-0 overflow-hidden">
           {/* Close Button */}
           <button
             onClick={() => setShowVerificationModal(false)}
-            className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors z-10"
+            className="absolute right-4 top-4 rounded-full p-1 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 transition-colors z-10"
           >
             <X className="h-5 w-5" />
           </button>
@@ -504,10 +504,10 @@ const Login = () => {
 
             {/* Header */}
             <DialogHeader className="text-center space-y-3 mb-6">
-              <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-2">
+              <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-zinc-100 flex items-center justify-center gap-2">
                 📩 Verify Your Email
               </DialogTitle>
-              <DialogDescription className="text-gray-600 text-base leading-relaxed">
+              <DialogDescription className="text-gray-600 dark:text-zinc-400 text-base leading-relaxed">
                 Your email address is not verified yet.
                 <br />
                 Please check your inbox and click the verification link.
@@ -516,7 +516,7 @@ const Login = () => {
 
             {/* User Email Display */}
             <div className="bg-blue-50 rounded-xl p-4 mb-6 text-center">
-              <p className="text-sm text-gray-500 mb-1">Verification email sent to:</p>
+              <p className="text-sm text-gray-500 dark:text-zinc-500 mb-1">Verification email sent to:</p>
               <p className="text-blue-600 font-semibold text-lg break-all">
                 {verificationEmail}
               </p>
@@ -580,7 +580,7 @@ const Login = () => {
             <div className="mt-6 text-center">
               <button
                 onClick={handleLogoutFromModal}
-                className="text-sm text-gray-500 hover:text-gray-700 underline transition-colors"
+                className="text-sm text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:text-zinc-300 underline transition-colors"
               >
                 Logout and try different account
               </button>

@@ -18,6 +18,7 @@ import { createOrder, generateOrderNumber, OrderFormData, OrderItem } from '@/se
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { useWishlist } from '@/hooks/useWishlist';
+import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
 
 // ─── Slide to Pay Button Component ───
 const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
@@ -74,7 +75,7 @@ const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: 
           dragMomentum={false}
           onDragEnd={handleDragEnd}
           style={{ x }}
-          className="absolute left-1 top-1 w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing z-10"
+          className="absolute left-1 top-1 w-12 h-12 rounded-full bg-white dark:bg-zinc-900 shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing z-10"
           whileTap={{ scale: 0.95 }}
         >
           <ChevronRight className="w-5 h-5 text-green-600" />
@@ -104,6 +105,7 @@ const MobileCheckout = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Cash On Delivery');
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
+  const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   
@@ -239,15 +241,16 @@ const MobileCheckout = () => {
     return `₹ ${price.toFixed(2)}`;
   };
 
-  // Calculations
-  const deliveryCharge = items.length === 0 ? 0 : (subtotal >= 5000 ? 0 : 60);
-  const taxAmount = Math.round(subtotal * 0.03); // GST 3%
+  // Admin-driven pricing (coupons / delivery / GST / COD all live in /admin/commerce-settings)
+  const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod);
+  const deliveryCharge = pricing.deliveryCharge;
+  const taxAmount = pricing.gstAmount;
   const savings = items.reduce((acc, item) => {
     const originalPrice = Math.round(item.price * 1.3);
     return acc + (originalPrice - item.price) * item.quantity;
   }, 0);
-  const discount = 20; // Coupon discount
-  const total = subtotal + deliveryCharge + taxAmount - discount;
+  const discount = pricing.discount;
+  const total = pricing.total;
 
   const addOnTabs = ['Did you forget?', 'Best Sellers', 'New Arrivals'];
 
@@ -351,6 +354,9 @@ const MobileCheckout = () => {
       // Create order in Firestore
       await createOrder(orderData);
 
+      // Capture first product id BEFORE clearing the cart so DONE can return to it
+      setLastOrderedProductId(items[0]?.id || null);
+
       // Clear cart
       clearCart();
 
@@ -374,13 +380,13 @@ const MobileCheckout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-24" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 flex flex-col pb-24" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* ─── Header with gradient ─── */}
-      <div className="bg-white sticky top-0 z-50 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 sticky top-0 z-50 shadow-sm">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => openCart()} className="p-1">
-            <ArrowLeft className="w-6 h-6 text-gray-800" />
+            <ArrowLeft className="w-6 h-6 text-gray-800 dark:text-zinc-200" />
           </button>
         </div>
         <MobileSearchBar />
@@ -405,12 +411,12 @@ const MobileCheckout = () => {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl max-h-[85vh] overflow-hidden"
+              className="fixed bottom-0 left-0 right-0 z-[70] bg-white dark:bg-zinc-900 rounded-t-3xl max-h-[85vh] overflow-hidden"
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
-              <div className="p-4 border-b border-gray-200">
+              <div className="p-4 border-b border-gray-200 dark:border-zinc-800">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     Select Delivery Address
                   </h3>
                   <div className="flex items-center gap-2">
@@ -426,9 +432,9 @@ const MobileCheckout = () => {
                     )}
                     <button
                       onClick={handleCloseAddressSelector}
-                      className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                     >
-                      <X className="w-5 h-5 text-gray-600" />
+                      <X className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                     </button>
                   </div>
                 </div>
@@ -446,7 +452,7 @@ const MobileCheckout = () => {
                     
                     {/* Full Name */}
                     <div>
-                      <Label htmlFor="mobile-fullName" className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                      <Label htmlFor="mobile-fullName" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-1.5 block">
                         Full Name *
                       </Label>
                       <Input
@@ -455,14 +461,14 @@ const MobileCheckout = () => {
                         value={formData.fullName}
                         onChange={handleInputChange}
                         placeholder="Enter your full name"
-                        className="h-11 border-gray-300 focus:border-blue-500"
+                        className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500"
                         required
                       />
                     </div>
 
                     {/* Phone Number */}
                     <div>
-                      <Label htmlFor="mobile-phoneNumber" className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                      <Label htmlFor="mobile-phoneNumber" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-1.5 block">
                         Phone Number *
                       </Label>
                       <Input
@@ -472,7 +478,7 @@ const MobileCheckout = () => {
                         value={formData.phoneNumber}
                         onChange={handleInputChange}
                         placeholder="10-digit mobile number"
-                        className="h-11 border-gray-300 focus:border-blue-500"
+                        className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500"
                         maxLength={10}
                         required
                       />
@@ -481,7 +487,7 @@ const MobileCheckout = () => {
                     {/* Pin Code & Locality */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label htmlFor="mobile-pinCode" className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                        <Label htmlFor="mobile-pinCode" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-1.5 block">
                           Pin Code *
                         </Label>
                         <Input
@@ -491,12 +497,12 @@ const MobileCheckout = () => {
                           onChange={handleInputChange}
                           placeholder="6-digit"
                           maxLength={6}
-                          className="h-11 border-gray-300 focus:border-blue-500"
+                          className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor="mobile-locality" className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                        <Label htmlFor="mobile-locality" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-1.5 block">
                           Locality
                         </Label>
                         <Input
@@ -505,14 +511,14 @@ const MobileCheckout = () => {
                           value={formData.locality}
                           onChange={handleInputChange}
                           placeholder="Area"
-                          className="h-11 border-gray-300 focus:border-blue-500"
+                          className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500"
                         />
                       </div>
                     </div>
 
                     {/* Address */}
                     <div>
-                      <Label htmlFor="mobile-address" className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                      <Label htmlFor="mobile-address" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-1.5 block">
                         Address (Area and Street) *
                       </Label>
                       <Input
@@ -521,7 +527,7 @@ const MobileCheckout = () => {
                         value={formData.address}
                         onChange={handleInputChange}
                         placeholder="House No., Building, Street"
-                        className="h-11 border-gray-300 focus:border-blue-500"
+                        className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500"
                         required
                       />
                     </div>
@@ -529,7 +535,7 @@ const MobileCheckout = () => {
                     {/* City & State */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label htmlFor="mobile-city" className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                        <Label htmlFor="mobile-city" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-1.5 block">
                           City *
                         </Label>
                         <Input
@@ -538,12 +544,12 @@ const MobileCheckout = () => {
                           value={formData.city}
                           onChange={handleInputChange}
                           placeholder="City"
-                          className="h-11 border-gray-300 focus:border-blue-500"
+                          className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor="mobile-state" className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                        <Label htmlFor="mobile-state" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-1.5 block">
                           State *
                         </Label>
                         <Input
@@ -552,7 +558,7 @@ const MobileCheckout = () => {
                           value={formData.state}
                           onChange={handleInputChange}
                           placeholder="State"
-                          className="h-11 border-gray-300 focus:border-blue-500"
+                          className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500"
                           required
                         />
                       </div>
@@ -567,9 +573,9 @@ const MobileCheckout = () => {
                         onChange={(e) =>
                           setFormData((prev) => ({ ...prev, isDefault: e.target.checked }))
                         }
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 rounded focus:ring-blue-500"
                       />
-                      <Label htmlFor="mobile-isDefault" className="text-sm font-medium text-gray-700 cursor-pointer">
+                      <Label htmlFor="mobile-isDefault" className="text-sm font-medium text-gray-700 dark:text-zinc-300 cursor-pointer">
                         Set as default shipping address
                       </Label>
                     </div>
@@ -604,13 +610,13 @@ const MobileCheckout = () => {
                             name="mobileSelectedAddress"
                             checked={tempSelectedAddress?.id === address.id}
                             onChange={() => setTempSelectedAddress(address)}
-                            className="mt-1 w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                            className="mt-1 w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                           />
                           
                           {/* Address Details */}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-gray-900 uppercase text-sm">
+                              <span className="font-bold text-gray-900 dark:text-zinc-100 uppercase text-sm">
                                 {address.fullName}
                               </span>
                               {address.isDefault && (
@@ -619,8 +625,8 @@ const MobileCheckout = () => {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-600 mb-1">{address.phoneNumber}</p>
-                            <p className="text-xs text-gray-700 leading-relaxed">
+                            <p className="text-xs text-gray-600 dark:text-zinc-400 mb-1">{address.phoneNumber}</p>
+                            <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
                               {address.address}
                               {address.locality && `, ${address.locality}`}, {address.city}, {address.state} - {address.pinCode}
                             </p>
@@ -633,12 +639,12 @@ const MobileCheckout = () => {
               </div>
               
               {/* Footer Buttons */}
-              <div className="p-4 border-t border-gray-200 flex gap-3">
+              <div className="p-4 border-t border-gray-200 dark:border-zinc-800 flex gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleCloseAddressSelector}
-                  className="flex-1 h-11 text-sm font-semibold border-gray-300"
+                  className="flex-1 h-11 text-sm font-semibold border-gray-300 dark:border-zinc-700"
                 >
                   Cancel
                 </Button>
@@ -762,29 +768,29 @@ const MobileCheckout = () => {
         <div className="px-4 pt-4 pb-2">
           <button
             onClick={handleOpenAddressSelector}
-            className="w-full flex items-center gap-2 hover:bg-gray-50 rounded-lg transition-colors"
+            className="w-full flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 rounded-lg transition-colors"
           >
-            <MapPin className="w-4 h-4 text-gray-600 flex-shrink-0" />
+            <MapPin className="w-4 h-4 text-gray-600 dark:text-zinc-400 flex-shrink-0" />
             <div className="flex-1 min-w-0 text-left">
               {selectedAddress ? (
                 <>
                   <div className="flex items-center gap-1">
-                    <span className="text-gray-900 font-semibold text-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <span className="text-gray-900 dark:text-zinc-100 font-semibold text-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       {selectedAddress.fullName.toUpperCase()}
                     </span>
-                    <ChevronDown className="w-3.5 h-3.5 text-gray-600" />
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-600 dark:text-zinc-400" />
                   </div>
-                  <p className="text-gray-600 text-xs truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <p className="text-gray-600 dark:text-zinc-400 text-xs truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     {selectedAddress.address}, {selectedAddress.city}
                   </p>
                 </>
               ) : (
                 <>
                   <div className="flex items-center gap-1">
-                    <span className="text-gray-900 font-semibold text-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>ADD ADDRESS</span>
-                    <Plus className="w-3.5 h-3.5 text-gray-600" />
+                    <span className="text-gray-900 dark:text-zinc-100 font-semibold text-sm" style={{ fontFamily: "'Poppins', sans-serif" }}>ADD ADDRESS</span>
+                    <Plus className="w-3.5 h-3.5 text-gray-600 dark:text-zinc-400" />
                   </div>
-                  <p className="text-gray-600 text-xs" style={{ fontFamily: "'Poppins', sans-serif" }}>Tap to add your delivery address</p>
+                  <p className="text-gray-600 dark:text-zinc-400 text-xs" style={{ fontFamily: "'Poppins', sans-serif" }}>Tap to add your delivery address</p>
                 </>
               )}
             </div>
@@ -793,17 +799,17 @@ const MobileCheckout = () => {
 
         {/* Review Your Order */}
         <div className="px-4 pt-5 pb-2">
-          <h2 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>Review your Order</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Review your Order</h2>
         </div>
 
         {/* Order Card */}
-        <div className="mx-4 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+        <div className="mx-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden mb-4">
           {/* Delivery info header */}
           <div className="px-4 py-3 flex items-center justify-between border-b border-gray-50">
             <div className="flex items-center gap-1.5">
-              <Truck className="w-4 h-4 text-gray-600" />
+              <Truck className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
             </div>
-            <span className="text-xs text-gray-400 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{totalItems} items</span>
+            <span className="text-xs text-gray-400 dark:text-zinc-500 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{totalItems} items</span>
           </div>
 
           {/* Cart items */}
@@ -821,13 +827,13 @@ const MobileCheckout = () => {
                     className="flex items-center gap-3 px-4 py-3"
                   >
                     {/* Image */}
-                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 ring-1 ring-gray-100">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900 ring-1 ring-gray-100">
                       <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                     </div>
 
                     {/* Details */}
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-gray-900 line-clamp-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
                     </div>
 
                     {/* Quantity controls */}
@@ -851,7 +857,7 @@ const MobileCheckout = () => {
                         }}
                         className="w-8 h-8 flex items-center justify-center bg-transparent border border-gray-900/20 hover:bg-gray-900/5 rounded-full transition-colors"
                       >
-                        <Minus className="w-3.5 h-3.5 text-gray-900" strokeWidth={2.5} />
+                        <Minus className="w-3.5 h-3.5 text-gray-900 dark:text-zinc-100" strokeWidth={2.5} />
                       </button>
 
                       {/* Quantity display */}
@@ -864,14 +870,14 @@ const MobileCheckout = () => {
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         className="w-8 h-8 flex items-center justify-center bg-transparent border border-gray-900/20 hover:bg-gray-900/5 rounded-full transition-colors"
                       >
-                        <Plus className="w-3.5 h-3.5 text-gray-900" strokeWidth={2.5} />
+                        <Plus className="w-3.5 h-3.5 text-gray-900 dark:text-zinc-100" strokeWidth={2.5} />
                       </button>
                     </div>
 
                     {/* Price */}
                     <div className="text-right flex-shrink-0 ml-1">
-                      <p className="text-[11px] text-gray-400 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(originalPrice * item.quantity)}</p>
-                      <p className="text-sm font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price * item.quantity)}</p>
+                      <p className="text-[11px] text-gray-400 dark:text-zinc-500 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(originalPrice * item.quantity)}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price * item.quantity)}</p>
                     </div>
                   </motion.div>
                 );
@@ -884,40 +890,40 @@ const MobileCheckout = () => {
         <div className="mx-4 mb-4">
           <button
             onClick={() => navigate('/')}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-dashed border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-white dark:bg-zinc-900 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
           >
-            <span className="text-sm text-gray-500" style={{ fontFamily: "'Poppins', sans-serif" }}>Missed Something?</span>
+            <span className="text-sm text-gray-500 dark:text-zinc-500" style={{ fontFamily: "'Poppins', sans-serif" }}>Missed Something?</span>
             <span className="text-sm font-semibold text-green-600" style={{ fontFamily: "'Poppins', sans-serif" }}>Add more items</span>
           </button>
         </div>
 
         {/* Bill Summary */}
         <div className="mx-4 mb-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-4">
-            <h3 className="text-base font-bold text-gray-900 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Bill Summary</h3>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden p-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Bill Summary</h3>
             
             <div className="space-y-2.5">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600" style={{ fontFamily: "'Poppins', sans-serif" }}>Item Total</span>
-                <span className="text-gray-900 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(subtotal)}</span>
+                <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Item Total</span>
+                <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(subtotal)}</span>
               </div>
               
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery Fee</span>
+                <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery Fee</span>
                 <span className={`font-medium ${deliveryCharge === 0 ? 'text-green-600' : 'text-gray-900'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                   {deliveryCharge === 0 ? 'FREE' : formatPrice(deliveryCharge)}
                 </span>
               </div>
               
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600" style={{ fontFamily: "'Poppins', sans-serif" }}>GST (3%)</span>
-                <span className="text-gray-900 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(taxAmount)}</span>
+                <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>GST (3%)</span>
+                <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(taxAmount)}</span>
               </div>
 
-              <div className="h-px bg-gray-200 my-2" />
+              <div className="h-px bg-gray-200 dark:bg-zinc-800 my-2" />
 
               <div className="flex justify-between items-center">
-                <span className="text-base font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>To Pay</span>
+                <span className="text-base font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>To Pay</span>
                 <span className="text-lg font-bold text-green-600" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(total)}</span>
               </div>
             </div>
@@ -929,7 +935,7 @@ const MobileCheckout = () => {
           <div className="mb-4">
             <div className="px-4 flex items-center gap-2 mb-3">
               <Sparkles className="w-5 h-5 text-amber-500" />
-              <h3 className="text-base font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>Your last minute add-ons</h3>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Your last minute add-ons</h3>
             </div>
 
             {/* Horizontal scroll products */}
@@ -937,11 +943,11 @@ const MobileCheckout = () => {
               {suggestedProducts.map((product) => (
                 <motion.div
                   key={product.id}
-                  className="flex-shrink-0 w-[130px] bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"
+                  className="flex-shrink-0 w-[130px] bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm"
                   whileTap={{ scale: 0.97 }}
                 >
                   {/* Image with discount badge */}
-                  <div className="relative w-full h-[110px] bg-gray-50">
+                  <div className="relative w-full h-[110px] bg-gray-50 dark:bg-zinc-900">
                     <img
                       src={product.image}
                       alt={product.title}
@@ -963,7 +969,7 @@ const MobileCheckout = () => {
                           category: product.category,
                         });
                       }}
-                      className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full shadow-md flex items-center justify-center border border-gray-100 hover:bg-green-50 transition-colors"
+                      className="absolute top-2 right-2 w-7 h-7 bg-white dark:bg-zinc-900 rounded-full shadow-md flex items-center justify-center border border-gray-100 dark:border-zinc-800 hover:bg-green-50 transition-colors"
                     >
                       <Plus className="w-4 h-4 text-green-600" strokeWidth={2.5} />
                     </button>
@@ -971,13 +977,13 @@ const MobileCheckout = () => {
 
                   {/* Info */}
                   <div className="p-2.5">
-                    <h4 className="text-xs font-semibold text-gray-900 line-clamp-2 leading-tight min-h-[28px]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <h4 className="text-xs font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 leading-tight min-h-[28px]" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       {product.title}
                     </h4>
                     <div className="mt-1.5 flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(product.price)}</span>
+                      <span className="text-xs font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(product.price)}</span>
                       {product.oldPrice && (
-                        <span className="text-[10px] text-gray-400 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(product.oldPrice)}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-zinc-500 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(product.oldPrice)}</span>
                       )}
                     </div>
                   </div>
@@ -989,7 +995,7 @@ const MobileCheckout = () => {
       </div>
 
       {/* ─── Bottom Fixed Section ─── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         {/* Slide to Pay */}
         <div className="px-4 py-3">
           <SlideToPayButton
@@ -1018,20 +1024,20 @@ const MobileCheckout = () => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed inset-0 z-[80] bg-white"
+            className="fixed inset-0 z-[80] bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,1)_18%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,1)_52%)]"
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
+            <div className="sticky top-0 z-10 bg-white/85 dark:bg-zinc-900/85 backdrop-blur border-b border-[#d4af37]/15 px-4 py-3">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowPaymentDetails(false)}
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                 >
-                  <ArrowLeft className="w-5 h-5 text-gray-700" />
+                  <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
                 </button>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Payment Details</h2>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Payment Details</h2>
                 </div>
               </div>
             </div>
@@ -1065,29 +1071,29 @@ const MobileCheckout = () => {
                     </div>
                     <span className="text-xs mt-1 text-green-600 font-semibold">Payment</span>
                   </div>
-                  <div className="flex-1 h-0.5 -mt-5 bg-gray-200" />
+                  <div className="flex-1 h-0.5 -mt-5 bg-gray-200 dark:bg-zinc-800" />
                   
                   {/* Step 4: Confirm */}
                   <div className="flex flex-col items-center flex-1">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200">
-                      <span className="text-xs font-bold text-gray-500">4</span>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-zinc-800">
+                      <span className="text-xs font-bold text-gray-500 dark:text-zinc-500">4</span>
                     </div>
-                    <span className="text-xs mt-1 text-gray-400">Confirm</span>
+                    <span className="text-xs mt-1 text-gray-400 dark:text-zinc-500">Confirm</span>
                   </div>
                 </div>
               </div>
 
               {/* Payment Method */}
               <div className="px-4 py-4">
-                <h3 className="text-sm font-bold text-gray-900 mb-4">Payment Method</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-4">Payment Method</h3>
                 <div className="space-y-3">
                   {/* Cash on Delivery */}
-                  <label className="flex items-center justify-between p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                  <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <CreditCard className="w-4 h-4 text-gray-600" />
+                      <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                        <CreditCard className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
                       </div>
-                      <span className="text-sm font-medium text-gray-900">Cash On Delivery</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Cash On Delivery</span>
                     </div>
                     <input
                       type="radio"
@@ -1095,17 +1101,17 @@ const MobileCheckout = () => {
                       value="Cash On Delivery"
                       checked={selectedPaymentMethod === 'Cash On Delivery'}
                       onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                     />
                   </label>
 
                   {/* Debit/Credit Card */}
-                  <label className="flex items-center justify-between p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                  <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <CreditCard className="w-4 h-4 text-gray-600" />
+                      <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                        <CreditCard className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
                       </div>
-                      <span className="text-sm font-medium text-gray-900">Debit/Credit Card</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Debit/Credit Card</span>
                     </div>
                     <input
                       type="radio"
@@ -1113,17 +1119,17 @@ const MobileCheckout = () => {
                       value="Debit/Credit Card"
                       checked={selectedPaymentMethod === 'Debit/Credit Card'}
                       onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                     />
                   </label>
 
                   {/* Wallets */}
-                  <label className="flex items-center justify-between p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                  <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <ShoppingBag className="w-4 h-4 text-gray-600" />
+                      <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                        <ShoppingBag className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
                       </div>
-                      <span className="text-sm font-medium text-gray-900">Wallets</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Wallets</span>
                     </div>
                     <input
                       type="radio"
@@ -1131,17 +1137,17 @@ const MobileCheckout = () => {
                       value="Wallets"
                       checked={selectedPaymentMethod === 'Wallets'}
                       onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                     />
                   </label>
 
                   {/* Net Banking */}
-                  <label className="flex items-center justify-between p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                  <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <Shield className="w-4 h-4 text-gray-600" />
+                      <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                        <Shield className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
                       </div>
-                      <span className="text-sm font-medium text-gray-900">Net Banking</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Net Banking</span>
                     </div>
                     <input
                       type="radio"
@@ -1149,44 +1155,44 @@ const MobileCheckout = () => {
                       value="Net Banking"
                       checked={selectedPaymentMethod === 'Net Banking'}
                       onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                     />
                   </label>
                 </div>
               </div>
 
               {/* Order Details */}
-              <div className="px-4 py-4 border-t border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-4">Order Details</h3>
+              <div className="px-4 py-4 border-t border-gray-100 dark:border-zinc-800">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-4">Order Details</h3>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600">Sub Total (include vat and tax)</span>
-                    <span className="text-sm font-semibold text-gray-900">{formatPrice(subtotal)}</span>
+                    <span className="text-xs text-gray-600 dark:text-zinc-400">Sub Total (include vat and tax)</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{formatPrice(subtotal)}</span>
                   </div>
                   <Separator className="my-2" />
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-gray-900">Total (include vat and tax)</span>
-                    <span className="text-lg font-bold text-gray-900">{formatPrice(total)}</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-zinc-100">Total (include vat and tax)</span>
+                    <span className="text-lg font-bold text-gray-900 dark:text-zinc-100">{formatPrice(total)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Selected Items */}
-              <div className="px-4 py-4 border-t border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-4">Selected item</h3>
+              <div className="px-4 py-4 border-t border-gray-100 dark:border-zinc-800">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-4">Selected item</h3>
                 <div className="space-y-3">
                   {items.slice(0, 1).map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-3">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50">
+                    <div key={item.id} className="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-semibold text-gray-900 line-clamp-1">{item.name}</h4>
+                        <h4 className="text-xs font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1">{item.name}</h4>
                       </div>
                     </div>
                   ))}
                   {items.length > 1 && (
-                    <p className="text-xs text-gray-500">+ {items.length - 1} more item{items.length > 2 ? 's' : ''}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-500">+ {items.length - 1} more item{items.length > 2 ? 's' : ''}</p>
                   )}
                 </div>
               </div>
@@ -1197,7 +1203,7 @@ const MobileCheckout = () => {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3, type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+              className="fixed bottom-0 left-0 right-0 bg-white/88 dark:bg-zinc-900/88 backdrop-blur border-t border-[#d4af37]/15 p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]"
             >
               {isPlacingOrder ? (
                 <div className="h-14 rounded-full flex items-center justify-center bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold">
@@ -1223,20 +1229,20 @@ const MobileCheckout = () => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed inset-0 z-[90] bg-white overflow-y-auto"
+            className="fixed inset-0 z-[90] bg-white dark:bg-zinc-900 overflow-y-auto"
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
+            <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800">
               <MobileHeader />
               <div className="flex items-center gap-3 px-4 py-2">
                 <button
                   onClick={() => setShowOrderSuccess(false)}
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                 >
-                  <ArrowLeft className="w-5 h-5 text-gray-700" />
+                  <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
                 </button>
-                <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Placed</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Placed</h2>
               </div>
             </div>
 
@@ -1291,7 +1297,7 @@ const MobileCheckout = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 }}
-                className="text-sm text-gray-600 text-center mb-6"
+                className="text-sm text-gray-600 dark:text-zinc-400 text-center mb-6"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
                 Payment is successfully processed and your Order is on the way.
@@ -1299,12 +1305,12 @@ const MobileCheckout = () => {
 
               {/* Order Details */}
               <div className="mb-6">
-                <h4 className="text-base font-bold text-gray-900 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Placed</h4>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  <p className="text-sm text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                <h4 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Placed</h4>
+                <div className="bg-gray-50 dark:bg-zinc-900 rounded-lg p-4 space-y-2">
+                  <p className="text-sm text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     Your order # is: <span className="font-bold">{orderId}</span>
                   </p>
-                  <p className="text-xs text-gray-600" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <p className="text-xs text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     Payment is successfully processed and your Order is on the way and this been sent your email ID.
                   </p>
                 </div>
@@ -1313,8 +1319,8 @@ const MobileCheckout = () => {
               {/* Shipping Address */}
               {selectedAddress && (
                 <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>This order will be shipped to:</h4>
-                  <p className="text-xs text-gray-600 leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>This order will be shipped to:</h4>
+                  <p className="text-xs text-gray-600 dark:text-zinc-400 leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     {selectedAddress.address}
                     {selectedAddress.locality && `, ${selectedAddress.locality}`},<br />
                     {selectedAddress.city}, {selectedAddress.state} {selectedAddress.pinCode}
@@ -1324,22 +1330,22 @@ const MobileCheckout = () => {
 
               {/* Payment Method */}
               <div className="mb-6">
-                <h4 className="text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>Payment Method</h4>
-                <p className="text-xs text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedPaymentMethod}</p>
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>Payment Method</h4>
+                <p className="text-xs text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{selectedPaymentMethod}</p>
               </div>
 
               {/* Order Summary */}
               <div className="mb-6">
-                <h4 className="text-base font-bold text-gray-900 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Summary</h4>
+                <h4 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Summary</h4>
                 <div className="space-y-3">
                   {/* First Item */}
                   {items.length > 0 && (
-                    <div className="flex gap-3 bg-white border border-gray-200 rounded-lg p-3">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50">
+                    <div className="flex gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-3">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
                         <img src={items[0].image} alt={items[0].name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1">
-                        <h5 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{items[0].name}</h5>
+                        <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{items[0].name}</h5>
                         <p className="text-xs text-red-600 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery by: 10 July, 2024</p>
                       </div>
                     </div>
@@ -1358,12 +1364,12 @@ const MobileCheckout = () => {
                             className="space-y-3 overflow-hidden"
                           >
                             {items.slice(1).map((item) => (
-                              <div key={item.id} className="flex gap-3 bg-white border border-gray-200 rounded-lg p-3">
-                                <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50">
+                              <div key={item.id} className="flex gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-3">
+                                <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
                                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-1">
-                                  <h5 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h5>
+                                  <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h5>
                                   <p className="text-xs text-red-600 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery by: 10 July, 2024</p>
                                 </div>
                               </div>
@@ -1389,20 +1395,24 @@ const MobileCheckout = () => {
             </div>
 
             {/* Bottom Buttons */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+            <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-4 flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
               <Button
                 onClick={() => {
                   navigate(`/account/orders/${orderId}`);
                 }}
                 variant="outline"
-                className="flex-1 h-12 border-gray-300 text-gray-900 font-semibold text-sm rounded-lg"
+                className="flex-1 h-12 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-zinc-100 font-semibold text-sm rounded-lg"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
                 TRACK ORDER
               </Button>
               <Button
                 onClick={() => {
-                  navigate('/');
+                  if (lastOrderedProductId) {
+                    navigate(`/product/${lastOrderedProductId}`);
+                  } else {
+                    navigate('/');
+                  }
                 }}
                 className="flex-1 h-12 bg-transparent hover:bg-green-50 active:bg-green-100 text-green-600 font-semibold text-sm rounded-lg border-2 border-green-500 transition-all hover:scale-105 active:scale-95"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
@@ -1425,6 +1435,7 @@ const Checkout = () => {
   const { toggleWishlist } = useWishlist();
   const [couponCode, setCouponCode] = useState('');
   const [showOffers, setShowOffers] = useState(false);
+  const [showAllOffers, setShowAllOffers] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
@@ -1436,6 +1447,7 @@ const Checkout = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Cash On Delivery');
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
+  const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   
@@ -1571,11 +1583,12 @@ const Checkout = () => {
     return <MobileCheckout />;
   }
 
-  // Calculate delivery charge (free for orders above ₹5000)
-  const deliveryCharge = items.length === 0 ? 0 : (subtotal >= 5000 ? 0 : 60);
-  const taxAmount = Math.round(subtotal * 0.03); // GST 3%
-  const discount = 20; // Coupon discount
-  const desktopTotal = subtotal + deliveryCharge + taxAmount - discount;
+  // Admin-driven pricing
+  const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod);
+  const deliveryCharge = pricing.deliveryCharge;
+  const taxAmount = pricing.gstAmount;
+  const discount = pricing.discount;
+  const desktopTotal = pricing.total;
 
   // Handle order placement
   const handlePlaceOrder = async () => {
@@ -1677,6 +1690,9 @@ const Checkout = () => {
       // Create order in Firestore
       await createOrder(orderData);
 
+      // Capture first product id BEFORE clearing the cart so DONE can return to it
+      setLastOrderedProductId(items[0]?.id || null);
+
       // Clear cart
       clearCart();
 
@@ -1699,13 +1715,16 @@ const Checkout = () => {
       setIsPlacingOrder(false);
     }
   };
-  const total = subtotal + deliveryCharge + taxAmount;
+  const total = pricing.total;
 
-  const offers = [
-    '10% Instant Discount On Canara Bank Credit Card on min spend of ₹3,500',
-    'Flat ₹500 Off on First Order',
-    'Free Silver Polishing Kit with orders above ₹10,000',
-  ];
+  const offers = pricing.coupons
+    .filter((c) => c.active)
+    .map((c) => {
+      const value = c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`;
+      const min = c.minOrderValue ? ` on min spend of ₹${c.minOrderValue}` : '';
+      return `${value} OFF with code ${c.code}${min}—${c.description}`;
+    });
+  const visibleOffers = showAllOffers ? offers : offers.slice(0, 2);
 
   const donationAmounts: number[] = [];
 
@@ -1783,9 +1802,9 @@ const Checkout = () => {
                 </>
               ) : (
                 <div className="text-center py-8">
-                  <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Address Saved</h3>
-                  <p className="text-gray-600 mb-4">Add a delivery address to continue</p>
+                  <MapPin className="w-12 h-12 text-gray-400 dark:text-zinc-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100 mb-2">No Address Saved</h3>
+                  <p className="text-gray-600 dark:text-zinc-400 mb-4">Add a delivery address to continue</p>
                   <Button
                     onClick={handleOpenAddressSelector}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
@@ -1812,17 +1831,17 @@ const Checkout = () => {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       onClick={(e) => e.stopPropagation()}
-                      className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden mx-4"
+                      className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden mx-4"
                       style={{ fontFamily: "'Poppins', sans-serif" }}
                     >
                     {/* Header */}
-                    <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                      <h3 className="text-2xl font-bold text-gray-900">Select Delivery Address</h3>
+                    <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between">
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">Select Delivery Address</h3>
                       <button
                         onClick={handleCloseAddressSelector}
-                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                       >
-                        <X className="w-6 h-6 text-gray-600" />
+                        <X className="w-6 h-6 text-gray-600 dark:text-zinc-400" />
                       </button>
                     </div>
                     
@@ -1839,7 +1858,7 @@ const Checkout = () => {
                           
                           {/* Full Name */}
                           <div>
-                            <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700 mb-2 block">
+                            <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2 block">
                               Full Name *
                             </Label>
                             <Input
@@ -1848,14 +1867,14 @@ const Checkout = () => {
                               value={formData.fullName}
                               onChange={handleInputChange}
                               placeholder="Enter your full name"
-                              className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                              className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-blue-500"
                               required
                             />
                           </div>
 
                           {/* Phone Number */}
                           <div>
-                            <Label htmlFor="phoneNumber" className="text-sm font-semibold text-gray-700 mb-2 block">
+                            <Label htmlFor="phoneNumber" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2 block">
                               Phone Number *
                             </Label>
                             <Input
@@ -1865,7 +1884,7 @@ const Checkout = () => {
                               value={formData.phoneNumber}
                               onChange={handleInputChange}
                               placeholder="10-digit mobile number"
-                              className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                              className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-blue-500"
                               maxLength={10}
                               required
                             />
@@ -1874,7 +1893,7 @@ const Checkout = () => {
                           {/* Pin Code & Locality */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="pinCode" className="text-sm font-semibold text-gray-700 mb-2 block">
+                              <Label htmlFor="pinCode" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2 block">
                                 Pin Code *
                               </Label>
                               <Input
@@ -1884,12 +1903,12 @@ const Checkout = () => {
                                 onChange={handleInputChange}
                                 placeholder="6-digit PIN"
                                 maxLength={6}
-                                className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-blue-500"
                                 required
                               />
                             </div>
                             <div>
-                              <Label htmlFor="locality" className="text-sm font-semibold text-gray-700 mb-2 block">
+                              <Label htmlFor="locality" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2 block">
                                 Locality
                               </Label>
                               <Input
@@ -1898,14 +1917,14 @@ const Checkout = () => {
                                 value={formData.locality}
                                 onChange={handleInputChange}
                                 placeholder="Area/Locality"
-                                className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-blue-500"
                               />
                             </div>
                           </div>
 
                           {/* Address */}
                           <div>
-                            <Label htmlFor="address" className="text-sm font-semibold text-gray-700 mb-2 block">
+                            <Label htmlFor="address" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2 block">
                               Address (Area and Street) *
                             </Label>
                             <Input
@@ -1914,7 +1933,7 @@ const Checkout = () => {
                               value={formData.address}
                               onChange={handleInputChange}
                               placeholder="House No., Building, Street"
-                              className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                              className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-blue-500"
                               required
                             />
                           </div>
@@ -1922,7 +1941,7 @@ const Checkout = () => {
                           {/* City & State */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor="city" className="text-sm font-semibold text-gray-700 mb-2 block">
+                              <Label htmlFor="city" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2 block">
                                 City *
                               </Label>
                               <Input
@@ -1931,12 +1950,12 @@ const Checkout = () => {
                                 value={formData.city}
                                 onChange={handleInputChange}
                                 placeholder="City"
-                                className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-blue-500"
                                 required
                               />
                             </div>
                             <div>
-                              <Label htmlFor="state" className="text-sm font-semibold text-gray-700 mb-2 block">
+                              <Label htmlFor="state" className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2 block">
                                 State *
                               </Label>
                               <Input
@@ -1945,7 +1964,7 @@ const Checkout = () => {
                                 value={formData.state}
                                 onChange={handleInputChange}
                                 placeholder="State"
-                                className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                className="h-11 border-gray-300 dark:border-zinc-700 focus:border-blue-500 focus:ring-blue-500"
                                 required
                               />
                             </div>
@@ -1960,9 +1979,9 @@ const Checkout = () => {
                               onChange={(e) =>
                                 setFormData((prev) => ({ ...prev, isDefault: e.target.checked }))
                               }
-                              className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 rounded focus:ring-blue-500"
                             />
-                            <Label htmlFor="isDefault" className="text-sm font-medium text-gray-700 cursor-pointer">
+                            <Label htmlFor="isDefault" className="text-sm font-medium text-gray-700 dark:text-zinc-300 cursor-pointer">
                               Set as default shipping address
                             </Label>
                           </div>
@@ -1982,7 +2001,7 @@ const Checkout = () => {
                         /* Saved Addresses List */
                         <div className="space-y-1">
                           <div className="mb-4">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Saved Addresses</h4>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-3">Saved Addresses</h4>
                           </div>
                           
                           {addresses.map((address) => (
@@ -2001,13 +2020,13 @@ const Checkout = () => {
                                   name="selectedAddress"
                                   checked={tempSelectedAddress?.id === address.id}
                                   onChange={() => setTempSelectedAddress(address)}
-                                  className="mt-1 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                  className="mt-1 w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                                 />
                                 
                                 {/* Address Details */}
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-bold text-gray-900 uppercase text-sm">
+                                    <span className="font-bold text-gray-900 dark:text-zinc-100 uppercase text-sm">
                                       {address.fullName}
                                     </span>
                                     {address.isDefault && (
@@ -2016,8 +2035,8 @@ const Checkout = () => {
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-sm text-gray-600 mb-1">{address.phoneNumber}</p>
-                                  <p className="text-sm text-gray-700 leading-relaxed">
+                                  <p className="text-sm text-gray-600 dark:text-zinc-400 mb-1">{address.phoneNumber}</p>
+                                  <p className="text-sm text-gray-700 dark:text-zinc-300 leading-relaxed">
                                     {address.address}
                                     {address.locality && `, ${address.locality}`}, {address.city}, {address.state} - {address.pinCode}
                                   </p>
@@ -2030,7 +2049,7 @@ const Checkout = () => {
                           <button
                             type="button"
                             onClick={() => setShowAddressForm(true)}
-                            className="w-full mt-4 p-4 border-2 border-dashed border-gray-300 rounded-xl text-blue-600 font-semibold hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                            className="w-full mt-4 p-4 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-xl text-blue-600 font-semibold hover:border-blue-400 hover:bg-blue-50 transition-colors"
                           >
                             + Add New Address
                           </button>
@@ -2039,12 +2058,12 @@ const Checkout = () => {
                     </div>
                     
                     {/* Footer Buttons */}
-                    <div className="p-6 border-t border-gray-200 flex gap-3">
+                    <div className="p-6 border-t border-gray-200 dark:border-zinc-800 flex gap-3">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={handleCloseAddressSelector}
-                        className="flex-1 h-12 text-base font-semibold border-gray-300"
+                        className="flex-1 h-12 text-base font-semibold border-gray-300 dark:border-zinc-700"
                       >
                         Cancel
                       </Button>
@@ -2082,6 +2101,7 @@ const Checkout = () => {
             </AnimatePresence>
 
             {/* Available Offers */}
+            {pricing.coupons.filter((c) => c.active).length > 0 && (
             <div className="bg-card border border-border rounded-lg p-6">
               <button
                 onClick={() => setShowOffers(!showOffers)}
@@ -2104,18 +2124,26 @@ const Checkout = () => {
                   animate={{ opacity: 1, height: 'auto' }}
                   className="space-y-3"
                 >
-                  {offers.map((offer, index) => (
+                  {visibleOffers.map((offer, index) => (
                     <div key={index} className="flex items-start gap-2 text-sm">
                       <span className="text-green-600 font-semibold">•</span>
                       <p className="text-muted-foreground">{offer}</p>
                     </div>
                   ))}
-                  <Button variant="link" className="text-primary p-0 h-auto font-semibold" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                    Show More
-                  </Button>
+                  {offers.length > 2 && (
+                    <Button
+                      variant="link"
+                      className="text-primary p-0 h-auto font-semibold"
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                      onClick={() => setShowAllOffers((prev) => !prev)}
+                    >
+                      {showAllOffers ? 'Show Less' : `Show ${offers.length - 2} More`}
+                    </Button>
+                  )}
                 </motion.div>
               )}
             </div>
+            )}
 
             {/* Cart Items */}
             <div className="bg-card border border-border rounded-lg p-6">
@@ -2202,18 +2230,45 @@ const Checkout = () => {
                 <Tag className="w-5 h-5" />
                 <h3 className="font-semibold" style={{ fontFamily: "'Poppins', sans-serif" }}>Apply Coupons</h3>
               </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter coupon code"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  className="flex-1"
-                  style={{ fontFamily: "'Poppins', sans-serif" }}
-                />
-                <Button variant="outline" className="text-primary border-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  APPLY
-                </Button>
-              </div>
+              {pricing.appliedCoupon ? (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-200">
+                  <div>
+                    <div className="font-mono font-semibold text-green-700">{pricing.appliedCoupon.code}</div>
+                    <div className="text-xs text-green-700">You saved {formatPrice(pricing.discount)}</div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => { pricing.removeCoupon(); setCouponCode(''); }}>Remove</Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="flex-1 font-mono"
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                    />
+                    <Button
+                      variant="outline"
+                      className="text-primary border-primary"
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                      onClick={() => {
+                        const r = pricing.applyCoupon(couponCode);
+                        if (r.ok) {
+                          toast({ title: 'Coupon applied', description: `Saved ${formatPrice(pricing.discount)}` });
+                        } else {
+                          toast({ title: 'Coupon failed', description: r.reason || 'Invalid coupon', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      APPLY
+                    </Button>
+                  </div>
+                  {pricing.couponError && (
+                    <p className="mt-2 text-xs text-red-600">{pricing.couponError}</p>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Price Details */}
@@ -2241,9 +2296,23 @@ const Checkout = () => {
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">GST (3%)</span>
+                  <span className="text-muted-foreground">GST ({pricing.gst.rate}%{pricing.gst.inclusive ? ' incl.' : ''})</span>
                   <span>{formatPrice(taxAmount)}</span>
                 </div>
+
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Coupon Discount</span>
+                    <span className="text-green-600">- {formatPrice(discount)}</span>
+                  </div>
+                )}
+
+                {pricing.codCharge > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">COD Charge</span>
+                    <span>{formatPrice(pricing.codCharge)}</span>
+                  </div>
+                )}
 
                 {subtotal >= 5000 && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
@@ -2305,7 +2374,7 @@ const Checkout = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowPaymentDetails(false)}
-              className="fixed inset-0 bg-black/50 z-[80]"
+              className="fixed inset-0 bg-black/55 backdrop-blur-[4px] z-[80]"
             />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -2314,25 +2383,25 @@ const Checkout = () => {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="fixed inset-0 z-[90] flex items-center justify-center p-8"
             >
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[28px] border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,1)_18%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,1)_52%)] shadow-[0_40px_120px_-60px_rgba(0,0,0,0.75)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {/* Header */}
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+                <div className="sticky top-0 bg-white/88 dark:bg-zinc-900/88 backdrop-blur border-b border-[#d4af37]/15 px-6 py-4 rounded-t-[28px]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-xl font-bold text-gray-900">Payment Details</h2>
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">Payment Details</h2>
                     </div>
                     <button
                       onClick={() => setShowPaymentDetails(false)}
-                      className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                     >
-                      <X className="w-5 h-5 text-gray-600" />
+                      <X className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                     </button>
                   </div>
                 </div>
 
                 <div className="px-6 py-6 space-y-6">
                   {/* Stepper - scrolls with content */}
-                  <div>
+                  <div className="rounded-2xl border border-[#d4af37]/15 bg-white/80 dark:bg-zinc-900/80 px-4 py-4 shadow-[0_20px_50px_-40px_rgba(0,0,0,0.45)]">
                     <div className="flex items-center justify-between">
                       {/* Step 1: Cart */}
                       <div className="flex flex-col items-center flex-1">
@@ -2359,29 +2428,29 @@ const Checkout = () => {
                         </div>
                         <span className="text-xs mt-1 text-green-600 font-semibold">Payment</span>
                       </div>
-                      <div className="flex-1 h-0.5 -mt-5 bg-gray-200" />
+                      <div className="flex-1 h-0.5 -mt-5 bg-gray-200 dark:bg-zinc-800" />
                       
                       {/* Step 4: Confirm */}
                       <div className="flex flex-col items-center flex-1">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200">
-                          <span className="text-xs font-bold text-gray-500">4</span>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-zinc-800">
+                          <span className="text-xs font-bold text-gray-500 dark:text-zinc-500">4</span>
                         </div>
-                        <span className="text-xs mt-1 text-gray-400">Confirm</span>
+                        <span className="text-xs mt-1 text-gray-400 dark:text-zinc-500">Confirm</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Payment Method */}
-                  <div>
-                    <h3 className="text-base font-bold text-gray-900 mb-4">Payment Method</h3>
+                  <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/85 dark:bg-zinc-900/85 p-5 shadow-[0_24px_60px_-48px_rgba(0,0,0,0.5)]">
+                    <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-4">Payment Method</h3>
                     <div className="space-y-3">
                       {/* Cash on Delivery */}
-                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <CreditCard className="w-5 h-5 text-gray-600" />
+                          <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                            <CreditCard className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900">Cash On Delivery</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Cash On Delivery</span>
                         </div>
                         <input
                           type="radio"
@@ -2389,17 +2458,17 @@ const Checkout = () => {
                           value="Cash On Delivery"
                           checked={selectedPaymentMethod === 'Cash On Delivery'}
                           onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                         />
                       </label>
 
                       {/* Debit/Credit Card */}
-                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <CreditCard className="w-5 h-5 text-gray-600" />
+                          <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                            <CreditCard className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900">Debit/Credit Card</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Debit/Credit Card</span>
                         </div>
                         <input
                           type="radio"
@@ -2407,17 +2476,17 @@ const Checkout = () => {
                           value="Debit/Credit Card"
                           checked={selectedPaymentMethod === 'Debit/Credit Card'}
                           onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                         />
                       </label>
 
                       {/* Wallets */}
-                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <ShoppingBag className="w-5 h-5 text-gray-600" />
+                          <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                            <ShoppingBag className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900">Wallets</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Wallets</span>
                         </div>
                         <input
                           type="radio"
@@ -2425,17 +2494,17 @@ const Checkout = () => {
                           value="Wallets"
                           checked={selectedPaymentMethod === 'Wallets'}
                           onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                         />
                       </label>
 
                       {/* Net Banking */}
-                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
+                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <Shield className="w-5 h-5 text-gray-600" />
+                          <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                            <Shield className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900">Net Banking</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Net Banking</span>
                         </div>
                         <input
                           type="radio"
@@ -2443,57 +2512,57 @@ const Checkout = () => {
                           value="Net Banking"
                           checked={selectedPaymentMethod === 'Net Banking'}
                           onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                         />
                       </label>
                     </div>
                   </div>
 
                   {/* Order Details */}
-                  <div>
-                    <h3 className="text-base font-bold text-gray-900 mb-4">Order Details</h3>
+                  <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/85 dark:bg-zinc-900/85 p-5 shadow-[0_24px_60px_-48px_rgba(0,0,0,0.5)]">
+                    <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-4">Order Details</h3>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Sub Total (include vat and tax)</span>
-                        <span className="font-semibold text-gray-900">{formatPrice(subtotal)}</span>
+                        <span className="text-gray-600 dark:text-zinc-400">Sub Total (include vat and tax)</span>
+                        <span className="font-semibold text-gray-900 dark:text-zinc-100">{formatPrice(subtotal)}</span>
                       </div>
                       <Separator className="my-3" />
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-gray-900">Total (include vat and tax)</span>
-                        <span className="text-xl font-bold text-gray-900">{formatPrice(desktopTotal)}</span>
+                        <span className="font-bold text-gray-900 dark:text-zinc-100">Total (include vat and tax)</span>
+                        <span className="text-xl font-bold text-gray-900 dark:text-zinc-100">{formatPrice(desktopTotal)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Selected Items Preview */}
-                  <div>
-                    <h3 className="text-base font-bold text-gray-900 mb-3">Selected item</h3>
+                  <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/85 dark:bg-zinc-900/85 p-5 shadow-[0_24px_60px_-48px_rgba(0,0,0,0.5)]">
+                    <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3">Selected item</h3>
                     <div className="space-y-3">
                       {items.slice(0, 1).map((item) => (
-                        <div key={item.id} className="flex items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-4">
-                          <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-white">
+                        <div key={item.id} className="flex items-center gap-4 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-4">
+                          <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-white dark:bg-zinc-900">
                             <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-gray-900 line-clamp-1">{item.name}</h4>
-                            <p className="text-xs text-gray-500 mt-1">Top Deals</p>
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1">{item.name}</h4>
+                            <p className="text-xs text-gray-500 dark:text-zinc-500 mt-1">Top Deals</p>
                           </div>
                         </div>
                       ))}
                       {items.length > 1 && (
-                        <p className="text-sm text-gray-500">+ {items.length - 1} more item{items.length > 2 ? 's' : ''}</p>
+                        <p className="text-sm text-gray-500 dark:text-zinc-500">+ {items.length - 1} more item{items.length > 2 ? 's' : ''}</p>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Footer with Continue Button */}
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-2xl">
+                <div className="sticky bottom-0 bg-white/88 dark:bg-zinc-900/88 backdrop-blur border-t border-[#d4af37]/15 px-6 py-4 rounded-b-[28px]">
                   <div className="flex gap-4">
                     <Button
                       variant="outline"
                       onClick={() => setShowPaymentDetails(false)}
-                      className="flex-1 h-12 text-sm font-semibold border-gray-300"
+                      className="flex-1 h-12 text-sm font-semibold border-gray-300 dark:border-zinc-700"
                       disabled={isPlacingOrder}
                     >
                       Cancel
@@ -2538,16 +2607,16 @@ const Checkout = () => {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="fixed inset-0 z-[90] flex items-center justify-center p-8"
             >
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {/* Header */}
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+                <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-6 py-4 rounded-t-2xl">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-gray-900">Order Placed</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">Order Placed</h2>
                     <button
                       onClick={() => setShowOrderSuccess(false)}
-                      className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                     >
-                      <X className="w-5 h-5 text-gray-600" />
+                      <X className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                     </button>
                   </div>
                 </div>
@@ -2602,19 +2671,19 @@ const Checkout = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
-                    className="text-sm text-gray-600 text-center mb-8"
+                    className="text-sm text-gray-600 dark:text-zinc-400 text-center mb-8"
                   >
                     Payment is successfully processed and your Order is on the way.
                   </motion.p>
 
                   {/* Order Details */}
                   <div className="mb-6">
-                    <h4 className="text-lg font-bold text-gray-900 mb-3">Order Placed</h4>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                      <p className="text-sm text-gray-900">
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-zinc-100 mb-3">Order Placed</h4>
+                    <div className="bg-gray-50 dark:bg-zinc-900 rounded-lg p-4 space-y-2">
+                      <p className="text-sm text-gray-900 dark:text-zinc-100">
                         Your order # is: <span className="font-bold">{orderId}</span>
                       </p>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-gray-600 dark:text-zinc-400">
                         Payment is successfully processed and your Order is on the way and this been sent your email ID.
                       </p>
                     </div>
@@ -2623,8 +2692,8 @@ const Checkout = () => {
                   {/* Shipping Address */}
                   {selectedAddress && (
                     <div className="mb-6">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">This order will be shipped to:</h4>
-                      <p className="text-sm text-gray-600 leading-relaxed">
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2">This order will be shipped to:</h4>
+                      <p className="text-sm text-gray-600 dark:text-zinc-400 leading-relaxed">
                         {selectedAddress.address}
                         {selectedAddress.locality && `, ${selectedAddress.locality}`},<br />
                         {selectedAddress.city}, {selectedAddress.state} {selectedAddress.pinCode}
@@ -2634,22 +2703,22 @@ const Checkout = () => {
 
                   {/* Payment Method */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Payment Method</h4>
-                    <p className="text-sm text-gray-900">{selectedPaymentMethod}</p>
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2">Payment Method</h4>
+                    <p className="text-sm text-gray-900 dark:text-zinc-100">{selectedPaymentMethod}</p>
                   </div>
 
                   {/* Order Summary */}
                   <div className="mb-6">
-                    <h4 className="text-lg font-bold text-gray-900 mb-3">Order Summary</h4>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-zinc-100 mb-3">Order Summary</h4>
                     <div className="space-y-3">
                       {/* First Item */}
                       {items.length > 0 && (
-                        <div className="flex gap-4 bg-white border border-gray-200 rounded-lg p-4">
-                          <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50">
+                        <div className="flex gap-4 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4">
+                          <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
                             <img src={items[0].image} alt={items[0].name} className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1">
-                            <h5 className="text-sm font-semibold text-gray-900 mb-1">{items[0].name}</h5>
+                            <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-1">{items[0].name}</h5>
                             <p className="text-xs text-red-600 font-medium">Delivery by: 10 July, 2024</p>
                           </div>
                         </div>
@@ -2668,12 +2737,12 @@ const Checkout = () => {
                                 className="space-y-3 overflow-hidden"
                               >
                                 {items.slice(1).map((item) => (
-                                  <div key={item.id} className="flex gap-4 bg-white border border-gray-200 rounded-lg p-4">
-                                    <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50">
+                                  <div key={item.id} className="flex gap-4 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4">
+                                    <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
                                       <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                                     </div>
                                     <div className="flex-1">
-                                      <h5 className="text-sm font-semibold text-gray-900 mb-1">{item.name}</h5>
+                                      <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-1">{item.name}</h5>
                                       <p className="text-xs text-red-600 font-medium">Delivery by: 10 July, 2024</p>
                                     </div>
                                   </div>
@@ -2699,20 +2768,24 @@ const Checkout = () => {
                 </div>
 
                 {/* Footer with Buttons */}
-                <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-2xl">
+                <div className="sticky bottom-0 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-6 py-4 rounded-b-2xl">
                   <div className="flex gap-4">
                     <Button
                       onClick={() => {
                         navigate(`/account/orders/${orderId}`);
                       }}
                       variant="outline"
-                      className="flex-1 h-12 border-gray-300 text-gray-900 font-semibold text-sm"
+                      className="flex-1 h-12 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-zinc-100 font-semibold text-sm"
                     >
                       TRACK ORDER
                     </Button>
                     <Button
                       onClick={() => {
-                        navigate('/');
+                        if (lastOrderedProductId) {
+                          navigate(`/product/${lastOrderedProductId}`);
+                        } else {
+                          navigate('/');
+                        }
                       }}
                       className="flex-1 h-12 bg-transparent hover:bg-green-50 active:bg-green-100 text-green-600 font-semibold text-sm border-2 border-green-500 transition-all hover:scale-105 active:scale-95"
                     >

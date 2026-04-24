@@ -483,3 +483,72 @@
     border-radius: 3px;
   }
 }
+
+/* ============================================================
+   Admin dark-mode overrides
+   Inner admin pages use light-only utility classes
+   (bg-white, text-gray-900, border-gray-100, from-amber-50, etc.).
+   Remap them inside .dark .admin-panel so the whole admin UI
+   adapts to the selected theme without editing every page.
+   ============================================================ */
+.dark .admin-panel {
+  color: rgb(229 231 235); /* gray-200 */
+}
+
+/* Surface backgrounds */
+.dark .admin-panel .bg-white { background-color: rgb(17 24 39) !important; } /* gray-900 */
+.dark .admin-panel .bg-gray-50 { background-color: rgb(17 24 39) !important; }
+.dark .admin-panel .bg-gray-100 { background-color: rgb(31 41 55) !important; } /* gray-800 */
+.dark .admin-panel .bg-gray-200 { background-color: rgb(55 65 81) !important; } /* gray-700 */
+
+/* Warm amber gradient header panels -> dark amber tint */
+.dark .admin-panel .from-amber-50 { --tw-gradient-from: rgb(120 53 15 / 0.25) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(120 53 15 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.dark .admin-panel .via-white { --tw-gradient-to: rgb(17 24 39 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops: var(--tw-gradient-from), rgb(17 24 39) var(--tw-gradient-via-position), var(--tw-gradient-to) !important; }
+.dark .admin-panel .to-orange-50\/30 { --tw-gradient-to: rgb(124 45 18 / 0.2) !important; }
+.dark .admin-panel .bg-amber-50 { background-color: rgb(120 53 15 / 0.4) !important; }
+.dark .admin-panel .bg-amber-100 { background-color: rgb(120 53 15 / 0.5) !important; }
+
+/* Borders */
+.dark .admin-panel .border-gray-100 { border-color: rgb(31 41 55) !important; }
+.dark .admin-panel .border-gray-200 { border-color: rgb(55 65 81) !important; }
+.dark .admin-panel .border-gray-300 { border-color: rgb(75 85 99) !important; }
+.dark .admin-panel .border-amber-200\/40 { border-color: rgb(180 83 9 / 0.35) !important; }
+.dark .admin-panel .border-\[\#F5EFE6\] { border-color: rgb(31 41 55) !important; }
+
+/* Text */
+.dark .admin-panel .text-gray-900 { color: rgb(243 244 246) !important; } /* gray-100 */
+.dark .admin-panel .text-gray-800 { color: rgb(229 231 235) !important; }
+.dark .admin-panel .text-gray-700 { color: rgb(209 213 219) !important; } /* gray-300 */
+.dark .admin-panel .text-gray-600 { color: rgb(156 163 175) !important; } /* gray-400 */
+.dark .admin-panel .text-gray-500 { color: rgb(156 163 175) !important; }
+.dark .admin-panel .text-amber-700 { color: rgb(252 211 77) !important; } /* amber-300 */
+.dark .admin-panel .text-amber-800 { color: rgb(253 224 71) !important; }
+
+/* Hover states */
+.dark .admin-panel .hover\:bg-gray-50:hover { background-color: rgb(31 41 55) !important; }
+.dark .admin-panel .hover\:bg-gray-100:hover { background-color: rgb(55 65 81) !important; }
+.dark .admin-panel .hover\:bg-amber-50:hover { background-color: rgb(120 53 15 / 0.3) !important; }
+.dark .admin-panel .hover\:text-gray-900:hover { color: rgb(243 244 246) !important; }
+
+/* Form inputs */
+.dark .admin-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark .admin-panel textarea,
+.dark .admin-panel select {
+  background-color: rgb(17 24 39);
+  border-color: rgb(55 65 81);
+  color: rgb(243 244 246);
+}
+.dark .admin-panel input::placeholder,
+.dark .admin-panel textarea::placeholder { color: rgb(107 114 128); }
+
+/* Tables */
+.dark .admin-panel thead { background-color: rgb(17 24 39); }
+.dark .admin-panel tbody tr { border-color: rgb(31 41 55); }
+.dark .admin-panel tbody tr:hover { background-color: rgb(31 41 55 / 0.6); }
+
+/* Modal/dialog backdrops keep their look but ensure cards above stay readable */
+.dark .admin-panel .shadow-sm,
+.dark .admin-panel .shadow,
+.dark .admin-panel .shadow-md,
+.dark .admin-panel .shadow-lg { box-shadow: 0 4px 16px -4px rgb(0 0 0 / 0.5); }
+

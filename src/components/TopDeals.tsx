@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft, Heart } from "lucide-react";
-import { getAllProducts } from "@/services/productService";
-import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
+import { subscribeToTopDeals } from "@/services/productService";
+import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useToast } from "@/hooks/use-toast";
+import useAutoScroll from "@/hooks/useAutoScroll";
 
 const TopDeals = () => {
   const navigate = useNavigate();
@@ -16,23 +17,23 @@ const TopDeals = () => {
   const [products, setProducts] = useState<UIProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const mobileScrollRef = useRef<HTMLDivElement>(null);
+  const {
+    scrollerRef: mobileScrollRef,
+    scrollByPage: mobileScrollByPage,
+    canScroll: canMobileDealsScroll,
+  } = useAutoScroll({ speed: 0.5, resumeDelay: 2400, loop: true, direction: 1, loopItemCount: products.length });
+
+  const mobileDealProducts =
+    canMobileDealsScroll && products.length > 1 ? [...products, ...products] : products;
 
   useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const allProducts = await getAllProducts();
-        const uiProducts = allProducts.map(p => adaptFirebaseToUI(p as any));
-        const topDealsProducts = uiProducts.filter(p => p.category === "Top Deals");
-        setProducts(topDealsProducts);
-      } catch (error) {
-        console.error('Error loading top deals:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const unsubscribe = subscribeToTopDeals((fbProducts) => {
+      const uiProducts = adaptFirebaseArrayToUI(fbProducts);
+      setProducts(uiProducts);
+      setLoading(false);
+    }, 10);
 
-    loadProducts();
+    return () => unsubscribe();
   }, []);
 
   const handleAddToCart = async (e: React.MouseEvent, product: UIProduct) => {
@@ -86,26 +87,53 @@ const TopDeals = () => {
   const prevPage = () => setCurrentPage((prev) => (prev - 1 + totalPages) % totalPages);
 
   return (
-    <section className="py-6 md:py-12">
+    <section className="py-6 md:py-14">
       <div className="container-custom">
+        <div className="rounded-[32px] border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,0)_22%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,0)_45%)] bg-card/70 shadow-[0_30px_70px_-55px_rgba(0,0,0,0.4)] px-3 py-4 md:px-6 md:py-8">
 
         {/* ====== MOBILE: Horizontal scroll cards ====== */}
         <div className="md:hidden">
-          <div className="flex items-center justify-between mb-4 px-1">
-            <h2 className="text-xl font-semibold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Top Deals
-            </h2>
-            <button 
-              onClick={() => navigate('/products')}
-              className="text-xs font-medium text-primary tracking-wide"
-            >
-              View All
-            </button>
+          <div className="mb-4 px-1">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="h-px w-6 bg-primary/50" />
+              <span className="text-[10px] uppercase tracking-[0.32em] text-primary/80 font-medium">Top Deals</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Signature savings
+              </h2>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label="Scroll deals left"
+                  onClick={() => mobileScrollByPage('prev')}
+                  disabled={!canMobileDealsScroll}
+                  className="w-8 h-8 rounded-full border border-border/70 bg-background/90 dark:bg-zinc-900/80 flex items-center justify-center active:scale-95 transition-transform disabled:cursor-default disabled:opacity-40"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Scroll deals right"
+                  onClick={() => mobileScrollByPage('next')}
+                  disabled={!canMobileDealsScroll}
+                  className="w-8 h-8 rounded-full border border-border/70 bg-background/90 dark:bg-zinc-900/80 flex items-center justify-center active:scale-95 transition-transform disabled:cursor-default disabled:opacity-40"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => navigate('/products')}
+                  className="text-xs font-medium text-primary tracking-wide ml-1"
+                >
+                  View All
+                </button>
+              </div>
+            </div>
           </div>
-          <div ref={mobileScrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-            {products.map((product, index) => (
+          <div ref={mobileScrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 px-1" style={{ WebkitOverflowScrolling: 'touch', scrollPaddingLeft: '8px' }}>
+            {mobileDealProducts.map((product, index) => (
               <motion.div
-                key={product.id}
+                key={`${product.id}-${index}`}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -113,7 +141,7 @@ const TopDeals = () => {
                 className="flex-shrink-0 w-[150px] cursor-pointer"
                 onClick={() => navigate(`/product/${product.id}`)}
               >
-                <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border">
+                <div className="bg-background/95 rounded-2xl overflow-hidden shadow-sm border border-white/50 dark:border-border/80">
                   <div className="aspect-square overflow-hidden bg-muted relative">
                     <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
                     <button
@@ -122,17 +150,17 @@ const TopDeals = () => {
                     >
                       <Heart className={`w-3.5 h-3.5 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
                     </button>
-                    {product.discount && product.discount > 0 && (
-                      <div className="absolute top-2 left-2 bg-primary text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                        {product.discount}% OFF
-                      </div>
-                    )}
                   </div>
                   <div className="p-2.5">
                     <p className="text-[11px] text-muted-foreground line-clamp-1 mb-0.5">{product.title}</p>
-                    <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
-                    {product.oldPrice && product.oldPrice > product.price && (
-                      <p className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
+                      {product.oldPrice && product.oldPrice > product.price && (
+                        <p className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
+                      )}
+                    </div>
+                    {product.discount && product.discount > 0 && (
+                      <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
                     )}
                   </div>
                 </div>
@@ -145,8 +173,14 @@ const TopDeals = () => {
         <div className="hidden md:block">
           <div className="flex items-end justify-between mb-8">
             <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="h-px w-8 bg-primary/50" />
+                <span className="text-[10px] uppercase tracking-[0.32em] text-primary/80 font-medium">
+                  Top Deals
+                </span>
+              </div>
               <h2 className="text-3xl lg:text-4xl font-semibold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Top Deals
+                Handpicked savings
               </h2>
               <p className="text-sm text-muted-foreground mt-1 font-light">Handpicked deals on our finest pieces</p>
             </div>
@@ -182,7 +216,7 @@ const TopDeals = () => {
                   )}
                 </div>
                 <button 
-                  className="bg-white text-gray-900 px-7 py-3 rounded-full text-sm font-medium hover:bg-gray-100 transition-all duration-300 w-fit shadow-lg"
+                  className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100 px-7 py-3 rounded-full text-sm font-medium hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 transition-all duration-300 w-fit shadow-lg"
                   onClick={(e) => { e.stopPropagation(); navigate(`/product/${featuredProduct.id}`); }}
                 >
                   Shop Now
@@ -191,7 +225,7 @@ const TopDeals = () => {
             </div>
 
             {/* Right: Product Cards Grid */}
-            <div className="w-[62%] bg-secondary/50 dark:bg-muted rounded-3xl p-6 flex flex-col justify-between">
+            <div className="w-[62%] rounded-3xl border border-white/50 dark:border-border/70 bg-background/80 p-6 flex flex-col justify-between shadow-inner">
               <div className="grid grid-cols-4 gap-4">
                 {visibleProducts.map((product) => (
                   <motion.div 
@@ -251,6 +285,7 @@ const TopDeals = () => {
           </div>
         </div>
 
+        </div>
       </div>
 
       <style>{`

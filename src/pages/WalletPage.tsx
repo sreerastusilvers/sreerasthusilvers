@@ -183,10 +183,10 @@ const WalletPage: React.FC = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading wallet...</p>
+          <p className="text-gray-500 dark:text-zinc-500 text-sm">Loading wallet...</p>
         </div>
       </div>
     );
@@ -198,15 +198,15 @@ const WalletPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <div className="hidden lg:block"><Header /></div>
 
       {/* Mobile Header */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-1 hover:bg-gray-100 rounded-full">
-          <ArrowLeft className="w-5 h-5 text-gray-700" />
+      <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-4 py-3 flex items-center gap-3">
+        <button onClick={() => navigate(-1)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full">
+          <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-900">My Wallet</h1>
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">My Wallet</h1>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6 lg:py-10 pb-24 lg:pb-10">
@@ -275,18 +275,18 @@ const WalletPage: React.FC = () => {
               key={idx}
               whileTap={{ scale: 0.95 }}
               onClick={item.action}
-              className="flex flex-col items-center gap-2 p-3 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:shadow-md transition-shadow"
             >
               <div className={`w-10 h-10 ${item.color} rounded-full flex items-center justify-center`}>
                 {item.icon}
               </div>
-              <span className="text-xs font-medium text-gray-700">{item.label}</span>
+              <span className="text-xs font-medium text-gray-700 dark:text-zinc-300">{item.label}</span>
             </motion.button>
           ))}
         </div>
 
         {/* ─── TAB NAVIGATION ─────────────────── */}
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto">
+        <div className="flex gap-1 bg-gray-100 dark:bg-zinc-800 rounded-xl p-1 mb-6 overflow-x-auto">
           {[
             { id: 'overview', label: 'Overview' },
             { id: 'transactions', label: 'Transactions' },
@@ -345,9 +345,9 @@ const WalletPage: React.FC = () => {
               )}
 
               {/* Recent Transactions */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6">
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                  <h3 className="font-semibold text-gray-900">Recent Transactions</h3>
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 mb-6">
+                <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-zinc-800">
+                  <h3 className="font-semibold text-gray-900 dark:text-zinc-100">Recent Transactions</h3>
                   <button onClick={() => setActiveTab('transactions')} className="text-sm text-blue-600 font-medium flex items-center gap-1">
                     View All <ChevronRight className="w-4 h-4" />
                   </button>
@@ -360,8 +360,8 @@ const WalletPage: React.FC = () => {
                   ) : (
                     <div className="p-8 text-center">
                       <WalletIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 text-sm">No transactions yet</p>
-                      <p className="text-gray-400 text-xs mt-1">Your wallet transactions will appear here</p>
+                      <p className="text-gray-500 dark:text-zinc-500 text-sm">No transactions yet</p>
+                      <p className="text-gray-400 dark:text-zinc-500 text-xs mt-1">Your wallet transactions will appear here</p>
                     </div>
                   )}
                 </div>
@@ -405,7 +405,7 @@ const WalletPage: React.FC = () => {
               </div>
 
               {/* Transaction List */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
                 <div className="divide-y divide-gray-50">
                   {filteredTransactions.length > 0 ? (
                     filteredTransactions.map((tx) => (
@@ -414,7 +414,7 @@ const WalletPage: React.FC = () => {
                   ) : (
                     <div className="p-8 text-center">
                       <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 text-sm">No {txFilter !== 'all' ? txFilter : ''} transactions found</p>
+                      <p className="text-gray-500 dark:text-zinc-500 text-sm">No {txFilter !== 'all' ? txFilter : ''} transactions found</p>
                     </div>
                   )}
                 </div>
@@ -428,21 +428,21 @@ const WalletPage: React.FC = () => {
                 <>
                   {/* Points Summary */}
                   <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800">
                       <div className="flex items-center gap-2 mb-2">
                         <Coins className="w-5 h-5 text-amber-500" />
-                        <span className="text-sm text-gray-600">Available</span>
+                        <span className="text-sm text-gray-600 dark:text-zinc-400">Available</span>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{rewards.availablePoints.toLocaleString()}</p>
-                      <p className="text-xs text-gray-400 mt-1">points</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-zinc-100">{rewards.availablePoints.toLocaleString()}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">points</p>
                     </div>
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800">
                       <div className="flex items-center gap-2 mb-2">
                         <TrendingUp className="w-5 h-5 text-green-500" />
-                        <span className="text-sm text-gray-600">Total Earned</span>
+                        <span className="text-sm text-gray-600 dark:text-zinc-400">Total Earned</span>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{rewards.totalPoints.toLocaleString()}</p>
-                      <p className="text-xs text-gray-400 mt-1">lifetime</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-zinc-100">{rewards.totalPoints.toLocaleString()}</p>
+                      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">lifetime</p>
                     </div>
                   </div>
 
@@ -462,13 +462,13 @@ const WalletPage: React.FC = () => {
                   )}
 
                   {/* Redeem Points */}
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-                    <h3 className="font-semibold text-gray-900 mb-1">Redeem Points</h3>
-                    <p className="text-sm text-gray-500 mb-4">Convert your points to wallet credit. 100 points = ₹10</p>
+                  <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-5 mb-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-zinc-100 mb-1">Redeem Points</h3>
+                    <p className="text-sm text-gray-500 dark:text-zinc-500 mb-4">Convert your points to wallet credit. 100 points = ₹10</p>
 
                     <div className="flex gap-3">
                       <div className="flex-1 relative">
-                        <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-500" />
                         <input
                           type="number"
                           value={pointsToRedeem}
@@ -476,7 +476,7 @@ const WalletPage: React.FC = () => {
                           placeholder="Enter points (min 100)"
                           min={100}
                           max={rewards.availablePoints}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-zinc-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         />
                       </div>
                       <Button
@@ -496,8 +496,8 @@ const WalletPage: React.FC = () => {
                   </div>
 
                   {/* How Points Work */}
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                    <h3 className="font-semibold text-gray-900 mb-4">How Rewards Work</h3>
+                  <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-5">
+                    <h3 className="font-semibold text-gray-900 dark:text-zinc-100 mb-4">How Rewards Work</h3>
                     <div className="space-y-4">
                       {[
                         { icon: <Zap className="w-5 h-5" />, title: 'Earn on every purchase', desc: 'Get 10 points per ₹100 spent', color: 'bg-blue-50 text-blue-600' },
@@ -510,8 +510,8 @@ const WalletPage: React.FC = () => {
                             {item.icon}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                            <p className="text-xs text-gray-500">{item.desc}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{item.title}</p>
+                            <p className="text-xs text-gray-500 dark:text-zinc-500">{item.desc}</p>
                           </div>
                         </div>
                       ))}
@@ -525,14 +525,14 @@ const WalletPage: React.FC = () => {
           {activeTab === 'gift-cards' && (
             <motion.div key="gift-cards" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
               {/* Redeem Gift Card */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-5 mb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
                     <Gift className="w-6 h-6 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Redeem Gift Card</h3>
-                    <p className="text-sm text-gray-500">Enter your gift card code below</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-zinc-100">Redeem Gift Card</h3>
+                    <p className="text-sm text-gray-500 dark:text-zinc-500">Enter your gift card code below</p>
                   </div>
                 </div>
 
@@ -549,14 +549,14 @@ const WalletPage: React.FC = () => {
 
                 <div className="flex gap-3">
                   <div className="flex-1 relative">
-                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-500" />
                     <input
                       type="text"
                       value={giftCardCode}
                       onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
                       placeholder="XXXX-XXXX-XXXX"
                       maxLength={16}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm font-mono tracking-wider focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none uppercase"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-zinc-800 rounded-xl text-sm font-mono tracking-wider focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none uppercase"
                     />
                   </div>
                   <Button
@@ -570,20 +570,20 @@ const WalletPage: React.FC = () => {
               </div>
 
               {/* Payment Methods (Razorpay Ready) */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">Payment Methods</h3>
-                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Coming Soon</span>
+                  <h3 className="font-semibold text-gray-900 dark:text-zinc-100">Payment Methods</h3>
+                  <span className="text-xs text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-full">Coming Soon</span>
                 </div>
 
                 {paymentMethods.length > 0 ? (
                   <div className="space-y-3">
                     {paymentMethods.map((pm) => (
-                      <div key={pm.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl">
-                        <CreditCard className="w-5 h-5 text-gray-400" />
+                      <div key={pm.id} className="flex items-center gap-3 p-3 border border-gray-200 dark:border-zinc-800 rounded-xl">
+                        <CreditCard className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{pm.label}</p>
-                          {pm.cardLast4 && <p className="text-xs text-gray-500">•••• {pm.cardLast4}</p>}
+                          <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{pm.label}</p>
+                          {pm.cardLast4 && <p className="text-xs text-gray-500 dark:text-zinc-500">•••• {pm.cardLast4}</p>}
                         </div>
                         {pm.isDefault && (
                           <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Default</span>
@@ -594,8 +594,8 @@ const WalletPage: React.FC = () => {
                 ) : (
                   <div className="text-center py-6">
                     <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No payment methods saved</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-zinc-500">No payment methods saved</p>
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
                       Card and UPI payment options will be available when online payments are enabled
                     </p>
                   </div>
@@ -647,15 +647,15 @@ const TransactionItem: React.FC<{
   };
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+    <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getSourceColor(transaction.source)}`}>
         {getSourceIcon(transaction.source)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{transaction.description}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-zinc-100 truncate">{transaction.description}</p>
         <div className="flex items-center gap-2">
-          <p className="text-xs text-gray-500">{formatDate(transaction.createdAt)}</p>
-          {detailed && <p className="text-xs text-gray-400">{formatTime(transaction.createdAt)}</p>}
+          <p className="text-xs text-gray-500 dark:text-zinc-500">{formatDate(transaction.createdAt)}</p>
+          {detailed && <p className="text-xs text-gray-400 dark:text-zinc-500">{formatTime(transaction.createdAt)}</p>}
         </div>
         {detailed && transaction.orderId && (
           <p className="text-xs text-blue-500 mt-0.5">Order #{transaction.orderId}</p>
@@ -666,7 +666,7 @@ const TransactionItem: React.FC<{
           {isCredit ? '+' : '-'}₹{transaction.amount.toLocaleString()}
         </p>
         {detailed && (
-          <p className="text-xs text-gray-400">Bal: ₹{transaction.balanceAfter.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 dark:text-zinc-500">Bal: ₹{transaction.balanceAfter.toLocaleString()}</p>
         )}
       </div>
     </div>

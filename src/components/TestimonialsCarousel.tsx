@@ -34,9 +34,10 @@ const CARD_GAP = 24;
 
 const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
   <div
-    className="bg-card rounded-2xl p-6 md:p-8 shadow-sm border border-border flex-shrink-0 hover:shadow-md transition-shadow duration-300"
+    className="relative overflow-hidden rounded-[28px] p-6 md:p-8 border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,0)_35%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,0)_55%)] bg-card flex-shrink-0 shadow-[0_24px_70px_-48px_rgba(0,0,0,0.5)] hover:shadow-[0_30px_80px_-44px_rgba(0,0,0,0.55)] transition-shadow duration-300"
     style={{ width: `${CARD_WIDTH}px` }}
   >
+    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/60 to-transparent" />
     <div className="flex items-center gap-1 mb-4">
       {[...Array(5)].map((_, i) => (
         <Star
@@ -49,17 +50,17 @@ const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
         />
       ))}
     </div>
-    <h4 className="text-base font-semibold mb-3 text-foreground font-serif">
+    <h4 className="text-base font-semibold mb-3 text-foreground font-serif leading-snug">
       " {testimonial.title} "
     </h4>
-    <p className="text-sm text-muted-foreground mb-6 leading-relaxed line-clamp-3 font-light">
+    <p className="text-sm text-muted-foreground mb-6 leading-relaxed line-clamp-4 font-light">
       {testimonial.quote}
     </p>
-    <div className="flex items-center gap-3 pt-4 border-t border-border">
+    <div className="flex items-center gap-3 pt-4 border-t border-[#d4af37]/10">
       <img
         src={resolveAvatar(testimonial)}
         alt={testimonial.author}
-        className="w-10 h-10 rounded-full object-cover ring-2 ring-[#832729]/10"
+        className="w-11 h-11 rounded-full object-cover ring-2 ring-[#d4af37]/20"
       />
       <div>
         <p className="font-medium text-sm text-foreground">{testimonial.author}</p>
@@ -87,9 +88,9 @@ const TestimonialsCarousel = () => {
     return unsub;
   }, []);
 
-  // JS-based smooth scroll animation for reliable marquee
+  // JS-based smooth scroll animation for reliable marquee (only for 4+ testimonials)
   useEffect(() => {
-    if (testimonials.length === 0 || !scrollRef.current) return;
+    if (testimonials.length <= 3 || !scrollRef.current) return;
 
     const el = scrollRef.current;
     const singleSetWidth = testimonials.length * (CARD_WIDTH + CARD_GAP);
@@ -98,13 +99,19 @@ const TestimonialsCarousel = () => {
     const animate = () => {
       if (!isPaused) {
         scrollPos.current += speed;
+        // Reset when we've scrolled past one full set (seamless loop with 3 copies)
         if (scrollPos.current >= singleSetWidth) {
-          scrollPos.current -= singleSetWidth;
+          scrollPos.current = 0;
+          el.style.transform = `translateX(0px)`;
         }
         el.style.transform = `translateX(-${scrollPos.current}px)`;
       }
       animationRef.current = requestAnimationFrame(animate);
     };
+
+    // Reset position on testimonial data change
+    scrollPos.current = 0;
+    el.style.transform = `translateX(0px)`;
 
     animationRef.current = requestAnimationFrame(animate);
     return () => {
@@ -113,14 +120,15 @@ const TestimonialsCarousel = () => {
   }, [testimonials, isPaused]);
 
   const shouldAnimate = isInView || hasLoaded;
+  const useMarquee = testimonials.length > 3;
 
   if (hasLoaded && testimonials.length === 0) return null;
 
-  // Triple the items for seamless looping
-  const marqueeItems = [...testimonials, ...testimonials, ...testimonials];
+  // Only duplicate for marquee mode (4+ items) - 3 copies for seamless loop
+  const marqueeItems = useMarquee ? [...testimonials, ...testimonials, ...testimonials] : testimonials;
 
   return (
-    <section ref={ref} className="py-14 md:py-20 bg-secondary/50 dark:bg-muted overflow-hidden">
+    <section ref={ref} className="py-14 md:py-20 bg-[linear-gradient(180deg,rgba(131,39,41,0.04)_0%,rgba(212,175,55,0.06)_100%)] overflow-hidden">
       {testimonials.length > 0 && (
         <>
           {/* Header */}
@@ -130,6 +138,11 @@ const TestimonialsCarousel = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-10 px-4"
           >
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="h-px w-8 bg-primary/50" />
+              <span className="text-[10px] uppercase tracking-[0.32em] text-primary/80 font-medium">Testimonials</span>
+              <span className="h-px w-8 bg-primary/50" />
+            </div>
             <h2 className="text-2xl md:text-3xl font-semibold text-foreground mb-2 font-serif">
               What Our Clients Say
             </h2>
@@ -138,24 +151,40 @@ const TestimonialsCarousel = () => {
             </p>
           </motion.div>
 
-          {/* Marquee Container */}
-          <div
-            className="relative overflow-hidden"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-            onTouchStart={() => setIsPaused(true)}
-            onTouchEnd={() => setIsPaused(false)}
-          >
+          {useMarquee ? (
+            /* Marquee Container - for 4+ testimonials */
             <div
-              ref={scrollRef}
-              className="flex will-change-transform"
-              style={{ gap: `${CARD_GAP}px`, paddingLeft: `${CARD_GAP}px` }}
+              className="relative overflow-hidden"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+              onTouchStart={() => setIsPaused(true)}
+              onTouchEnd={() => setIsPaused(false)}
             >
-              {marqueeItems.map((testimonial, index) => (
-                <TestimonialCard key={`t-${index}`} testimonial={testimonial} />
+              <div
+                ref={scrollRef}
+                className="flex will-change-transform"
+                style={{ gap: `${CARD_GAP}px`, paddingLeft: `${CARD_GAP}px` }}
+              >
+                {marqueeItems.map((testimonial, index) => (
+                  <TestimonialCard key={`t-${index}`} testimonial={testimonial} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* Static centered grid - for 1-3 testimonials */
+            <div className="flex justify-center gap-6 px-4 flex-wrap">
+              {testimonials.map((testimonial, index) => (
+                <motion.div
+                  key={testimonial.id || `t-${index}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={shouldAnimate ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.5, delay: index * 0.15 }}
+                >
+                  <TestimonialCard testimonial={testimonial} />
+                </motion.div>
               ))}
             </div>
-          </div>
+          )}
         </>
       )}
     </section>

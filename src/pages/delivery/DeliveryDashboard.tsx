@@ -249,7 +249,7 @@ const DeliveryDashboard = () => {
       {/* Main Content */}
       <div className="lg:ml-72">
         {/* Top Header */}
-        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-stone-100">
+        <header className="sticky top-0 z-40 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-stone-100">
           <div className="px-4 lg:px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <motion.button
@@ -294,7 +294,7 @@ const DeliveryDashboard = () => {
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl p-5 border border-stone-100 shadow-sm"
+              className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-stone-100 shadow-sm"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
@@ -310,7 +310,7 @@ const DeliveryDashboard = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="bg-white rounded-2xl p-5 border border-stone-100 shadow-sm"
+              className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-stone-100 shadow-sm"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
@@ -325,7 +325,7 @@ const DeliveryDashboard = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white rounded-2xl p-5 border border-stone-100 shadow-sm"
+              className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-stone-100 shadow-sm"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
@@ -342,7 +342,7 @@ const DeliveryDashboard = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="bg-white rounded-2xl p-5 border border-stone-100 shadow-sm"
+              className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-stone-100 shadow-sm"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">

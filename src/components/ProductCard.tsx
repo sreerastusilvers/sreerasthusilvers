@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Star, Heart, Eye, ShoppingBag } from "lucide-react";
+import { Star, Heart, Eye, ShoppingBag, Plus, Minus } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -26,10 +26,16 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
-  const { addToCart } = useCart();
+  const { addToCart, items, updateQuantity, removeFromCart, openCart } = useCart();
   const { toast } = useToast();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
+
+  const cartItem = items.find((i) => i.id === product.id);
+  const inCartQty = cartItem?.quantity ?? 0;
+  const computedDiscount = product.discount ?? (product.oldPrice && product.oldPrice > product.price
+    ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
+    : 0);
 
   const handleCardClick = () => {
     // Navigate to product detail page
@@ -48,10 +54,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    console.log('🛒 Add to Cart clicked for:', product.title);
-    console.log('📦 Product ID:', product.id);
-    
+
     try {
       await addToCart({
         id: product.id,
@@ -60,15 +63,14 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
         image: product.image,
         category: product.category,
       });
-      
-      console.log('✅ Successfully added to cart');
+      openCart();
       
       toast({
         title: "Added to cart",
         description: `${product.title} has been added to your cart.`,
       });
     } catch (error) {
-      console.error('❌ Error adding to cart:', error);
+      console.error('Error adding to cart:', error);
       toast({
         title: "Error",
         description: "Failed to add item to cart. Please try again.",
@@ -93,13 +95,6 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
           className="w-full h-full object-cover"
           loading="lazy"
         />
-
-        {/* Discount Badge - Top Left */}
-        {product.discount && product.discount > 0 && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] lg:text-xs font-bold px-2 py-1 rounded-md shadow-lg">
-            {product.discount}% OFF
-          </div>
-        )}
 
         {/* Wishlist Heart - Top Right */}
         <button
@@ -151,16 +146,51 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
               ₹{product.oldPrice.toLocaleString('en-IN')}
             </span>
           )}
+          {computedDiscount > 0 && (
+            <span className="text-[10px] lg:text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{computedDiscount}% Off</span>
+          )}
         </div>
 
-        {/* Add to Cart Button */}
-        <button
-          onClick={handleAddToCart}
-          className="w-full mt-1 lg:mt-2 py-1.5 lg:py-2.5 px-3 lg:px-4 bg-foreground/5 text-foreground text-[11px] lg:text-sm font-medium rounded-full hover:bg-foreground/10 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-1.5 lg:gap-2 border border-border"
-        >
-          <ShoppingBag className="w-3 h-3 lg:w-4 lg:h-4" />
-          Add to Cart
-        </button>
+        {/* Add to Cart / Qty Stepper */}
+        {inCartQty > 0 ? (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full mt-1 lg:mt-2 py-1.5 lg:py-2 px-2 bg-foreground/5 border border-border rounded-full flex items-center justify-between"
+          >
+            <button
+              type="button"
+              aria-label="Decrease quantity"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (inCartQty <= 1 && cartItem) removeFromCart(cartItem.id);
+                else if (cartItem) updateQuantity(cartItem.id, inCartQty - 1);
+              }}
+              className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+            <span className="text-xs lg:text-sm font-semibold">{inCartQty} in cart</span>
+            <button
+              type="button"
+              aria-label="Increase quantity"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (cartItem) updateQuantity(cartItem.id, inCartQty + 1);
+              }}
+              className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleAddToCart}
+            className="w-full mt-1 lg:mt-2 py-1.5 lg:py-2.5 px-3 lg:px-4 bg-foreground/5 text-foreground text-[11px] lg:text-sm font-medium rounded-full hover:bg-foreground/10 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-1.5 lg:gap-2 border border-border"
+          >
+            <ShoppingBag className="w-3 h-3 lg:w-4 lg:h-4" />
+            Add to Cart
+          </button>
+        )}
       </div>
     </motion.div>
   );

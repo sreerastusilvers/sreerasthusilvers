@@ -574,20 +574,50 @@ const ProductForm = () => {
                 )}
 
                 {images.length > 0 && (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4">
-                    {images.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <div className="w-full aspect-square bg-gray-200 rounded-lg overflow-hidden">
-                          <img src={url} alt={'Product ' + (index + 1)} className={'w-full h-full object-cover ' + (thumbnail === url ? 'ring-2 ring-amber-500' : '')} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  <>
+                    <div className="flex items-center justify-between mt-4 mb-2">
+                      <p className="text-xs text-gray-500">{images.length} image{images.length !== 1 ? 's' : ''} • drag to reorder • first image is shown in cards</p>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {images.map((url, index) => (
+                        <div
+                          key={url + index}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', String(index));
+                            e.dataTransfer.effectAllowed = 'move';
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const from = Number(e.dataTransfer.getData('text/plain'));
+                            const to = index;
+                            if (from === to || isNaN(from)) return;
+                            setImages((prev) => {
+                              const next = [...prev];
+                              const [moved] = next.splice(from, 1);
+                              next.splice(to, 0, moved);
+                              return next;
+                            });
+                          }}
+                          className="relative group cursor-move"
+                        >
+                          <div className="w-full aspect-square bg-gray-200 rounded-lg overflow-hidden ring-1 ring-gray-200">
+                            <img src={url} alt={'Product ' + (index + 1)} className={'w-full h-full object-cover ' + (thumbnail === url ? 'ring-2 ring-amber-500' : '')} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          </div>
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                            <button type="button" onClick={() => setThumbnail(url)} className="p-1.5 bg-amber-600 hover:bg-amber-700 rounded text-white" title="Set as thumbnail"><ImageIcon className="h-4 w-4" /></button>
+                            <button type="button" onClick={() => handleRemoveImage(url)} className="p-1.5 bg-red-500 hover:bg-red-600 rounded text-white" title="Remove"><X className="h-4 w-4" /></button>
+                          </div>
+                          <span className="absolute top-1 right-1 bg-black/70 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">#{index + 1}</span>
+                          {thumbnail === url && <span className="absolute top-1 left-1 bg-amber-600 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">THUMB</span>}
                         </div>
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                          <button type="button" onClick={() => setThumbnail(url)} className="p-1 bg-amber-600 rounded text-white text-xs" title="Set as thumbnail"><ImageIcon className="h-4 w-4" /></button>
-                          <button type="button" onClick={() => handleRemoveImage(url)} className="p-1 bg-red-500 rounded text-white" title="Remove"><X className="h-4 w-4" /></button>
-                        </div>
-                        {thumbnail === url && <span className="absolute top-1 left-1 bg-amber-600 text-white text-xs px-1 rounded">Thumb</span>}
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
 

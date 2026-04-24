@@ -14,6 +14,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
+import useWhatsAppOtpVerification from '@/hooks/useWhatsAppOtpVerification';
+import { normalizePhoneNumber } from '@/services/whatsappService';
 import {
   ArrowLeft, Shield, Lock, Mail, Eye, EyeOff, Loader2, Check, X, AlertTriangle,
   Smartphone, Monitor, Globe, Clock, LogOut, Trash2, ChevronRight, Key, Fingerprint,
@@ -100,6 +102,69 @@ const SecurityPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
+
+  // 2FA via WhatsApp OTP
+  const [twoFaPanelOpen, setTwoFaPanelOpen] = useState(false);
+  const [twoFaPhone, setTwoFaPhone] = useState('');
+  const twoFaOtp = useWhatsAppOtpVerification(twoFaPhone, twoFaPanelOpen && !settings?.twoFactorEnabled);
+
+  // Pre-fill 2FA phone from existing profile WhatsApp/phone number
+  useEffect(() => {
+    if (twoFaPanelOpen && !twoFaPhone) {
+      const raw = userProfile?.whatsappNumber || userProfile?.phone || '';
+      const normalized = normalizePhoneNumber(raw);
+      // Strip the leading 91 country code for the input field
+      setTwoFaPhone(normalized.startsWith('91') ? normalized.slice(2) : normalized);
+    }
+  }, [twoFaPanelOpen, userProfile, twoFaPhone]);
+
+  const handleEnable2FA = async () => {
+    if (!user) return;
+    if (!twoFaOtp.isVerified) {
+      showMessage('error', 'Verify the WhatsApp code before enabling 2FA.');
+      return;
+    }
+    setActionLoading('enable-2fa');
+    try {
+      const fullPhone = normalizePhoneNumber(twoFaPhone);
+      await updateSecuritySettings(user.uid, {
+        twoFactorEnabled: true,
+        twoFactorMethod: 'sms',
+        phoneVerified: true,
+      });
+      setSettings((prev) => prev ? {
+        ...prev,
+        twoFactorEnabled: true,
+        twoFactorMethod: 'sms',
+        phoneVerified: true,
+      } : prev);
+      showMessage('success', `2FA enabled. Codes will be sent on WhatsApp to +${fullPhone}.`);
+      setTwoFaPanelOpen(false);
+    } catch (err: any) {
+      showMessage('error', err.message || 'Failed to enable 2FA');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    if (!user) return;
+    setActionLoading('disable-2fa');
+    try {
+      await updateSecuritySettings(user.uid, {
+        twoFactorEnabled: false,
+        twoFactorMethod: undefined as any,
+      });
+      setSettings((prev) => prev ? { ...prev, twoFactorEnabled: false, twoFactorMethod: undefined } : prev);
+      setTwoFaPanelOpen(false);
+      setTwoFaPhone('');
+      showMessage('success', 'Two-factor authentication disabled.');
+    } catch (err: any) {
+      showMessage('error', err.message || 'Failed to disable 2FA');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
@@ -412,10 +477,10 @@ const SecurityPage: React.FC = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900 dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading security settings...</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-500 dark:text-zinc-400">Loading security settings...</p>
         </div>
       </div>
     );
@@ -427,15 +492,15 @@ const SecurityPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <div className="hidden lg:block"><Header /></div>
 
       {/* Desktop Back Button */}
-      <div className="hidden lg:block bg-white border-b border-gray-200">
+      <div className="hidden lg:block border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 dark:border-zinc-800 dark:bg-zinc-950/90">
         <div className="max-w-4xl mx-auto px-4">
           <button
             onClick={() => navigate('/account')}
-            className="flex items-center gap-2 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 py-3 text-gray-600 dark:text-zinc-400 transition-colors hover:text-gray-900 dark:text-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">Back to Account</span>
@@ -444,11 +509,16 @@ const SecurityPage: React.FC = () => {
       </div>
 
       {/* Mobile Header */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => activeTab === 'overview' ? navigate(-1) : setActiveTab('overview')} className="p-1 hover:bg-gray-100 rounded-full">
-          <ArrowLeft className="w-5 h-5 text-gray-700" />
+      <div className="lg:hidden sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/90">
+        <button onClick={() => {
+          if (activeTab !== 'overview') { setActiveTab('overview'); return; }
+          if (window.innerWidth >= 1024) { navigate('/account'); return; }
+          sessionStorage.setItem('openMobileSidebar', '1');
+          navigate('/');
+        }} className="rounded-full p-1 hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800">
+          <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300 dark:text-zinc-100" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-900">
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
           {getSectionTitle(activeTab)}
         </h1>
       </div>
@@ -499,17 +569,17 @@ const SecurityPage: React.FC = () => {
         {activeTab === 'overview' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {/* Security Score */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+            <div className="mb-4 rounded-xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-4 dark:border-zinc-800 dark:bg-zinc-900/88">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-gray-600 border border-gray-200">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Account Security</p>
-                  <h2 className="text-base font-semibold text-gray-900">
+                  <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">Account Security</p>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-zinc-100">
                     {settings?.twoFactorEnabled ? 'Protected' : 'Basic Protection'}
                   </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">
                     {settings?.twoFactorEnabled
                       ? 'Two-factor authentication is enabled'
                       : 'Enable 2FA for enhanced security'}
@@ -523,34 +593,138 @@ const SecurityPage: React.FC = () => {
               {[
                 { id: 'password' as SecurityTab, icon: <Key className="w-5 h-5" />, label: 'Change Password', desc: 'Update your password', color: 'text-blue-600' },
                 { id: 'login-history' as SecurityTab, icon: <Clock className="w-5 h-5" />, label: 'Login History', desc: 'View recent login activity', color: 'text-purple-600' },
-                { id: 'account' as SecurityTab, icon: <Settings className="w-5 h-5" />, label: 'Account Settings', desc: 'Email, notifications & more', color: 'text-gray-600' },
+                { id: 'account' as SecurityTab, icon: <Settings className="w-5 h-5" />, label: 'Account Settings', desc: 'Email, notifications & more', color: 'text-gray-600 dark:text-zinc-400' },
               ].map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 transition-colors text-left"
+                  className="flex w-full items-center gap-3 bg-white dark:bg-zinc-900 px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:bg-zinc-900/88 dark:hover:bg-zinc-800/80"
                 >
                   <div className={`${item.color}`}>
                     {item.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                    <p className="text-xs text-gray-500 truncate">{item.desc}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{item.label}</p>
+                    <p className="truncate text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">{item.desc}</p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                  <ChevronRight className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
                 </button>
               ))}
             </div>
 
-            {/* 2FA Teaser */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-6 flex items-start gap-3">
-              <Fingerprint className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-amber-900">Two-Factor Authentication</p>
-                <p className="text-xs text-amber-700 mt-1">
-                  2FA adds an extra layer of security. This feature is coming soon with OTP-based verification.
-                </p>
+            {/* 2FA — Real WhatsApp OTP flow */}
+            <div className={`rounded-xl p-4 mt-6 border ${settings?.twoFactorEnabled ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+              <div className="flex items-start gap-3">
+                <Fingerprint className={`w-5 h-5 flex-shrink-0 mt-0.5 ${settings?.twoFactorEnabled ? 'text-green-600' : 'text-amber-600'}`} />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className={`text-sm font-medium ${settings?.twoFactorEnabled ? 'text-green-900' : 'text-amber-900'}`}>
+                      Two-Factor Authentication
+                      {settings?.twoFactorEnabled && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-600 text-white">
+                          <CheckCircle2 className="w-3 h-3" /> ON
+                        </span>
+                      )}
+                    </p>
+                    {settings?.twoFactorEnabled ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleDisable2FA}
+                        disabled={actionLoading === 'disable-2fa'}
+                        className="border-green-300 text-green-700 hover:bg-green-100"
+                      >
+                        {actionLoading === 'disable-2fa' ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                        Disable
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => setTwoFaPanelOpen((v) => !v)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
+                      >
+                        {twoFaPanelOpen ? 'Cancel' : 'Enable'}
+                      </Button>
+                    )}
+                  </div>
+                  <p className={`text-xs mt-1 ${settings?.twoFactorEnabled ? 'text-green-700' : 'text-amber-700'}`}>
+                    {settings?.twoFactorEnabled
+                      ? 'A WhatsApp code is required on every new sign-in to keep your account safe.'
+                      : 'Add an extra layer of security by verifying logins with a one-time code on WhatsApp.'}
+                  </p>
+                </div>
               </div>
+
+              {twoFaPanelOpen && !settings?.twoFactorEnabled && (
+                <div className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-white dark:bg-zinc-900 p-4 dark:border-amber-800/70 dark:bg-zinc-950/90">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-zinc-300 mb-1">WhatsApp number</label>
+                    <div className="flex items-stretch rounded-lg border border-gray-200 dark:border-zinc-800 overflow-hidden focus-within:ring-2 focus-within:ring-amber-300">
+                      <span className="px-3 py-2 bg-gray-50 dark:bg-zinc-900/50 text-sm text-gray-600 dark:text-zinc-400 border-r border-gray-200 dark:border-zinc-800">+91</span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={twoFaPhone}
+                        onChange={(e) => setTwoFaPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="10-digit number"
+                        disabled={twoFaOtp.isVerified}
+                        className="flex-1 px-3 py-2 text-sm outline-none disabled:bg-gray-50 dark:bg-zinc-900/50 disabled:text-gray-500 dark:text-zinc-500 dark:text-zinc-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={twoFaOtp.sendOtp}
+                        disabled={twoFaOtp.isBusy || twoFaOtp.isVerified || twoFaPhone.length !== 10}
+                        className="px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed border-l border-gray-200 dark:border-zinc-800"
+                      >
+                        {twoFaOtp.phase === 'sending' ? 'Sending…' : twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verified' ? 'Resend' : 'Send code'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {(twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verifying' || twoFaOtp.phase === 'verified') && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-zinc-300 mb-1">6-digit WhatsApp code</label>
+                      <div className="flex items-stretch gap-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={twoFaOtp.otpCode}
+                          onChange={(e) => twoFaOtp.setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="123456"
+                          disabled={twoFaOtp.isVerified}
+                          className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-800 outline-none focus:ring-2 focus:ring-amber-300 tracking-[0.4em] font-mono disabled:bg-gray-50 dark:bg-zinc-900/50"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={twoFaOtp.confirmOtp}
+                          disabled={twoFaOtp.isBusy || twoFaOtp.isVerified || twoFaOtp.otpCode.length !== 6}
+                          className="bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                          {twoFaOtp.phase === 'verifying' ? <Loader2 className="w-4 h-4 animate-spin" /> : twoFaOtp.isVerified ? <Check className="w-4 h-4" /> : 'Verify'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {twoFaOtp.otpError && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> {twoFaOtp.otpError}
+                    </p>
+                  )}
+
+                  <Button
+                    onClick={handleEnable2FA}
+                    disabled={!twoFaOtp.isVerified || actionLoading === 'enable-2fa'}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {actionLoading === 'enable-2fa' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                    Turn on Two-Factor Authentication
+                  </Button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -558,24 +732,24 @@ const SecurityPage: React.FC = () => {
         {/* ─── CHANGE PASSWORD (Email Reset Flow) ─────────────────── */}
         {activeTab === 'password' && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-6">
               {resetEmailSent ? (
                 /* ── Step 2: Check Your Email ── */
                 <div className="text-center">
                   <div className="bg-purple-100 rounded-full p-5 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
                     <Mail className="w-12 h-12 text-purple-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Check Your Email</h3>
-                  <p className="text-gray-500 text-sm mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-zinc-100 mb-2">Check Your Email</h3>
+                  <p className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-sm mb-6">
                     We've sent a password reset link to<br />
-                    <strong className="text-gray-900">{resetEmail}</strong>
+                    <strong className="text-gray-900 dark:text-zinc-100">{resetEmail}</strong>
                   </p>
 
                   {/* Instructions */}
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-left">
                     <div className="flex gap-3">
                       <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-gray-700">
+                      <div className="text-sm text-gray-700 dark:text-zinc-300">
                         <p className="font-semibold mb-1">What to do next:</p>
                         <ul className="space-y-1 text-xs">
                           <li>• Open the email and click the reset link</li>
@@ -620,7 +794,7 @@ const SecurityPage: React.FC = () => {
                   </Button>
 
                   {/* Didn't receive hint */}
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-2">
                     Didn't receive the email? Check your spam folder,<br />
                     or try with a different email address.
                   </p>
@@ -639,25 +813,25 @@ const SecurityPage: React.FC = () => {
                       <Key className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">Reset Password</h3>
-                      <p className="text-sm text-gray-500">We'll send a reset link to your email</p>
+                      <h3 className="font-semibold text-gray-900 dark:text-zinc-100">Reset Password</h3>
+                      <p className="text-sm text-gray-500 dark:text-zinc-500 dark:text-zinc-400">We'll send a reset link to your email</p>
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 mb-5">
+                  <p className="text-sm text-gray-600 dark:text-zinc-400 mb-5">
                     Enter the email address associated with your account and we'll send you a link to reset your password.
                   </p>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Email Address</label>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-500" />
                         <input
                           type="email"
                           value={resetEmail}
                           onChange={(e) => setResetEmail(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-zinc-800 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                           placeholder="your.email@example.com"
                         />
                       </div>
@@ -704,18 +878,18 @@ const SecurityPage: React.FC = () => {
                   <div key={entry.id} className="relative">
                     {/* Timeline connector line */}
                     {!isLast && (
-                      <div className="absolute left-[18px] top-[40px] bottom-0 w-[2px] bg-gray-100" />
+                      <div className="absolute left-[18px] top-[40px] bottom-0 w-[2px] bg-gray-100 dark:bg-zinc-800" />
                     )}
 
                     <motion.div
                       layout
                       onClick={() => setHistoryExpanded(isExpanded ? null : entry.id)}
-                      className={`relative flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all hover:bg-gray-50 ${
-                        isExpanded ? 'bg-gray-50' : ''
+                      className={`relative flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all hover:bg-gray-50 dark:bg-zinc-900/50 ${
+                        isExpanded ? 'bg-gray-50 dark:bg-zinc-900/50' : ''
                       }`}
                     >
                       {/* Status dot */}
-                      <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm border-2 border-white ${
+                      <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm border-2 border-white dark:border-zinc-800 ${
                         entry.status === 'success' ? 'bg-green-100 text-green-600' :
                         entry.status === 'failed' ? 'bg-red-100 text-red-600' :
                         'bg-amber-100 text-amber-600'
@@ -729,20 +903,20 @@ const SecurityPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="text-sm font-semibold text-gray-900 capitalize">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 capitalize">
                               {entry.status === 'success' ? 'Successful Login' :
                                entry.status === 'failed' ? 'Failed Attempt' :
                                'Login Attempt'}
                             </p>
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400 mt-0.5">
                               {getLoginMethodLabel(entry.method)}
                               <span className="text-gray-300 mx-1">•</span>
                               {entry.browser || 'Unknown'} on {entry.os || 'Unknown'}
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0 ml-2">
-                            <p className="text-xs font-medium text-gray-700">{formatRelativeTime(entry.timestamp)}</p>
-                            <ChevronDown className={`w-3.5 h-3.5 text-gray-400 ml-auto mt-0.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                            <p className="text-xs font-medium text-gray-700 dark:text-zinc-300">{formatRelativeTime(entry.timestamp)}</p>
+                            <ChevronDown className={`w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 ml-auto mt-0.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                           </div>
                         </div>
 
@@ -756,21 +930,21 @@ const SecurityPage: React.FC = () => {
                               transition={{ duration: 0.2 }}
                               className="overflow-hidden"
                             >
-                              <div className="mt-3 pt-3 border-t border-gray-100 space-y-2.5">
+                              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800 space-y-2.5">
                                 {/* Full timestamp */}
                                 <div className="flex items-center gap-2 text-xs">
-                                  <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                  <span className="text-gray-600">{formatFullTimestamp(entry.timestamp)}</span>
+                                  <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
+                                  <span className="text-gray-600 dark:text-zinc-400">{formatFullTimestamp(entry.timestamp)}</span>
                                 </div>
 
                                 {/* Device info */}
                                 <div className="flex items-center gap-2 text-xs">
                                   {entry.os?.includes('Android') || entry.os?.includes('iOS') ? (
-                                    <Smartphone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                    <Smartphone className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
                                   ) : (
-                                    <Monitor className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                    <Monitor className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
                                   )}
-                                  <span className="text-gray-600">
+                                  <span className="text-gray-600 dark:text-zinc-400">
                                     {entry.device || 'Unknown Device'} — {entry.browser} / {entry.os}
                                   </span>
                                 </div>
@@ -778,16 +952,16 @@ const SecurityPage: React.FC = () => {
                                 {/* IP Address */}
                                 {entry.ipAddress && entry.ipAddress !== 'unknown' && (
                                   <div className="flex items-center gap-2 text-xs">
-                                    <Globe className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                    <span className="text-gray-600">IP: {entry.ipAddress}</span>
+                                    <Globe className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
+                                    <span className="text-gray-600 dark:text-zinc-400">IP: {entry.ipAddress}</span>
                                   </div>
                                 )}
 
                                 {/* Location */}
                                 {entry.location && (entry.location.city || entry.location.country) && (
                                   <div className="flex items-center gap-2 text-xs">
-                                    <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                    <span className="text-gray-600">
+                                    <MapPin className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
+                                    <span className="text-gray-600 dark:text-zinc-400">
                                       {[entry.location.city, entry.location.region, entry.location.country].filter(Boolean).join(', ')}
                                     </span>
                                   </div>
@@ -795,8 +969,8 @@ const SecurityPage: React.FC = () => {
 
                                 {/* Auth method */}
                                 <div className="flex items-center gap-2 text-xs">
-                                  <Key className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                  <span className="text-gray-600">{getLoginMethodLabel(entry.method)}</span>
+                                  <Key className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
+                                  <span className="text-gray-600 dark:text-zinc-400">{getLoginMethodLabel(entry.method)}</span>
                                 </div>
                               </div>
                             </motion.div>
@@ -807,12 +981,12 @@ const SecurityPage: React.FC = () => {
                   </div>
                 );
               }) : (
-                <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
-                  <div className="w-16 h-16 rounded-full bg-gray-50 mx-auto mb-4 flex items-center justify-center">
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-10 text-center shadow-sm border border-gray-100 dark:border-zinc-800">
+                  <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-zinc-900/50 mx-auto mb-4 flex items-center justify-center">
                     <Clock className="w-8 h-8 text-gray-300" />
                   </div>
-                  <p className="text-sm font-medium text-gray-700">No login history yet</p>
-                  <p className="text-xs text-gray-400 mt-1">Login events will appear here as they happen</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">No login history yet</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Login events will appear here as they happen</p>
                 </div>
               )}
             </div>
@@ -823,40 +997,42 @@ const SecurityPage: React.FC = () => {
         {activeTab === 'account' && (
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             {/* Account Info */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Account Information</h3>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-5 mb-6">
+              <h3 className="font-semibold text-gray-900 dark:text-zinc-100 mb-4">Account Information</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <span className="text-sm text-gray-600">Email</span>
-                  <span className="text-sm font-medium text-gray-900">{user?.email}</span>
+                  <span className="text-sm text-gray-600 dark:text-zinc-400">Email</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">{user?.email}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <span className="text-sm text-gray-600">Account Type</span>
-                  <span className="text-sm font-medium text-gray-900 capitalize">{userProfile?.role || 'User'}</span>
+                  <span className="text-sm text-gray-600 dark:text-zinc-400">Account Type</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-zinc-100 capitalize">{userProfile?.role || 'User'}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <span className="text-sm text-gray-600">Email Verified</span>
+                  <span className="text-sm text-gray-600 dark:text-zinc-400">Email Verified</span>
                   <span className={`text-sm font-medium flex items-center gap-1 ${user?.emailVerified ? 'text-green-600' : 'text-amber-600'}`}>
                     {user?.emailVerified ? <><CheckCircle2 className="w-4 h-4" /> Verified</> : <><AlertCircle className="w-4 h-4" /> Not Verified</>}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <span className="text-sm text-gray-600">Phone Verified</span>
-                  <span className={`text-sm font-medium flex items-center gap-1 ${settings?.phoneVerified ? 'text-green-600' : 'text-gray-400'}`}>
+                  <span className="text-sm text-gray-600 dark:text-zinc-400">Phone Verified</span>
+                  <span className={`text-sm font-medium flex items-center gap-1 ${settings?.phoneVerified ? 'text-green-600' : 'text-gray-400 dark:text-zinc-500'}`}>
                     {settings?.phoneVerified ? <><CheckCircle2 className="w-4 h-4" /> Verified</> : 'Not set'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2">
-                  <span className="text-sm text-gray-600">2FA</span>
-                  <span className="text-sm font-medium text-gray-400">Coming Soon</span>
+                  <span className="text-sm text-gray-600 dark:text-zinc-400">2FA</span>
+                  <span className={`text-sm font-medium flex items-center gap-1 ${settings?.twoFactorEnabled ? 'text-green-600' : 'text-gray-400 dark:text-zinc-500'}`}>
+                    {settings?.twoFactorEnabled ? <><CheckCircle2 className="w-4 h-4" /> On (WhatsApp)</> : 'Off'}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Danger Zone */}
-            <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-5">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-red-200 p-5">
               <h3 className="font-semibold text-red-900 mb-2">Danger Zone</h3>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400 mb-4">
                 Deleting your account will remove all your data, orders, and rewards permanently after a 30-day grace period.
               </p>
 

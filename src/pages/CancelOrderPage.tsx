@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,8 @@ const CancelOrderPage = () => {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedNewAddress, setSelectedNewAddress] = useState<Address | null>(null);
+  // Suppress the listener-driven "cannot be cancelled" toast while WE are performing the cancel.
+  const isCancellingRef = useRef(false);
 
   useEffect(() => {
     if (!orderId || !user) {
@@ -39,8 +41,12 @@ const CancelOrderPage = () => {
           return;
         }
 
-        // Check if order can be cancelled
-        if (foundOrder.status !== 'pending' && foundOrder.status !== 'processing') {
+        // Check if order can be cancelled (skip during our own cancel-in-progress to avoid race)
+        if (
+          !isCancellingRef.current &&
+          foundOrder.status !== 'pending' &&
+          foundOrder.status !== 'processing'
+        ) {
           toast.error('This order cannot be cancelled');
           navigate(`/account/orders/${orderId}`);
           return;
@@ -109,6 +115,7 @@ const CancelOrderPage = () => {
     }
 
     setIsSubmitting(true);
+    isCancellingRef.current = true;
     try {
       await cancelOrder(order.id, user.uid, finalReason);
       toast.success('Order cancelled successfully');
@@ -116,6 +123,7 @@ const CancelOrderPage = () => {
     } catch (error: any) {
       console.error('Error cancelling order:', error);
       toast.error(error.message || 'Failed to cancel order');
+      isCancellingRef.current = false;
     } finally {
       setIsSubmitting(false);
     }
@@ -123,8 +131,8 @@ const CancelOrderPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-zinc-500" />
       </div>
     );
   }
@@ -134,26 +142,26 @@ const CancelOrderPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Top Site Navigation */}
       <Header />
       
       {/* Page Header */}
-      <div className="bg-white sticky top-16 z-40 border-b border-gray-100">
+      <div className="bg-white dark:bg-zinc-900 sticky top-16 z-40 border-b border-gray-100 dark:border-zinc-800">
         <div className="flex items-center gap-3 px-4 py-4">
           <button
             onClick={() => navigate(`/account/orders/${orderId}`)}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
           >
-            <ArrowLeft className="w-6 h-6 text-gray-700" />
+            <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-zinc-300" />
           </button>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
               <Ban className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Cancel Order</h1>
-              <p className="text-xs text-gray-500">Order #{order.orderId}</p>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Cancel Order</h1>
+              <p className="text-xs text-gray-500 dark:text-zinc-500">Order #{order.orderId}</p>
             </div>
           </div>
         </div>
@@ -163,10 +171,10 @@ const CancelOrderPage = () => {
       <div className="px-4 py-6">
         {/* Cancellation Reason Section */}
         <div className="mb-6">
-          <h2 className="text-base font-bold text-gray-900 mb-2">
+          <h2 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-2">
             Reason for Cancellation
           </h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-gray-600 dark:text-zinc-400 mb-4">
             Please select a reason for cancelling this order:
           </p>
 
@@ -202,7 +210,7 @@ const CancelOrderPage = () => {
                 value={customReason}
                 onChange={(e) => setCustomReason(e.target.value)}
                 placeholder="Please specify your reason..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-sm"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-sm"
                 rows={4}
               />
             </div>
@@ -228,7 +236,7 @@ const CancelOrderPage = () => {
       </div>
 
       {/* Fixed Bottom Button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-4">
         <button
           onClick={handleCancelOrder}
           disabled={
@@ -276,19 +284,19 @@ const CancelOrderPage = () => {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl max-h-[85vh] overflow-hidden"
+              className="fixed bottom-0 left-0 right-0 z-[70] bg-white dark:bg-zinc-900 rounded-t-3xl max-h-[85vh] overflow-hidden"
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
-              <div className="p-4 border-b border-gray-200">
+              <div className="p-4 border-b border-gray-200 dark:border-zinc-800">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-900">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100">
                     Select New Delivery Address
                   </h3>
                   <button
                     onClick={() => setShowAddressModal(false)}
-                    className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                   >
-                    <X className="w-5 h-5 text-gray-600" />
+                    <X className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                   </button>
                 </div>
               </div>
@@ -297,8 +305,8 @@ const CancelOrderPage = () => {
                 {addresses.length === 0 ? (
                   <div className="py-8 text-center">
                     <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No saved addresses found</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-zinc-500">No saved addresses found</p>
+                    <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
                       Please add an address from your profile
                     </p>
                   </div>
@@ -320,13 +328,13 @@ const CancelOrderPage = () => {
                             name="selectedAddress"
                             checked={selectedNewAddress?.id === address.id}
                             onChange={() => setSelectedNewAddress(address)}
-                            className="mt-1 w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+                            className="mt-1 w-4 h-4 text-red-600 border-gray-300 dark:border-zinc-700 focus:ring-red-500"
                           />
                           
                           {/* Address Details */}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-gray-900 uppercase text-sm">
+                              <span className="font-bold text-gray-900 dark:text-zinc-100 uppercase text-sm">
                                 {address.fullName}
                               </span>
                               {address.isDefault && (
@@ -335,8 +343,8 @@ const CancelOrderPage = () => {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-600 mb-1">{address.phoneNumber}</p>
-                            <p className="text-xs text-gray-700 leading-relaxed">
+                            <p className="text-xs text-gray-600 dark:text-zinc-400 mb-1">{address.phoneNumber}</p>
+                            <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
                               {address.address}
                               {address.locality && `, ${address.locality}`}, {address.city}, {address.state} - {address.pinCode}
                             </p>
@@ -349,14 +357,14 @@ const CancelOrderPage = () => {
               </div>
               
               {/* Footer Buttons */}
-              <div className="p-4 border-t border-gray-200 flex gap-3">
+              <div className="p-4 border-t border-gray-200 dark:border-zinc-800 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddressModal(false);
                     setSelectedNewAddress(null);
                   }}
-                  className="flex-1 h-11 text-sm font-semibold border-2 border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex-1 h-11 text-sm font-semibold border-2 border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-900 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
                 >
                   Cancel
                 </button>

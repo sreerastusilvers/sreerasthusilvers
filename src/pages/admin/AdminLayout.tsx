@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import logo from '@/assets/dark.png';
+import whiteLogo from '@/assets/white.png';
+import darkLogo from '@/assets/dark.png';
 import {
   LayoutDashboard,
   Package,
@@ -15,13 +16,20 @@ import {
   Truck,
   MessageSquare,
   Gift,
+  Ticket,
   Star,
   Settings,
   Users2,
   Sparkles,
+  Globe,
+  Youtube,
+  PanelTop,
+  Bell,
+  LayoutGrid,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from '@/components/ThemeToggle';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +41,7 @@ const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [contentMediaOpen, setContentMediaOpen] = React.useState(false);
   const { userProfile, logout } = useAuth();
+  const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,8 +50,15 @@ const AdminLayout = () => {
     navigate('/admin');
   };
 
-  const contentMediaPaths = ['/admin/banners', '/admin/showcases', '/admin/testimonials', '/admin/gallery', '/admin/reviews'];
+  const contentMediaPaths = ['/admin/banners', '/admin/home-banners', '/admin/home-collections', '/admin/showcases', '/admin/testimonials', '/admin/gallery', '/admin/videos', '/admin/reviews', '/admin/site-settings'];
   const isContentMediaActive = contentMediaPaths.some(p => location.pathname.startsWith(p));
+
+  // Auto-open dropdown when navigating to a content media page
+  React.useEffect(() => {
+    if (isContentMediaActive) {
+      setContentMediaOpen(true);
+    }
+  }, [isContentMediaActive]);
 
   const mainNavItems = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -50,21 +66,28 @@ const AdminLayout = () => {
     { path: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
     { path: '/admin/delivery-boys', icon: Truck, label: 'Delivery Boys' },
     { path: '/admin/customers', icon: Users2, label: 'Customers' },
-    { path: '/admin/gift-cards', icon: Gift, label: 'Coupons' },
+    { path: '/admin/coupons', icon: Ticket, label: 'Coupons' },
+    { path: '/admin/gift-cards', icon: Gift, label: 'Gift Cards' },
+    { path: '/admin/commerce-settings', icon: Settings, label: 'Commerce' },
     { path: '/admin/image-prompts', icon: Sparkles, label: 'AI Prompts' },
+    { path: '/admin/marketing', icon: Bell, label: 'Marketing' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
   ];
 
   const contentMediaItems = [
-    { path: '/admin/banners', icon: Layers, label: 'Banners' },
+    { path: '/admin/banners', icon: Layers, label: 'Hero Banners' },
     { path: '/admin/showcases', icon: Layers, label: 'Showcases' },
+    { path: '/admin/home-banners', icon: PanelTop, label: 'Collection Banner' },
+    { path: '/admin/home-collections', icon: LayoutGrid, label: 'Our Collections' },
+    { path: '/admin/videos', icon: Youtube, label: 'Videos' },
     { path: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials' },
     { path: '/admin/gallery', icon: Image, label: 'Gallery' },
     { path: '/admin/reviews', icon: Star, label: 'Reviews' },
+    { path: '/admin/site-settings', icon: Globe, label: 'Footer & Brand' },
   ];
 
   return (
-    <div className="min-h-screen bg-[#FBF8F3] font-['Poppins']" style={{ fontFamily: 'Poppins, sans-serif' }}>
+    <div className="min-h-screen bg-[#FBF8F3] dark:bg-gray-950 font-['Poppins']" style={{ fontFamily: 'Poppins, sans-serif' }}>
       <style>{`
         .admin-panel h1, .admin-panel h2, .admin-panel h3, 
         .admin-panel h4, .admin-panel h5, .admin-panel h6 {
@@ -81,18 +104,18 @@ const AdminLayout = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-[#FFFBF5] border-r border-[#F5EFE6] transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-[#FFFBF5] dark:bg-gray-900 border-r border-[#F5EFE6] dark:border-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-[#F5EFE6] flex-shrink-0">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-[#F5EFE6] dark:border-gray-800 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Sreerasthu Silvers" className="h-8 w-auto" />
+            <img src={resolvedTheme === 'dark' ? darkLogo : whiteLogo} alt="Sreerasthu Silvers" className="h-8 w-auto" />
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-gray-400 hover:text-white"
+            className="lg:hidden text-gray-400 hover:text-gray-600 dark:hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
@@ -114,8 +137,8 @@ const AdminLayout = () => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-[#FFF9E6] text-amber-700 font-medium'
-                    : 'text-gray-700 hover:bg-[#FFF9E6]/50 hover:text-gray-900'
+                    ? 'bg-[#FFF9E6] dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-[#FFF9E6]/50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                 }`
               }
             >
@@ -130,18 +153,18 @@ const AdminLayout = () => {
               onClick={() => setContentMediaOpen(!contentMediaOpen)}
               className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isContentMediaActive
-                  ? 'bg-[#FFF9E6] text-amber-700 font-medium'
-                  : 'text-gray-700 hover:bg-[#FFF9E6]/50 hover:text-gray-900'
+                  ? 'bg-[#FFF9E6] dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-[#FFF9E6]/50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <div className="flex items-center gap-3">
                 <Image className="h-5 w-5" />
                 <span>Content & Media</span>
               </div>
-              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${contentMediaOpen || isContentMediaActive ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${contentMediaOpen ? 'rotate-180' : ''}`} />
             </button>
-            {(contentMediaOpen || isContentMediaActive) && (
-              <div className="ml-4 mt-1 space-y-1 border-l-2 border-[#F5EFE6] pl-3">
+            {contentMediaOpen && (
+              <div className="ml-4 mt-1 space-y-1 border-l-2 border-[#F5EFE6] dark:border-gray-700 pl-3">
                 {contentMediaItems.map((item) => (
                   <NavLink
                     key={item.path}
@@ -150,8 +173,8 @@ const AdminLayout = () => {
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
                         isActive
-                          ? 'bg-[#FFF9E6] text-amber-700 font-medium'
-                          : 'text-gray-600 hover:bg-[#FFF9E6]/50 hover:text-gray-900'
+                          ? 'bg-[#FFF9E6] dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-[#FFF9E6]/50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                       }`
                     }
                   >
@@ -170,8 +193,8 @@ const AdminLayout = () => {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                 isActive
-                  ? 'bg-[#FFF9E6] text-amber-700 font-medium'
-                  : 'text-gray-700 hover:bg-[#FFF9E6]/50 hover:text-gray-900'
+                  ? 'bg-[#FFF9E6] dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-[#FFF9E6]/50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
               }`
             }
           >
@@ -180,10 +203,10 @@ const AdminLayout = () => {
           </NavLink>
 
           {/* Logout Button - Inside Scroll Area */}
-          <div className="pt-4 mt-4 border-t border-[#F5EFE6]">
+          <div className="pt-4 mt-4 border-t border-[#F5EFE6] dark:border-gray-800">
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-3 w-full text-gray-700 hover:bg-[#FFF9E6]/50 hover:text-gray-900 rounded-lg transition-colors"
+              className="flex items-center gap-3 px-4 py-3 w-full text-gray-700 dark:text-gray-300 hover:bg-[#FFF9E6]/50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors"
             >
               <LogOut className="h-5 w-5" />
               <span>Logout</span>
@@ -195,7 +218,7 @@ const AdminLayout = () => {
       {/* Main Content */}
       <div className="lg:ml-64">
         {/* Top Header */}
-        <header className="h-16 bg-[#FFFBF5] border-b border-[#F5EFE6] flex items-center justify-between px-4 lg:px-6">
+        <header className="h-16 bg-[#FFFBF5] dark:bg-gray-900 border-b border-[#F5EFE6] dark:border-gray-800 flex items-center justify-between px-4 lg:px-6">
           {/* Mobile Menu Button */}
           <button
             onClick={() => setSidebarOpen(true)}
@@ -209,7 +232,7 @@ const AdminLayout = () => {
             <input
               type="text"
               placeholder="Search..."
-              className="w-full bg-white border border-[#F5EFE6] rounded-lg px-4 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-amber-600"
+              className="w-full bg-white dark:bg-gray-800 border border-[#F5EFE6] dark:border-gray-700 rounded-lg px-4 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-amber-600"
             />
           </div>
 
@@ -220,7 +243,7 @@ const AdminLayout = () => {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <div className="w-8 h-8 bg-amber-600 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
@@ -231,7 +254,7 @@ const AdminLayout = () => {
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-white border-[#F5EFE6]">
+            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-900 border-[#F5EFE6] dark:border-gray-700">
               <DropdownMenuItem
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
                 onClick={handleLogout}

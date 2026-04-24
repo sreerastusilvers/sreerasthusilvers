@@ -44,8 +44,8 @@ export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'createdAt' | 'updatedAt'
     slug: 'jewellery',
     subcategories: [
       { name: 'Womens', slug: 'womens', children: [{ name: 'Rings', slug: 'rings' }, { name: 'Necklace', slug: 'necklace' }] },
-      { name: 'Mens', slug: 'mens', children: [] },
-      { name: 'Wedding', slug: 'wedding', children: [] },
+      { name: 'Earrings', slug: 'earrings', children: [] },
+      { name: 'Bangles', slug: 'bangles', children: [] },
     ],
   },
   {
@@ -60,8 +60,43 @@ export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'createdAt' | 'updatedAt'
     name: 'Articles',
     slug: 'articles',
     subcategories: [
-      { name: 'Gifting', slug: 'gifting', children: [] },
-      { name: 'Pooja Items', slug: 'pooja-items', children: [] },
+      { name: 'Decor', slug: 'decor', children: [] },
+      { name: 'Antique', slug: 'antique', children: [] },
+    ],
+  },
+  {
+    name: 'Gifting',
+    slug: 'gifting',
+    subcategories: [
+      { name: 'Personal', slug: 'personal', children: [] },
+      { name: 'Corporate', slug: 'corporate', children: [] },
+    ],
+  },
+  {
+    name: 'Pooja Items',
+    slug: 'pooja-items',
+    subcategories: [
+      { name: 'Idols', slug: 'idols', children: [] },
+      { name: 'Lamps', slug: 'lamps', children: [] },
+      { name: 'Plates', slug: 'plates', children: [] },
+    ],
+  },
+  {
+    name: "Men's",
+    slug: 'mens',
+    subcategories: [
+      { name: 'Rings', slug: 'rings', children: [] },
+      { name: 'Chains', slug: 'chains', children: [] },
+      { name: 'Bracelets', slug: 'bracelets', children: [] },
+    ],
+  },
+  {
+    name: 'Wedding',
+    slug: 'wedding',
+    subcategories: [
+      { name: 'Bridal', slug: 'bridal', children: [] },
+      { name: 'Groom', slug: 'groom', children: [] },
+      { name: 'Couple Sets', slug: 'couple-sets', children: [] },
     ],
   },
   {

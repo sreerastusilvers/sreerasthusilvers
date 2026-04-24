@@ -8,6 +8,7 @@ import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
 import CategoryIconNav from '@/components/CategoryIconNav';
 import Footer from '@/components/Footer';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -15,6 +16,7 @@ import autoTable from 'jspdf-autotable';
 import logoImage from '@/assets/dark.png';
 import { db } from '@/config/firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { createOrderMessage, OrderMessage, subscribeToCustomerOrderMessages } from '@/services/orderMessagingService';
 import {
   Loader2,
   Package,
@@ -77,7 +79,7 @@ const OrderStatusStepper = ({ status }: { status: string }) => {
   return (
     <div className="flex items-start justify-between relative" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Progress Line Background */}
-      <div className="absolute top-4 left-6 right-6 h-0.5 bg-gray-200 z-0" />
+      <div className="absolute top-4 left-6 right-6 h-0.5 bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700 z-0" />
       
       {/* Progress Line Active */}
       <div 
@@ -96,10 +98,10 @@ const OrderStatusStepper = ({ status }: { status: string }) => {
             {/* Step Circle */}
             <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
               isCancelled 
-                ? 'bg-gray-100 border-gray-300'
+                ? 'bg-gray-100 dark:bg-zinc-800 border-gray-300 dark:border-zinc-700'
                 : isCompleted 
                   ? `${activeColor} ${activeBorder}` 
-                  : 'bg-white border-gray-300'
+                  : 'bg-white dark:bg-zinc-900 border-gray-300 dark:border-zinc-700'
             }`}>
               {isCompleted ? (
                 <CheckCircle2 className="w-5 h-5 text-white" />
@@ -110,7 +112,7 @@ const OrderStatusStepper = ({ status }: { status: string }) => {
             
             {/* Step Label */}
             <p className={`text-[10px] text-center mt-2 leading-tight whitespace-pre-line ${
-              isCompleted ? `${activeText} font-medium` : 'text-gray-400'
+              isCompleted ? `${activeText} font-medium` : 'text-gray-400 dark:text-zinc-500'
             }`}>
               {step.label}
             </p>
@@ -130,7 +132,12 @@ const OrderDetailsPage = () => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  const [conversationMessages, setConversationMessages] = useState<OrderMessage[]>([]);
+  const [chatDraft, setChatDraft] = useState('');
+  const [sendingChatMessage, setSendingChatMessage] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+  const conversationSectionRef = useRef<HTMLDivElement>(null);
+  const conversationInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Return modal states
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -148,7 +155,11 @@ const OrderDetailsPage = () => {
   // Subscribe to user orders and find the specific order
   useEffect(() => {
     if (!user || !orderId) {
-      navigate('/account/orders');
+      if (window.innerWidth >= 1024) {
+        navigate('/account');
+      } else {
+        navigate('/account/orders');
+      }
       return;
     }
 
@@ -162,7 +173,11 @@ const OrderDetailsPage = () => {
           setOrder(foundOrder);
         } else {
           toast.error('Order not found');
-          navigate('/account/orders');
+          if (window.innerWidth >= 1024) {
+            navigate('/account');
+          } else {
+            navigate('/account/orders');
+          }
         }
         setLoading(false);
       },
@@ -175,6 +190,20 @@ const OrderDetailsPage = () => {
 
     return () => unsubscribe();
   }, [user, orderId, navigate]);
+
+  useEffect(() => {
+    if (!user || !orderId) return;
+
+    const unsubscribe = subscribeToCustomerOrderMessages(
+      orderId,
+      (messages) => setConversationMessages(messages),
+      (error) => {
+        console.error('Error fetching order conversation:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user, orderId]);
 
   // Check if user has already rated this delivery
   useEffect(() => {
@@ -312,6 +341,34 @@ const OrderDetailsPage = () => {
     if (method === 'online') return 'Online Payment';
     if (method === 'card') return 'Card Payment';
     return method.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
+  const focusOrderChat = () => {
+    conversationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => conversationInputRef.current?.focus(), 220);
+  };
+
+  const sendOrderChatMessage = async () => {
+    if (!order || !user || !chatDraft.trim()) return;
+
+    setSendingChatMessage(true);
+    try {
+      await createOrderMessage(order.id, {
+        authorType: 'customer',
+        authorId: user.uid,
+        authorName: order.shippingAddress.fullName || user.displayName || 'Customer',
+        channel: 'chat',
+        visibility: 'customer',
+        message: chatDraft.trim(),
+      });
+      setChatDraft('');
+      toast.success('Message sent. Our team will reply in this order conversation.');
+    } catch (error) {
+      console.error('Error sending order chat message:', error);
+      toast.error('Failed to send your message. Please try again.');
+    } finally {
+      setSendingChatMessage(false);
+    }
   };
 
   // Generate receipt image
@@ -760,7 +817,7 @@ const OrderDetailsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-900/50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
@@ -771,7 +828,7 @@ const OrderDetailsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-screen bg-[linear-gradient(180deg,rgba(212,175,55,0.05)_0%,rgba(255,255,255,1)_20%),linear-gradient(135deg,rgba(131,39,41,0.03)_0%,rgba(255,255,255,1)_55%)] dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Desktop Header + Nav */}
       <div className="hidden lg:block">
         <Header />
@@ -784,32 +841,44 @@ const OrderDetailsPage = () => {
       </div>
       
       {/* Page Header */}
-      <div className="sticky top-16 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 z-50">
-        <button
-          onClick={() => navigate('/account/orders')}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-700" />
-        </button>
-        <h2 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Details</h2>
+      <div className="mx-auto max-w-4xl px-4 pt-4">
+        <div className="flex items-center gap-3 rounded-[28px] border border-[#d4af37]/15 bg-white/88 px-4 py-4 shadow-[0_30px_80px_-60px_rgba(0,0,0,0.5)] backdrop-blur dark:border-[#d4af37]/20 dark:bg-zinc-900/88 dark:shadow-[0_30px_80px_-60px_rgba(0,0,0,0.9)]">
+          <button
+            onClick={() => {
+              if (window.innerWidth >= 1024) { navigate('/account'); return; }
+              navigate('/account/orders');
+            }}
+            className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300 dark:text-zinc-100" />
+          </button>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-px w-6 bg-[#d4af37]/50" />
+              <span className="text-[10px] uppercase tracking-[0.3em] text-[#832729] font-medium">Order</span>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Details</h2>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">ORD-{order.orderId}</p>
+          </div>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="pb-24">
+      <div className="mx-auto max-w-4xl space-y-3 px-4 pb-24 pt-4">
         {/* Tracking ID Banner */}
-        <div className="bg-blue-50 px-4 py-3 border-b border-blue-100">
-          <p className="text-sm text-blue-700">
+        <div className="rounded-[24px] border border-[#d4af37]/12 bg-[linear-gradient(135deg,rgba(59,130,246,0.08)_0%,rgba(212,175,55,0.10)_100%)] px-4 py-3 shadow-[0_20px_45px_-38px_rgba(0,0,0,0.45)] dark:border-[#d4af37]/18 dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.14)_0%,rgba(146,64,14,0.12)_100%)]">
+          <p className="text-sm text-blue-700 dark:text-blue-200">
             Order can be tracked by <span className="font-semibold">ORD-{order.orderId}</span>
             {order.trackingId && (
-              <span className="block mt-1 text-xs">Tracking ID: {order.trackingId}</span>
+              <span className="mt-1 block text-xs">Tracking ID: {order.trackingId}</span>
             )}
           </p>
         </div>
 
         {/* Product Card */}
-        <div className="bg-white px-4 py-4 border-b border-gray-100">
+        <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
           <div className="flex gap-4">
-            <div className="w-16 h-16 bg-gray-50 rounded-lg flex-shrink-0 overflow-hidden border border-gray-100">
+            <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-[#d4af37]/10 bg-gray-50 dark:bg-zinc-900 dark:bg-zinc-800/70">
               <img 
                 src={order.items[0]?.image} 
                 alt={order.items[0]?.name} 
@@ -817,31 +886,31 @@ const OrderDetailsPage = () => {
               />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {order.items.length > 1 
                   ? `${order.items[0]?.name} +${order.items.length - 1} more`
                   : order.items[0]?.name
                 }
               </h3>
-              <p className="text-base font-bold text-gray-900 mt-1">₹{order.total.toLocaleString()}</p>
+              <p className="mt-1 text-base font-bold text-gray-900 dark:text-zinc-100">₹{order.total.toLocaleString()}</p>
             </div>
           </div>
         </div>
 
         {/* Order Status Timeline */}
-        <div className="bg-white px-4 py-5 border-b border-gray-100">
+        <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-5 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
           <OrderStatusStepper status={order.status} />
         </div>
 
         {/* Current Status Card */}
-        <div className="bg-white px-4 py-4 border-b border-gray-100">
+        <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
           <div className="flex gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
               order.status === 'delivered' ? 'bg-emerald-100' :
               order.status === 'cancelled' ? 'bg-red-100' :
               order.status === 'returnRequested' ? 'bg-amber-100' :
               order.status === 'returnScheduled' ? 'bg-emerald-100' :
-              order.status === 'returned' ? 'bg-gray-100' :
+              order.status === 'returned' ? 'bg-gray-100 dark:bg-zinc-800' :
               'bg-blue-100'
             }`}>
               {order.status === 'delivered' ? (
@@ -853,20 +922,20 @@ const OrderDetailsPage = () => {
               ) : order.status === 'returnScheduled' ? (
                 <ReturnIcon className="w-5 h-5 text-emerald-600" />
               ) : order.status === 'returned' ? (
-                <CheckCircle2 className="w-5 h-5 text-gray-600" />
+                <CheckCircle2 className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
               ) : (
                 <Package className="w-5 h-5 text-blue-600" />
               )}
             </div>
             <div className="flex-1">
-              <h4 className="text-base font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>{getStatusLabel(order.status)}</h4>
+              <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{getStatusLabel(order.status)}</h4>
               {order.carrier && (
-                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">
                   <MapPin className="w-3 h-3" />
                   {order.carrier}
                 </p>
               )}
-              <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <p className="mt-1 text-xs text-gray-600 dark:text-zinc-400 dark:text-zinc-300" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {order.status === 'pending' && 'Your order has been placed successfully'}
                 {order.status === 'processing' && 'Package is being prepared for shipment'}
                 {order.status === 'shipped' && 'Package has left the warehouse'}
@@ -877,7 +946,7 @@ const OrderDetailsPage = () => {
                 {order.status === 'returnScheduled' && 'Return approved! Pickup will be scheduled soon.'}
                 {order.status === 'returned' && 'Item has been picked up and returned successfully.'}
               </p>
-              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+              <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-zinc-500">
                 <Clock className="w-3 h-3" />
                 {formatDate(order.updatedAt || order.createdAt)}
               </p>
@@ -887,10 +956,10 @@ const OrderDetailsPage = () => {
 
         {/* OTP Delivery Verification - Shown when out for delivery */}
         {order.status === 'outForDelivery' && order.delivery_otp && (
-          <div className="bg-white px-4 py-3 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-900">Delivery OTP</p>
-            <p className="text-xs text-gray-600 mt-0.5">Share this OTP with your delivery partner</p>
-            <p className="text-sm font-bold text-gray-900 mt-1">{order.delivery_otp}</p>
+          <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-3 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
+            <p className="text-xs font-semibold text-gray-900 dark:text-zinc-100">Delivery OTP</p>
+            <p className="mt-0.5 text-xs text-gray-600 dark:text-zinc-400 dark:text-zinc-300">Share this OTP with your delivery partner</p>
+            <p className="mt-1 text-sm font-bold text-gray-900 dark:text-zinc-100">{order.delivery_otp}</p>
           </div>
         )}
 
@@ -898,7 +967,7 @@ const OrderDetailsPage = () => {
         {order.status !== 'delivered' && order.status !== 'cancelled' && 
          order.status !== 'returnRequested' && order.status !== 'returnScheduled' && 
          order.status !== 'returned' && (
-          <div className="bg-amber-50 px-4 py-3 border-b border-amber-100">
+          <div className="rounded-[24px] border border-[#d4af37]/12 bg-[linear-gradient(135deg,rgba(251,191,36,0.12)_0%,rgba(212,175,55,0.08)_100%)] px-4 py-3 shadow-[0_20px_45px_-38px_rgba(0,0,0,0.45)]">
             <p className="text-sm text-amber-800">
               {order.status === 'shipped' || order.status === 'outForDelivery'
                 ? "Yayy! your item is on the way. It will reach you soon."
@@ -910,15 +979,15 @@ const OrderDetailsPage = () => {
 
         {/* Delivery Executive Info */}
         {order.status !== 'delivered' && order.status !== 'cancelled' && (
-          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <p className="text-xs text-gray-600">
-              <span className="font-medium text-gray-800">Delivery Executive details</span> will be available once the order is out for delivery
+          <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/80 dark:bg-zinc-900/80 px-4 py-3 shadow-[0_20px_45px_-38px_rgba(0,0,0,0.45)] dark:border-[#d4af37]/18 dark:bg-zinc-900/78 dark:shadow-[0_20px_45px_-38px_rgba(0,0,0,0.88)]">
+            <p className="text-xs text-gray-600 dark:text-zinc-400 dark:text-zinc-300">
+              <span className="font-medium text-gray-800 dark:text-zinc-200 dark:text-zinc-100">Delivery Executive details</span> will be available once the order is out for delivery
             </p>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="bg-white px-4 py-4 flex gap-3 border-b border-gray-100">
+        <div className="flex gap-3 rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
           {/* Cancel Button - Only for pending/processing orders */}
           {(order.status === 'pending' || order.status === 'processing') && (
             <button
@@ -943,23 +1012,90 @@ const OrderDetailsPage = () => {
 
           {/* Chat Button - Always show */}
           <button 
-            onClick={() => {
-              const phoneNumber = '919819873745';
-              const message = encodeURIComponent(
-                `Hello! I need assistance regarding my order:\n\nOrder ID: ORD-${order.orderId}\nProduct: ${order.items[0]?.name}${order.items.length > 1 ? ` +${order.items.length - 1} more items` : ''}\nStatus: ${getStatusLabel(order.status)}\n\nPlease help me with my product enquiry.`
-              );
-              window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
-            }}
+            onClick={focusOrderChat}
             className="flex-1 py-2.5 px-4 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors"
           >
             <MessageCircle className="w-4 h-4" />
-            Chat with us
+            Open order chat
           </button>
+        </div>
+
+        <div ref={conversationSectionRef} className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 p-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Order conversation</h3>
+              <p className="mt-1 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">Ask about delivery timing, product issues, or any order-specific request. Replies from the admin team stay attached to this order.</p>
+            </div>
+            <button
+              onClick={() => navigate('/customer-support')}
+              className="shrink-0 rounded-full border border-[#d4af37]/15 bg-[#fffaf1] px-3 py-1.5 text-xs font-medium text-[#832729] hover:bg-[#fff4de] dark:bg-amber-950/20 dark:text-amber-200 dark:hover:bg-amber-950/30"
+            >
+              More support
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {conversationMessages.length === 0 ? (
+              <div className="rounded-[20px] border border-dashed border-[#d4af37]/18 bg-[#fffdf8] px-4 py-6 text-center text-sm text-gray-500 dark:text-zinc-500 dark:bg-zinc-950/80 dark:text-zinc-400">
+                No order messages yet. Start the conversation below and the admin team will reply here.
+              </div>
+            ) : (
+              conversationMessages.map((message) => {
+                const isCustomerMessage = message.authorType === 'customer';
+
+                return (
+                  <div key={message.id} className={`flex ${isCustomerMessage ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[88%] rounded-[22px] px-4 py-3 shadow-sm ${
+                        isCustomerMessage
+                          ? 'bg-[#832729] text-white'
+                          : 'border border-[#d4af37]/12 bg-[#fffaf1] text-gray-800 dark:bg-amber-950/20 dark:text-zinc-100'
+                      }`}
+                    >
+                      <div className={`flex flex-wrap items-center gap-2 text-[11px] ${isCustomerMessage ? 'text-white/75' : 'text-gray-500 dark:text-zinc-400'}`}>
+                        <span className="font-semibold">{message.authorName || (isCustomerMessage ? 'You' : 'Support team')}</span>
+                        <span>{formatDate(message.createdAt as any)}</span>
+                        {message.channel !== 'chat' && (
+                          <span className={`rounded-full px-2 py-0.5 ${isCustomerMessage ? 'bg-white/10 text-white/80' : 'bg-white dark:bg-zinc-900 text-[#832729]'}`}>
+                            {message.channel}
+                          </span>
+                        )}
+                      </div>
+                      <p className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${isCustomerMessage ? 'text-white' : 'text-gray-700 dark:text-zinc-200'}`}>
+                        {message.message}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="mt-4 rounded-[22px] border border-[#d4af37]/12 bg-[#fffdf8] p-3 dark:bg-zinc-950/80">
+            <Textarea
+              ref={conversationInputRef}
+              value={chatDraft}
+              onChange={(event) => setChatDraft(event.target.value)}
+              className="min-h-[118px] resize-none border-0 bg-white/80 dark:bg-zinc-900/80 focus-visible:ring-1 focus-visible:ring-[#d4af37] dark:bg-zinc-900/70 dark:text-zinc-100"
+              placeholder="Write your order-related message here. Mention delivery timing, product questions, or any issue with this order."
+            />
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">This chat stays attached to order ORD-{order.orderId} so the admin team sees the full context.</p>
+              <button
+                onClick={sendOrderChatMessage}
+                disabled={sendingChatMessage || !chatDraft.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#832729] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#6d2022] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {sendingChatMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                {sendingChatMessage ? 'Sending...' : 'Send reply'}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Track Package Button */}
         {order.trackingUrl && (
-          <div className="bg-white px-4 py-3 border-b border-gray-100">
+          <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-3 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
             <a
               href={order.trackingUrl}
               target="_blank"
@@ -974,21 +1110,21 @@ const OrderDetailsPage = () => {
         )}
 
         {/* Delivery Details Section */}
-        <div className="bg-white mt-2 border-t border-b border-gray-100">
-          <h3 className="px-4 py-3 text-base font-semibold text-gray-900 border-b border-gray-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery details</h3>
+        <div className="overflow-hidden rounded-[24px] border border-[#d4af37]/12 bg-white/92 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
+          <h3 className="border-b border-[#d4af37]/10 px-4 py-3 text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery details</h3>
           
           {/* Delivery Address */}
-          <div className="px-4 py-3 flex items-center gap-3 border-b border-gray-100">
-            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <Home className="w-5 h-5 text-gray-600" />
+          <div className="px-4 py-3 flex items-center gap-3 border-b border-[#d4af37]/10">
+            <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-full flex items-center justify-center flex-shrink-0">
+              <Home className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-blue-600">Delivery Address</p>
-              <p className="text-xs text-gray-600 truncate">
+              <p className="text-xs text-gray-600 dark:text-zinc-400 truncate">
                 {order.shippingAddress.address}, {order.shippingAddress.city}
               </p>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
           </div>
 
           {/* Customer Info */}
@@ -999,17 +1135,17 @@ const OrderDetailsPage = () => {
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{order.shippingAddress.fullName}</p>
-              <p className="text-xs text-gray-500">ORD-{order.orderId}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{order.shippingAddress.fullName}</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">ORD-{order.orderId}</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
           </div>
         </div>
 
         {/* Rate Delivery Boy - Only for delivered orders with a delivery boy assigned */}
         {order.status === 'delivered' && order.deliveryBoyId && (
-          <div className="bg-white mt-2 border-t border-b border-gray-100">
-            <h3 className="px-4 py-3 text-base font-semibold text-gray-900 border-b border-gray-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Rate your delivery</h3>
+          <div className="bg-white/92 rounded-[24px] border border-[#d4af37]/12 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur overflow-hidden">
+            <h3 className="px-4 py-3 text-base font-semibold text-gray-900 dark:text-zinc-100 border-b border-[#d4af37]/10" style={{ fontFamily: "'Poppins', sans-serif" }}>Rate your delivery</h3>
             <div className="px-4 py-4">
               {hasRated ? (
                 <div className="flex flex-col items-center py-4 gap-2">
@@ -1018,12 +1154,12 @@ const OrderDetailsPage = () => {
                       <Star key={n} className={`h-6 w-6 ${n <= deliveryRating ? 'text-yellow-400 fill-current' : 'text-gray-200 fill-current'}`} />
                     ))}
                   </div>
-                  <p className="text-sm font-medium text-gray-700">Rating submitted!</p>
-                  <p className="text-xs text-gray-400">Thank you for your feedback</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">Rating submitted!</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">Thank you for your feedback</p>
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-gray-600 mb-3">How was your delivery experience?</p>
+                  <p className="text-sm text-gray-600 dark:text-zinc-400 mb-3">How was your delivery experience?</p>
                   <div className="flex items-center gap-2 mb-3">
                     {[1,2,3,4,5].map(n => (
                       <button key={n} onClick={() => setDeliveryRating(n)}>
@@ -1036,7 +1172,7 @@ const OrderDetailsPage = () => {
                     onChange={e => setRatingComment(e.target.value)}
                     placeholder="Leave a comment (optional)"
                     rows={2}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 mb-3"
+                    className="w-full text-sm border border-gray-200 dark:border-zinc-800 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 mb-3"
                   />
                   <button
                     onClick={submitDeliveryRating}
@@ -1052,13 +1188,13 @@ const OrderDetailsPage = () => {
           </div>
         )}
 
-        {/* Price Details Section */}        <div className="bg-white mt-2 border-t border-b border-gray-100">
-          <h3 className="px-4 py-3 text-base font-semibold text-gray-900 border-b border-gray-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Price details</h3>
+        {/* Price Details Section */}        <div className="bg-white dark:bg-zinc-900 mt-2 border-t border-b border-gray-100 dark:border-zinc-800">
+          <h3 className="px-4 py-3 text-base font-semibold text-gray-900 dark:text-zinc-100 border-b border-gray-100 dark:border-zinc-800" style={{ fontFamily: "'Poppins', sans-serif" }}>Price details</h3>
           
           <div className="px-4 py-3 space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Selling price</span>
-              <span className="text-gray-900">₹{order.subtotal.toLocaleString()}</span>
+              <span className="text-gray-600 dark:text-zinc-400">Selling price</span>
+              <span className="text-gray-900 dark:text-zinc-100">₹{order.subtotal.toLocaleString()}</span>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-sm">
@@ -1067,55 +1203,55 @@ const OrderDetailsPage = () => {
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Total fees</span>
-              <span className="text-gray-900">₹{(order.deliveryCharge + order.taxAmount).toLocaleString()}</span>
+              <span className="text-gray-600 dark:text-zinc-400">Total fees</span>
+              <span className="text-gray-900 dark:text-zinc-100">₹{(order.deliveryCharge + order.taxAmount).toLocaleString()}</span>
             </div>
-            <div className="pt-3 border-t border-gray-200 flex justify-between">
+            <div className="pt-3 border-t border-gray-200 dark:border-zinc-800 flex justify-between">
               <span className="text-base font-semibold text-blue-600">Total amount</span>
-              <span className="text-base font-bold text-gray-900">₹{order.total.toLocaleString()}</span>
+              <span className="text-base font-bold text-gray-900 dark:text-zinc-100">₹{order.total.toLocaleString()}</span>
             </div>
           </div>
         </div>
 
         {/* Share Order Details */}
-        <div className="bg-white mt-2 px-4 py-3 border-t border-gray-100">
+        <div className="bg-white dark:bg-zinc-900 mt-2 px-4 py-3 border-t border-gray-100 dark:border-zinc-800">
           <button 
             onClick={() => setShowShareMenu(true)}
-            className="w-full flex items-center justify-between text-sm text-gray-700 font-medium py-2"
+            className="w-full flex items-center justify-between text-sm text-gray-700 dark:text-zinc-300 font-medium py-2"
           >
             <div className="flex items-center gap-3">
-              <Share2 className="w-5 h-5 text-gray-500" />
+              <Share2 className="w-5 h-5 text-gray-500 dark:text-zinc-500 dark:text-zinc-400" />
               <span>Share Order Details</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight className="w-4 h-4 text-gray-400 dark:text-zinc-500" />
           </button>
         </div>
 
         {/* Download Invoice */}
-        <div className="bg-white px-4 py-3 border-b border-gray-100">
+        <div className="bg-white dark:bg-zinc-900 px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
           <button 
             onClick={() => downloadInvoice()}
             disabled={isDownloadingInvoice}
-            className="w-full flex items-center justify-between text-sm text-gray-700 font-medium py-2 disabled:opacity-50"
+            className="w-full flex items-center justify-between text-sm text-gray-700 dark:text-zinc-300 font-medium py-2 disabled:opacity-50"
           >
             <div className="flex items-center gap-3">
-              <Download className="w-5 h-5 text-gray-500" />
+              <Download className="w-5 h-5 text-gray-500 dark:text-zinc-500 dark:text-zinc-400" />
               <div className="text-left">
                 <span className="block">Download Invoice</span>
-                <span className="text-xs text-gray-400">Order ID: {order.orderId}</span>
+                <span className="text-xs text-gray-400 dark:text-zinc-500">Order ID: {order.orderId}</span>
               </div>
             </div>
             {isDownloadingInvoice ? (
-              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+              <Loader2 className="w-4 h-4 text-gray-400 dark:text-zinc-500 animate-spin" />
             ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 text-gray-400 dark:text-zinc-500" />
             )}
           </button>
         </div>
 
         {/* Feedback */}
-        <div className="bg-white mt-2 px-4 py-4 border-t border-b border-gray-100">
-          <button className="w-full flex items-center justify-center gap-2 text-sm text-gray-500">
+        <div className="bg-white dark:bg-zinc-900 mt-2 px-4 py-4 border-t border-b border-gray-100 dark:border-zinc-800">
+          <button className="w-full flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-zinc-500 dark:text-zinc-400">
             Did you find this page helpful?
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -1258,18 +1394,18 @@ const OrderDetailsPage = () => {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="bg-white w-full rounded-t-3xl p-6 pb-8"
+              className="bg-white dark:bg-zinc-900 w-full rounded-t-3xl p-6 pb-8"
               style={{ fontFamily: "'Poppins', sans-serif" }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Share Order Details</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">Share Order Details</h3>
                 <button
                   onClick={() => setShowShareMenu(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800"
                 >
-                  <X className="w-5 h-5 text-gray-600" />
+                  <X className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                 </button>
               </div>
 
@@ -1277,7 +1413,7 @@ const OrderDetailsPage = () => {
               {isGeneratingImage && (
                 <div className="flex items-center justify-center py-4 mb-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mr-3"></div>
-                  <span className="text-sm text-gray-600">Generating receipt image...</span>
+                  <span className="text-sm text-gray-600 dark:text-zinc-400">Generating receipt image...</span>
                 </div>
               )}
 
@@ -1292,7 +1428,7 @@ const OrderDetailsPage = () => {
                   <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center">
                     <MessageCircle className="w-7 h-7 text-green-600" />
                   </div>
-                  <span className="text-xs text-gray-700">WhatsApp</span>
+                  <span className="text-xs text-gray-700 dark:text-zinc-300">WhatsApp</span>
                 </button>
 
                 {/* Gmail */}
@@ -1304,7 +1440,7 @@ const OrderDetailsPage = () => {
                   <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center">
                     <Mail className="w-7 h-7 text-red-600" />
                   </div>
-                  <span className="text-xs text-gray-700">Gmail</span>
+                  <span className="text-xs text-gray-700 dark:text-zinc-300">Gmail</span>
                 </button>
 
                 {/* Instagram */}
@@ -1316,7 +1452,7 @@ const OrderDetailsPage = () => {
                   <div className="w-14 h-14 bg-pink-100 rounded-2xl flex items-center justify-center">
                     <Share2 className="w-7 h-7 text-pink-600" />
                   </div>
-                  <span className="text-xs text-gray-700">Instagram</span>
+                  <span className="text-xs text-gray-700 dark:text-zinc-300">Instagram</span>
                 </button>
 
                 {/* Download Image */}
@@ -1325,10 +1461,10 @@ const OrderDetailsPage = () => {
                   disabled={isGeneratingImage}
                   className="flex flex-col items-center gap-2 disabled:opacity-50"
                 >
-                  <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <Download className="w-7 h-7 text-gray-600" />
+                  <div className="w-14 h-14 bg-gray-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
+                    <Download className="w-7 h-7 text-gray-600 dark:text-zinc-400" />
                   </div>
-                  <span className="text-xs text-gray-700">Save</span>
+                  <span className="text-xs text-gray-700 dark:text-zinc-300">Save</span>
                 </button>
 
                 {/* Facebook Messenger */}
@@ -1340,7 +1476,7 @@ const OrderDetailsPage = () => {
                   <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center">
                     <MessageCircle className="w-7 h-7 text-blue-600" />
                   </div>
-                  <span className="text-xs text-gray-700">Messenger</span>
+                  <span className="text-xs text-gray-700 dark:text-zinc-300">Messenger</span>
                 </button>
 
                 {/* SMS */}
@@ -1352,7 +1488,7 @@ const OrderDetailsPage = () => {
                   <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center">
                     <MessageCircle className="w-7 h-7 text-green-700" />
                   </div>
-                  <span className="text-xs text-gray-700">SMS</span>
+                  <span className="text-xs text-gray-700 dark:text-zinc-300">SMS</span>
                 </button>
 
                 {/* Telegram */}
@@ -1364,7 +1500,7 @@ const OrderDetailsPage = () => {
                   <div className="w-14 h-14 bg-sky-100 rounded-2xl flex items-center justify-center">
                     <Share2 className="w-7 h-7 text-sky-600" />
                   </div>
-                  <span className="text-xs text-gray-700">Telegram</span>
+                  <span className="text-xs text-gray-700 dark:text-zinc-300">Telegram</span>
                 </button>
 
                 {/* More (Native Share) */}
@@ -1373,10 +1509,10 @@ const OrderDetailsPage = () => {
                   disabled={isGeneratingImage}
                   className="flex flex-col items-center gap-2 disabled:opacity-50"
                 >
-                  <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <Share2 className="w-7 h-7 text-gray-600" />
+                  <div className="w-14 h-14 bg-gray-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
+                    <Share2 className="w-7 h-7 text-gray-600 dark:text-zinc-400" />
                   </div>
-                  <span className="text-xs text-gray-700">More</span>
+                  <span className="text-xs text-gray-700 dark:text-zinc-300">More</span>
                 </button>
               </div>
             </motion.div>
@@ -1392,10 +1528,10 @@ const OrderDetailsPage = () => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed inset-0 bg-white z-[99999] flex flex-col"
+            className="fixed inset-0 bg-white dark:bg-zinc-900 z-[99999] flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100 dark:border-zinc-800">
               <button
                 onClick={() => {
                   if (returnStep === 'details') {
@@ -1409,9 +1545,9 @@ const OrderDetailsPage = () => {
                 }}
                 className="w-8 h-8 flex items-center justify-center"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
+                <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
               </button>
-              <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>Request Return</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Request Return</h3>
             </div>
 
             {/* Return Reasons Grid - Step 1 */}
@@ -1422,7 +1558,7 @@ const OrderDetailsPage = () => {
               {/* Product Info */}
               <div className="mb-4">
                 <div className="flex gap-3">
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0">
                     <img 
                       src={order.items[0]?.image} 
                       alt={order.items[0]?.name}
@@ -1430,25 +1566,25 @@ const OrderDetailsPage = () => {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-semibold text-gray-900 line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       {order.items[0]?.name}
                     </h4>
-                    <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400 mt-0.5" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       Quantity: {order.items[0]?.quantity}
                     </p>
-                    <p className="text-base font-bold text-gray-900 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <p className="text-base font-bold text-gray-900 dark:text-zinc-100 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       ₹{order.items[0]?.price?.toLocaleString()}
                     </p>
                   </div>
                 </div>
                 {order.items.length > 1 && (
-                  <p className="text-xs text-gray-500 mt-2 text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400 mt-2 text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     +{order.items.length - 1} more items will be included in this return
                   </p>
                 )}
               </div>
 
-              <h4 className="text-base font-semibold text-gray-900 mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>Reason for return</h4>
+              <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100 mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>Reason for return</h4>
               
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -1491,13 +1627,13 @@ const OrderDetailsPage = () => {
                     }}
                     className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all ${
                       returnReason === item.reason
-                        ? 'border-gray-900 bg-gray-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
+                        ? 'border-gray-900 bg-gray-50 dark:bg-zinc-900/50'
+                        : 'border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-gray-300 dark:border-zinc-700'
                     }`}
                   >
                     <img src={item.image} alt={item.description} className="w-16 h-16 mb-2 object-contain" />
                     <span className={`text-xs text-center leading-tight ${
-                      returnReason === item.reason ? 'text-gray-900 font-medium' : 'text-gray-600'
+                      returnReason === item.reason ? 'text-gray-900 dark:text-zinc-100 font-medium' : 'text-gray-600 dark:text-zinc-400'
                     }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                       {item.description}
                     </span>
@@ -1510,13 +1646,13 @@ const OrderDetailsPage = () => {
                 onClick={() => setReturnReason('Other reason')}
                 className={`w-full mt-3 p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
                   returnReason === 'Other reason'
-                    ? 'border-gray-900 bg-gray-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    ? 'border-gray-900 bg-gray-50 dark:bg-zinc-900/50'
+                    : 'border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-gray-300 dark:border-zinc-700'
                 }`}
               >
                 <span className="text-2xl">✏️</span>
                 <span className={`text-sm ${
-                  returnReason === 'Other reason' ? 'text-gray-900 font-medium' : 'text-gray-600'
+                  returnReason === 'Other reason' ? 'text-gray-900 dark:text-zinc-100 font-medium' : 'text-gray-600 dark:text-zinc-400'
                 }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
                   Other reason
                 </span>
@@ -1531,11 +1667,11 @@ const OrderDetailsPage = () => {
                     placeholder="Please describe your reason for return..."
                     rows={4}
                     maxLength={200}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-gray-900 bg-gray-50 text-gray-900 placeholder-gray-500 resize-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 dark:border-zinc-700 rounded-xl focus:outline-none focus:border-gray-900 bg-gray-50 dark:bg-zinc-900/50 text-gray-900 dark:text-zinc-100 placeholder-gray-500 resize-none"
                     style={{ fontFamily: "'Poppins', sans-serif" }}
                     autoFocus
                   />
-                  <p className="text-xs text-gray-700 mt-1 ml-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  <p className="text-xs text-gray-700 dark:text-zinc-300 mt-1 ml-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     {customReturnReason.length}/200 characters
                   </p>
                 </div>
@@ -1543,14 +1679,14 @@ const OrderDetailsPage = () => {
             </div>
 
             {/* Bottom Button - Step 1 */}
-            <div className="px-4 py-4 border-t border-gray-100 bg-white">
+            <div className="px-4 py-4 border-t border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
               <button
                 onClick={() => setReturnStep('details')}
                 disabled={!returnReason || (returnReason === 'Other reason' && !customReturnReason.trim())}
                 className={`w-full py-4 rounded-full font-semibold text-base transition-all ${
                   !returnReason || (returnReason === 'Other reason' && !customReturnReason.trim())
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-gray-900 text-white hover:bg-gray-800'
+                    ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500 cursor-not-allowed'
+                    : 'bg-gray-900 dark:bg-zinc-100 text-white hover:bg-gray-800 dark:bg-zinc-100'
                 }`}
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
@@ -1569,7 +1705,7 @@ const OrderDetailsPage = () => {
                     {/* Product Info */}
                     <div>
                       <div className="flex gap-3">
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0">
                           <img 
                             src={order.items[0]?.image} 
                             alt={order.items[0]?.name}
@@ -1577,60 +1713,60 @@ const OrderDetailsPage = () => {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-gray-900 line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
                             {order.items[0]?.name}
                           </h4>
-                          <p className="text-xs text-gray-500 mt-0.5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                          <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400 mt-0.5" style={{ fontFamily: "'Poppins', sans-serif" }}>
                             Quantity: {order.items[0]?.quantity}
                           </p>
-                          <p className="text-base font-bold text-gray-900 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                          <p className="text-base font-bold text-gray-900 dark:text-zinc-100 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                             ₹{order.items[0]?.price?.toLocaleString()}
                           </p>
                         </div>
                       </div>
                       {order.items.length > 1 && (
-                        <p className="text-xs text-gray-500 mt-2 text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400 mt-2 text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           +{order.items.length - 1} more items will be included in this return
                         </p>
                       )}
                     </div>
 
-                    <div className="h-px bg-gray-200" />
+                    <div className="h-px bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700" />
 
                     {/* Replacement Info */}
                     <div>
-                      <h4 className="text-base font-medium text-gray-900 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      <h4 className="text-base font-medium text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
                         Return Type
                       </h4>
                       <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                        <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           Product Replacement
                         </p>
-                        <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        <p className="text-xs text-gray-600 dark:text-zinc-400 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           Your product will be replaced with the same item after quality check
                         </p>
                       </div>
                     </div>
 
-                    <div className="h-px bg-gray-200" />
+                    <div className="h-px bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700" />
 
                     {/* Pick up and delivery */}
                     <div>
-                      <h4 className="text-sm font-medium text-gray-900 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
                         Pick up and delivery
                       </h4>
-                      <div className="p-4 bg-gray-50 rounded-lg">
-                        <p className="text-sm font-medium text-gray-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      <div className="p-4 bg-gray-50 dark:bg-zinc-900/50 rounded-lg">
+                        <p className="text-sm font-medium text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           {order.shippingAddress?.fullName || 'N/A'}
                         </p>
-                        <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        <p className="text-xs text-gray-600 dark:text-zinc-400 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           📱 {order.shippingAddress?.mobile || 'N/A'}
                         </p>
-                        <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        <p className="text-xs text-gray-600 dark:text-zinc-400 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           {order.shippingAddress?.address}, { order.shippingAddress?.locality && `${order.shippingAddress.locality}, `}{order.shippingAddress?.city}, {order.shippingAddress?.state} - {order.shippingAddress?.pincode}
                         </p>
                         {order.shippingAddress?.landmark && (
-                          <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                          <p className="text-xs text-gray-600 dark:text-zinc-400 mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                             Landmark: {order.shippingAddress.landmark}
                           </p>
                         )}
@@ -1640,14 +1776,14 @@ const OrderDetailsPage = () => {
                 </div>
 
                 {/* Bottom Button - Step 2 */}
-                <div className="px-4 py-4 border-t border-gray-100 bg-white">
+                <div className="px-4 py-4 border-t border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
                   <button
                     onClick={handleRequestReturn}
                     disabled={isSubmitting}
                     className={`w-full py-4 rounded-full font-semibold text-base transition-all ${
                       isSubmitting
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-900 text-white hover:bg-gray-800'
+                        ? 'bg-gray-100 dark:bg-zinc-800 text-gray-400 dark:text-zinc-500 cursor-not-allowed'
+                        : 'bg-gray-900 dark:bg-zinc-100 text-white hover:bg-gray-800 dark:bg-zinc-100'
                     }`}
                     style={{ fontFamily: "'Poppins', sans-serif" }}
                   >

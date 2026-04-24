@@ -43,6 +43,11 @@ service cloud.firestore {
       match /history/{historyId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
+
+      // --- WISHLIST ---
+      match /wishlist/{productId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
       
       // --- GIFT CARDS SUBCOLLECTION ---
       match /giftCards/{giftCardId} {
@@ -293,6 +298,75 @@ service cloud.firestore {
       
       // DELETE: Only admin can delete orders
       allow delete: if isAdmin();
+
+      // --- ORDER MESSAGES / IN-APP CHAT ---
+      match /messages/{messageId} {
+        function parentOrder() {
+          return get(/databases/$(database)/documents/orders/$(orderId));
+        }
+
+        function isMessageOrderOwner() {
+          return isAuthenticated() && parentOrder().data.userId == request.auth.uid;
+        }
+
+        function isCustomerMessageWrite() {
+          return request.resource.data.authorType == 'customer'
+            && request.resource.data.authorId == request.auth.uid
+            && request.resource.data.visibility == 'customer'
+            && request.resource.data.channel == 'chat';
+        }
+
+        allow read: if isAdmin() ||
+          (isMessageOrderOwner() && resource.data.visibility == 'customer');
+
+        allow create: if isAdmin() ||
+          (isMessageOrderOwner() && isCustomerMessageWrite());
+
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // --- USER FCM TOKENS (web push) ---
+    // Document ID = the FCM registration token; data: { uid, token, platform, userAgent, createdAt, updatedAt }
+    match /userTokens/{token} {
+      // Owner may create or update their own token document
+      allow create, update: if isAuthenticated()
+                            && request.resource.data.uid == request.auth.uid;
+      // Owner may delete their own token (sign-out / unsubscribe)
+      allow delete: if isAuthenticated()
+                    && resource.data.uid == request.auth.uid;
+      // Admin may read all tokens (for the broadcast UI); owner may read their own
+      allow read: if isAdmin()
+                  || (isAuthenticated() && resource.data.uid == request.auth.uid);
+    }
+
+    // --- WHATSAPP OTP ARTIFACTS ---
+    // Server-only collection. Hashed OTP records are written/verified through
+    // the Vercel functions running with the firebase-admin SDK, which bypasses
+    // these rules. Block all client access.
+    match /whatsappOtps/{doc} {
+      allow read, write: if false;
+    }
+
+    // --- VIDEO CALL SIGNALLING ---
+    // Two participants only: caller and callee. SDP offer/answer + ICE
+    // candidates live for the duration of the call and are deleted on hangup.
+    match /videoCalls/{callId} {
+      allow create: if isAuthenticated()
+                    && request.resource.data.callerUid == request.auth.uid;
+      allow read, update, delete: if isAuthenticated()
+                    && (resource.data.callerUid == request.auth.uid
+                        || resource.data.calleeUid == request.auth.uid);
+      match /callerCandidates/{cand} {
+        allow read, write: if isAuthenticated()
+                          && (get(/databases/$(database)/documents/videoCalls/$(callId)).data.callerUid == request.auth.uid
+                              || get(/databases/$(database)/documents/videoCalls/$(callId)).data.calleeUid == request.auth.uid);
+      }
+      match /calleeCandidates/{cand} {
+        allow read, write: if isAuthenticated()
+                          && (get(/databases/$(database)/documents/videoCalls/$(callId)).data.callerUid == request.auth.uid
+                              || get(/databases/$(database)/documents/videoCalls/$(callId)).data.calleeUid == request.auth.uid);
+      }
     }
   }
 }
