@@ -95,19 +95,20 @@ const Footer = () => {
             </div>
             <form
               onSubmit={(e) => e.preventDefault()}
-              className="flex w-full max-w-lg md:ml-auto rounded-full bg-white/5 backdrop-blur border border-white/10 p-1.5 focus-within:border-[#d4af37]/60 transition-colors"
+              className="flex w-full max-w-lg md:ml-auto rounded-full bg-white/5 backdrop-blur border border-white/10 p-1.5 focus-within:border-[#d4af37]/60 transition-colors overflow-hidden"
             >
               <input
                 type="email"
                 required
                 placeholder="Enter your email"
-                className="min-w-0 flex-1 bg-transparent px-5 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
               />
               <button
                 type="submit"
-                className="flex-shrink-0 whitespace-nowrap inline-flex items-center gap-2 rounded-full bg-[#d4af37] hover:bg-[#c5a02f] text-black px-5 md:px-6 py-2.5 text-xs font-semibold tracking-wide transition-colors"
+                className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#d4af37] hover:bg-[#c5a02f] text-black px-4 md:px-6 py-2.5 text-xs font-semibold tracking-wide transition-colors"
               >
-                Subscribe <ArrowRight className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Subscribe</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>
           </div>

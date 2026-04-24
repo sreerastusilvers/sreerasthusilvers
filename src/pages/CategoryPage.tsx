@@ -13,7 +13,6 @@ import {
   Heart,
   Star,
   ShoppingBag,
-  Eye,
   ArrowLeft,
   Home,
 } from "lucide-react";
@@ -382,38 +381,27 @@ const CategoryPage = () => {
             loading="lazy"
           />
           {product.badge && (
-            <span className="absolute top-2 right-2 bg-primary text-white text-xs font-medium px-2 py-1 rounded">
+            <span className="absolute top-2 left-2 bg-primary/90 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
               {product.badge}
             </span>
           )}
-          {/* Hover overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/product/${product.id}`);
-              }}
-              className="bg-card p-2 rounded-full shadow-md hover:bg-muted"
-            >
-              <Eye className="w-4 h-4 text-foreground/80" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (wishlisted) {
-                  removeFromWishlist(product.id);
-                } else {
-                  addToWishlist(product.id, product.title);
-                  toast({ title: "Added to wishlist" });
-                }
-              }}
-              className="bg-card p-2 rounded-full shadow-md hover:bg-muted"
-            >
-              <Heart
-                className={`w-4 h-4 ${wishlisted ? "fill-red-500 text-red-500" : "text-foreground/80"}`}
-              />
-            </button>
-          </div>
+          {/* Wishlist heart - always visible top right */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (wishlisted) {
+                removeFromWishlist(product.id);
+              } else {
+                addToWishlist(product.id, product.title);
+                toast({ title: "Added to wishlist" });
+              }
+            }}
+            className="absolute top-2 right-2 z-10 w-7 h-7 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
+          >
+            <Heart
+              className={`w-3.5 h-3.5 ${wishlisted ? "fill-red-500 text-red-500" : "text-foreground/70"}`}
+            />
+          </button>
         </div>
 
         {/* Info */}
