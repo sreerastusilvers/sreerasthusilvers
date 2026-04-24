@@ -129,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             language: { code: process.env.WHATSAPP_OTP_LANG || 'en_US' },
             components: [
               { type: 'body', parameters: [{ type: 'text', text: otp }] },
-              { type: 'button', sub_type: 'copy_code', index: '0', parameters: [{ type: 'coupon_code', coupon_code: otp }] },
+              { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: otp }] },
             ],
           },
         });
