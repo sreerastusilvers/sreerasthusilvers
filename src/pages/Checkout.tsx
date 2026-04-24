@@ -90,7 +90,7 @@ const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: 
 const MobileCheckout = () => {
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
-  const { items, subtotal, updateQuantity, removeFromCart, totalItems, addToCart, clearCart, openCart } = useCart();
+  const { items, subtotal, updateQuantity, removeFromCart, totalItems, addToCart, clearCart, openCart, loading: cartLoading } = useCart();
   const [currentStep] = useState(2); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
   const { toast } = useToast();
   const [suggestedProducts, setSuggestedProducts] = useState<UIProduct[]>([]);
@@ -120,6 +120,13 @@ const MobileCheckout = () => {
     state: '',
     isDefault: false,
   });
+
+  // Redirect to home when cart is empty (breaks back-button loop)
+  useEffect(() => {
+    if (!cartLoading && items.length === 0 && !showOrderSuccess) {
+      navigate('/', { replace: true });
+    }
+  }, [items, cartLoading, showOrderSuccess]);
 
   // Fetch addresses and suggested products
   const loadAddresses = async () => {
@@ -1433,7 +1440,7 @@ const MobileCheckout = () => {
 const Checkout = () => {
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
-  const { items, subtotal, clearCart, removeFromCart } = useCart();
+  const { items, subtotal, clearCart, removeFromCart, closeCart, loading: cartLoading } = useCart();
   const { toast } = useToast();
   const { toggleWishlist } = useWishlist();
   const [couponCode, setCouponCode] = useState('');
@@ -1465,6 +1472,13 @@ const Checkout = () => {
     state: '',
     isDefault: false,
   });
+
+  // Redirect to home when cart is empty (breaks back-button loop)
+  useEffect(() => {
+    if (!cartLoading && items.length === 0 && !showOrderSuccess) {
+      navigate('/', { replace: true });
+    }
+  }, [items, cartLoading, showOrderSuccess]);
 
   // Load addresses
   const loadAddresses = async () => {

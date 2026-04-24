@@ -20,7 +20,7 @@ import CategoryIconNav from "@/components/CategoryIconNav";
 const ProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
-  const { addToCart, openCart } = useCart();
+  const { addToCart, openCart, closeCart } = useCart();
   const { toast } = useToast();
   const { user } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -205,7 +205,8 @@ const ProductDetail = () => {
           category: product.category || 'Products',
         });
       }
-      // Navigate to checkout
+      // Close cart drawer and navigate to checkout
+      closeCart();
       navigate('/checkout');
     } catch (error) {
       console.error('Error:', error);
