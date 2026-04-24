@@ -10,7 +10,7 @@
  */
 import { getMessaging, getToken, onMessage, isSupported, Messaging } from 'firebase/messaging';
 import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import app, { db, firebaseConfig } from '@/config/firebase';
+import app, { auth, db, firebaseConfig } from '@/config/firebase';
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
@@ -153,10 +153,46 @@ export async function subscribeForegroundMessages(
   return foregroundUnsub;
 }
 
+/**
+ * Send a web push notification scoped to an order via /api/notify-order.
+ *
+ * Fire-and-forget: never throws — push must never block the underlying
+ * Firestore write. The endpoint authenticates with the current user's
+ * Firebase ID token and authorises the call server-side, so this works
+ * for customers, admins, and assigned delivery partners alike.
+ */
+export async function notifyOrder(input: {
+  orderId: string;
+  audience: 'customer' | 'admins' | 'delivery';
+  title: string;
+  body: string;
+  url?: string;
+  data?: Record<string, string>;
+}): Promise<void> {
+  try {
+    if (typeof window === 'undefined') return;
+    const current = auth.currentUser;
+    if (!current) return;
+    const idToken = await current.getIdToken().catch(() => '');
+    if (!idToken) return;
+    await fetch('/api/notify-order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify(input),
+    });
+  } catch (err) {
+    console.warn('[push] notifyOrder failed:', err);
+  }
+}
+
 export const PushNotifications = {
   requestPermissionAndRegisterToken,
   unregisterToken,
   subscribeForegroundMessages,
+  notifyOrder,
 };
 
 export default PushNotifications;

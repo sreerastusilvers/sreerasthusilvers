@@ -16,6 +16,29 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { sendOrderStatusAlert } from '@/services/whatsappService';
+import { notifyOrder } from '@/services/pushNotificationService';
+
+/**
+ * Friendly phrasing for each canonical/legacy status — shared between
+ * WhatsApp + web push so the customer sees consistent messages.
+ */
+const STATUS_PHRASE: Record<string, string> = {
+  pending: 'has been received and is awaiting confirmation',
+  processing: 'is being prepared',
+  packed: 'has been packed and is ready for dispatch',
+  shipped: 'has been shipped',
+  assigned: 'has been assigned to a delivery partner',
+  picked: 'has been picked up by our delivery partner',
+  outForDelivery: 'is out for delivery',
+  delivered: 'has been delivered',
+  cancelled: 'was cancelled',
+  returnRequested: 'return request has been received',
+  returnScheduled: 'return has been scheduled',
+  returned: 'return is complete',
+  deliveryFailed: 'delivery attempt failed',
+};
+
+const shortOrderRef = (orderId: string) => `#${orderId.slice(-6).toUpperCase()}`;
 
 /**
  * Best-effort delivery of WhatsApp + web-push notifications when an order's
@@ -28,7 +51,7 @@ import { sendOrderStatusAlert } from '@/services/whatsappService';
 const dispatchStatusNotifications = async (
   orderId: string,
   status: Order['status'],
-  ctx?: { phone?: string; customerName?: string; tokens?: string[] },
+  ctx?: { phone?: string; customerName?: string },
 ): Promise<void> => {
   try {
     if (ctx?.phone) {
@@ -39,21 +62,18 @@ const dispatchStatusNotifications = async (
         customerName: ctx.customerName,
       });
     }
-    // Push notification — fire-and-forget. Adminless path: only send if we
-    // have explicit tokens (admin paths use /api/send-notification directly).
-    if (ctx?.tokens?.length) {
-      void fetch('/api/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokens: ctx.tokens,
-          title: 'Order update',
-          body: `Order #${orderId.slice(-6).toUpperCase()} is now ${status}`,
-          url: `/account/orders/${orderId}`,
-          data: { orderId, status },
-        }),
-      }).catch(() => {});
-    }
+    // Web push to the customer — fire-and-forget. Recipient tokens are
+    // resolved server-side from the order's userId so callers don't need
+    // to load tokens themselves.
+    const phrase = STATUS_PHRASE[status] || `status changed to ${status}`;
+    void notifyOrder({
+      orderId,
+      audience: 'customer',
+      title: 'Order update',
+      body: `Your order ${shortOrderRef(orderId)} ${phrase}.`,
+      url: `/account/orders/${orderId}`,
+      data: { status, type: 'order-status' },
+    });
   } catch (err) {
     console.warn('[orderService] notification dispatch failed:', err);
   }
@@ -233,6 +253,26 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
     };
 
     const docRef = await addDoc(collection(db, ORDERS_COLLECTION), orderWithTimestamps);
+
+    // Best-effort web push to the customer who just placed the order, plus a
+    // heads-up to the admin team. Both are fire-and-forget.
+    void notifyOrder({
+      orderId: docRef.id,
+      audience: 'customer',
+      title: 'Order placed successfully',
+      body: `Thanks${orderData.userName ? `, ${orderData.userName.split(' ')[0]}` : ''}! Your order ${shortOrderRef(docRef.id)} has been placed.`,
+      url: `/account/orders/${docRef.id}`,
+      data: { type: 'order-placed' },
+    });
+    void notifyOrder({
+      orderId: docRef.id,
+      audience: 'admins',
+      title: 'New order received',
+      body: `Order ${shortOrderRef(docRef.id)} • ₹${Math.round(orderData.total)} from ${orderData.userName || 'a customer'}.`,
+      url: `/admin/orders/${docRef.id}`,
+      data: { type: 'order-placed' },
+    });
+
     return docRef.id;
   } catch (error) {
     console.error('Error creating order:', error);
@@ -721,10 +761,20 @@ export const assignOrderToDeliveryBoy = async (
 
     await updateDoc(docRef, updateData);
 
-    // Best-effort customer notification.
+    // Best-effort customer notification (WhatsApp + push).
     void dispatchStatusNotifications(orderId, 'outForDelivery', {
       phone: currentData.shippingAddress?.mobile,
       customerName: currentData.shippingAddress?.fullName || currentData.userName,
+    });
+
+    // Notify the assigned delivery partner that they have a new pickup.
+    void notifyOrder({
+      orderId,
+      audience: 'delivery',
+      title: 'New delivery assigned',
+      body: `Order ${shortOrderRef(orderId)} is ready for pickup.`,
+      url: `/delivery/orders/${orderId}`,
+      data: { type: 'delivery-assigned' },
     });
 
     return { otp };
@@ -780,6 +830,13 @@ export const updateDeliveryStatusByDeliveryBoy = async (
     }
 
     await updateDoc(docRef, updateData);
+
+    // Best-effort customer notification (WhatsApp + push).
+    const data = orderDoc.data() || {};
+    void dispatchStatusNotifications(orderId, status, {
+      phone: data.shippingAddress?.mobile || data.customerPhone,
+      customerName: data.shippingAddress?.fullName || data.userName,
+    });
   } catch (error) {
     console.error('Error updating delivery status:', error);
     throw new Error('Failed to update delivery status');
@@ -848,6 +905,12 @@ export const verifyDeliveryOTP = async (
       ],
     });
 
+    // Notify the customer that their order was delivered (push + WhatsApp).
+    void dispatchStatusNotifications(orderId, 'delivered', {
+      phone: orderData.shippingAddress?.mobile || orderData.customerPhone,
+      customerName: orderData.shippingAddress?.fullName || orderData.userName,
+    });
+
     return { success: true, message: 'Delivery confirmed successfully!' };
   } catch (error) {
     console.error('Error verifying delivery OTP:', error);
@@ -902,6 +965,21 @@ export const assignReturnPickupPartner = async (
     }
 
     await updateDoc(docRef, updateData);
+
+    // Notify customer + the assigned return-pickup partner.
+    void dispatchStatusNotifications(orderId, 'returnScheduled', {
+      phone: currentData.shippingAddress?.mobile,
+      customerName: currentData.shippingAddress?.fullName || currentData.userName,
+    });
+    void notifyOrder({
+      orderId,
+      audience: 'delivery',
+      title: 'Return pickup assigned',
+      body: `Order ${shortOrderRef(orderId)} is scheduled for return pickup.`,
+      url: `/delivery/orders/${orderId}`,
+      data: { type: 'return-assigned' },
+    });
+
     return { otp };
   } catch (error) {
     console.error('Error assigning return pickup partner:', error);

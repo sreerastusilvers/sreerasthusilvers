@@ -17,6 +17,7 @@ import logoImage from '@/assets/dark.png';
 import { db } from '@/config/firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { createOrderMessage, OrderMessage, subscribeToCustomerOrderMessages } from '@/services/orderMessagingService';
+import { notifyOrder } from '@/services/pushNotificationService';
 import {
   Loader2,
   Package,
@@ -439,6 +440,31 @@ const OrderDetailsPage = () => {
         visibility: 'customer',
         message: chatDraft.trim(),
       });
+
+      // Notify the admin team (and delivery partner if assigned) so the
+      // message doesn't sit unread in Firestore. Fire-and-forget.
+      const preview = chatDraft.trim().slice(0, 140);
+      const customerLabel = order.shippingAddress.fullName || user.displayName || 'Customer';
+      void notifyOrder({
+        orderId: order.id,
+        audience: 'admins',
+        title: `New message from ${customerLabel}`,
+        body: preview,
+        url: `/admin/orders/${order.id}`,
+        data: { type: 'order-chat' },
+      });
+      const deliveryAssignee = (order as any).delivery_partner_id || (order as any).delivery_boy_id;
+      if (deliveryAssignee) {
+        void notifyOrder({
+          orderId: order.id,
+          audience: 'delivery',
+          title: `Message from ${customerLabel}`,
+          body: preview,
+          url: `/delivery/orders/${order.id}`,
+          data: { type: 'order-chat' },
+        });
+      }
+
       setChatDraft('');
       toast.success('Message sent. Our team will reply in this order conversation.');
     } catch (error) {

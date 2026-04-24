@@ -9,7 +9,7 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { auth, db } from '@/config/firebase';
 import { sendWhatsAppText } from '@/services/whatsappService';
 
 export type OrderMessageAuthorType = 'admin' | 'customer' | 'system';
@@ -60,17 +60,9 @@ interface SendOrderPushMessageInput {
 }
 
 const ORDER_MESSAGES_COLLECTION = 'messages';
-const ADMIN_NOTIFICATION_KEY_LS = 'adminNotificationKey';
 
 const getOrderMessagesCollection = (orderId: string) =>
   collection(db, 'orders', orderId, ORDER_MESSAGES_COLLECTION);
-
-const getAdminKeyHeader = () => {
-  if (typeof window === 'undefined') return {};
-
-  const key = window.localStorage.getItem(ADMIN_NOTIFICATION_KEY_LS) || '';
-  return key ? { 'x-admin-key': key } : {};
-};
 
 export const createOrderMessage = async (
   orderId: string,
@@ -208,15 +200,15 @@ export const sendOrderPushMessage = async ({
   authorName,
 }: SendOrderPushMessageInput): Promise<{ ok: boolean; status: OrderMessageDeliveryStatus; error?: string }> => {
   try {
+    // Quick pre-check so we record a meaningful audit trail when the customer
+    // has no registered devices. The endpoint will also short-circuit, but
+    // we want the orderMessages history to reflect 'skipped' rather than 'sent'.
     const tokensSnapshot = await getDocs(
       query(collection(db, 'userTokens'), where('uid', '==', userId)),
     );
+    const tokenCount = tokensSnapshot.size;
 
-    const tokens = tokensSnapshot.docs
-      .map((tokenDoc) => String(tokenDoc.data().token || tokenDoc.id || ''))
-      .filter(Boolean);
-
-    if (!tokens.length) {
+    if (!tokenCount) {
       await createOrderMessage(orderId, {
         authorType: 'admin',
         authorId,
@@ -230,18 +222,35 @@ export const sendOrderPushMessage = async ({
       return { ok: false, status: 'skipped', error: 'No push-enabled devices found for this customer' };
     }
 
-    const response = await fetch('/api/send-notification', {
+    const current = auth.currentUser;
+    if (!current) {
+      await createOrderMessage(orderId, {
+        authorType: 'admin',
+        authorId,
+        authorName,
+        channel: 'push',
+        visibility: 'customer',
+        message: `${title}\n${body}`,
+        deliveryStatus: 'failed',
+        metadata: { error: 'not-authenticated' },
+      });
+      return { ok: false, status: 'failed', error: 'Sign in required to send push messages' };
+    }
+    const idToken = await current.getIdToken();
+
+    const response = await fetch('/api/notify-order', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...getAdminKeyHeader(),
+        Authorization: `Bearer ${idToken}`,
       },
       body: JSON.stringify({
-        tokens,
+        orderId,
+        audience: 'customer',
         title,
         body,
         ...(url ? { url } : {}),
-        data: { orderId, source: 'admin-order-detail' },
+        data: { source: 'admin-order-detail' },
       }),
     });
 
