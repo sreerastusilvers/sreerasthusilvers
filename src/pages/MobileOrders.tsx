@@ -62,7 +62,7 @@ const MobileOrders = () => {
 
   // Filter orders based on tab
   const filteredOrders = selectedOrderTab === 'current'
-    ? orders.filter(order => ['pending', 'processing', 'shipped', 'outForDelivery'].includes(order.status))
+    ? orders.filter(order => ['pending', 'processing', 'packed', 'shipped', 'assigned', 'outForDelivery', 'picked'].includes(order.status))
     : orders;
 
   // Format price
@@ -97,9 +97,12 @@ const MobileOrders = () => {
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20';
-      case 'processing': return 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20';
-      case 'shipped': return 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20';
-      case 'outForDelivery': return 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20';
+      case 'processing': return 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20';
+      case 'packed':
+      case 'shipped':
+      case 'assigned': return 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20';
+      case 'outForDelivery':
+      case 'picked': return 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20';
       case 'delivered': return 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20';
       case 'cancelled': return 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20';
       case 'returnRequested': return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20';
@@ -114,8 +117,11 @@ const MobileOrders = () => {
     switch (status) {
       case 'pending': return <Clock className="w-3.5 h-3.5" />;
       case 'processing': return <Package className="w-3.5 h-3.5" />;
-      case 'shipped': return <Truck className="w-3.5 h-3.5" />;
-      case 'outForDelivery': return <MapPin className="w-3.5 h-3.5" />;
+      case 'packed':
+      case 'shipped':
+      case 'assigned': return <Truck className="w-3.5 h-3.5" />;
+      case 'outForDelivery':
+      case 'picked': return <MapPin className="w-3.5 h-3.5" />;
       case 'delivered': return <CheckCircle2 className="w-3.5 h-3.5" />;
       case 'cancelled': return <XCircle className="w-3.5 h-3.5" />;
       case 'returnRequested': return <ReturnIcon className="w-3.5 h-3.5" />;
@@ -130,8 +136,11 @@ const MobileOrders = () => {
     switch (status) {
       case 'pending': return 'Pending';
       case 'processing': return 'Processing';
-      case 'shipped': return 'Shipped';
-      case 'outForDelivery': return 'Out for Delivery';
+      case 'packed':
+      case 'shipped':
+      case 'assigned': return 'Packed';
+      case 'outForDelivery':
+      case 'picked': return 'Out for Delivery';
       case 'delivered': return 'Delivered';
       case 'cancelled': return 'Cancelled';
       case 'returnRequested': return 'Return Requested';
@@ -177,7 +186,7 @@ const MobileOrders = () => {
                 <span className="text-[10px] uppercase tracking-[0.3em] text-[#832729] font-medium">Orders</span>
               </div>
               <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>My Orders</h1>
-              <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">{orders.length} total orders · {orders.filter((o) => ['pending', 'processing', 'shipped', 'outForDelivery'].includes(o.status)).length} active</p>
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">{orders.length} total orders · {orders.filter((o) => ['pending', 'processing', 'packed', 'shipped', 'assigned', 'outForDelivery', 'picked'].includes(o.status)).length} active</p>
             </div>
           </div>
         </div>
@@ -296,7 +305,7 @@ const OrderStatusStepper = ({ status }: { status: string }) => {
   const orderSteps = [
     { key: 'pending', label: 'Order\nPlaced' },
     { key: 'processing', label: 'Processing' },
-    { key: 'shipped', label: 'Shipped' },
+    { key: 'packed', label: 'Packed' },
     { key: 'outForDelivery', label: 'Out for\nDelivery' },
     { key: 'delivered', label: 'Delivered' },
   ];

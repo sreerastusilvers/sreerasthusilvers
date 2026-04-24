@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import CategoryIconNav from '@/components/CategoryIconNav';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
-import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn } from '@/services/orderService';
+import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn, cancelReturn } from '@/services/orderService';
 import { uploadToCloudinary, UploadProgress } from '@/services/cloudinaryService';
 import { useWhatsAppOtpVerification } from '@/hooks/useWhatsAppOtpVerification';
 import { toast } from 'sonner';
@@ -824,7 +824,7 @@ const AccountPage = () => {
   // Filter orders based on selected tab
   const filteredOrders = orders.filter(order => {
     if (selectedOrderTab === 'current') {
-      return ['pending', 'processing', 'shipped', 'outForDelivery'].includes(order.status);
+      return ['pending', 'processing', 'packed', 'shipped', 'assigned', 'outForDelivery', 'picked'].includes(order.status);
     } else if (selectedOrderTab === 'all') {
       return true;
     }
@@ -842,11 +842,14 @@ const AccountPage = () => {
       case 'pending':
         return 'text-amber-600';
       case 'processing':
-        return 'text-orange-600';
-      case 'shipped':
         return 'text-blue-600';
+      case 'packed':
+      case 'shipped':
+      case 'assigned':
+        return 'text-orange-600';
       case 'outForDelivery':
-        return 'text-indigo-600';
+      case 'picked':
+        return 'text-purple-600';
       case 'delivered':
         return 'text-emerald-600';
       case 'cancelled':
@@ -862,11 +865,14 @@ const AccountPage = () => {
       case 'pending':
         return 'bg-amber-50 text-amber-700 border border-amber-200';
       case 'processing':
-        return 'bg-orange-50 text-orange-700 border border-orange-200';
-      case 'shipped':
         return 'bg-blue-50 text-blue-700 border border-blue-200';
+      case 'packed':
+      case 'shipped':
+      case 'assigned':
+        return 'bg-orange-50 text-orange-700 border border-orange-200';
       case 'outForDelivery':
-        return 'bg-indigo-50 text-indigo-700 border border-indigo-200';
+      case 'picked':
+        return 'bg-purple-50 text-purple-700 border border-purple-200';
       case 'delivered':
         return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
       case 'cancelled':
@@ -877,6 +883,8 @@ const AccountPage = () => {
         return 'bg-purple-50 text-purple-700 border border-purple-200';
       case 'returned':
         return 'bg-gray-50 text-gray-700 border border-gray-200';
+      case 'deliveryFailed':
+        return 'bg-red-50 text-red-700 border border-red-200';
       default:
         return 'bg-gray-50 text-gray-700 border border-gray-200';
     }
@@ -889,9 +897,12 @@ const AccountPage = () => {
         return <Clock className="w-4 h-4" />;
       case 'processing':
         return <Package className="w-4 h-4" />;
+      case 'packed':
       case 'shipped':
+      case 'assigned':
         return <Truck className="w-4 h-4" />;
       case 'outForDelivery':
+      case 'picked':
         return <MapPin className="w-4 h-4" />;
       case 'delivered':
         return <CheckCircle2 className="w-4 h-4" />;
@@ -903,6 +914,8 @@ const AccountPage = () => {
         return <ReturnIcon className="w-4 h-4" />;
       case 'returned':
         return <ReturnIcon className="w-4 h-4" />;
+      case 'deliveryFailed':
+        return <XCircle className="w-4 h-4" />;
       default:
         return <Package className="w-4 h-4" />;
     }
@@ -915,9 +928,12 @@ const AccountPage = () => {
         return 'Pending';
       case 'processing':
         return 'Processing';
+      case 'packed':
       case 'shipped':
-        return 'Shipped';
+      case 'assigned':
+        return 'Packed';
       case 'outForDelivery':
+      case 'picked':
         return 'Out for Delivery';
       case 'delivered':
         return 'Delivered';
@@ -929,6 +945,8 @@ const AccountPage = () => {
         return 'Return Scheduled';
       case 'returned':
         return 'Returned';
+      case 'deliveryFailed':
+        return 'Delivery Attempted';
       default:
         return status;
     }
@@ -961,6 +979,7 @@ const AccountPage = () => {
   // Check if order can be returned (within 7 days of delivery)
   const canReturnOrder = (order: Order): boolean => {
     if (order.status !== 'delivered' || !order.deliveredAt) return false;
+    if ((order as any).returnCancelled) return false;
     
     const deliveredDate = order.deliveredAt.toDate();
     const now = new Date();
@@ -1002,6 +1021,21 @@ const AccountPage = () => {
       alert(error.message || 'Failed to submit return request');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Handle cancel return
+  const [cancellingReturn, setCancellingReturn] = useState(false);
+  const handleCancelReturn = async () => {
+    if (!selectedOrder) return;
+    setCancellingReturn(true);
+    try {
+      await cancelReturn(selectedOrder.id);
+      alert('Return request cancelled.');
+    } catch (err: any) {
+      alert(err?.message || 'Failed to cancel return');
+    } finally {
+      setCancellingReturn(false);
     }
   };
 
@@ -1174,12 +1208,62 @@ const AccountPage = () => {
                     <p className="text-sm text-amber-700 mt-2">Return request submitted. Waiting for approval.</p>
                   )}
                   {selectedOrder.status === 'returnScheduled' && (
-                    <p className="text-sm text-emerald-700 mt-2">Return approved! Pickup will be scheduled soon.</p>
+                    <p className="text-sm text-emerald-700 mt-2">Return approved! Your pickup partner is on the way.</p>
                   )}
                   {selectedOrder.status === 'returned' && (
                     <p className="text-sm text-muted-foreground mt-2">Item has been picked up and returned successfully.</p>
                   )}
+                  {selectedOrder.status === 'deliveryFailed' && (
+                    <p className="text-sm text-red-700 mt-2">We couldn't reach you for delivery. Your item is being returned to our store. We'll contact you to reschedule.</p>
+                  )}
                 </div>
+
+                {/* Return Pickup OTP — shown when return is scheduled */}
+                {selectedOrder.status === 'returnScheduled' && (selectedOrder as any).return_otp && (
+                  <div className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-green-50 px-5 py-4 dark:border-emerald-500/40 dark:from-emerald-500/10 dark:to-green-500/10">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Return Pickup OTP</p>
+                    <p className="mt-1 text-xs text-emerald-800 dark:text-emerald-200">Show this OTP to the pickup partner when they arrive to collect your item</p>
+                    <p className="mt-2 font-mono text-3xl font-extrabold tracking-[0.5em] text-emerald-700 dark:text-emerald-300">{(selectedOrder as any).return_otp}</p>
+                    {(selectedOrder.delivery_partner_name || (selectedOrder as any).delivery_boy_name) && (
+                      <div className="mt-3 flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 dark:bg-zinc-900/60">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest text-gray-400">Pickup Partner</p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                            {selectedOrder.delivery_partner_name || (selectedOrder as any).delivery_boy_name}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Delivery Window — shown when order is out for delivery and window is set */}
+                {(selectedOrder.status === 'outForDelivery' || selectedOrder.status === 'shipped' || selectedOrder.status === 'assigned') &&
+                  (selectedOrder as any).delivery_window_date && (
+                  <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-3 dark:border-purple-500/30 dark:from-purple-500/10 dark:to-indigo-500/10">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-purple-700 dark:text-purple-300">Expected Delivery Window</p>
+                    <p className="mt-1 text-sm font-semibold text-purple-900 dark:text-purple-100">
+                      {(() => {
+                        const d = new Date((selectedOrder as any).delivery_window_date + 'T00:00:00');
+                        const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                        const fmt = (t: string) => { const [h, m] = t.split(':').map(Number); const p = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${p}`; };
+                        return `${dateStr}, between ${fmt((selectedOrder as any).delivery_window_from)} – ${fmt((selectedOrder as any).delivery_window_to)}`;
+                      })()}
+                    </p>
+                    {(selectedOrder as any).delivery_window_note && (
+                      <p className="mt-1 text-xs text-purple-700 dark:text-purple-300">{(selectedOrder as any).delivery_window_note}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Delivery Failed card */}
+                {selectedOrder.status === 'deliveryFailed' && (
+                  <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 px-4 py-3 dark:border-red-500/30 dark:from-red-500/10 dark:to-orange-500/10">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-red-700 dark:text-red-300">Delivery Attempted</p>
+                    <p className="mt-1 text-sm font-medium text-red-900 dark:text-red-100">We couldn't reach you for delivery.</p>
+                    <p className="mt-1 text-xs text-red-700 dark:text-red-300">Your item is being returned to our store. Our team will contact you to reschedule the delivery.</p>
+                  </div>
+                )}
 
                 {/* Items Section */}
                 <div>
@@ -1668,6 +1752,27 @@ const AccountPage = () => {
                     >
                       <Ban className="w-4 h-4" />
                       Cancel Order
+                    </button>
+                    <button 
+                      onClick={() => navigate(`/account/orders/${selectedOrder.id}`)}
+                      className="flex-1 py-3 px-4 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Open order chat
+                    </button>
+                  </div>
+                )}
+
+                {/* Cancel Return — only when return is requested and not yet cancelled */}
+                {selectedOrder.status === 'returnRequested' && !(selectedOrder as any).returnCancelled && (
+                  <div className="flex gap-3 mt-3">
+                    <button
+                      onClick={handleCancelReturn}
+                      disabled={cancellingReturn}
+                      className="flex-1 py-3 px-4 border-2 border-amber-200 bg-amber-50 rounded-lg text-sm font-semibold text-amber-700 flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                    >
+                      <Ban className="w-4 h-4" />
+                      Cancel Return
                     </button>
                     <button 
                       onClick={() => navigate(`/account/orders/${selectedOrder.id}`)}

@@ -1,73 +1,90 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  BellRing,
   ChevronLeft,
-  Clock3,
-  ExternalLink,
-  Mail,
+  Loader2,
   MapPin,
-  MessageSquare,
   Package,
   Phone,
-  Send,
   ShieldCheck,
   Truck,
-  User,
   UserPlus,
+  Calendar,
+  Clock,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToDeliveryBoys, DeliveryBoy } from '@/services/deliveryBoyService';
 import {
-  assignOrderToDeliveryBoy,
+  assignDeliveryPartner,
+  assignReturnPickupPartner,
+  getNextStatus,
+  isValidStatusTransition,
+  normalizeOrderStatus,
   Order,
   subscribeToOrder,
-  TrackingUpdate,
   updateOrderStatus,
-  updateOrderTracking,
+  setDeliveryWindow,
 } from '@/services/orderService';
-import {
-  createOrderMessage,
-  OrderMessage,
-  OrderMessageChannel,
-  sendOrderPushMessage,
-  sendOrderWhatsAppMessage,
-  subscribeToOrderMessages,
-} from '@/services/orderMessagingService';
 
-const ORDER_STATUS_OPTIONS: Array<{ value: Order['status']; label: string }> = [
+/**
+ * Canonical, simplified status options for the admin dropdown. Legacy values
+ * (shipped/assigned/picked) are intentionally excluded — they are normalised
+ * to `packed` / `outForDelivery` for display.
+ */
+const STATUS_OPTIONS: Array<{ value: Order['status']; label: string }> = [
   { value: 'pending', label: 'Pending' },
   { value: 'processing', label: 'Processing' },
-  { value: 'shipped', label: 'Shipped' },
-  { value: 'assigned', label: 'Assigned' },
-  { value: 'picked', label: 'Picked Up' },
+  { value: 'packed', label: 'Packed' },
   { value: 'outForDelivery', label: 'Out for Delivery' },
   { value: 'delivered', label: 'Delivered' },
+  // Exception flow
   { value: 'cancelled', label: 'Cancelled' },
   { value: 'returnRequested', label: 'Return Requested' },
   { value: 'returnScheduled', label: 'Return Scheduled' },
+  { value: 'picked', label: 'Return Picked Up' },
   { value: 'returned', label: 'Returned' },
+  { value: 'deliveryFailed', label: 'Delivery Failed' },
 ];
 
-const CHANNEL_OPTIONS: Array<{ value: OrderMessageChannel; label: string }> = [
-  { value: 'note', label: 'Internal note' },
-  { value: 'chat', label: 'In-app chat' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'push', label: 'Web push' },
-];
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  pending: { label: 'Pending', className: 'bg-gray-200 text-gray-800 hover:bg-gray-200' },
+  processing: { label: 'Processing', className: 'bg-blue-100 text-blue-700 hover:bg-blue-100' },
+  packed: { label: 'Packed', className: 'bg-orange-100 text-orange-700 hover:bg-orange-100' },
+  outForDelivery: { label: 'Out for Delivery', className: 'bg-purple-100 text-purple-700 hover:bg-purple-100' },
+  delivered: { label: 'Delivered', className: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' },
+  cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
+  returnRequested: { label: 'Return Requested', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
+  returnScheduled: { label: 'Return Scheduled', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
+  picked: { label: 'Return Picked Up', className: 'bg-amber-100 text-amber-700 hover:bg-amber-100' },
+  returned: { label: 'Returned', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
+  deliveryFailed: { label: 'Delivery Failed', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
+};
 
-const QUICK_MESSAGE_PRESETS = [
-  'Please confirm a suitable time slot for delivery today.',
-  'Your order is packed and ready for dispatch. We will share the next update shortly.',
-  'Our delivery partner will contact you before arrival. Please keep your phone reachable.',
-];
+const NEXT_STEP_HINT: Record<string, string> = {
+  pending: 'Confirm the order to start processing.',
+  processing: 'Pack the items and mark as Packed when ready.',
+  packed: 'Assign a delivery partner — this will mark the order as Out for Delivery.',
+  outForDelivery: 'Awaiting OTP verification by the delivery partner at the customer\'s door.',
+  delivered: 'Order completed.',
+  cancelled: 'Order cancelled.',
+  returnRequested: 'Approve and schedule the return pickup.',
+  returnScheduled: 'Awaiting return pickup.',
+  picked: 'Item collected from customer. Share the Return Store OTP below with the delivery partner to confirm receipt at store.',
+  returned: 'Return completed.',
+  deliveryFailed: 'Delivery failed. Share the Return Store OTP with the delivery partner when they arrive at the store.',
+};
 
-const formatPrice = (price: number) => `₹${price.toLocaleString('en-IN')}`;
+const formatPrice = (price: number) =>
+  `₹${(price ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
 const formatDateTime = (value: any) => {
   if (!value) return 'N/A';
@@ -81,720 +98,524 @@ const formatDateTime = (value: any) => {
   });
 };
 
-const getStatusLabel = (status: Order['status']) =>
-  ORDER_STATUS_OPTIONS.find((option) => option.value === status)?.label || status;
-
-const getStatusBadgeClass = (status: Order['status']) => {
-  switch (status) {
-    case 'pending':
-      return 'bg-amber-100 text-amber-700 hover:bg-amber-100';
-    case 'processing':
-    case 'assigned':
-    case 'picked':
-      return 'bg-blue-100 text-blue-700 hover:bg-blue-100';
-    case 'shipped':
-    case 'outForDelivery':
-      return 'bg-purple-100 text-purple-700 hover:bg-purple-100';
-    case 'delivered':
-      return 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100';
-    case 'cancelled':
-    case 'returned':
-      return 'bg-red-100 text-red-700 hover:bg-red-100';
-    case 'returnRequested':
-    case 'returnScheduled':
-      return 'bg-orange-100 text-orange-700 hover:bg-orange-100';
-    default:
-      return 'bg-gray-100 text-gray-700 hover:bg-gray-100';
-  }
-};
-
-const getMessageChannelBadgeClass = (channel: OrderMessageChannel) => {
-  switch (channel) {
-    case 'chat':
-      return 'bg-sky-100 text-sky-700 hover:bg-sky-100';
-    case 'whatsapp':
-      return 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100';
-    case 'push':
-      return 'bg-blue-100 text-blue-700 hover:bg-blue-100';
-    case 'system':
-      return 'bg-purple-100 text-purple-700 hover:bg-purple-100';
-    default:
-      return 'bg-amber-100 text-amber-700 hover:bg-amber-100';
-  }
-};
-
 const AdminOrderDetails = () => {
+  const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const { orderId } = useParams();
-  const { user, userProfile } = useAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [messages, setMessages] = useState<OrderMessage[]>([]);
-  const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusValue, setStatusValue] = useState<Order['status']>('pending');
-  const [trackingStatus, setTrackingStatus] = useState<Order['status']>('pending');
-  const [trackingUrl, setTrackingUrl] = useState('');
-  const [trackingNote, setTrackingNote] = useState('');
-  const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
-  const [messageChannel, setMessageChannel] = useState<OrderMessageChannel>('note');
-  const [messageTitle, setMessageTitle] = useState('Order update from Sree Rasthu Silvers');
-  const [messageBody, setMessageBody] = useState('');
   const [savingStatus, setSavingStatus] = useState(false);
-  const [savingTracking, setSavingTracking] = useState(false);
-  const [assigningPartner, setAssigningPartner] = useState(false);
-  const [sendingMessage, setSendingMessage] = useState(false);
+  const [deliveryPartners, setDeliveryPartners] = useState<DeliveryBoy[]>([]);
+  const [assigning, setAssigning] = useState(false);
+  const [assigningReturn, setAssigningReturn] = useState(false);
 
-  const adminName = userProfile?.username || userProfile?.name || user?.displayName || 'Admin Desk';
-  const adminAuthorId = user?.uid;
+  // Delivery window state
+  const [windowDate, setWindowDate] = useState('');
+  const [windowFrom, setWindowFrom] = useState('');
+  const [windowTo, setWindowTo]     = useState('');
+  const [windowNote, setWindowNote] = useState('');
+  const [savingWindow, setSavingWindow] = useState(false);
 
+  // Real-time subscription to the order document.
   useEffect(() => {
     if (!orderId) {
-      setLoading(false);
+      navigate('/admin/orders');
       return;
     }
-
-    const unsubscribe = subscribeToOrder(
+    setLoading(true);
+    const unsub = subscribeToOrder(
       orderId,
-      (nextOrder) => {
-        setOrder(nextOrder);
+      (data) => {
+        if (!data) {
+          toast.error('Order not found');
+          navigate('/admin/orders');
+          return;
+        }
+        setOrder(data);
         setLoading(false);
       },
-      (error) => {
-        console.error('Error subscribing to order:', error);
-        toast.error('Failed to load order details');
+      (err) => {
+        console.error('order subscription error', err);
+        toast.error('Failed to load order');
         setLoading(false);
       },
     );
+    return () => unsub();
+  }, [orderId, navigate]);
 
-    return () => unsubscribe();
-  }, [orderId]);
-
+  // Load active delivery partners.
   useEffect(() => {
-    if (!orderId) return;
-
-    const unsubscribe = subscribeToOrderMessages(
-      orderId,
-      (nextMessages) => setMessages(nextMessages),
-      () => toast.error('Failed to load the order conversation'),
+    const unsub = subscribeToDeliveryBoys(
+      (boys) => setDeliveryPartners(boys.filter((b) => b.isActive !== false)),
+      (err) => console.error('partners subscription error', err),
     );
-
-    return () => unsubscribe();
-  }, [orderId]);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToDeliveryBoys(
-      (boys) => setDeliveryBoys(boys.filter((boy) => boy.isActive)),
-      (error) => console.error('Error loading delivery partners:', error),
-    );
-
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
-  useEffect(() => {
-    if (!order) return;
-    setStatusValue(order.status);
-    setTrackingStatus(order.status);
-    setTrackingUrl(order.trackingUrl || '');
-    setSelectedDeliveryBoyId(order.delivery_boy_id || '');
+  const normalizedStatus = useMemo(() => {
+    if (!order) return 'pending';
+    // In return context, 'picked' means item collected from customer — do not normalize to outForDelivery
+    if (order.status === 'picked' && (order as any).returnScheduledAt) return 'picked';
+    return normalizeOrderStatus(order.status);
   }, [order]);
 
-  const handleStatusSave = async () => {
-    if (!order) return;
-
+  const handleStatusChange = async (next: Order['status']) => {
+    if (!order || next === order.status) return;
+    if (!isValidStatusTransition(order.status, next)) {
+      toast.error('Status can only move forward in the workflow.');
+      return;
+    }
+    if (next === 'outForDelivery' && !order.delivery_boy_id && !order.delivery_partner_id) {
+      toast.error('Assign a delivery partner first — that will mark the order as Out for Delivery.');
+      return;
+    }
     setSavingStatus(true);
     try {
-      await updateOrderStatus(order.id, statusValue);
-      await createOrderMessage(order.id, {
-        authorType: 'system',
-        authorId: adminAuthorId,
-        authorName: adminName,
-        channel: 'system',
-        visibility: 'customer',
-        message: `Status changed to ${getStatusLabel(statusValue)}.`,
-      });
-      toast.success(`Order status updated to ${getStatusLabel(statusValue)}`);
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      toast.error('Failed to update order status');
+      await updateOrderStatus(order.id, next);
+      toast.success(`Status updated to ${STATUS_BADGE[next]?.label || next}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || 'Failed to update status');
     } finally {
       setSavingStatus(false);
     }
   };
 
-  const handleTrackingSave = async () => {
-    if (!order) return;
-
-    setSavingTracking(true);
+  const handleAssignReturnPartner = async (partnerId: string) => {
+    if (!order || !partnerId) return;
+    const partner = deliveryPartners.find((p) => p.id === partnerId);
+    if (!partner) return;
+    setAssigningReturn(true);
     try {
-      const trackingData: TrackingUpdate = {
-        status: trackingStatus,
-        trackingUrl: trackingUrl || undefined,
-        note: trackingNote || undefined,
-      };
-
-      await updateOrderTracking(order.id, trackingData);
-      await createOrderMessage(order.id, {
-        authorType: 'system',
-        authorId: adminAuthorId,
-        authorName: adminName,
-        channel: 'system',
-        visibility: 'customer',
-        message: trackingNote
-          ? `Tracking updated: ${trackingNote}`
-          : `Tracking moved to ${getStatusLabel(trackingStatus)}.`,
-        metadata: trackingUrl ? { trackingUrl } : undefined,
+      const { otp: pickupOtp } = await assignReturnPickupPartner(
+        order.id,
+        partner.id,
+        partner.name,
+        partner.phone,
+      );
+      toast.success(`Return pickup assigned to ${partner.name}`, {
+        description: `Pickup OTP ${pickupOtp} has been shared with the customer.`,
       });
-      setTrackingNote('');
-      toast.success('Tracking details updated');
-    } catch (error) {
-      console.error('Error updating tracking:', error);
-      toast.error('Failed to update tracking details');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || 'Failed to assign return pickup partner');
     } finally {
-      setSavingTracking(false);
+      setAssigningReturn(false);
     }
   };
 
-  const handleAssignPartner = async () => {
-    if (!order || !selectedDeliveryBoyId) {
-      toast.error('Select a delivery partner first');
-      return;
-    }
-
-    const selectedPartner = deliveryBoys.find((boy) => boy.id === selectedDeliveryBoyId);
-    if (!selectedPartner) {
-      toast.error('Delivery partner record is unavailable');
-      return;
-    }
-
-    setAssigningPartner(true);
+  const handleAssignPartner = async (partnerId: string) => {
+    if (!order || !partnerId) return;
+    const partner = deliveryPartners.find((p) => p.id === partnerId);
+    if (!partner) return;
+    setAssigning(true);
     try {
-      await assignOrderToDeliveryBoy(order.id, selectedPartner.id, selectedPartner.name);
-
-      if (order.status === 'pending') {
-        await updateOrderStatus(order.id, 'processing');
-      }
-
-      await createOrderMessage(order.id, {
-        authorType: 'system',
-        authorId: adminAuthorId,
-        authorName: adminName,
-        channel: 'system',
-        visibility: 'customer',
-        message:
-          order.status === 'pending'
-            ? `Assigned to ${selectedPartner.name} and moved to Processing.`
-            : `Assigned to ${selectedPartner.name}.`,
+      const { otp } = await assignDeliveryPartner(
+        order.id,
+        partner.id,
+        partner.name,
+        partner.phone,
+      );
+      toast.success(`Assigned to ${partner.name}`, {
+        description: `OTP ${otp} shared with the customer.`,
       });
-
-      toast.success(`Assigned to ${selectedPartner.name}`);
-    } catch (error) {
-      console.error('Error assigning delivery partner:', error);
-      toast.error('Failed to assign delivery partner');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || 'Failed to assign delivery partner');
     } finally {
-      setAssigningPartner(false);
+      setAssigning(false);
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!order || !messageBody.trim()) {
-      toast.error('Write a message before sending');
+  const handleSetWindow = async () => {
+    if (!order || !windowDate || !windowFrom || !windowTo) {
+      toast.error('Please fill in date and time range.');
       return;
     }
-
-    setSendingMessage(true);
+    setSavingWindow(true);
     try {
-      if (messageChannel === 'note') {
-        await createOrderMessage(order.id, {
-          authorType: 'admin',
-          authorId: adminAuthorId,
-          authorName: adminName,
-          channel: 'note',
-          visibility: 'internal',
-          message: messageBody.trim(),
-        });
-        toast.success('Internal note saved');
-      }
-
-      if (messageChannel === 'chat') {
-        await createOrderMessage(order.id, {
-          authorType: 'admin',
-          authorId: adminAuthorId,
-          authorName: adminName,
-          channel: 'chat',
-          visibility: 'customer',
-          message: messageBody.trim(),
-        });
-        toast.success('In-app reply sent to the customer');
-      }
-
-      if (messageChannel === 'whatsapp') {
-        const result = await sendOrderWhatsAppMessage({
-          orderId: order.id,
-          to: order.shippingAddress.mobile,
-          message: messageBody.trim(),
-          authorId: adminAuthorId,
-          authorName: adminName,
-        });
-
-        if (!result.ok) {
-          toast.error(result.error || 'WhatsApp send failed');
-          return;
-        }
-
-        toast.success('WhatsApp message sent');
-      }
-
-      if (messageChannel === 'push') {
-        if (!messageTitle.trim()) {
-          toast.error('Add a push notification title');
-          return;
-        }
-
-        const result = await sendOrderPushMessage({
-          orderId: order.id,
-          userId: order.userId,
-          title: messageTitle.trim(),
-          body: messageBody.trim(),
-          url: `/account/orders/${order.id}`,
-          authorId: adminAuthorId,
-          authorName: adminName,
-        });
-
-        if (!result.ok) {
-          toast.error(result.error || 'Push notification failed');
-          return;
-        }
-
-        toast.success('Web push sent to the customer');
-      }
-
-      setMessageBody('');
-    } catch (error) {
-      console.error('Error sending order message:', error);
-      toast.error('Failed to send the message');
+      await setDeliveryWindow(order.id, { date: windowDate, from: windowFrom, to: windowTo, note: windowNote || undefined });
+      toast.success('Delivery window saved!');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save delivery window.');
     } finally {
-      setSendingMessage(false);
+      setSavingWindow(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-600 border-t-transparent" />
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
       </div>
     );
   }
 
-  if (!order) {
-    return (
-      <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-8 text-center">
-        <Package className="mx-auto h-12 w-12 text-gray-300" />
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Order not found</h1>
-          <p className="mt-1 text-sm text-gray-500">The requested order could not be loaded from Firestore.</p>
-        </div>
-        <Button variant="outline" onClick={() => navigate('/admin/orders')}>Back to Orders</Button>
-      </div>
-    );
-  }
+  if (!order) return null;
+
+  const badge = STATUS_BADGE[normalizedStatus] || STATUS_BADGE.pending;
+  const nextStatus = normalizedStatus === 'picked' ? ('returned' as Order['status']) : getNextStatus(normalizedStatus);
+  const isPaid =
+    order.paymentStatus === 'paid' || order.paymentMethod?.toLowerCase().includes('online');
+  const partnerName = order.delivery_partner_name || order.delivery_boy_name;
+  const partnerPhone = order.delivery_partner_phone;
+  const otp = order.delivery_otp;
+  const returnOtp = (order as any).return_otp as string | undefined;
+  const returnStoreOtp = (order as any).return_store_otp as string | undefined;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-2xl border border-amber-200/50 bg-[linear-gradient(135deg,rgba(255,251,235,1),rgba(255,255,255,1),rgba(254,243,199,0.55))] p-6 shadow-sm md:flex-row md:items-center md:justify-between">
-        <div>
-          <button
-            onClick={() => navigate('/admin/orders')}
-            className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-amber-700 hover:text-amber-800"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back to Orders
-          </button>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">Order ORD-{order.orderId}</h1>
-            <Badge className={getStatusBadgeClass(order.status)}>{getStatusLabel(order.status)}</Badge>
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/admin/orders')}>
+            <ChevronLeft className="mr-1 h-4 w-4" /> Back
+          </Button>
+          <div>
+            <p className="text-xs uppercase tracking-widest text-gray-400">Order</p>
+            <h1 className="font-mono text-lg font-bold text-gray-900 dark:text-zinc-100">
+              #{order.orderId}
+            </h1>
           </div>
-          <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-500">
-            <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />{formatDateTime(order.createdAt)}</span>
-            <span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{order.userEmail}</span>
-            <span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{order.shippingAddress.mobile}</span>
+        </div>
+        <Badge className={`${badge.className} px-3 py-1.5 text-sm font-semibold`}>
+          {badge.label}
+        </Badge>
+      </div>
+
+      {/* Top summary card */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-gray-400">Customer</p>
+            <p className="mt-1 font-semibold text-gray-900 dark:text-zinc-100">
+              {order.shippingAddress?.fullName || order.userName}
+            </p>
+            <p className="text-xs text-gray-500">{order.shippingAddress?.mobile}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-gray-400">Total</p>
+            <p className="mt-1 text-xl font-bold text-amber-600">{formatPrice(order.total)}</p>
+            <p className="text-xs text-gray-500">{order.items?.length || 0} item(s)</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-gray-400">Payment</p>
+            <p className="mt-1 font-semibold text-gray-900 dark:text-zinc-100">
+              {order.paymentMethod || 'COD'}
+            </p>
+            <p className={`text-xs font-medium ${isPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {isPaid ? 'Paid' : 'Pending'}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-gray-400">Placed</p>
+            <p className="mt-1 text-sm text-gray-700 dark:text-zinc-300">
+              {formatDateTime(order.createdAt)}
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" onClick={() => navigate(`/admin/customers/${order.userId}`)}>
-            <User className="mr-2 h-4 w-4" />
-            Customer Profile
-          </Button>
-          {order.delivery_boy_id && (
-            <Button variant="outline" onClick={() => navigate(`/admin/delivery-boys/${order.delivery_boy_id}`)}>
-              <Truck className="mr-2 h-4 w-4" />
-              Delivery Partner
+        {NEXT_STEP_HINT[normalizedStatus] && (
+          <div className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+            <span className="font-semibold">Next:</span> {NEXT_STEP_HINT[normalizedStatus]}
+          </div>
+        )}
+      </div>
+
+      {/* Items */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-zinc-100">
+          <Package className="h-4 w-4" /> Items
+        </h2>
+        <div className="space-y-2">
+          {order.items?.map((item, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-3 rounded-lg bg-gray-50 p-2 dark:bg-zinc-800/50"
+            >
+              {item.image && (
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="h-12 w-12 rounded-md object-cover"
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-gray-900 dark:text-zinc-100">
+                  {item.name}
+                </p>
+                <p className="text-xs text-gray-500">Qty {item.quantity}</p>
+              </div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                {formatPrice(item.price * item.quantity)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Status + Assign Partner */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Status control */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-zinc-100">
+            Order Status
+          </h2>
+          <Select
+            value={normalizedStatus}
+            onValueChange={(v) => handleStatusChange(v as Order['status'])}
+            disabled={savingStatus}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((opt) => {
+                const allowed =
+                  opt.value === normalizedStatus ||
+                  isValidStatusTransition(normalizedStatus, opt.value);
+                return (
+                  <SelectItem key={opt.value} value={opt.value} disabled={!allowed}>
+                    {opt.label}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+          <p className="mt-2 text-xs text-gray-500">
+            Changes save automatically. Status can only move forward.
+          </p>
+          {nextStatus && (
+            <Button
+              className="mt-3 w-full"
+              variant="outline"
+              size="sm"
+              disabled={savingStatus || (nextStatus === 'outForDelivery' && !partnerName)}
+              onClick={() => handleStatusChange(nextStatus)}
+            >
+              {savingStatus ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Mark as {STATUS_BADGE[nextStatus]?.label || nextStatus}
             </Button>
+          )}
+        </div>
+
+        {/* Delivery partner / Return pickup partner */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-zinc-100">
+            <Truck className="h-4 w-4" />
+            {normalizedStatus === 'returnRequested' || normalizedStatus === 'returnScheduled' || normalizedStatus === 'picked'
+              ? 'Return Pickup Partner'
+              : 'Delivery Partner'}
+          </h2>
+
+          {/* Return flow — assign pickup partner */}
+          {normalizedStatus === 'returnRequested' ? (
+            <div className="space-y-2">
+              <Select onValueChange={handleAssignReturnPartner} disabled={assigningReturn}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a pickup partner…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {deliveryPartners.length === 0 && (
+                    <SelectItem value="__none" disabled>
+                      No active partners
+                    </SelectItem>
+                  )}
+                  {deliveryPartners.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <span className="flex items-center gap-2">
+                        <UserPlus className="h-3 w-3" />
+                        {p.name}
+                        {p.phone ? <span className="text-xs text-gray-500">· {p.phone}</span> : null}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Assigning a pickup partner will set the order to{' '}
+                <span className="font-medium">Return Scheduled</span> and share a pickup OTP with
+                the customer.
+              </p>
+              {assigningReturn && (
+                <div className="flex items-center gap-2 text-xs text-amber-600">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Assigning…
+                </div>
+              )}
+            </div>
+          ) : partnerName ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-emerald-800 dark:text-emerald-200">
+                    {partnerName}
+                  </p>
+                  {partnerPhone && (
+                    <a
+                      href={`tel:${partnerPhone}`}
+                      className="mt-0.5 flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300"
+                    >
+                      <Phone className="h-3 w-3" /> {partnerPhone}
+                    </a>
+                  )}
+                </div>
+                <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              </div>
+              {otp && normalizedStatus === 'outForDelivery' && (
+                <div className="mt-3 rounded-md bg-white px-3 py-2 dark:bg-zinc-900/60">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400">
+                    Delivery OTP
+                  </p>
+                  <p className="font-mono text-lg font-bold tracking-[0.4em] text-amber-600">
+                    {otp}
+                  </p>
+                  <p className="mt-1 text-[10px] text-gray-500">
+                    Customer can see this on their order page.
+                  </p>
+                </div>
+              )}
+              {returnOtp && normalizedStatus === 'returnScheduled' && (
+                <div className="mt-3 rounded-md bg-white px-3 py-2 dark:bg-zinc-900/60">
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400">
+                    Return Pickup OTP
+                  </p>
+                  <p className="font-mono text-lg font-bold tracking-[0.4em] text-amber-600">
+                    {returnOtp}
+                  </p>
+                  <p className="mt-1 text-[10px] text-gray-500">
+                    Customer shows this OTP to the pickup partner.
+                  </p>
+                </div>
+              )}
+              {returnStoreOtp && (normalizedStatus === 'picked' || normalizedStatus === 'deliveryFailed') && (
+                <div className="mt-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 dark:bg-amber-500/10 dark:border-amber-500/30">
+                  <p className="text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                    Return Store OTP
+                  </p>
+                  <p className="font-mono text-2xl font-bold tracking-[0.4em] text-amber-700 dark:text-amber-300">
+                    {returnStoreOtp}
+                  </p>
+                  <p className="mt-1 text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                    Tell this OTP to the delivery partner when they arrive at the store.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Select onValueChange={handleAssignPartner} disabled={assigning}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a delivery partner…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {deliveryPartners.length === 0 && (
+                    <SelectItem value="__none" disabled>
+                      No active partners
+                    </SelectItem>
+                  )}
+                  {deliveryPartners.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <span className="flex items-center gap-2">
+                        <UserPlus className="h-3 w-3" />
+                        {p.name}
+                        {p.phone ? <span className="text-xs text-gray-500">· {p.phone}</span> : null}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Assigning a partner automatically sets the order to{' '}
+                <span className="font-medium">Out for Delivery</span> and generates an OTP for
+                the customer.
+              </p>
+              {assigning && (
+                <div className="flex items-center gap-2 text-xs text-amber-600">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Assigning…
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Order Total</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{formatPrice(order.total)}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Items</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{order.items.length}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Payment</p>
-          <p className="mt-1 text-2xl font-bold capitalize text-gray-900">{order.paymentMethod}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-500">Assigned Partner</p>
-          <p className="mt-1 text-lg font-bold text-gray-900">{order.delivery_boy_name || 'Not assigned'}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_380px]">
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Items & Totals</h2>
-              <span className="text-sm text-gray-500">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</span>
-            </div>
-
-            <div className="space-y-3">
-              {order.items.map((item, index) => (
-                <div key={`${item.productId}-${index}`} className="flex gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                  <img src={item.image} alt={item.name} className="h-16 w-16 rounded-xl object-cover" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">{item.name}</p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Qty {item.quantity}
-                      {item.size ? ` • Size ${item.size}` : ''}
-                      {item.color ? ` • ${item.color}` : ''}
-                    </p>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">{formatPrice(item.price * item.quantity)}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 space-y-2 border-t border-dashed border-gray-200 pt-4 text-sm text-gray-600">
-              <div className="flex items-center justify-between"><span>Subtotal</span><span>{formatPrice(order.subtotal)}</span></div>
-              <div className="flex items-center justify-between"><span>Delivery charge</span><span>{formatPrice(order.deliveryCharge)}</span></div>
-              <div className="flex items-center justify-between"><span>Tax</span><span>{formatPrice(order.taxAmount)}</span></div>
-              {order.discount > 0 && <div className="flex items-center justify-between text-emerald-600"><span>Discount</span><span>- {formatPrice(order.discount)}</span></div>}
-              <div className="flex items-center justify-between border-t border-gray-200 pt-3 text-base font-semibold text-gray-900"><span>Total</span><span>{formatPrice(order.total)}</span></div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-blue-50 p-3 text-blue-600"><User className="h-5 w-5" /></div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Customer & Address</h2>
-                  <p className="text-sm text-gray-500">Contact and fulfilment details.</p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-3 text-sm text-gray-600">
-                <div className="rounded-xl bg-gray-50 px-4 py-3">
-                  <p className="font-medium text-gray-900">{order.shippingAddress.fullName}</p>
-                  <p className="mt-1">{order.userEmail}</p>
-                  <p className="mt-1 inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{order.shippingAddress.mobile}</p>
-                  {order.shippingAddress.alternativePhone && <p className="mt-1">Alt: {order.shippingAddress.alternativePhone}</p>}
-                </div>
-                <div className="rounded-xl bg-gray-50 px-4 py-3">
-                  <p className="inline-flex items-start gap-1.5"><MapPin className="mt-0.5 h-3.5 w-3.5" />
-                    <span>
-                      {order.shippingAddress.address}
-                      {order.shippingAddress.locality ? `, ${order.shippingAddress.locality}` : ''}
-                      <br />
-                      {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.pincode}
-                      {order.shippingAddress.landmark ? ` • Landmark: ${order.shippingAddress.landmark}` : ''}
-                    </span>
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600"><ShieldCheck className="h-5 w-5" /></div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Fulfilment Snapshot</h2>
-                  <p className="text-sm text-gray-500">Tracking, OTP and delivery ownership.</p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-3 text-sm text-gray-600">
-                <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-                  <span>Status</span>
-                  <Badge className={getStatusBadgeClass(order.status)}>{getStatusLabel(order.status)}</Badge>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-                  <span>Delivery partner</span>
-                  <span className="font-medium text-gray-900">{order.delivery_boy_name || 'Pending assignment'}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-                  <span>Delivery OTP</span>
-                  <span className="font-medium text-gray-900">{order.delivery_otp || 'Not generated'}</span>
-                </div>
-                <div className="rounded-xl bg-gray-50 px-4 py-3">
-                  <p className="font-medium text-gray-900">Tracking URL</p>
-                  {order.trackingUrl ? (
-                    <a href={order.trackingUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:text-blue-800">
-                      Open tracking link
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  ) : (
-                    <p className="mt-1 text-sm text-gray-500">No tracking link added yet.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Order Activity</h2>
-                <p className="text-sm text-gray-500">Status history and admin timeline for this order.</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {(order.statusHistory || []).length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center text-sm text-gray-500">
-                  No status history recorded yet.
-                </div>
-              ) : (
-                (order.statusHistory || []).map((entry, index) => (
-                  <div key={`${entry.status}-${index}`} className="flex gap-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-                    <div className="mt-1 h-3 w-3 rounded-full bg-amber-500" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-medium text-gray-900">{getStatusLabel(entry.status as Order['status'])}</p>
-                        <span className="text-xs text-gray-500">{formatDateTime(entry.timestamp)}</span>
-                      </div>
-                      {entry.note && <p className="mt-1 text-sm text-gray-600">{entry.note}</p>}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">Admin Controls</h2>
-              <p className="text-sm text-gray-500">Update order state, tracking, and delivery ownership from one workspace.</p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">Status</h3>
-                <p className="mt-1 text-xs text-gray-500">Uses the main status workflow and customer notification path.</p>
-                <select
-                  value={statusValue}
-                  onChange={(event) => setStatusValue(event.target.value as Order['status'])}
-                  className="mt-4 h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none ring-0 focus:border-amber-500"
-                >
-                  {ORDER_STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <Button className="mt-4 w-full" onClick={handleStatusSave} disabled={savingStatus || statusValue === order.status}>
-                  {savingStatus ? 'Updating...' : 'Save Status'}
-                </Button>
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">Tracking</h3>
-                <p className="mt-1 text-xs text-gray-500">Status, notes and URL update together.</p>
-                <select
-                  value={trackingStatus}
-                  onChange={(event) => setTrackingStatus(event.target.value as Order['status'])}
-                  className="mt-4 h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none ring-0 focus:border-amber-500"
-                >
-                  {ORDER_STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <Input className="mt-3" placeholder="https://tracking-url" value={trackingUrl} onChange={(event) => setTrackingUrl(event.target.value)} />
-                <Textarea className="mt-3 min-h-[110px]" placeholder="Tracking note for the team and timeline" value={trackingNote} onChange={(event) => setTrackingNote(event.target.value)} />
-                <Button className="mt-4 w-full" onClick={handleTrackingSave} disabled={savingTracking}>
-                  {savingTracking ? 'Saving...' : 'Save Tracking'}
-                </Button>
-              </div>
-
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">Delivery Partner</h3>
-                <p className="mt-1 text-xs text-gray-500">Assign or reassign the last-mile owner.</p>
-                <select
-                  value={selectedDeliveryBoyId}
-                  onChange={(event) => setSelectedDeliveryBoyId(event.target.value)}
-                  className="mt-4 h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none ring-0 focus:border-amber-500"
-                >
-                  <option value="">Select delivery partner</option>
-                  {deliveryBoys.map((boy) => (
-                    <option key={boy.id} value={boy.id}>{boy.name}</option>
-                  ))}
-                </select>
-                <Button className="mt-4 w-full" onClick={handleAssignPartner} disabled={assigningPartner || !selectedDeliveryBoyId}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  {assigningPartner ? 'Assigning...' : order.delivery_boy_id ? 'Reassign Partner' : 'Assign Partner'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-amber-50 p-3 text-amber-600"><MessageSquare className="h-5 w-5" /></div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Order Conversation</h2>
-                <p className="text-sm text-gray-500">Internal notes, WhatsApp sends, and web push history for this order.</p>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {QUICK_MESSAGE_PRESETS.map((preset) => (
-                <button
-                  key={preset}
-                  onClick={() => {
-                    setMessageChannel('chat');
-                    setMessageBody(preset);
-                  }}
-                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100"
-                >
-                  {preset}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto pr-1">
-              {messages.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-                  No conversation entries yet. The first message or note you send will appear here.
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <div key={message.id} className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge className={getMessageChannelBadgeClass(message.channel)}>{message.channel}</Badge>
-                      <Badge variant="outline" className="capitalize">{message.visibility}</Badge>
-                      {message.deliveryStatus && (
-                        <Badge variant="outline" className="capitalize">{message.deliveryStatus}</Badge>
-                      )}
-                      <span className="text-xs text-gray-500">{message.authorName || message.authorType}</span>
-                      <span className="text-xs text-gray-400">{formatDateTime(message.createdAt)}</span>
-                    </div>
-                    <p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">{message.message}</p>
-                    {message.metadata?.error && (
-                      <p className="mt-2 text-xs text-red-500">{message.metadata.error}</p>
-                    )}
-                    {message.metadata?.trackingUrl && (
-                      <a href={message.metadata.trackingUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-800">
-                        Open tracking link
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {CHANNEL_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setMessageChannel(option.value)}
-                    className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
-                      messageChannel === option.value
-                        ? 'border-amber-500 bg-amber-50 text-amber-700'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-
-              {messageChannel === 'push' && (
-                <Input
-                  className="mt-3"
-                  value={messageTitle}
-                  onChange={(event) => setMessageTitle(event.target.value)}
-                  placeholder="Push notification title"
-                />
-              )}
-
-              <Textarea
-                className="mt-3 min-h-[130px]"
-                value={messageBody}
-                onChange={(event) => setMessageBody(event.target.value)}
-                placeholder={
-                  messageChannel === 'note'
-                    ? 'Add an internal note for the admin team'
-                    : messageChannel === 'chat'
-                      ? 'Write an in-app reply the customer will see in their order page'
-                    : messageChannel === 'whatsapp'
-                      ? 'Write the WhatsApp message for the customer'
-                      : 'Write the push notification body'
-                }
+      {/* Delivery Window Setter — available when order is out for delivery */}
+      {(normalizedStatus === 'outForDelivery') && (
+        <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-5 shadow-sm dark:border-purple-800 dark:bg-purple-900/20">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-purple-900 dark:text-purple-100">
+            <Calendar className="h-4 w-4" /> Set Delivery Window
+          </h2>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-purple-700 mb-1 block">Date</label>
+              <input
+                type="date"
+                value={windowDate}
+                onChange={(e) => setWindowDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full rounded-xl border border-purple-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none dark:bg-zinc-800 dark:border-purple-600 dark:text-zinc-100"
               />
-
-              <Button className="mt-3 w-full" onClick={handleSendMessage} disabled={sendingMessage || !messageBody.trim()}>
-                <Send className="mr-2 h-4 w-4" />
-                {sendingMessage
-                  ? 'Sending...'
-                  : messageChannel === 'note'
-                    ? 'Save Note'
-                    : messageChannel === 'chat'
-                      ? 'Send In-App Reply'
-                    : messageChannel === 'whatsapp'
-                      ? 'Send WhatsApp'
-                      : 'Send Web Push'}
-              </Button>
             </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-blue-50 p-3 text-blue-600"><BellRing className="h-5 w-5" /></div>
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Contact Surface</h2>
-                <p className="text-sm text-gray-500">Quick facts for follow-up messaging and support.</p>
+                <label className="text-xs font-semibold text-purple-700 mb-1 block">From</label>
+                <input
+                  type="time"
+                  value={windowFrom}
+                  onChange={(e) => setWindowFrom(e.target.value)}
+                  className="w-full rounded-xl border border-purple-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none dark:bg-zinc-800 dark:border-purple-600 dark:text-zinc-100"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-purple-700 mb-1 block">To</label>
+                <input
+                  type="time"
+                  value={windowTo}
+                  onChange={(e) => setWindowTo(e.target.value)}
+                  className="w-full rounded-xl border border-purple-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none dark:bg-zinc-800 dark:border-purple-600 dark:text-zinc-100"
+                />
               </div>
             </div>
-
-            <div className="mt-4 space-y-3 text-sm text-gray-600">
-              <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-                <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Customer</span>
-                <span className="font-medium text-gray-900">{order.userName}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-                <span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />Mobile</span>
-                <span className="font-medium text-gray-900">{order.shippingAddress.mobile}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-                <span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />Email</span>
-                <span className="font-medium text-gray-900">{order.userEmail}</span>
-              </div>
-              <div className="rounded-xl bg-gray-50 px-4 py-3">
-                <p className="font-medium text-gray-900">Support note</p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Status changes and tracking updates now trigger the same best-effort customer notification path used elsewhere in order operations.
-                </p>
-              </div>
+            <div>
+              <label className="text-xs font-semibold text-purple-700 mb-1 block">Note (optional)</label>
+              <textarea
+                value={windowNote}
+                onChange={(e) => setWindowNote(e.target.value)}
+                placeholder="e.g. Please be available at the gate"
+                rows={2}
+                className="w-full rounded-xl border border-purple-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none resize-none dark:bg-zinc-800 dark:border-purple-600 dark:text-zinc-100"
+              />
             </div>
+            <Button
+              onClick={handleSetWindow}
+              disabled={savingWindow || !windowDate || !windowFrom || !windowTo}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-sm font-bold"
+            >
+              {savingWindow ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+              Save Delivery Window
+            </Button>
           </div>
         </div>
+      )}
+
+      {/* Address */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-zinc-100">
+          <MapPin className="h-4 w-4" /> Delivery Address
+        </h2>
+        <p className="text-sm text-gray-700 dark:text-zinc-300">
+          {order.shippingAddress?.address}
+          {order.shippingAddress?.locality ? `, ${order.shippingAddress.locality}` : ''},{' '}
+          {order.shippingAddress?.city}, {order.shippingAddress?.state} -{' '}
+          {order.shippingAddress?.pincode}
+        </p>
+        {order.shippingAddress?.landmark && (
+          <p className="mt-1 text-xs italic text-gray-500">
+            Landmark: {order.shippingAddress.landmark}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -106,7 +106,7 @@ const PurchaseSummary: React.FC = () => {
             deliveredCount++;
           } else if (status === 'cancelled') {
             cancelledCount++;
-          } else if (['pending', 'processing', 'shipped', 'confirmed'].includes(status || '')) {
+          } else if (['pending', 'processing', 'packed', 'shipped', 'assigned', 'outForDelivery', 'picked', 'confirmed'].includes(status || '')) {
             pendingCount++;
           }
         });

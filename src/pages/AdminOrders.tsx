@@ -60,7 +60,7 @@ const AdminOrders = () => {
     total: 0,
     pending: 0,
     processing: 0,
-    shipped: 0,
+    packed: 0,
     outForDelivery: 0,
     delivered: 0,
     cancelled: 0,
@@ -276,11 +276,14 @@ const AdminOrders = () => {
       case 'pending':
         return 'bg-amber-50 text-amber-700 border border-amber-200';
       case 'processing':
-        return 'bg-orange-50 text-orange-700 border border-orange-200';
-      case 'shipped':
         return 'bg-blue-50 text-blue-700 border border-blue-200';
+      case 'packed':
+      case 'shipped':
+      case 'assigned':
+        return 'bg-orange-50 text-orange-700 border border-orange-200';
       case 'outForDelivery':
-        return 'bg-indigo-50 text-indigo-700 border border-indigo-200';
+      case 'picked':
+        return 'bg-purple-50 text-purple-700 border border-purple-200';
       case 'delivered':
         return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
       case 'cancelled':
@@ -302,9 +305,12 @@ const AdminOrders = () => {
         return <Clock className="w-4 h-4" />;
       case 'processing':
         return <Package className="w-4 h-4" />;
+      case 'packed':
       case 'shipped':
+      case 'assigned':
         return <Truck className="w-4 h-4" />;
       case 'outForDelivery':
+      case 'picked':
         return <MapPin className="w-4 h-4" />;
       case 'delivered':
         return <CheckCircle2 className="w-4 h-4" />;
@@ -327,9 +333,12 @@ const AdminOrders = () => {
         return 'Pending';
       case 'processing':
         return 'Processing';
+      case 'packed':
       case 'shipped':
-        return 'Shipped';
+      case 'assigned':
+        return 'Packed';
       case 'outForDelivery':
+      case 'picked':
         return 'Out for Delivery';
       case 'delivered':
         return 'Delivered';
@@ -394,7 +403,8 @@ const AdminOrders = () => {
                 <option value="all">All Orders</option>
                 <option value="pending">Pending</option>
                 <option value="processing">Processing</option>
-                <option value="shipped">Shipped</option>
+                <option value="packed">Packed</option>
+                <option value="outForDelivery">Out for Delivery</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
                 <option value="returnRequested">Return Requested</option>
@@ -554,7 +564,7 @@ const AdminOrders = () => {
                         >
                           <option value="pending">Pending</option>
                           <option value="processing">Processing</option>
-                          <option value="shipped">Shipped</option>
+                          <option value="packed">Packed</option>
                           <option value="outForDelivery">Out for Delivery</option>
                           <option value="delivered">Delivered</option>
                           <option value="cancelled">Cancelled</option>
@@ -774,7 +784,7 @@ const AdminOrders = () => {
                       >
                         <option value="pending">⏳ Pending</option>
                         <option value="processing">📦 Processing</option>
-                        <option value="shipped">🚚 Shipped</option>
+                        <option value="packed">🚚 Packed</option>
                         <option value="outForDelivery">📍 Out for Delivery</option>
                         <option value="delivered">✅ Delivered</option>
                         <option value="cancelled">❌ Cancelled</option>

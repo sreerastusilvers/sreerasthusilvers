@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToUserOrders, Order, requestReturn } from '@/services/orderService';
+import { subscribeToUserOrders, Order, requestReturn, cancelReturn } from '@/services/orderService';
 import Header from '@/components/Header';
 import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
@@ -29,6 +29,7 @@ import {
   MapPin,
   Home,
   ChevronRight,
+  ChevronDown,
   Ban,
   Mail,
   X,
@@ -40,30 +41,43 @@ import {
 } from 'lucide-react';
 
 // Order Status Stepper Component
-const OrderStatusStepper = ({ status }: { status: string }) => {
+const OrderStatusStepper = ({ status, isReturnPickedState = false }: { status: string; isReturnPickedState?: boolean }) => {
   // Check if this is a return flow
-  const isReturnFlow = ['returnRequested', 'returnScheduled', 'returned'].includes(status);
+  const isReturnFlow = ['returnRequested', 'returnScheduled', 'returned'].includes(status) || isReturnPickedState;
   
-  // Normal order steps
+  // Normal order steps (canonical workflow)
   const orderSteps = [
     { key: 'pending', label: 'Order\nPlaced' },
     { key: 'processing', label: 'Processing' },
-    { key: 'shipped', label: 'Shipped' },
+    { key: 'packed', label: 'Packed' },
     { key: 'outForDelivery', label: 'Out for\nDelivery' },
     { key: 'delivered', label: 'Delivered' },
   ];
 
-  // Return flow steps
+  // Return flow steps (4 steps including the interim 'picked' state)
   const returnSteps = [
     { key: 'returnRequested', label: 'Return\nRequested' },
     { key: 'returnScheduled', label: 'Return\nScheduled' },
-    { key: 'returned', label: 'Picked Up' },
+    { key: 'picked', label: 'Return\nPickup' },
+    { key: 'returned', label: 'Returned' },
   ];
 
   const steps = isReturnFlow ? returnSteps : orderSteps;
 
   const getStepIndex = (currentStatus: string) => {
-    const index = steps.findIndex(s => s.key === currentStatus);
+    if (isReturnFlow) {
+      // In return context, 'picked' is a valid step — do not normalize it away
+      const index = steps.findIndex(s => s.key === currentStatus);
+      return index >= 0 ? index : 0;
+    }
+    // Normalise legacy statuses to canonical ones for the normal stepper.
+    const normalised =
+      currentStatus === 'shipped' || currentStatus === 'assigned'
+        ? 'packed'
+        : currentStatus === 'picked'
+          ? 'outForDelivery'
+          : currentStatus;
+    const index = steps.findIndex(s => s.key === normalised);
     return index >= 0 ? index : 0;
   };
 
@@ -146,11 +160,36 @@ const OrderDetailsPage = () => {
   const [returnStep, setReturnStep] = useState<'reason' | 'details'>('reason');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Cancel Return state
+  const [cancellingReturn, setCancellingReturn] = useState(false);
+
+  const handleCancelReturn = async () => {
+    if (!order) return;
+    setCancellingReturn(true);
+    try {
+      await cancelReturn(order.id);
+      toast.success('Return request cancelled.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to cancel return');
+    } finally {
+      setCancellingReturn(false);
+    }
+  };
+
   // Delivery rating states
   const [deliveryRating, setDeliveryRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [hasRated, setHasRated] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
+
+  // Product rating states
+  const [productRating, setProductRating] = useState(0);
+  const [productRatingComment, setProductRatingComment] = useState('');
+  const [hasRatedProduct, setHasRatedProduct] = useState(false);
+  const [submittingProductRating, setSubmittingProductRating] = useState(false);
+
+  // Conversation collapsible
+  const [conversationOpen, setConversationOpen] = useState(false);
 
   // Subscribe to user orders and find the specific order
   useEffect(() => {
@@ -213,6 +252,39 @@ const OrderDetailsPage = () => {
       .catch(() => {});
   }, [order, user]);
 
+  // Check if user has already rated the product
+  useEffect(() => {
+    if (!order || order.status !== 'delivered' || !user) return;
+    getDocs(query(collection(db, 'productRatings'), where('orderId', '==', order.id), where('userId', '==', user.uid)))
+      .then(snap => { if (!snap.empty) setHasRatedProduct(true); })
+      .catch(() => {});
+  }, [order, user]);
+
+  const submitProductRating = async () => {
+    if (!order || !user || productRating === 0) {
+      toast.error('Please select a star rating');
+      return;
+    }
+    setSubmittingProductRating(true);
+    try {
+      await addDoc(collection(db, 'productRatings'), {
+        productId: order.items[0]?.id || order.items[0]?.productId || order.id,
+        productName: order.items[0]?.name,
+        orderId: order.id,
+        userId: user.uid,
+        rating: productRating,
+        comment: productRatingComment.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setHasRatedProduct(true);
+      toast.success('Thank you for rating the product!');
+    } catch {
+      toast.error('Failed to submit rating. Please try again.');
+    } finally {
+      setSubmittingProductRating(false);
+    }
+  };
+
   const submitDeliveryRating = async () => {
     if (!order?.deliveryBoyId || !user || deliveryRating === 0) {
       toast.error('Please select a star rating');
@@ -265,13 +337,17 @@ const OrderDetailsPage = () => {
     switch (status) {
       case 'pending': return 'Pending';
       case 'processing': return 'Processing';
-      case 'shipped': return 'Shipped';
+      case 'packed': return 'Packed';
+      case 'shipped': return 'Packed';
+      case 'assigned': return 'Packed';
+      case 'picked': return 'Out for Delivery';
       case 'outForDelivery': return 'Out for Delivery';
       case 'delivered': return 'Delivered';
       case 'cancelled': return 'Cancelled';
       case 'returnRequested': return 'Return Requested';
       case 'returnScheduled': return 'Return Scheduled';
       case 'returned': return 'Returned';
+      case 'deliveryFailed': return 'Delivery Attempted';
       default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
@@ -279,6 +355,7 @@ const OrderDetailsPage = () => {
   // Check if order can be returned (within 7 days of delivery)
   const canReturnOrder = (order: Order) => {
     if (order.status !== 'delivered') return false;
+    if ((order as any).returnCancelled) return false;
     
     if (!order.deliveredAt) {
       return true;
@@ -344,8 +421,9 @@ const OrderDetailsPage = () => {
   };
 
   const focusOrderChat = () => {
+    setConversationOpen(true);
     conversationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    window.setTimeout(() => conversationInputRef.current?.focus(), 220);
+    window.setTimeout(() => conversationInputRef.current?.focus(), 320);
   };
 
   const sendOrderChatMessage = async () => {
@@ -899,7 +977,7 @@ const OrderDetailsPage = () => {
 
         {/* Order Status Timeline */}
         <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-5 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
-          <OrderStatusStepper status={order.status} />
+          <OrderStatusStepper status={order.status} isReturnPickedState={order.status === 'picked' && !!(order as any).returnScheduledAt} />
         </div>
 
         {/* Current Status Card */}
@@ -910,6 +988,7 @@ const OrderDetailsPage = () => {
               order.status === 'cancelled' ? 'bg-red-100' :
               order.status === 'returnRequested' ? 'bg-amber-100' :
               order.status === 'returnScheduled' ? 'bg-emerald-100' :
+              (order.status === 'picked' && !!(order as any).returnScheduledAt) ? 'bg-amber-100' :
               order.status === 'returned' ? 'bg-gray-100 dark:bg-zinc-800' :
               'bg-blue-100'
             }`}>
@@ -921,6 +1000,8 @@ const OrderDetailsPage = () => {
                 <ReturnIcon className="w-5 h-5 text-amber-600" />
               ) : order.status === 'returnScheduled' ? (
                 <ReturnIcon className="w-5 h-5 text-emerald-600" />
+              ) : (order.status === 'picked' && !!(order as any).returnScheduledAt) ? (
+                <Truck className="w-5 h-5 text-amber-600" />
               ) : order.status === 'returned' ? (
                 <CheckCircle2 className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
               ) : (
@@ -928,7 +1009,9 @@ const OrderDetailsPage = () => {
               )}
             </div>
             <div className="flex-1">
-              <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{getStatusLabel(order.status)}</h4>
+              <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                {order.status === 'picked' && !!(order as any).returnScheduledAt ? 'Return Pickup' : getStatusLabel(order.status)}
+              </h4>
               {order.carrier && (
                 <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">
                   <MapPin className="w-3 h-3" />
@@ -938,8 +1021,10 @@ const OrderDetailsPage = () => {
               <p className="mt-1 text-xs text-gray-600 dark:text-zinc-400 dark:text-zinc-300" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {order.status === 'pending' && 'Your order has been placed successfully'}
                 {order.status === 'processing' && 'Package is being prepared for shipment'}
-                {order.status === 'shipped' && 'Package has left the warehouse'}
-                {order.status === 'outForDelivery' && 'Package is out for delivery'}
+                {(order.status === 'packed' || order.status === 'shipped' || order.status === 'assigned') && 'Your order is packed and ready for dispatch'}
+                {order.status === 'outForDelivery' && 'Your order is on the way!'}
+                {order.status === 'picked' && !(order as any).returnScheduledAt && 'Your order is on the way!'}
+                {order.status === 'picked' && !!(order as any).returnScheduledAt && 'Pickup partner has collected the item. Return in progress.'}
                 {order.status === 'delivered' && 'Package has been delivered'}
                 {order.status === 'cancelled' && 'Order has been cancelled'}
                 {order.status === 'returnRequested' && 'Return request submitted. Waiting for approval.'}
@@ -956,32 +1041,96 @@ const OrderDetailsPage = () => {
 
         {/* OTP Delivery Verification - Shown when out for delivery */}
         {order.status === 'outForDelivery' && order.delivery_otp && (
-          <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-3 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
-            <p className="text-xs font-semibold text-gray-900 dark:text-zinc-100">Delivery OTP</p>
-            <p className="mt-0.5 text-xs text-gray-600 dark:text-zinc-400 dark:text-zinc-300">Share this OTP with your delivery partner</p>
-            <p className="mt-1 text-sm font-bold text-gray-900 dark:text-zinc-100">{order.delivery_otp}</p>
+          <div className="rounded-[24px] border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 px-5 py-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] dark:border-amber-500/40 dark:from-amber-500/10 dark:to-orange-500/10">
+            <p className="text-xs font-semibold uppercase tracking-widest text-amber-700 dark:text-amber-300">Delivery OTP</p>
+            <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">Share this OTP with your delivery partner at the door</p>
+            <p className="mt-2 font-mono text-3xl font-extrabold tracking-[0.5em] text-amber-700 dark:text-amber-300">{order.delivery_otp}</p>
+            {(order.delivery_partner_name || order.delivery_boy_name) && (
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 dark:bg-zinc-900/60">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400">Delivery Partner</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                    {order.delivery_partner_name || order.delivery_boy_name}
+                  </p>
+                </div>
+                {order.delivery_partner_phone && (
+                  <a
+                    href={`tel:${order.delivery_partner_phone}`}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-white"
+                  >
+                    <Truck className="h-3 w-3" /> Call
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Return Pickup OTP — shown to customer when return is scheduled */}
+        {order.status === 'returnScheduled' && (order as any).return_otp && (
+          <div className="rounded-[24px] border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-green-50 px-5 py-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] dark:border-emerald-500/40 dark:from-emerald-500/10 dark:to-green-500/10">
+            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Return Pickup OTP</p>
+            <p className="mt-1 text-xs text-emerald-800 dark:text-emerald-200">Show this OTP to the pickup partner when they arrive to collect your item</p>
+            <p className="mt-2 font-mono text-3xl font-extrabold tracking-[0.5em] text-emerald-700 dark:text-emerald-300">{(order as any).return_otp}</p>
+            {(order.delivery_partner_name || order.delivery_boy_name) && (
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 dark:bg-zinc-900/60">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400">Pickup Partner</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                    {order.delivery_partner_name || order.delivery_boy_name}
+                  </p>
+                </div>
+                {order.delivery_partner_phone && (
+                  <a
+                    href={`tel:${order.delivery_partner_phone}`}
+                    className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-white"
+                  >
+                    <Truck className="h-3 w-3" /> Call
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Delivery Window — shown when out for delivery and window is set */}
+        {(order.status === 'outForDelivery' || order.status === 'shipped' || order.status === 'assigned' || order.status === 'picked') &&
+          (order as any).delivery_window_date && (
+          <div className="rounded-[24px] border border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50 px-5 py-4 shadow-[0_20px_45px_-38px_rgba(0,0,0,0.30)] dark:border-purple-500/30 dark:from-purple-500/10 dark:to-indigo-500/10">
+            <p className="text-xs font-semibold uppercase tracking-widest text-purple-700 dark:text-purple-300">Expected Delivery Window</p>
+            <p className="mt-2 text-base font-semibold text-purple-900 dark:text-purple-100">
+              {(() => {
+                const d = new Date((order as any).delivery_window_date + 'T00:00:00');
+                const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                const fmt = (t: string) => { const [h, m] = t.split(':').map(Number); const p = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${p}`; };
+                return `${dateStr}, between ${fmt((order as any).delivery_window_from)} – ${fmt((order as any).delivery_window_to)}`;
+              })()}
+            </p>
+            {(order as any).delivery_window_note && (
+              <p className="mt-1 text-xs text-purple-700 dark:text-purple-300">{(order as any).delivery_window_note}</p>
+            )}
+          </div>
+        )}
+
+        {/* Delivery Failed notice */}
+        {order.status === 'deliveryFailed' && (
+          <div className="rounded-[24px] border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 px-5 py-4 shadow-[0_20px_45px_-38px_rgba(0,0,0,0.30)] dark:border-red-500/30 dark:from-red-500/10 dark:to-orange-500/10">
+            <p className="text-xs font-semibold uppercase tracking-widest text-red-700 dark:text-red-300">Delivery Attempted</p>
+            <p className="mt-2 text-sm font-medium text-red-900 dark:text-red-100">We couldn't reach you for delivery.</p>
+            <p className="mt-1 text-xs text-red-700 dark:text-red-300">Your item is being returned to our store. Our team will contact you to reschedule the delivery.</p>
           </div>
         )}
 
         {/* Delivery Message */}
         {order.status !== 'delivered' && order.status !== 'cancelled' && 
          order.status !== 'returnRequested' && order.status !== 'returnScheduled' && 
-         order.status !== 'returned' && (
+         order.status !== 'returned' && order.status !== 'deliveryFailed' && (
           <div className="rounded-[24px] border border-[#d4af37]/12 bg-[linear-gradient(135deg,rgba(251,191,36,0.12)_0%,rgba(212,175,55,0.08)_100%)] px-4 py-3 shadow-[0_20px_45px_-38px_rgba(0,0,0,0.45)]">
             <p className="text-sm text-amber-800">
-              {order.status === 'shipped' || order.status === 'outForDelivery'
+              {(order.status === 'shipped' || order.status === 'outForDelivery' || order.status === 'picked')
                 ? "Yayy! your item is on the way. It will reach you soon."
                 : "Your order is being processed. We'll notify you once it's shipped."
               }
-            </p>
-          </div>
-        )}
-
-        {/* Delivery Executive Info */}
-        {order.status !== 'delivered' && order.status !== 'cancelled' && (
-          <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/80 dark:bg-zinc-900/80 px-4 py-3 shadow-[0_20px_45px_-38px_rgba(0,0,0,0.45)] dark:border-[#d4af37]/18 dark:bg-zinc-900/78 dark:shadow-[0_20px_45px_-38px_rgba(0,0,0,0.88)]">
-            <p className="text-xs text-gray-600 dark:text-zinc-400 dark:text-zinc-300">
-              <span className="font-medium text-gray-800 dark:text-zinc-200 dark:text-zinc-100">Delivery Executive details</span> will be available once the order is out for delivery
             </p>
           </div>
         )}
@@ -996,6 +1145,18 @@ const OrderDetailsPage = () => {
             >
               <Ban className="w-4 h-4" />
               Cancel Order
+            </button>
+          )}
+
+          {/* Cancel Return — only for returnRequested orders, one-time */}
+          {order.status === 'returnRequested' && !(order as any).returnCancelled && (
+            <button
+              onClick={handleCancelReturn}
+              disabled={cancellingReturn}
+              className="flex-1 py-2.5 px-4 bg-amber-50 border border-amber-200 rounded-lg text-sm font-medium text-amber-700 flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors disabled:opacity-50"
+            >
+              {cancellingReturn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+              Cancel Return
             </button>
           )}
 
@@ -1021,76 +1182,100 @@ const OrderDetailsPage = () => {
         </div>
 
         <div ref={conversationSectionRef} className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 p-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
-          <div className="flex items-start justify-between gap-3">
+          <button
+            onClick={() => setConversationOpen(!conversationOpen)}
+            className="flex w-full items-start justify-between gap-3 text-left"
+          >
             <div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Order conversation</h3>
-              <p className="mt-1 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">Ask about delivery timing, product issues, or any order-specific request. Replies from the admin team stay attached to this order.</p>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                Order conversation
+                {conversationMessages.length > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[#832729] px-2 py-0.5 text-[10px] font-bold text-white">
+                    {conversationMessages.length}
+                  </span>
+                )}
+              </h3>
+              {!conversationOpen && (
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-400">
+                  {conversationMessages.length === 0 ? 'Tap to start a conversation' : `${conversationMessages.length} message${conversationMessages.length > 1 ? 's' : ''}`}
+                </p>
+              )}
             </div>
-            <button
-              onClick={() => navigate('/customer-support')}
-              className="shrink-0 rounded-full border border-[#d4af37]/15 bg-[#fffaf1] px-3 py-1.5 text-xs font-medium text-[#832729] hover:bg-[#fff4de] dark:bg-amber-950/20 dark:text-amber-200 dark:hover:bg-amber-950/30"
-            >
-              More support
-            </button>
-          </div>
+            <ChevronDown className={`mt-0.5 h-5 w-5 shrink-0 text-gray-400 transition-transform duration-200 dark:text-zinc-500 ${conversationOpen ? 'rotate-180' : ''}`} />
+          </button>
 
-          <div className="mt-4 space-y-3">
-            {conversationMessages.length === 0 ? (
-              <div className="rounded-[20px] border border-dashed border-[#d4af37]/18 bg-[#fffdf8] px-4 py-6 text-center text-sm text-gray-500 dark:text-zinc-500 dark:bg-zinc-950/80 dark:text-zinc-400">
-                No order messages yet. Start the conversation below and the admin team will reply here.
+          {conversationOpen && (
+            <>
+              <p className="mt-2 text-xs text-gray-500 dark:text-zinc-400">Ask about delivery timing, product issues, or any order-specific request. Replies from the admin team stay attached to this order.</p>
+
+              <div className="mt-4 flex items-center justify-end">
+                <button
+                  onClick={() => navigate('/customer-support')}
+                  className="shrink-0 rounded-full border border-[#d4af37]/15 bg-[#fffaf1] px-3 py-1.5 text-xs font-medium text-[#832729] hover:bg-[#fff4de] dark:bg-amber-950/20 dark:text-amber-200 dark:hover:bg-amber-950/30"
+                >
+                  More support
+                </button>
               </div>
-            ) : (
-              conversationMessages.map((message) => {
-                const isCustomerMessage = message.authorType === 'customer';
 
-                return (
-                  <div key={message.id} className={`flex ${isCustomerMessage ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[88%] rounded-[22px] px-4 py-3 shadow-sm ${
-                        isCustomerMessage
-                          ? 'bg-[#832729] text-white'
-                          : 'border border-[#d4af37]/12 bg-[#fffaf1] text-gray-800 dark:bg-amber-950/20 dark:text-zinc-100'
-                      }`}
-                    >
-                      <div className={`flex flex-wrap items-center gap-2 text-[11px] ${isCustomerMessage ? 'text-white/75' : 'text-gray-500 dark:text-zinc-400'}`}>
-                        <span className="font-semibold">{message.authorName || (isCustomerMessage ? 'You' : 'Support team')}</span>
-                        <span>{formatDate(message.createdAt as any)}</span>
-                        {message.channel !== 'chat' && (
-                          <span className={`rounded-full px-2 py-0.5 ${isCustomerMessage ? 'bg-white/10 text-white/80' : 'bg-white dark:bg-zinc-900 text-[#832729]'}`}>
-                            {message.channel}
-                          </span>
-                        )}
-                      </div>
-                      <p className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${isCustomerMessage ? 'text-white' : 'text-gray-700 dark:text-zinc-200'}`}>
-                        {message.message}
-                      </p>
-                    </div>
+              <div className="mt-3 space-y-3">
+                {conversationMessages.length === 0 ? (
+                  <div className="rounded-[20px] border border-dashed border-[#d4af37]/18 bg-[#fffdf8] px-4 py-6 text-center text-sm text-gray-500 dark:bg-zinc-950/80 dark:text-zinc-400">
+                    No order messages yet. Start the conversation below and the admin team will reply here.
                   </div>
-                );
-              })
-            )}
-          </div>
+                ) : (
+                  conversationMessages.map((message) => {
+                    const isCustomerMessage = message.authorType === 'customer';
 
-          <div className="mt-4 rounded-[22px] border border-[#d4af37]/12 bg-[#fffdf8] p-3 dark:bg-zinc-950/80">
-            <Textarea
-              ref={conversationInputRef}
-              value={chatDraft}
-              onChange={(event) => setChatDraft(event.target.value)}
-              className="min-h-[118px] resize-none border-0 bg-white/80 dark:bg-zinc-900/80 focus-visible:ring-1 focus-visible:ring-[#d4af37] dark:bg-zinc-900/70 dark:text-zinc-100"
-              placeholder="Write your order-related message here. Mention delivery timing, product questions, or any issue with this order."
-            />
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">This chat stays attached to order ORD-{order.orderId} so the admin team sees the full context.</p>
-              <button
-                onClick={sendOrderChatMessage}
-                disabled={sendingChatMessage || !chatDraft.trim()}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#832729] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#6d2022] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {sendingChatMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-                {sendingChatMessage ? 'Sending...' : 'Send reply'}
-              </button>
-            </div>
-          </div>
+                    return (
+                      <div key={message.id} className={`flex ${isCustomerMessage ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className={`max-w-[88%] rounded-[22px] px-4 py-3 shadow-sm ${
+                            isCustomerMessage
+                              ? 'bg-[#832729] text-white'
+                              : 'border border-[#d4af37]/12 bg-[#fffaf1] text-gray-800 dark:bg-amber-950/20 dark:text-zinc-100'
+                          }`}
+                        >
+                          <div className={`flex flex-wrap items-center gap-2 text-[11px] ${isCustomerMessage ? 'text-white/75' : 'text-gray-500 dark:text-zinc-400'}`}>
+                            <span className="font-semibold">{message.authorName || (isCustomerMessage ? 'You' : 'Support team')}</span>
+                            <span>{formatDate(message.createdAt as any)}</span>
+                            {message.channel !== 'chat' && (
+                              <span className={`rounded-full px-2 py-0.5 ${isCustomerMessage ? 'bg-white/10 text-white/80' : 'bg-white dark:bg-zinc-900 text-[#832729]'}`}>
+                                {message.channel}
+                              </span>
+                            )}
+                          </div>
+                          <p className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${isCustomerMessage ? 'text-white' : 'text-gray-700 dark:text-zinc-200'}`}>
+                            {message.message}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="mt-4 rounded-[22px] border border-[#d4af37]/12 bg-[#fffdf8] p-3 dark:bg-zinc-950/80">
+                <Textarea
+                  ref={conversationInputRef}
+                  value={chatDraft}
+                  onChange={(event) => setChatDraft(event.target.value)}
+                  className="min-h-[118px] resize-none border-0 bg-white/80 dark:bg-zinc-900/80 focus-visible:ring-1 focus-visible:ring-[#d4af37] dark:bg-zinc-900/70 dark:text-zinc-100"
+                  placeholder="Write your order-related message here. Mention delivery timing, product questions, or any issue with this order."
+                />
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-gray-500 dark:text-zinc-400">This chat stays attached to order ORD-{order.orderId} so the admin team sees the full context.</p>
+                  <button
+                    onClick={sendOrderChatMessage}
+                    disabled={sendingChatMessage || !chatDraft.trim()}
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#832729] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#6d2022] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {sendingChatMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                    {sendingChatMessage ? 'Sending...' : 'Send reply'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Track Package Button */}
@@ -1181,6 +1366,57 @@ const OrderDetailsPage = () => {
                   >
                     {submittingRating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     Submit Rating
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Rate the Product - for all delivered orders */}
+        {order.status === 'delivered' && (
+          <div className="bg-white/92 rounded-[24px] border border-[#d4af37]/12 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur overflow-hidden">
+            <h3 className="px-4 py-3 text-base font-semibold text-gray-900 dark:text-zinc-100 border-b border-[#d4af37]/10" style={{ fontFamily: "'Poppins', sans-serif" }}>Rate the product</h3>
+            <div className="px-4 py-4">
+              {hasRatedProduct ? (
+                <div className="flex flex-col items-center py-4 gap-2">
+                  <div className="flex items-center gap-1">
+                    {[1,2,3,4,5].map(n => (
+                      <Star key={n} className={`h-6 w-6 ${n <= productRating ? 'text-amber-400 fill-current' : 'text-gray-200 fill-current'}`} />
+                    ))}
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">Product rated!</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">Thank you for your feedback</p>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-3 flex items-center gap-3">
+                    {order.items[0]?.image && (
+                      <img src={order.items[0].image} alt={order.items[0].name} className="h-10 w-10 rounded-lg object-cover" />
+                    )}
+                    <p className="text-sm text-gray-600 dark:text-zinc-400">How would you rate {order.items[0]?.name || 'this product'}?</p>
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    {[1,2,3,4,5].map(n => (
+                      <button key={n} onClick={() => setProductRating(n)}>
+                        <Star className={`h-8 w-8 transition-colors ${n <= productRating ? 'text-amber-400 fill-current' : 'text-gray-200 fill-current hover:text-amber-300'}`} />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={productRatingComment}
+                    onChange={e => setProductRatingComment(e.target.value)}
+                    placeholder="Share details about the product (optional)"
+                    rows={2}
+                    className="w-full text-sm border border-gray-200 dark:border-zinc-800 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 mb-3 dark:bg-zinc-900 dark:text-zinc-100"
+                  />
+                  <button
+                    onClick={submitProductRating}
+                    disabled={submittingProductRating || productRating === 0}
+                    className="w-full py-2.5 bg-[#832729] text-white text-sm font-semibold rounded-xl hover:bg-[#6d2022] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {submittingProductRating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Submit Product Rating
                   </button>
                 </>
               )}
@@ -1631,7 +1867,7 @@ const OrderDetailsPage = () => {
                         : 'border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-gray-300 dark:border-zinc-700'
                     }`}
                   >
-                    <img src={item.image} alt={item.description} className="w-16 h-16 mb-2 object-contain" />
+                    <img src={item.image} alt={item.description} className="w-16 h-16 mb-2 object-contain dark:brightness-75 dark:opacity-80" />
                     <span className={`text-xs text-center leading-tight ${
                       returnReason === item.reason ? 'text-gray-900 dark:text-zinc-100 font-medium' : 'text-gray-600 dark:text-zinc-400'
                     }`} style={{ fontFamily: "'Poppins', sans-serif" }}>

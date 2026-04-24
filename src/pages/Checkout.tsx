@@ -1017,15 +1017,12 @@ const MobileCheckout = () => {
         {/* Slide to Pay */}
         <div className="px-4 py-3">
           <SlideToPayButton
-            key={String(!showPaymentDetails)}
+            key={slideResetKey}
             amount={formatPrice(total)}
             onComplete={() => {
               if (!selectedAddress) {
-                toast({
-                  title: "Address Required",
-                  description: "Please add a delivery address to proceed.",
-                  variant: "destructive",
-                });
+                setSlideResetKey(k => k + 1);
+                setShowAddressSelector(true);
                 return;
               }
               setShowPaymentDetails(true);
@@ -1042,14 +1039,14 @@ const MobileCheckout = () => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed inset-0 z-[80] bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,1)_18%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,1)_52%)]"
+            className="fixed inset-0 z-[80] bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,1)_18%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,1)_52%)] dark:bg-zinc-950"
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
             {/* Header */}
             <div className="sticky top-0 z-10 bg-white/85 dark:bg-zinc-900/85 backdrop-blur border-b border-[#d4af37]/15 px-4 py-3">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowPaymentDetails(false)}
+                  onClick={() => { setShowPaymentDetails(false); setSlideResetKey(k => k + 1); }}
                   className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
@@ -2411,7 +2408,7 @@ const Checkout = () => {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="fixed inset-0 z-[90] flex items-center justify-center p-8"
             >
-              <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[28px] border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,1)_18%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,1)_52%)] shadow-[0_40px_120px_-60px_rgba(0,0,0,0.75)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[28px] border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,1)_18%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,1)_52%)] dark:bg-zinc-950 shadow-[0_40px_120px_-60px_rgba(0,0,0,0.75)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {/* Header */}
                 <div className="sticky top-0 bg-white/88 dark:bg-zinc-900/88 backdrop-blur border-b border-[#d4af37]/15 px-6 py-4 rounded-t-[28px]">
                   <div className="flex items-center justify-between">

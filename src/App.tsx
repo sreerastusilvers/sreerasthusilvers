@@ -330,7 +330,8 @@ const App = () => {
               </Route>
 
               {/* Delivery Partner Routes */}
-              <Route path="/delivery" element={<Navigate to="/account?tab=delivery" replace />} />
+              <Route path="/delivery" element={<Navigate to="/deliverypartner" replace />} />
+              <Route path="/deliverypartner" element={<DeliveryLogin />} />
               <Route
                 path="/delivery/dashboard"
                 element={

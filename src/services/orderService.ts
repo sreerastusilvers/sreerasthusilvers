@@ -98,7 +98,10 @@ export interface Order {
   total: number;
   shippingAddress: ShippingAddress;
   paymentMethod: string;
-  status: 'pending' | 'processing' | 'shipped' | 'assigned' | 'picked' | 'outForDelivery' | 'delivered' | 'cancelled' | 'returnRequested' | 'returnScheduled' | 'returned';
+  // Canonical statuses. Legacy values 'shipped' | 'assigned' | 'picked' are kept in the
+  // union for backward compatibility with historical Firestore documents but should be
+  // normalised to the canonical values via `normalizeOrderStatus` for display/logic.
+  status: 'pending' | 'processing' | 'packed' | 'outForDelivery' | 'delivered' | 'cancelled' | 'returnRequested' | 'returnScheduled' | 'returned' | 'shipped' | 'assigned' | 'picked' | 'deliveryFailed';
   // Tracking fields
   trackingId?: string;
   carrier?: string;
@@ -109,11 +112,17 @@ export interface Order {
     timestamp: Timestamp;
     note?: string;
   }[];
-  // Delivery assignment fields
+  // Delivery assignment fields (delivery_boy_* kept for legacy data; delivery_partner_*
+  // are the canonical names going forward).
   delivery_boy_id?: string;
   delivery_boy_name?: string;
+  delivery_partner_id?: string;
+  delivery_partner_name?: string;
+  delivery_partner_phone?: string;
   assignedAt?: Timestamp;
   deliveryNotes?: string;
+  // Convenience field used by the customer order page
+  deliveryBoyId?: string;
   // OTP verification fields
   delivery_otp?: string;
   otp_verified?: boolean;
@@ -128,6 +137,16 @@ export interface Order {
   returnApprovedAt?: Timestamp;
   returnRejectedAt?: Timestamp;
   returnStatus?: 'pending' | 'approved' | 'rejected';
+  returnCancelled?: boolean;
+  returnCancelledAt?: Timestamp;
+  // Delivery window fields (set by admin or delivery partner)
+  delivery_window_date?: string;   // ISO date string, e.g. '2026-04-25'
+  delivery_window_from?: string;   // 24h time string, e.g. '14:00'
+  delivery_window_to?: string;     // 24h time string, e.g. '17:00'
+  delivery_window_note?: string;
+  // Failed delivery fields
+  deliveryFailedAt?: Timestamp;
+  deliveryFailureReason?: string;
   deliveredAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -136,6 +155,70 @@ export interface Order {
 export type OrderFormData = Omit<Order, 'id' | 'createdAt' | 'updatedAt'>;
 
 const ORDERS_COLLECTION = 'orders';
+
+/**
+ * Normalise a raw status (which may include legacy values shipped/assigned/picked)
+ * to the canonical workflow used by all UI surfaces.
+ */
+export const normalizeOrderStatus = (status: string | undefined | null): Order['status'] => {
+  switch (status) {
+    case 'shipped':
+    case 'assigned':
+      return 'packed';
+    case 'picked':
+      return 'outForDelivery';
+    default:
+      return (status as Order['status']) || 'pending';
+  }
+};
+
+/**
+ * Canonical status order used for forward-only validation. Cancelled / return
+ * statuses are exception flows and are not part of the linear progression.
+ */
+const CANONICAL_FLOW: Order['status'][] = [
+  'pending',
+  'processing',
+  'packed',
+  'outForDelivery',
+  'delivered',
+];
+
+/**
+ * Returns true when transitioning from `from` to `to` is allowed.
+ * Rules:
+ *   - Cancelled / return statuses are always allowed (exception flow).
+ *   - Otherwise, only forward movement on the canonical flow is allowed.
+ */
+export const isValidStatusTransition = (
+  from: Order['status'],
+  to: Order['status'],
+): boolean => {
+  const fromN = normalizeOrderStatus(from);
+  const toN = normalizeOrderStatus(to);
+  if (fromN === toN) return false;
+  // Exception flow always allowed.
+  if (['cancelled', 'returnRequested', 'returnScheduled', 'returned', 'deliveryFailed'].includes(toN)) {
+    return true;
+  }
+  // deliveryFailed can only move forward to returned.
+  if (fromN === 'deliveryFailed') {
+    return toN === 'returned';
+  }
+  const fromIdx = CANONICAL_FLOW.indexOf(fromN);
+  const toIdx = CANONICAL_FLOW.indexOf(toN);
+  if (fromIdx === -1 || toIdx === -1) return false;
+  return toIdx > fromIdx;
+};
+
+/**
+ * Returns the next logical status in the canonical flow (or null if at the end).
+ */
+export const getNextStatus = (current: Order['status']): Order['status'] | null => {
+  const idx = CANONICAL_FLOW.indexOf(normalizeOrderStatus(current));
+  if (idx === -1 || idx >= CANONICAL_FLOW.length - 1) return null;
+  return CANONICAL_FLOW[idx + 1];
+};
 
 /**
  * Create a new order
@@ -352,7 +435,23 @@ export const updateOrderStatus = async (
       updateData.otp_verified = false;
       updateData.otp_generated_at = now;
     }
-    
+
+    // Generate return_otp when status becomes returnScheduled (if not already present)
+    if (status === 'returnScheduled' && !currentData?.return_otp) {
+      updateData.return_otp = generateOTP();
+      updateData.return_otp_verified = false;
+      updateData.return_otp_generated_at = now;
+    }
+    // Ensure returnScheduledAt is set (needed to identify return-context 'picked')
+    if (status === 'returnScheduled' && !currentData?.returnScheduledAt) {
+      updateData.returnScheduledAt = now;
+    }
+
+    // Generate return_store_otp when manually moved to 'picked' in return context
+    if (status === 'picked' && currentData?.returnScheduledAt && !currentData?.return_store_otp) {
+      updateData.return_store_otp = generateOTP();
+    }
+
     await updateDoc(docRef, updateData);
 
     // Notify customer (WhatsApp + push). Best effort — never blocks the write.
@@ -487,10 +586,10 @@ export const getOrderStats = async () => {
     
     const stats = {
       total: orders.length,
-      pending: orders.filter(o => o.status === 'pending').length,
-      processing: orders.filter(o => o.status === 'processing').length,
-      shipped: orders.filter(o => o.status === 'shipped').length,
-      outForDelivery: orders.filter(o => o.status === 'outForDelivery').length,
+      pending: orders.filter(o => normalizeOrderStatus(o.status) === 'pending').length,
+      processing: orders.filter(o => normalizeOrderStatus(o.status) === 'processing').length,
+      packed: orders.filter(o => normalizeOrderStatus(o.status) === 'packed').length,
+      outForDelivery: orders.filter(o => normalizeOrderStatus(o.status) === 'outForDelivery').length,
       delivered: orders.filter(o => o.status === 'delivered').length,
       cancelled: orders.filter(o => o.status === 'cancelled').length,
       totalRevenue: orders
@@ -566,33 +665,77 @@ export const subscribeToDeliveryBoyOrders = (
 };
 
 /**
- * Assign an order to a delivery boy
+ * Assign an order to a delivery partner.
+ *
+ * In the simplified workflow, assigning a partner is the trigger for
+ * "Out for Delivery" — the OTP is generated atomically and the customer
+ * is notified via WhatsApp/push (best-effort) so they can share the OTP.
  */
 export const assignOrderToDeliveryBoy = async (
   orderId: string,
   deliveryBoyId: string,
-  deliveryBoyName: string
-): Promise<void> => {
+  deliveryBoyName: string,
+  deliveryBoyPhone?: string,
+): Promise<{ otp: string }> => {
   try {
     const docRef = doc(db, ORDERS_COLLECTION, orderId);
+    const orderSnap = await getDoc(docRef);
+    const currentData = orderSnap.data() || {};
+    const existingHistory = currentData.statusHistory || [];
     const now = Timestamp.now();
-    
-    await updateDoc(docRef, {
+
+    // Generate OTP unless one is already pending verification.
+    const otp =
+      currentData.delivery_otp && currentData.otp_verified === false
+        ? (currentData.delivery_otp as string)
+        : generateOTP();
+
+    const updateData: Record<string, any> = {
+      // Legacy fields kept in sync with new canonical names.
       delivery_boy_id: deliveryBoyId,
       delivery_boy_name: deliveryBoyName,
+      delivery_partner_id: deliveryBoyId,
+      delivery_partner_name: deliveryBoyName,
+      deliveryBoyId,
       assignedAt: now,
+      status: 'outForDelivery',
+      delivery_otp: otp,
+      otp_verified: false,
+      otp_generated_at: now,
       updatedAt: now,
-      statusHistory: [{
-        status: 'assigned',
-        timestamp: now,
-        note: `Order assigned to ${deliveryBoyName}`,
-      }],
+      lastUpdated: now,
+      outForDeliveryAt: now,
+      statusHistory: [
+        ...existingHistory,
+        {
+          status: 'outForDelivery',
+          timestamp: now,
+          note: `Assigned to ${deliveryBoyName} • Out for delivery`,
+        },
+      ],
+    };
+
+    if (deliveryBoyPhone) {
+      updateData.delivery_partner_phone = deliveryBoyPhone;
+    }
+
+    await updateDoc(docRef, updateData);
+
+    // Best-effort customer notification.
+    void dispatchStatusNotifications(orderId, 'outForDelivery', {
+      phone: currentData.shippingAddress?.mobile,
+      customerName: currentData.shippingAddress?.fullName || currentData.userName,
     });
+
+    return { otp };
   } catch (error) {
-    console.error('Error assigning order to delivery boy:', error);
-    throw new Error('Failed to assign order');
+    console.error('Error assigning order to delivery partner:', error);
+    throw new Error('Failed to assign delivery partner');
   }
 };
+
+/** Backward-compatible alias for the new naming. */
+export const assignDeliveryPartner = assignOrderToDeliveryBoy;
 
 /**
  * Update delivery status by delivery boy
@@ -708,6 +851,168 @@ export const verifyDeliveryOTP = async (
     return { success: true, message: 'Delivery confirmed successfully!' };
   } catch (error) {
     console.error('Error verifying delivery OTP:', error);
+    return { success: false, message: 'Failed to verify OTP. Please try again.' };
+  }
+};
+
+/**
+ * Assign a delivery partner for return pickup.
+ * Sets status → 'returnScheduled', generates a return_otp, stores partner fields.
+ */
+export const assignReturnPickupPartner = async (
+  orderId: string,
+  deliveryBoyId: string,
+  deliveryBoyName: string,
+  deliveryBoyPhone?: string,
+): Promise<{ otp: string }> => {
+  try {
+    const docRef = doc(db, ORDERS_COLLECTION, orderId);
+    const orderSnap = await getDoc(docRef);
+    if (!orderSnap.exists()) throw new Error('Order not found');
+    const currentData = orderSnap.data() || {};
+    const existingHistory = currentData.statusHistory || [];
+    const now = Timestamp.now();
+    const otp = generateOTP();
+
+    const updateData: Record<string, any> = {
+      delivery_boy_id: deliveryBoyId,
+      delivery_boy_name: deliveryBoyName,
+      delivery_partner_id: deliveryBoyId,
+      delivery_partner_name: deliveryBoyName,
+      deliveryBoyId,
+      status: 'returnScheduled',
+      return_otp: otp,
+      return_otp_verified: false,
+      return_otp_generated_at: now,
+      returnScheduledAt: now,
+      updatedAt: now,
+      lastUpdated: now,
+      statusHistory: [
+        ...existingHistory,
+        {
+          status: 'returnScheduled',
+          timestamp: now,
+          note: `Return pickup assigned to ${deliveryBoyName}`,
+        },
+      ],
+    };
+
+    if (deliveryBoyPhone) {
+      updateData.delivery_partner_phone = deliveryBoyPhone;
+    }
+
+    await updateDoc(docRef, updateData);
+    return { otp };
+  } catch (error) {
+    console.error('Error assigning return pickup partner:', error);
+    throw new Error('Failed to assign return pickup partner');
+  }
+};
+
+/**
+ * Verify return pickup OTP and mark return as picked.
+ * Customer shows the return_otp; delivery partner enters it to confirm pickup.
+ */
+export const verifyReturnPickupOTP = async (
+  orderId: string,
+  inputOtp: string,
+  deliveryBoyId: string,
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    const docRef = doc(db, ORDERS_COLLECTION, orderId);
+    const orderDoc = await getDoc(docRef);
+    if (!orderDoc.exists()) return { success: false, message: 'Order not found' };
+
+    const orderData = orderDoc.data();
+    const assignedId = orderData.delivery_partner_id || orderData.delivery_boy_id;
+
+    if (assignedId !== deliveryBoyId) {
+      return { success: false, message: 'You are not authorized for this pickup' };
+    }
+    if (orderData.status !== 'returnScheduled') {
+      return { success: false, message: 'Order is not scheduled for return pickup' };
+    }
+    if (orderData.return_otp !== inputOtp) {
+      return { success: false, message: 'Invalid OTP. Please try again.' };
+    }
+
+    const now = Timestamp.now();
+    const existingHistory = orderData.statusHistory || [];
+    const storeOtp = generateOTP();
+    await updateDoc(docRef, {
+      status: 'picked',
+      return_otp_verified: true,
+      return_otp: null,
+      return_store_otp: storeOtp,
+      updatedAt: now,
+      lastUpdated: now,
+      pickedAt: now,
+      statusHistory: [
+        ...existingHistory,
+        {
+          status: 'picked',
+          timestamp: now,
+          note: 'Return item picked up — OTP verified',
+        },
+      ],
+    });
+    return { success: true, message: 'Return pickup confirmed!' };
+  } catch (error) {
+    console.error('Error verifying return pickup OTP:', error);
+    return { success: false, message: 'Failed to verify OTP. Please try again.' };
+  }
+};
+
+/**
+ * Verify return-to-store OTP (admin tells partner) and mark order as returned.
+ */
+export const verifyReturnToStoreOTP = async (
+  orderId: string,
+  inputOtp: string,
+  deliveryBoyId: string,
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    const docRef = doc(db, ORDERS_COLLECTION, orderId);
+    const orderDoc = await getDoc(docRef);
+    if (!orderDoc.exists()) return { success: false, message: 'Order not found' };
+
+    const orderData = orderDoc.data();
+    const assignedId = orderData.delivery_partner_id || orderData.delivery_boy_id;
+
+    if (assignedId !== deliveryBoyId) {
+      return { success: false, message: 'You are not authorized for this return' };
+    }
+    const isReturnContext =
+      (orderData.status === 'picked' && !!orderData.returnScheduledAt) ||
+      orderData.status === 'deliveryFailed';
+    if (!isReturnContext) {
+      return { success: false, message: 'Order is not awaiting return confirmation' };
+    }
+    if (orderData.return_store_otp !== inputOtp) {
+      return { success: false, message: 'Invalid OTP. Please try again.' };
+    }
+
+    const now = Timestamp.now();
+    const existingHistory = orderData.statusHistory || [];
+    await updateDoc(docRef, {
+      status: 'returned',
+      return_store_otp: null,
+      return_store_otp_verified: true,
+      updatedAt: now,
+      lastUpdated: now,
+      returnedAt: now,
+      statusHistory: [
+        ...existingHistory,
+        {
+          status: 'returned',
+          timestamp: now,
+          note: 'Item returned to store — OTP verified',
+        },
+      ],
+    });
+    return { success: true, message: 'Return to store confirmed!' };
+  } catch (error) {
+    console.error('Error verifying return-to-store OTP:', error);
     return { success: false, message: 'Failed to verify OTP. Please try again.' };
   }
 };
@@ -1036,5 +1341,104 @@ export const rejectReturn = async (orderId: string): Promise<void> => {
   } catch (error) {
     console.error('Error rejecting return:', error);
     throw error;
+  }
+};
+
+/**
+ * Cancel a pending return request (customer action — one-time only).
+ * Reverts the order back to `delivered` and sets `returnCancelled: true` so
+ * the Return button is permanently hidden for this order.
+ */
+export const cancelReturn = async (orderId: string): Promise<void> => {
+  const docRef = doc(db, ORDERS_COLLECTION, orderId);
+  const orderDoc = await getDoc(docRef);
+  if (!orderDoc.exists()) throw new Error('Order not found');
+  const orderData = orderDoc.data() as Order;
+  if (orderData.status !== 'returnRequested') {
+    throw new Error('Return can only be cancelled while it is still in the requested state');
+  }
+  const now = Timestamp.now();
+  const existingHistory = orderData.statusHistory || [];
+  await updateDoc(docRef, {
+    status: 'delivered',
+    returnCancelled: true,
+    returnCancelledAt: now,
+    return_otp: null,
+    return_otp_verified: null,
+    updatedAt: now,
+    lastUpdated: now,
+    statusHistory: [
+      ...existingHistory,
+      { status: 'delivered', timestamp: now, note: 'Return cancelled by customer' },
+    ],
+  });
+};
+
+/**
+ * Set (or update) a delivery window for an order.
+ * Can be called by admin or delivery partner — no status change.
+ */
+export const setDeliveryWindow = async (
+  orderId: string,
+  window: { date: string; from: string; to: string; note?: string },
+): Promise<void> => {
+  const docRef = doc(db, ORDERS_COLLECTION, orderId);
+  const now = Timestamp.now();
+  await updateDoc(docRef, {
+    delivery_window_date: window.date,
+    delivery_window_from: window.from,
+    delivery_window_to: window.to,
+    delivery_window_note: window.note ?? '',
+    updatedAt: now,
+    lastUpdated: now,
+  });
+};
+
+/**
+ * Delivery partner marks "Customer Unavailable" — starts the failed-delivery return flow.
+ * Generates a `return_store_otp` the partner will enter at the store.
+ */
+export const startFailedDeliveryReturn = async (
+  orderId: string,
+  deliveryBoyId: string,
+  reason?: string,
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    const docRef = doc(db, ORDERS_COLLECTION, orderId);
+    const orderDoc = await getDoc(docRef);
+    if (!orderDoc.exists()) return { success: false, message: 'Order not found' };
+    const orderData = orderDoc.data();
+    const assignedId = orderData.delivery_partner_id || orderData.delivery_boy_id;
+    if (assignedId !== deliveryBoyId) {
+      return { success: false, message: 'You are not assigned to this order' };
+    }
+    // Must be in outForDelivery (or legacy picked non-return context)
+    const normalStatus = normalizeOrderStatus(orderData.status);
+    if (normalStatus !== 'outForDelivery') {
+      return { success: false, message: 'Order must be out for delivery to start return' };
+    }
+    const now = Timestamp.now();
+    const existingHistory = orderData.statusHistory || [];
+    const storeOtp = generateOTP();
+    await updateDoc(docRef, {
+      status: 'deliveryFailed',
+      return_store_otp: storeOtp,
+      deliveryFailedAt: now,
+      deliveryFailureReason: reason || 'Customer unavailable',
+      updatedAt: now,
+      lastUpdated: now,
+      statusHistory: [
+        ...existingHistory,
+        {
+          status: 'deliveryFailed',
+          timestamp: now,
+          note: reason ? `Delivery failed: ${reason}` : 'Delivery failed: Customer unavailable',
+        },
+      ],
+    });
+    return { success: true, message: 'Return journey started. Bring the item back to store.' };
+  } catch (error) {
+    console.error('Error starting failed delivery return:', error);
+    return { success: false, message: 'Failed to start return. Please try again.' };
   }
 };
