@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   SlidersHorizontal,
@@ -40,6 +40,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ─── helpers ──────────────────────────────────────────
 const priceRanges = [
@@ -62,6 +63,8 @@ const CategoryPage = () => {
   const { categorySlug } = useParams<{ categorySlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
@@ -344,6 +347,23 @@ const CategoryPage = () => {
   // ── Product Card ──
   const ProductCard = ({ product }: { product: UIProduct }) => {
     const wishlisted = isInWishlist(product.id);
+
+    const handleAddToCart = async () => {
+      if (!user) {
+        navigate("/login", { state: { from: location } });
+        return;
+      }
+
+      await addToCart({
+        id: product.id,
+        name: product.title,
+        price: product.price,
+        image: product.image,
+      });
+
+      toast({ title: "Added to cart" });
+    };
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -427,13 +447,7 @@ const CategoryPage = () => {
           </div>
           <button
             onClick={() => {
-              addToCart({
-                id: product.id,
-                name: product.title,
-                price: product.price,
-                image: product.image,
-              });
-              toast({ title: "Added to cart" });
+              void handleAddToCart();
             }}
             className="w-full mt-2 py-2 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors"
           >
