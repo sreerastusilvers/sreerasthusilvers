@@ -187,20 +187,56 @@ const App = () => {
                   <ThankYouReview />
                 </ProtectedRoute>
               } />
-              <Route path="/wishlist" element={<Wishlist />} />
-              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/wishlist" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <Wishlist />
+                </ProtectedRoute>
+              } />
+              <Route path="/checkout" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <Checkout />
+                </ProtectedRoute>
+              } />
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <Profile />
                 </ProtectedRoute>
               } />
-              <Route path="/account" element={<Account />} />
-              <Route path="/account/orders" element={<MobileOrders />} />
-              <Route path="/account/orders/:orderId" element={<OrderDetailsPage />} />
-              <Route path="/account/orders/:orderId/cancel" element={<CancelOrderPage />} />
-              <Route path="/account/profile-edit" element={<ProfileEditPage />} />
-              <Route path="/account/addresses" element={<SavedAddresses />} />
-              <Route path="/buy-again" element={<BuyAgain />} />
+              <Route path="/account" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <Account />
+                </ProtectedRoute>
+              } />
+              <Route path="/account/orders" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <MobileOrders />
+                </ProtectedRoute>
+              } />
+              <Route path="/account/orders/:orderId" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <OrderDetailsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/account/orders/:orderId/cancel" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <CancelOrderPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/account/profile-edit" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <ProfileEditPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/account/addresses" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <SavedAddresses />
+                </ProtectedRoute>
+              } />
+              <Route path="/buy-again" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <BuyAgain />
+                </ProtectedRoute>
+              } />
               <Route path="/wallet" element={
                 <ProtectedRoute requireEmailVerification={false}>
                   <PurchaseSummary />

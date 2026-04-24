@@ -42,6 +42,10 @@ import {
   type FooterSettings,
   type SocialLink,
   type SocialPlatform,
+  subscribeSidebarPromo,
+  saveSidebarPromo,
+  DEFAULT_SIDEBAR_PROMO,
+  type SidebarPromoSettings,
 } from '@/services/siteSettingsService';
 
 const PLATFORM_OPTIONS: { value: SocialPlatform; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
@@ -140,6 +144,8 @@ const AdminSiteSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<FooterSettings>(DEFAULT_FOOTER);
+  const [promo, setPromo] = useState<SidebarPromoSettings>(DEFAULT_SIDEBAR_PROMO);
+  const [savingPromo, setSavingPromo] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -153,10 +159,26 @@ const AdminSiteSettings = () => {
         setLoading(false);
       }
     })();
+    // Subscribe to promo settings live
+    const unsub = subscribeSidebarPromo(setPromo);
+    return unsub;
   }, []);
 
   const update = <K extends keyof FooterSettings>(key: K, value: FooterSettings[K]) =>
     setSettings((prev) => ({ ...prev, [key]: value }));
+
+  const handleSavePromo = async () => {
+    setSavingPromo(true);
+    try {
+      await saveSidebarPromo(promo);
+      toast.success('Promo banner saved');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save promo banner');
+    } finally {
+      setSavingPromo(false);
+    }
+  };
 
   const updateSocial = (idx: number, patch: Partial<SocialLink>) => {
     const next = [...(settings.socialLinks || [])];
@@ -417,6 +439,79 @@ const AdminSiteSettings = () => {
             </>
           )}
         </Button>
+      </div>
+
+      {/* ── Mobile Sidebar Promo Banner ── */}
+      <div className="border-t border-[#F5EFE6] dark:border-gray-800 pt-8">
+        <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-amber-700 dark:text-amber-400 font-medium mb-2 flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5" /> Mobile Sidebar
+            </p>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Promo Banner
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              The promotional banner shown to guests in the mobile side menu.
+            </p>
+          </div>
+          <Button
+            onClick={handleSavePromo}
+            disabled={savingPromo}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            {savingPromo ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" /> Save promo
+              </>
+            )}
+          </Button>
+        </div>
+        <Card title="Promo banner text" subtitle="Shown to guests above the login button in the sidebar.">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="promo-active"
+                checked={promo.active}
+                onCheckedChange={(v) => setPromo((p) => ({ ...p, active: v }))}
+              />
+              <Label htmlFor="promo-active" className="text-sm cursor-pointer">
+                Show promo banner
+              </Label>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">Headline</Label>
+              <Input
+                value={promo.headline}
+                onChange={(e) => setPromo((p) => ({ ...p, headline: e.target.value }))}
+                placeholder="e.g. Flat Rs. 500 off"
+                className="mt-1.5 bg-white dark:bg-gray-950"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">Subline</Label>
+              <Input
+                value={promo.subline}
+                onChange={(e) => setPromo((p) => ({ ...p, subline: e.target.value }))}
+                placeholder="e.g. on your first order"
+                className="mt-1.5 bg-white dark:bg-gray-950"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">CTA Button Label</Label>
+              <Input
+                value={promo.ctaLabel}
+                onChange={(e) => setPromo((p) => ({ ...p, ctaLabel: e.target.value }))}
+                placeholder="e.g. LOGIN / SIGN UP"
+                className="mt-1.5 bg-white dark:bg-gray-950"
+              />
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );

@@ -70,32 +70,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUserId(user?.uid || null);
       setAuthResolved(true);
 
-      if (user?.uid) {
-        migrateGuestCartToFirebase(user.uid);
-      }
+      // Guest cart migration removed — add-to-cart now requires auth
     });
     return () => unsubscribe();
   }, []);
-
-  // Migrate guest cart from localStorage to Firebase when user logs in
-  const migrateGuestCartToFirebase = async (userId: string) => {
-    try {
-      const guestItems = loadFromLocalStorage();
-      if (guestItems.length > 0) {
-        const cartData: Record<string, CartItem> = {};
-        guestItems.forEach(item => { cartData[item.id] = item; });
-
-        await setDoc(doc(db, 'carts', userId), {
-          items: cartData,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-
-        localStorage.removeItem(CART_STORAGE_KEY);
-      }
-    } catch (error) {
-      console.error('Error migrating guest cart:', error);
-    }
-  };
 
   // Firebase real-time listener for logged-in users
   useEffect(() => {
@@ -206,11 +184,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (error) {
         console.error('Firebase sync failed for removeFromCart:', error);
+      } finally {
+        pendingOpRef.current = false;
       }
+    } else {
+      pendingOpRef.current = false;
     }
-    
-    // Allow onSnapshot to work again after a small delay
-    setTimeout(() => { pendingOpRef.current = false; }, 500);
   };
 
   // ─── UPDATE QUANTITY ───
@@ -243,11 +222,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (error) {
         console.error('Firebase sync failed for updateQuantity:', error);
+      } finally {
+        pendingOpRef.current = false;
       }
+    } else {
+      pendingOpRef.current = false;
     }
-    
-    // Allow onSnapshot to work again after a small delay
-    setTimeout(() => { pendingOpRef.current = false; }, 500);
   };
 
   // ─── CLEAR CART ───

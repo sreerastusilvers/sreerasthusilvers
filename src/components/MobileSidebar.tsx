@@ -1,9 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, User, ChevronRight, Package, MapPin, ShieldCheck, Heart, MessageCircle, LogOut, Sun, Moon, UserCog } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useEffect, useState } from "react";
 import shoppingBags from "@/assets/shopping-bags.png";
+import { subscribeSidebarPromo, DEFAULT_SIDEBAR_PROMO, SidebarPromoSettings } from "@/services/siteSettingsService";
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -12,8 +14,15 @@ interface MobileSidebarProps {
 
 const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { setTheme, resolvedTheme } = useTheme();
+
+  const [promo, setPromo] = useState<SidebarPromoSettings>(DEFAULT_SIDEBAR_PROMO);
+  useEffect(() => {
+    const unsub = subscribeSidebarPromo(setPromo);
+    return unsub;
+  }, []);
 
   const menuItems = [
     { name: "My Orders", icon: Package, href: "/account/orders" },
@@ -25,6 +34,14 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   ];
 
   const handleNavigation = (href: string) => {
+    if (!user) {
+      // All menu items except customer-support require auth
+      if (href !== "/customer-support") {
+        navigate("/login", { state: { from: { pathname: href } } });
+        onClose();
+        return;
+      }
+    }
     navigate(href);
     onClose();
   };
@@ -36,7 +53,11 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
   };
 
   const handleAuthAction = () => {
-    navigate('/account');
+    if (user) {
+      navigate('/account/profile-edit');
+    } else {
+      navigate('/login', { state: { from: location } });
+    }
     onClose();
   };
 
@@ -97,13 +118,17 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                 <div className="flex-1 text-right min-w-0">
                   {!user ? (
                     <>
-                      <h3 className="text-foreground font-bold text-base leading-tight">Flat Rs. 500 off</h3>
-                      <p className="text-muted-foreground text-xs mt-0.5 mb-3">on your first order</p>
+                      {promo.active && (
+                        <>
+                          <h3 className="text-foreground font-bold text-base leading-tight">{promo.headline}</h3>
+                          <p className="text-muted-foreground text-xs mt-0.5 mb-3">{promo.subline}</p>
+                        </>
+                      )}
                       <button
                         onClick={handleAuthAction}
                         className="text-foreground font-bold text-sm tracking-wide hover:underline"
                       >
-                        LOGIN / SIGN UP
+                        {promo.ctaLabel}
                       </button>
                     </>
                   ) : (
@@ -113,7 +138,7 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
                       </h3>
                       <p className="text-muted-foreground text-xs mt-0.5 mb-3 truncate">{user.email}</p>
                       <button
-                        onClick={() => handleNavigation('/account/profile-edit')}
+                        onClick={handleAuthAction}
                         className="text-primary font-bold text-sm tracking-wide hover:underline"
                       >
                         VIEW PROFILE

@@ -3,7 +3,8 @@ import { Star, Heart, Eye, ShoppingBag, Plus, Minus } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/useWishlist";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Product {
   id: string;
@@ -30,6 +31,8 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
   const { toast } = useToast();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
 
   const cartItem = items.find((i) => i.id === product.id);
   const inCartQty = cartItem?.quantity ?? 0;
@@ -54,6 +57,11 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    if (!user) {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
 
     try {
       await addToCart({

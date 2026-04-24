@@ -146,6 +146,11 @@ const ProductDetail = () => {
   const handleAddToCart = async () => {
     if (!product) return;
 
+    if (!user) {
+      navigate('/login', { state: { from: { pathname: `/product/${productId}` } } });
+      return;
+    }
+
     try {
       // Add items based on quantity
       for (let i = 0; i < quantity; i++) {
@@ -182,6 +187,11 @@ const ProductDetail = () => {
 
   const handleBuyNow = async () => {
     if (!product) return;
+
+    if (!user) {
+      navigate('/login', { state: { from: { pathname: `/product/${productId}` } } });
+      return;
+    }
 
     try {
       // Add items based on quantity

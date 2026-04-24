@@ -454,6 +454,10 @@ const ShoppingCart = () => {
                         className="w-full flex items-center justify-center gap-2 py-3.5 bg-foreground text-background text-sm font-semibold rounded-lg hover:bg-foreground/90 active:scale-[0.98] transition-all duration-200"
                         onClick={() => {
                           closeCart();
+                          if (!user) {
+                            navigate('/login', { state: { from: { pathname: '/checkout' } } });
+                            return;
+                          }
                           navigate('/checkout');
                         }}
                       >

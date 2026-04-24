@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import heroMain from "@/assets/hero-main.jpg";
@@ -45,6 +45,7 @@ const HeroCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [direction, setDirection] = useState(1); // 1 = forward, -1 = backward
+  const touchStartX = useRef<number | null>(null);
 
   const nextSlide = useCallback(() => {
     setDirection(1);
@@ -65,6 +66,14 @@ const HeroCarousel = () => {
   return (
     <section
       className="relative min-h-screen w-full overflow-hidden bg-foreground/10"
+      onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => {
+        if (touchStartX.current === null) return;
+        const delta = e.changedTouches[0].clientX - touchStartX.current;
+        if (delta > 50) prevSlide();
+        else if (delta < -50) nextSlide();
+        touchStartX.current = null;
+      }}
     >
       {/* Background Images - Crossfade only */}
       {slides.map((slide, index) => (
@@ -170,7 +179,7 @@ const HeroCarousel = () => {
       </button>
 
       {/* Dots Navigation */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-3">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
         {slides.map((_, index) => (
           <button
             key={index}
@@ -178,10 +187,10 @@ const HeroCarousel = () => {
               setDirection(index > currentSlide ? 1 : -1);
               setCurrentSlide(index);
             }}
-            className={`h-3 rounded-full transition-all focus-gold shadow-md ${
+            className={`h-1.5 rounded-full transition-all focus-gold shadow-md ${
               index === currentSlide
-                ? "bg-primary w-8"
-                : "bg-white/70 hover:bg-white/90 w-3"
+                ? "bg-white/80 w-4"
+                : "bg-white/30 hover:bg-white/60 w-1.5"
             }`}
             aria-label={`Go to slide ${index + 1}`}
           />

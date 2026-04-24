@@ -388,3 +388,52 @@ export async function saveCustomerSupportSettings(
 ): Promise<void> {
   await setDoc(SUPPORT_DOC, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIDEBAR PROMO BANNER
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SidebarPromoSettings {
+  active: boolean;
+  headline: string;    // e.g. "Flat Rs. 500 off"
+  subline: string;     // e.g. "on your first order"
+  ctaLabel: string;    // e.g. "LOGIN / SIGN UP"
+  updatedAt?: any;
+}
+
+export const DEFAULT_SIDEBAR_PROMO: SidebarPromoSettings = {
+  active: true,
+  headline: 'Flat Rs. 500 off',
+  subline: 'on your first order',
+  ctaLabel: 'LOGIN / SIGN UP',
+};
+
+const PROMO_DOC = doc(db, 'siteSettings', 'sidebarPromo');
+
+export async function getSidebarPromo(): Promise<SidebarPromoSettings> {
+  try {
+    const snap = await getDoc(PROMO_DOC);
+    if (snap.exists()) return { ...DEFAULT_SIDEBAR_PROMO, ...(snap.data() as SidebarPromoSettings) };
+  } catch (e) {
+    console.error('getSidebarPromo failed', e);
+  }
+  return DEFAULT_SIDEBAR_PROMO;
+}
+
+export function subscribeSidebarPromo(cb: (s: SidebarPromoSettings) => void) {
+  return onSnapshot(
+    PROMO_DOC,
+    (snap) => {
+      if (snap.exists()) cb({ ...DEFAULT_SIDEBAR_PROMO, ...(snap.data() as SidebarPromoSettings) });
+      else cb(DEFAULT_SIDEBAR_PROMO);
+    },
+    (err) => {
+      console.error('subscribeSidebarPromo error', err);
+      cb(DEFAULT_SIDEBAR_PROMO);
+    }
+  );
+}
+
+export async function saveSidebarPromo(settings: SidebarPromoSettings): Promise<void> {
+  await setDoc(PROMO_DOC, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
+}

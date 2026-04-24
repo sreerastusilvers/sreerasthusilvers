@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from '
 import { ArrowLeft, MoreVertical, Star, Plus, Minus, Trash2, ChevronRight } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ─── Slide to Proceed Button Component ───
 const SlideToProceedButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
@@ -73,6 +74,7 @@ const SlideToProceedButton = ({ amount, onComplete }: { amount: string; onComple
 const MobileCart = () => {
   const { items, updateQuantity, removeFromCart, subtotal, totalItems } = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [appliedCode, setAppliedCode] = useState('');
@@ -328,7 +330,13 @@ const MobileCart = () => {
         <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 px-4 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-40">
           <SlideToProceedButton
             amount={formatPrice(totalAmount)}
-            onComplete={() => navigate('/checkout')}
+            onComplete={() => {
+              if (!user) {
+                navigate('/login', { state: { from: { pathname: '/checkout' } } });
+                return;
+              }
+              navigate('/checkout');
+            }}
           />
         </div>
       )}

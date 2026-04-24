@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,6 +120,9 @@ const MobileCheckout = () => {
     state: '',
     isDefault: false,
   });
+
+  // Defensive guard — ProtectedRoute already blocks, but just in case
+  if (!user) return <Navigate to="/login" state={{ from: { pathname: '/checkout' } }} replace />;
 
   // Fetch addresses and suggested products
   const loadAddresses = async () => {
@@ -1462,6 +1465,9 @@ const Checkout = () => {
     state: '',
     isDefault: false,
   });
+
+  // Defensive guard — ProtectedRoute already blocks, but just in case
+  if (!user) return <Navigate to="/login" state={{ from: { pathname: '/checkout' } }} replace />;
 
   // Load addresses
   const loadAddresses = async () => {

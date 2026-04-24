@@ -101,11 +101,11 @@ const Footer = () => {
                 type="email"
                 required
                 placeholder="Enter your email"
-                className="flex-1 bg-transparent px-5 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent px-5 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
               />
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-full bg-[#d4af37] hover:bg-[#c5a02f] text-black px-5 md:px-6 py-2.5 text-xs font-semibold tracking-wide transition-colors"
+                className="flex-shrink-0 whitespace-nowrap inline-flex items-center gap-2 rounded-full bg-[#d4af37] hover:bg-[#c5a02f] text-black px-5 md:px-6 py-2.5 text-xs font-semibold tracking-wide transition-colors"
               >
                 Subscribe <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -119,7 +119,7 @@ const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-x-8 gap-y-10">
           {/* Brand & socials */}
           <div className="col-span-2">
-            <img src={resolvedTheme === 'dark' ? darkModeLogo : lightModeLogo} alt="Sreerasthu Silvers" className="h-12 w-auto mb-5" />
+            <img src={darkModeLogo} alt="Sreerasthu Silvers" className="h-12 w-auto mb-5" />
             <p className="text-white/55 text-sm leading-relaxed mb-6 font-light max-w-sm">
               {settings.brandTagline}
             </p>
