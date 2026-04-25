@@ -121,9 +121,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Try template "otp_login" first; fall back to plain text if not approved
       const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'otp_login';
-      // Meta dashboard labels this template "English" but the API language code is 'en_US'.
-      // Error #132001 ("template name does not exist in the translation") fires if code mismatches.
-      const templateLang = process.env.WHATSAPP_OTP_LANG || 'en_US';
+      // Meta dashboard shows template language as "English" = API code 'en' (NOT 'en_US').
+      // Error #132001 fires when the language code doesn't match the registered translation.
+      const templateLang = process.env.WHATSAPP_OTP_LANG || 'en';
       let deliveryMode: 'template' | 'text' = 'template';
       let templateError: string | null = null;
       try {
