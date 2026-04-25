@@ -77,6 +77,7 @@ import AdminImagePrompts from "./pages/admin/AdminImagePrompts";
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminCustomerDetails from './pages/admin/AdminCustomerDetails';
 import AdminSiteSettings from './pages/admin/AdminSiteSettings';
+import AdminSilverRate from './pages/admin/AdminSilverRate';
 import AdminCommerceSettings from './pages/admin/AdminCommerceSettings';
 import AdminHomeBanners from './pages/admin/AdminHomeBanners';
 import AdminHomeCollections from './pages/admin/AdminHomeCollections';
@@ -330,6 +331,7 @@ const App = () => {
                 <Route path="home-collections" element={<AdminHomeCollections />} />
                 <Route path="videos" element={<AdminVideos />} />
                 <Route path="site-settings" element={<AdminSiteSettings />} />
+                <Route path="silver-rate" element={<AdminSilverRate />} />
                 <Route path="commerce-settings" element={<AdminCommerceSettings />} />
                 <Route path="marketing" element={<AdminNotifications />} />
                 <Route path="notifications" element={<Navigate to="/admin/marketing" replace />} />

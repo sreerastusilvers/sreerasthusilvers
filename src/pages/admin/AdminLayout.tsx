@@ -25,6 +25,7 @@ import {
   Bell,
   LayoutGrid,
   Video,
+  Coins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -72,6 +73,7 @@ const AdminLayout = () => {
     { path: '/admin/coupons', icon: Ticket, label: 'Coupons' },
     { path: '/admin/gift-cards', icon: Gift, label: 'Gift Cards' },
     { path: '/admin/video-calls', icon: Video, label: 'Video Calls' },
+    { path: '/admin/silver-rate', icon: Coins, label: 'Silver Rate' },
     { path: '/admin/commerce-settings', icon: Settings, label: 'Commerce' },
     { path: '/admin/image-prompts', icon: Sparkles, label: 'AI Prompts' },
     { path: '/admin/marketing', icon: Bell, label: 'Marketing' },

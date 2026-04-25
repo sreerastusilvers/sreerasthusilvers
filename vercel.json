@@ -2,7 +2,8 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/((?!api/).*)", "destination": "/" }
   ]
 }
 
