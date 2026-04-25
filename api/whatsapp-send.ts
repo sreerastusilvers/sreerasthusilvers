@@ -127,8 +127,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let deliveryMode: 'template' | 'text' = 'template';
       let templateError: string | null = null;
       try {
-        // Authentication templates have a FIXED body (Meta fills it from the button param).
-        // Only send the button component; do NOT send a body component for auth templates.
+        // Authentication templates with "Copy code": body has {{1}} = OTP.
+        // The "Copy code" button auto-uses {{1}} — do NOT send a separate button component.
         await sendToMeta({
           to,
           type: 'template',
@@ -136,7 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             name: templateName,
             language: { code: templateLang },
             components: [
-              { type: 'button', sub_type: 'copy_code', index: 0, parameters: [{ type: 'coupon_code', coupon_code: otp }] },
+              { type: 'body', parameters: [{ type: 'text', text: otp }] },
             ],
           },
         });
