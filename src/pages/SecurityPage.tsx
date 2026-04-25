@@ -559,15 +559,47 @@ const SecurityPage: React.FC = () => {
       <AnimatePresence>
         {message && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 ${
-              message.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-            }`}
+            initial={{ opacity: 0, y: -14, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.98 }}
+            className="fixed top-4 right-4 z-50 w-[min(calc(100vw-1.5rem),22rem)]"
           >
-            {message.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-            <span className="text-sm font-medium">{message.text}</span>
+            <div
+              className={[
+                'rounded-[22px] border px-4 py-3 shadow-[0_24px_80px_-28px_rgba(15,23,42,0.45)] backdrop-blur-xl',
+                'flex items-start gap-3',
+                message.type === 'success'
+                  ? 'border-emerald-200/70 bg-white/95 text-emerald-950 dark:border-emerald-500/20 dark:bg-zinc-950/95 dark:text-emerald-50'
+                  : 'border-red-200/70 bg-white/95 text-red-950 dark:border-red-500/20 dark:bg-zinc-950/95 dark:text-red-50',
+              ].join(' ')}
+            >
+              <div
+                className={[
+                  'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border',
+                  message.type === 'success'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
+                    : 'border-red-200 bg-red-50 text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300',
+                ].join(' ')}
+              >
+                {message.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+              </div>
+
+              <div className="min-w-0 flex-1 pr-2">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-current/55">
+                  {message.type === 'success' ? 'Success' : 'Error'}
+                </p>
+                <p className="mt-1 text-sm font-medium leading-6">{message.text}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMessage(null)}
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-black/5 text-current/50 transition hover:bg-black/5 hover:text-current dark:border-white/10 dark:hover:bg-white/10"
+                aria-label="Close message"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
