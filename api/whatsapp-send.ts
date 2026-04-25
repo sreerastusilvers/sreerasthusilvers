@@ -163,7 +163,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
       }
-      return res.status(200).json({ ok: true, otpRef: docId, mode: deliveryMode, templateError: templateError || undefined });
+      return res.status(200).json({ ok: true, otpRef: docId, mode: deliveryMode, templateError: templateError || undefined, _debug: { templateName, templateLang } });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown kind' });
