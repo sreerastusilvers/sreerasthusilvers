@@ -132,7 +132,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let templateError: string | null = null;
       let metaErrorDetails: unknown = null;
       try {
-        // Authentication "Copy code" template: body has {{1}} = OTP, button copies it.
+        // Authentication template: body has {{1}} = OTP.
+        // Meta confirmed button 0 is URL type — use sub_type: 'url' with text param.
         await sendToMeta({
           to,
           type: 'template',
@@ -141,7 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             language: { code: templateLang },
             components: [
               { type: 'body', parameters: [{ type: 'text', text: otp }] },
-              { type: 'button', sub_type: 'copy_code', index: '0', parameters: [{ type: 'coupon_code', coupon_code: otp }] },
+              { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: otp }] },
             ],
           },
         });
