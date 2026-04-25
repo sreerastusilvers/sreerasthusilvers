@@ -53,7 +53,7 @@ const Login = () => {
         } else if (userProfile.role === 'admin') {
           navigate('/admin/dashboard', { replace: true });
         } else {
-          navigate(from, { replace: true });
+          navigate('/', { replace: true });
         }
       } else {
         // User is logged in but email not verified - show verification modal
@@ -157,7 +157,7 @@ const Login = () => {
         } else if (userProfile?.role === 'admin') {
           navigate('/admin/dashboard', { replace: true });
         } else {
-          navigate(from, { replace: true });
+          navigate('/', { replace: true });
         }
       } else {
         toast.error('Email not verified yet. Please check your inbox.');
@@ -231,7 +231,7 @@ const Login = () => {
         if (userProfile.role === 'admin') {
           navigate('/admin/dashboard');
         } else {
-          navigate(from, { replace: true });
+          navigate('/', { replace: true });
         }
       }
     } catch (err: any) {
@@ -280,7 +280,7 @@ const Login = () => {
         return;
       }
       
-      navigate(from, { replace: true });
+      navigate('/', { replace: true });
     } catch (err: any) {
       console.error('Google sign-in error:', err);
       setError('Failed to sign in with Google. Please try again.');

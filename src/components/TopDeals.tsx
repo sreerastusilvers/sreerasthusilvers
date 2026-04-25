@@ -89,7 +89,7 @@ const TopDeals = () => {
   return (
     <section className="py-6 md:py-14">
       <div className="container-custom">
-        <div className="rounded-[32px] border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,0)_22%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,0)_45%)] bg-card/70 shadow-[0_30px_70px_-55px_rgba(0,0,0,0.4)] px-3 py-4 md:px-6 md:py-8">
+        <div className="rounded-[32px] border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,0)_22%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,0)_45%)] bg-card/70 shadow-[0_30px_70px_-55px_rgba(0,0,0,0.4)] px-3 py-4 md:px-6 md:py-8" style={{ touchAction: 'pan-y' }}>
 
         {/* ====== MOBILE: Horizontal scroll cards ====== */}
         <div className="md:hidden">
@@ -130,7 +130,7 @@ const TopDeals = () => {
               </div>
             </div>
           </div>
-          <div ref={mobileScrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 px-1" style={{ WebkitOverflowScrolling: 'touch', scrollPaddingLeft: '8px' }}>
+          <div ref={mobileScrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 px-1" style={{ WebkitOverflowScrolling: 'touch', scrollPaddingLeft: '8px', touchAction: 'pan-x' }}>
             {mobileDealProducts.map((product, index) => (
               <motion.div
                 key={`${product.id}-${index}`}

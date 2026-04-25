@@ -116,10 +116,6 @@ const PromoSection = () => {
 
         {/* Scroller */}
         <div className="relative">
-          {/* edge fades */}
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 md:w-20 bg-gradient-to-r from-background via-background/70 to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 md:w-20 bg-gradient-to-l from-background via-background/70 to-transparent" />
-
           <div
             ref={scrollerRef}
             className="collections-scroller flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide pb-3 px-1 md:px-2"

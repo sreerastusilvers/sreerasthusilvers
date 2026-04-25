@@ -5,6 +5,7 @@ import { subscribeToUserOrders, Order } from '@/services/orderService';
 import Header from '@/components/Header';
 import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import CategoryIconNav from '@/components/CategoryIconNav';
 import Footer from '@/components/Footer';
 import {
@@ -108,6 +109,7 @@ const MobileOrders = () => {
       case 'returnRequested': return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20';
       case 'returnScheduled': return 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20';
       case 'returned': return 'bg-gray-50 dark:bg-gray-500/10 text-gray-700 dark:text-gray-400 dark:text-zinc-500 border border-gray-200 dark:border-gray-500/20';
+      case 'refunded': return 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20';
       default: return 'bg-gray-50 dark:bg-gray-500/10 text-gray-700 dark:text-gray-400 dark:text-zinc-500 border border-gray-200 dark:border-gray-500/20';
     }
   };
@@ -127,6 +129,7 @@ const MobileOrders = () => {
       case 'returnRequested': return <ReturnIcon className="w-3.5 h-3.5" />;
       case 'returnScheduled': return <ReturnIcon className="w-3.5 h-3.5" />;
       case 'returned': return <ReturnIcon className="w-3.5 h-3.5" />;
+      case 'refunded': return <CheckCircle2 className="w-3.5 h-3.5" />;
       default: return <Package className="w-3.5 h-3.5" />;
     }
   };
@@ -146,6 +149,7 @@ const MobileOrders = () => {
       case 'returnRequested': return 'Return Requested';
       case 'returnScheduled': return 'Return Scheduled';
       case 'returned': return 'Returned';
+      case 'refunded': return 'Refunded';
       default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
@@ -292,6 +296,7 @@ const MobileOrders = () => {
         )}
       </div>
       <Footer />
+      <MobileBottomNav />
     </div>
   );
 };

@@ -348,6 +348,7 @@ const OrderDetailsPage = () => {
       case 'returnRequested': return 'Return Requested';
       case 'returnScheduled': return 'Return Scheduled';
       case 'returned': return 'Returned';
+      case 'refunded': return 'Refunded';
       case 'deliveryFailed': return 'Delivery Attempted';
       default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
@@ -1016,6 +1017,7 @@ const OrderDetailsPage = () => {
               order.status === 'returnScheduled' ? 'bg-emerald-100' :
               (order.status === 'picked' && !!(order as any).returnScheduledAt) ? 'bg-amber-100' :
               order.status === 'returned' ? 'bg-gray-100 dark:bg-zinc-800' :
+              order.status === 'refunded' ? 'bg-green-100 dark:bg-green-900/30' :
               'bg-blue-100'
             }`}>
               {order.status === 'delivered' ? (
@@ -1030,6 +1032,8 @@ const OrderDetailsPage = () => {
                 <Truck className="w-5 h-5 text-amber-600" />
               ) : order.status === 'returned' ? (
                 <CheckCircle2 className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
+              ) : order.status === 'refunded' ? (
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
               ) : (
                 <Package className="w-5 h-5 text-blue-600" />
               )}
@@ -1056,6 +1060,7 @@ const OrderDetailsPage = () => {
                 {order.status === 'returnRequested' && 'Return request submitted. Waiting for approval.'}
                 {order.status === 'returnScheduled' && 'Return approved! Pickup will be scheduled soon.'}
                 {order.status === 'returned' && 'Item has been picked up and returned successfully.'}
+                {order.status === 'refunded' && 'Your refund has been processed successfully.'}
               </p>
               <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 dark:text-zinc-500">
                 <Clock className="w-3 h-3" />
@@ -1150,7 +1155,7 @@ const OrderDetailsPage = () => {
         {/* Delivery Message */}
         {order.status !== 'delivered' && order.status !== 'cancelled' && 
          order.status !== 'returnRequested' && order.status !== 'returnScheduled' && 
-         order.status !== 'returned' && order.status !== 'deliveryFailed' && (
+         order.status !== 'returned' && order.status !== 'refunded' && order.status !== 'deliveryFailed' && (
           <div className="rounded-[24px] border border-[#d4af37]/12 bg-[linear-gradient(135deg,rgba(251,191,36,0.12)_0%,rgba(212,175,55,0.08)_100%)] px-4 py-3 shadow-[0_20px_45px_-38px_rgba(0,0,0,0.45)]">
             <p className="text-sm text-amber-800">
               {(order.status === 'shipped' || order.status === 'outForDelivery' || order.status === 'picked')

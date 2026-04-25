@@ -35,6 +35,7 @@ const STATUS_PHRASE: Record<string, string> = {
   returnRequested: 'return request has been received',
   returnScheduled: 'return has been scheduled',
   returned: 'return is complete',
+  refunded: 'has been refunded',
   deliveryFailed: 'delivery attempt failed',
 };
 
@@ -121,7 +122,7 @@ export interface Order {
   // Canonical statuses. Legacy values 'shipped' | 'assigned' | 'picked' are kept in the
   // union for backward compatibility with historical Firestore documents but should be
   // normalised to the canonical values via `normalizeOrderStatus` for display/logic.
-  status: 'pending' | 'processing' | 'packed' | 'outForDelivery' | 'delivered' | 'cancelled' | 'returnRequested' | 'returnScheduled' | 'returned' | 'shipped' | 'assigned' | 'picked' | 'deliveryFailed';
+  status: 'pending' | 'processing' | 'packed' | 'outForDelivery' | 'delivered' | 'cancelled' | 'returnRequested' | 'returnScheduled' | 'returned' | 'refunded' | 'shipped' | 'assigned' | 'picked' | 'deliveryFailed';
   // Tracking fields
   trackingId?: string;
   carrier?: string;
@@ -218,7 +219,7 @@ export const isValidStatusTransition = (
   const toN = normalizeOrderStatus(to);
   if (fromN === toN) return false;
   // Exception flow always allowed.
-  if (['cancelled', 'returnRequested', 'returnScheduled', 'returned', 'deliveryFailed'].includes(toN)) {
+  if (['cancelled', 'returnRequested', 'returnScheduled', 'returned', 'refunded', 'deliveryFailed'].includes(toN)) {
     return true;
   }
   // deliveryFailed can only move forward to returned.

@@ -293,6 +293,8 @@ const AdminOrders = () => {
         return 'bg-purple-50 text-purple-700 border border-purple-200';
       case 'returned':
         return 'bg-gray-50 text-gray-700 border border-gray-200';
+      case 'refunded':
+        return 'bg-green-50 text-green-700 border border-green-200';
       default:
         return 'bg-gray-50 text-gray-700 border border-gray-200';
     }
@@ -321,6 +323,8 @@ const AdminOrders = () => {
         return <ReturnIcon className="w-4 h-4" />;
       case 'returned':
         return <ReturnIcon className="w-4 h-4" />;
+      case 'refunded':
+        return <CheckCircle2 className="w-4 h-4" />;
       default:
         return <Package className="w-4 h-4" />;
     }
@@ -349,6 +353,8 @@ const AdminOrders = () => {
         return 'Return Scheduled';
       case 'returned':
         return 'Returned';
+      case 'refunded':
+        return 'Refunded';
       default:
         return status;
     }
@@ -409,6 +415,7 @@ const AdminOrders = () => {
                 <option value="returnRequested">Return Requested</option>
                 <option value="returnScheduled">Return Scheduled</option>
                 <option value="returned">Returned</option>
+                <option value="refunded">Refunded</option>
               </select>
               <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <ChevronDown className="absolute right-8 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -570,6 +577,7 @@ const AdminOrders = () => {
                           <option value="returnRequested">Return Requested</option>
                           <option value="returnScheduled">Return Scheduled</option>
                           <option value="returned">Returned</option>
+                          <option value="refunded">Refunded</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">
@@ -790,6 +798,7 @@ const AdminOrders = () => {
                         <option value="returnRequested">🔄 Return Requested</option>
                         <option value="returnScheduled">📦 Return Scheduled</option>
                         <option value="returned">✔️ Returned</option>
+                        <option value="refunded">💰 Refunded</option>
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                     </div>

@@ -106,6 +106,7 @@ const MobileCheckout = () => {
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Cash On Delivery');
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
   const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
@@ -375,6 +376,8 @@ const MobileCheckout = () => {
 
       // Show success page
       setShowOrderSuccess(true);
+      setShowOrderAnimation(true);
+      setTimeout(() => setShowOrderAnimation(false), 2800);
 
       toast({
         title: 'Success',
@@ -1237,6 +1240,81 @@ const MobileCheckout = () => {
         )}
       </AnimatePresence>
 
+      {/* ─── Premium Order Animation Overlay ─── */}
+      <AnimatePresence>
+        {showOrderAnimation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="fixed inset-0 z-[200] bg-black/85 flex flex-col items-center justify-center pointer-events-none overflow-hidden"
+          >
+            {/* Sparkle particles */}
+            {[...Array(12)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-2 h-2 rounded-full"
+                style={{ backgroundColor: i % 2 === 0 ? '#d4af37' : '#f5f5f5' }}
+                initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+                animate={{
+                  opacity: [0, 1, 0],
+                  x: (Math.cos((i / 12) * 2 * Math.PI) * (80 + Math.random() * 80)),
+                  y: (Math.sin((i / 12) * 2 * Math.PI) * (80 + Math.random() * 80)),
+                  scale: [0, 1.5, 0],
+                }}
+                transition={{ delay: 0.3 + i * 0.06, duration: 1.2 }}
+              />
+            ))}
+            {/* Gold ring */}
+            <motion.div
+              initial={{ scale: 0, rotate: -90 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 18, delay: 0.1 }}
+              className="w-36 h-36 rounded-full border-[6px] border-amber-400 flex items-center justify-center"
+              style={{ boxShadow: '0 0 40px 8px rgba(212,175,55,0.5)' }}
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.5, type: 'spring', stiffness: 250, damping: 15 }}
+                className="w-24 h-24 rounded-full bg-amber-400 flex items-center justify-center"
+              >
+                <svg className="w-14 h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <motion.path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M5 13l4 4L19 7"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ delay: 0.7, duration: 0.5 }}
+                  />
+                </svg>
+              </motion.div>
+            </motion.div>
+            <motion.h2
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 }}
+              className="text-white text-2xl font-bold mt-6 text-center px-6"
+              style={{ fontFamily: "'Poppins', sans-serif", textShadow: '0 2px 12px rgba(212,175,55,0.6)' }}
+            >
+              Order Placed Successfully!
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1 }}
+              className="text-amber-300 text-sm mt-2 text-center px-8"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              Thank you for your purchase 🎉
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ─── Order Success Page ─── */}
       <AnimatePresence>
         {showOrderSuccess && (
@@ -1462,6 +1540,7 @@ const Checkout = () => {
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Cash On Delivery');
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
   const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
@@ -1725,6 +1804,8 @@ const Checkout = () => {
       // Close payment modal and show success
       setShowPaymentDetails(false);
       setShowOrderSuccess(true);
+      setShowOrderAnimation(true);
+      setTimeout(() => setShowOrderAnimation(false), 2800);
 
       toast({
         title: 'Success',
@@ -2612,6 +2693,79 @@ const Checkout = () => {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Premium Order Animation Overlay (Desktop) ─── */}
+      <AnimatePresence>
+        {showOrderAnimation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="fixed inset-0 z-[200] bg-black/85 flex flex-col items-center justify-center pointer-events-none overflow-hidden"
+          >
+            {[...Array(16)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: i % 2 === 0 ? '#d4af37' : '#f5f5f5' }}
+                initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+                animate={{
+                  opacity: [0, 1, 0],
+                  x: (Math.cos((i / 16) * 2 * Math.PI) * (100 + Math.random() * 120)),
+                  y: (Math.sin((i / 16) * 2 * Math.PI) * (100 + Math.random() * 120)),
+                  scale: [0, 1.8, 0],
+                }}
+                transition={{ delay: 0.3 + i * 0.05, duration: 1.4 }}
+              />
+            ))}
+            <motion.div
+              initial={{ scale: 0, rotate: -90 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 18, delay: 0.1 }}
+              className="w-44 h-44 rounded-full border-[7px] border-amber-400 flex items-center justify-center"
+              style={{ boxShadow: '0 0 60px 12px rgba(212,175,55,0.5)' }}
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.5, type: 'spring', stiffness: 250, damping: 15 }}
+                className="w-32 h-32 rounded-full bg-amber-400 flex items-center justify-center"
+              >
+                <svg className="w-18 h-18 text-white" style={{ width: 72, height: 72 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <motion.path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M5 13l4 4L19 7"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ delay: 0.7, duration: 0.5 }}
+                  />
+                </svg>
+              </motion.div>
+            </motion.div>
+            <motion.h2
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 }}
+              className="text-white text-3xl font-bold mt-8 text-center px-8"
+              style={{ fontFamily: "'Poppins', sans-serif", textShadow: '0 2px 16px rgba(212,175,55,0.7)' }}
+            >
+              Order Placed Successfully!
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1 }}
+              className="text-amber-300 text-base mt-2 text-center"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              Thank you for your purchase 🎉
+            </motion.p>
+          </motion.div>
         )}
       </AnimatePresence>
 

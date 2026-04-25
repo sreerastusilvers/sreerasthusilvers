@@ -129,11 +129,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             language: { code: process.env.WHATSAPP_OTP_LANG || 'en_US' },
             components: [
               { type: 'body', parameters: [{ type: 'text', text: otp }] },
-              { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: otp }] },
             ],
           },
         });
       } catch (templateErr) {
+        console.warn('[whatsapp-send] template failed, trying plain text:', (templateErr as any)?.message);
         await sendToMeta({
           to,
           type: 'text',

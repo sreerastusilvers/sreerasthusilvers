@@ -298,8 +298,6 @@ const BestSellers = () => {
           </div>
 
           <div className="relative hidden md:block">
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#fffcf7] via-[#fffcf7]/70 to-transparent dark:from-[#14100a] dark:via-[#14100a]/70" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#fffcf7] via-[#fffcf7]/70 to-transparent dark:from-[#14100a] dark:via-[#14100a]/70" />
 
             {loading ? (
               <div className="grid grid-cols-4 gap-4 pb-4">

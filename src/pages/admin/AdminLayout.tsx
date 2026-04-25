@@ -1,8 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import whiteLogo from '@/assets/white.png';
-import darkLogo from '@/assets/dark.png';
+
 import {
   LayoutDashboard,
   Package,
@@ -113,7 +112,7 @@ const AdminLayout = () => {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-[#F5EFE6] dark:border-gray-800 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img src={resolvedTheme === 'dark' ? darkLogo : whiteLogo} alt="Sreerasthu Silvers" className="h-8 w-auto" />
+            <img src={resolvedTheme === 'dark' ? '/white_logo.png' : '/black_logo.png'} alt="Sreerasthu Silvers" className="h-8 w-auto" />
           </div>
           <button
             onClick={() => setSidebarOpen(false)}

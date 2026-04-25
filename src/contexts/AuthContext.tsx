@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import {
   User,
   createUserWithEmailAndPassword,
@@ -107,9 +108,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             PushNotifications.requestPermissionAndRegisterToken(updatedUser.uid).catch(() => {});
             PushNotifications.subscribeForegroundMessages(({ title, body }) => {
               if (typeof window === 'undefined' || !title) return;
-              // Lightweight in-page surfacing via Notification API if allowed
-              if ('Notification' in window && Notification.permission === 'granted') {
-                try { new Notification(title, { body }); } catch { /* ignore */ }
+              if (document.visibilityState === 'visible') {
+                // User is actively on the page — show in-app toast
+                toast(title, { description: body });
+              } else {
+                // Page is backgrounded — use native Notification API
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  try { new Notification(title, { body }); } catch { /* ignore */ }
+                }
               }
             }).catch(() => {});
             

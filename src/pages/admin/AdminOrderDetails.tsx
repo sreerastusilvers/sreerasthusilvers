@@ -52,6 +52,7 @@ const STATUS_OPTIONS: Array<{ value: Order['status']; label: string }> = [
   { value: 'returnScheduled', label: 'Return Scheduled' },
   { value: 'picked', label: 'Return Picked Up' },
   { value: 'returned', label: 'Returned' },
+  { value: 'refunded', label: 'Refunded' },
   { value: 'deliveryFailed', label: 'Delivery Failed' },
 ];
 
@@ -66,6 +67,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   returnScheduled: { label: 'Return Scheduled', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
   picked: { label: 'Return Picked Up', className: 'bg-amber-100 text-amber-700 hover:bg-amber-100' },
   returned: { label: 'Returned', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
+  refunded: { label: 'Refunded', className: 'bg-green-100 text-green-700 hover:bg-green-100' },
   deliveryFailed: { label: 'Delivery Failed', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
 };
 
@@ -80,6 +82,7 @@ const NEXT_STEP_HINT: Record<string, string> = {
   returnScheduled: 'Awaiting return pickup.',
   picked: 'Item collected from customer. Share the Return Store OTP below with the delivery partner to confirm receipt at store.',
   returned: 'Return completed.',
+  refunded: 'Refund has been processed and sent to the customer.',
   deliveryFailed: 'Delivery failed. Share the Return Store OTP with the delivery partner when they arrive at the store.',
 };
 
