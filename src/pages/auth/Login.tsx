@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,30 +39,21 @@ const Login = () => {
 
   const { login, loginWithGoogle, logout, user, userProfile, isDelivery, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   // NOTE: Intentionally always redirect users to '/' (home) after login from
   // mobile/desktop. Previously a `from` location-state var was being used
   // which made deep-linked screens (e.g. /wishlist) become the post-login
   // landing page — we no longer honour that.
 
-  // Redirect if already logged in AND email is verified
+  // Redirect if already logged in.
   useEffect(() => {
     if (!authLoading && user && userProfile) {
-      // Only redirect if email is verified (or for delivery/admin which may not require it)
-      if (user.emailVerified || isDelivery || userProfile.role === 'admin') {
-        if (isDelivery) {
-          navigate('/delivery/dashboard', { replace: true });
-        } else if (userProfile.role === 'admin') {
-          navigate('/admin/dashboard', { replace: true });
-        } else {
-          navigate('/', { replace: true });
-        }
+      if (isDelivery) {
+        navigate('/delivery/dashboard', { replace: true });
+      } else if (userProfile.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
       } else {
-        // User is logged in but email not verified - show verification modal
-        setVerificationEmail(user.email || '');
-        setShowVerificationModal(true);
-        startResendCountdown();
+        navigate('/', { replace: true });
       }
     }
   }, [user, userProfile, isDelivery, authLoading, navigate]);
@@ -192,7 +183,6 @@ const Login = () => {
 
     try {
       const userProfile = await login(email, password);
-      const currentUser = auth.currentUser;
       
       if (activeTab === 'delivery') {
         // Delivery login - check role
@@ -212,27 +202,9 @@ const Login = () => {
           return;
         }
         
-        // Check email verification status
-        if (currentUser && !currentUser.emailVerified) {
-          // Send verification email and show modal
-          try {
-            await sendEmailVerification(currentUser);
-            toast.info('A verification email has been sent to your inbox.');
-          } catch (err: any) {
-            console.error('Send verification error:', err);
-            // Continue showing modal even if email sending fails
-          }
-          
-          setVerificationEmail(email);
-          setShowVerificationModal(true);
-          startResendCountdown();
-          setLoading(false);
-          return;
-        }
-        
         // If admin, redirect to admin panel
         if (userProfile.role === 'admin') {
-          navigate('/admin/dashboard');
+          navigate('/admin/dashboard', { replace: true });
         } else {
           navigate('/', { replace: true });
         }
@@ -265,25 +237,12 @@ const Login = () => {
     setLoading(true);
     try {
       const profile = await loginWithGoogle();
-      const currentUser = auth.currentUser;
-      
-      // Check email verification status for Google sign-in
-      if (currentUser && !currentUser.emailVerified) {
-        try {
-          await sendEmailVerification(currentUser);
-          toast.info('A verification email has been sent to your inbox.');
-        } catch (err: any) {
-          console.error('Send verification error:', err);
-        }
-        
-        setVerificationEmail(currentUser.email || '');
-        setShowVerificationModal(true);
-        startResendCountdown();
-        setLoading(false);
-        return;
+
+      if (profile.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        navigate('/', { replace: true });
       }
-      
-      navigate('/', { replace: true });
     } catch (err: any) {
       console.error('Google sign-in error:', err);
       setError('Failed to sign in with Google. Please try again.');

@@ -23,7 +23,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
   redirectTo = '/login',
-  requireEmailVerification = true
+  requireEmailVerification = false
 }) => {
   const { user, userProfile, logout, loading } = useAuth();
   const location = useLocation();

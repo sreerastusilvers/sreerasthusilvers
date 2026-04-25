@@ -126,24 +126,16 @@ const LoginForm = () => {
 
     try {
       const userProfile = await loginWithGoogle();
-      
-      // Check email verification for regular users
-      const currentUser = auth.currentUser;
-      if (currentUser && !currentUser.emailVerified && userProfile.role === 'user') {
-        sessionStorage.setItem('pendingVerificationEmail', currentUser.email || '');
-        navigate('/verify-email', { state: { email: currentUser.email }, replace: true });
-        // Don't reset loading - navigating away
-        return;
-      }
-      
+
       if (userProfile.role === 'admin') {
         navigate('/admin/dashboard');
         // Don't reset loading - navigating away
         return;
       }
-      
-      // For regular verified users, stay on account page (component will re-render)
-      setGoogleLoading(false);
+
+      navigate('/', { replace: true });
+      // Don't reset loading - navigating away
+      return;
     } catch (err: any) {
       console.error('Google login error:', err);
       setGoogleLoading(false);
@@ -200,10 +192,7 @@ const LoginForm = () => {
     try {
       if (isSignUp) {
         await signup(email, password, fullName, phone || undefined, sameForWhatsApp);
-        // Navigate immediately to email verification page
-        sessionStorage.setItem('pendingVerificationEmail', email);
-        // Keep loading state active during navigation to prevent flash
-        navigate('/verify-email', { state: { email }, replace: true });
+        navigate('/', { replace: true });
         // Don't reset emailLoading - we're navigating away
         return;
       } else {
@@ -227,24 +216,16 @@ const LoginForm = () => {
           setEmailLoading(false);
           return;
         }
-        
-        // Check email verification for regular users
-        const currentUser = auth.currentUser;
-        if (currentUser && !currentUser.emailVerified && userProfile.role === 'user') {
-          sessionStorage.setItem('pendingVerificationEmail', email);
-          navigate('/verify-email', { state: { email }, replace: true });
-          // Don't reset loading - navigating away
-          return;
-        }
-        
+
         if (userProfile.role === 'admin') {
           navigate('/admin/dashboard');
           // Don't reset loading - navigating away
           return;
         }
-        
-        // For regular verified users, stay on account page (component will re-render)
-        setEmailLoading(false);
+
+        navigate('/', { replace: true });
+        // Don't reset loading - navigating away
+        return;
       }
     } catch (err: any) {
       console.error('Email auth error:', err);
@@ -757,13 +738,6 @@ const AccountPage = () => {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  // Redirect to wishlist on mobile (account section is available there)
-  React.useEffect(() => {
-    if (isMobile) {
-      navigate('/wishlist');
-    }
-  }, [isMobile, navigate]);
 
   const handleLogout = async () => {
     if (!window.confirm('Log out of your account?')) return;
