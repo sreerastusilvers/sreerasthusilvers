@@ -30,7 +30,7 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="w-[calc(100vw-1.5rem)] max-w-sm p-5 sm:p-6 rounded-2xl"
+        className="w-[calc(100vw-1rem)] max-w-[min(24rem,calc(100vw-1rem))] p-4 sm:w-[calc(100vw-1.5rem)] sm:max-w-sm sm:p-6 rounded-2xl"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
@@ -57,7 +57,7 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
             <label className="block text-xs font-medium text-gray-700 mb-1.5">
               WhatsApp number
             </label>
-            <div className="flex items-stretch rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-green-300">
+            <div className="flex flex-col sm:flex-row rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-green-300">
               <span className="flex items-center px-2.5 bg-gray-50 text-sm text-gray-600 border-r border-gray-200 select-none flex-shrink-0">
                 +91
               </span>
@@ -75,7 +75,7 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
                 type="button"
                 onClick={otp.sendOtp}
                 disabled={otp.isBusy || otp.isVerified || phone.length !== 10}
-                className="px-2.5 py-2 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed border-l border-gray-200 transition-colors flex-shrink-0"
+                className="px-2.5 py-2 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed border-t sm:border-t-0 sm:border-l border-gray-200 transition-colors flex-shrink-0"
               >
                 {otp.phase === 'sending'
                   ? 'Sending…'
@@ -92,7 +92,7 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
               <label className="block text-xs font-medium text-gray-700 mb-1.5">
                 6-digit WhatsApp code
               </label>
-              <div className="flex items-stretch gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch gap-2">
                 <input
                   type="text"
                   inputMode="numeric"
@@ -141,7 +141,7 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <Button
               type="button"
               variant="outline"

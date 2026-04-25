@@ -215,9 +215,12 @@ export const recordLoginAttempt = async (
     os,
     device,
     isSuspicious,
-    suspiciousReason,
     timestamp: Timestamp.now(),
   };
+
+  if (suspiciousReason) {
+    entry.suspiciousReason = suspiciousReason;
+  }
 
   const historyRef = collection(db, COLLECTIONS.USERS, userId, COLLECTIONS.LOGIN_HISTORY);
   const docRef = await addDoc(historyRef, entry);
