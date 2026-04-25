@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LoadingScreenProps {
   onComplete?: () => void;
@@ -10,19 +11,47 @@ interface LoadingScreenProps {
 const LIGHT_MODE_LOGO = "/loading_black.png"; // dark logo on light bg
 const DARK_MODE_LOGO = "/loading_white.png";  // light logo on dark bg
 
+const MIN_MS = 1000; // always show for at least this long
+
 const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const { resolvedTheme } = useTheme();
+  const { loading: authLoading } = useAuth();
   const isDark = resolvedTheme === "dark";
   const logoSrc = isDark ? DARK_MODE_LOGO : LIGHT_MODE_LOGO;
 
-  useEffect(() => {
-    const completeTimer = setTimeout(() => {
+  // Track both conditions via refs so effects can cross-check without stale closures
+  const minDone = useRef(false);
+  const authDone = useRef(!authLoading);
+  const completed = useRef(false);
+
+  const tryComplete = () => {
+    if (completed.current) return;
+    if (minDone.current && authDone.current) {
+      completed.current = true;
       setIsLoading(false);
       onComplete?.();
-    }, 2800);
-    return () => clearTimeout(completeTimer);
-  }, [onComplete]);
+    }
+  };
+
+  // Minimum timer — always at least MIN_MS
+  useEffect(() => {
+    const t = setTimeout(() => {
+      minDone.current = true;
+      tryComplete();
+    }, MIN_MS);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auth readiness — whenever auth finishes loading, check if we can dismiss
+  useEffect(() => {
+    if (!authLoading) {
+      authDone.current = true;
+      tryComplete();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading]);
 
   return (
     <AnimatePresence>

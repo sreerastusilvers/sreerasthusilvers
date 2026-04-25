@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Package,
@@ -6,11 +6,18 @@ import {
   DollarSign,
   Plus,
   Clock,
+  Coins,
+  Save,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { getAllProducts, Product } from '@/services/productService';
 import { getAllOrders, Order } from '@/services/orderService';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { toast } from 'sonner';
 
 interface StatCard {
   title: string;
@@ -30,6 +37,11 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Silver rate state
+  const [silverInput, setSilverInput] = useState<string>('');
+  const [silverSaved, setSilverSaved] = useState<number | null>(null);
+  const [silverSaving, setSilverSaving] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -48,6 +60,40 @@ const Dashboard = () => {
 
     fetchData();
   }, []);
+
+  // Subscribe to live silver rate
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'siteSettings', 'silverRate'), (snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        if (typeof d.manualPricePerGramInr === 'number' && d.manualPricePerGramInr > 0) {
+          setSilverSaved(d.manualPricePerGramInr);
+          setSilverInput(String(d.manualPricePerGramInr));
+        }
+      }
+    });
+    return unsub;
+  }, []);
+
+  const handleSilverSave = async () => {
+    const val = parseFloat(silverInput);
+    if (!val || val <= 0) { toast.error('Enter a valid price per gram'); return; }
+    setSilverSaving(true);
+    try {
+      await setDoc(
+        doc(db, 'siteSettings', 'silverRate'),
+        { manualOverride: true, manualPricePerGramInr: val, updatedAt: new Date().toISOString() },
+        { merge: true },
+      );
+      toast.success('Silver rate updated ✓');
+    } catch {
+      toast.error('Failed to save silver rate');
+    } finally {
+      setSilverSaving(false);
+    }
+  };
+
+  const silverChanged = silverSaved !== null && parseFloat(silverInput) !== silverSaved;
 
   const lowStockProducts = products.filter(p => (p.inventory?.stock || 0) < 5).length;
   const outOfStockProducts = products.filter(p => (p.inventory?.stock || 0) === 0).length;
@@ -117,6 +163,50 @@ const Dashboard = () => {
           </Link>
         </div>
       </div>
+
+      {/* Silver Rate Quick Card */}
+      <Card className="border-amber-200/60 bg-gradient-to-r from-amber-50/80 to-yellow-50/40">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="bg-amber-100 p-2 rounded-lg shrink-0">
+                <Coins className="h-4 w-4 text-amber-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-amber-700 uppercase tracking-wider">Silver Rate (Live)</p>
+                {silverSaved !== null && (
+                  <p className="text-xs text-gray-500">
+                    Current: <span className="font-semibold text-amber-700">₹{silverSaved}/g</span>
+                    <span className="ml-2 text-gray-400">→ 10g: ₹{(silverSaved * 10).toLocaleString('en-IN')} · 1kg: ₹{(silverSaved * 1000).toLocaleString('en-IN')}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">₹</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={silverInput}
+                  onChange={(e) => setSilverInput(e.target.value)}
+                  className="pl-6 w-28 h-8 text-sm border-amber-200 focus:border-amber-400"
+                  placeholder="price/g"
+                />
+              </div>
+              <Button
+                size="sm"
+                disabled={!silverChanged || silverSaving}
+                onClick={handleSilverSave}
+                className="h-8 bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+              >
+                {silverSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                <span className="ml-1.5 hidden sm:inline">{silverSaving ? 'Saving…' : 'Save Rate'}</span>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
