@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, UserProfile } from '@/contexts/AuthContext';
 import { auth } from '@/config/firebase';
 import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
@@ -12,6 +12,9 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn, cancelReturn } from '@/services/orderService';
 import { uploadToCloudinary, UploadProgress } from '@/services/cloudinaryService';
 import { useWhatsAppOtpVerification } from '@/hooks/useWhatsAppOtpVerification';
+import { getSecuritySettings, generateDeviceFingerprint } from '@/services/securityService';
+import TwoFactorChallengeModal from '@/components/auth/TwoFactorChallengeModal';
+import WhatsAppSetupModal from '@/components/auth/WhatsAppSetupModal';
 import { toast } from 'sonner';
 import logo from '@/assets/dark.png';
 import {
@@ -53,9 +56,97 @@ import {
 } from 'lucide-react';
 
 const Account = () => {
-  const { user, userProfile, loading, logout } = useAuth();
+  const { user, loading, logout, updateUserProfile } = useAuth();
+  const navigate = useNavigate();
 
-  // Loading state
+  // Login flow: 'idle' = normal | 'loading' = between login and checks (prevents flash) | '2fa' | 'whatsapp'
+  const [loginFlow, setLoginFlow] = useState<'idle' | 'loading' | '2fa' | 'whatsapp'>('idle');
+  const [showTwoFactor, setShowTwoFactor] = useState(false);
+  const [twoFactorPhone, setTwoFactorPhone] = useState('');
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState('/');
+  const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null);
+  const [isGoogleLogin, setIsGoogleLogin] = useState(false);
+
+  const handleLoginStart = () => setLoginFlow('loading');
+  const handleLoginError = () => setLoginFlow('idle');
+
+  const handleLoginComplete = async (
+    profile: UserProfile,
+    destination: string,
+    isGoogle: boolean
+  ) => {
+    if (profile.role === 'user') {
+      // Check 2FA
+      try {
+        const settings = await getSecuritySettings(profile.uid);
+        if (settings.twoFactorEnabled) {
+          const fingerprint = generateDeviceFingerprint();
+          if (!settings.trustedDevices.includes(fingerprint)) {
+            const phone = profile.whatsappNumber || profile.phone || '';
+            if (!phone) {
+              toast.error('Two-factor authentication is enabled but no WhatsApp number is on file.');
+              await logout();
+              setLoginFlow('idle');
+              return;
+            }
+            setPendingDestination(destination);
+            setPendingProfile(profile);
+            setIsGoogleLogin(isGoogle);
+            setTwoFactorPhone(phone);
+            setLoginFlow('2fa');
+            setShowTwoFactor(true);
+            return;
+          }
+        }
+      } catch {
+        // 2FA check failed — proceed without it
+      }
+
+      // Check WhatsApp collection (Google sign-in users only)
+      if (isGoogle && !profile.whatsappNumber) {
+        setPendingDestination(destination);
+        setPendingProfile(profile);
+        setLoginFlow('whatsapp');
+        setShowWhatsApp(true);
+        return;
+      }
+    }
+
+    navigate(destination, { replace: true });
+  };
+
+  const handleTwoFactorSuccess = async () => {
+    setShowTwoFactor(false);
+    if (isGoogleLogin && pendingProfile && !pendingProfile.whatsappNumber) {
+      setLoginFlow('whatsapp');
+      setShowWhatsApp(true);
+    } else {
+      setLoginFlow('idle');
+      navigate(pendingDestination, { replace: true });
+    }
+  };
+
+  const handleTwoFactorCancel = async () => {
+    setShowTwoFactor(false);
+    setLoginFlow('idle');
+    try { await logout(); } catch { /* ignore */ }
+  };
+
+  const handleWhatsAppSuccess = async (phone: string) => {
+    setShowWhatsApp(false);
+    setLoginFlow('idle');
+    try { await updateUserProfile({ whatsappNumber: phone }); } catch { /* ignore */ }
+    navigate(pendingDestination, { replace: true });
+  };
+
+  const handleWhatsAppSkip = () => {
+    setShowWhatsApp(false);
+    setLoginFlow('idle');
+    navigate(pendingDestination, { replace: true });
+  };
+
+  // Auth loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -64,19 +155,74 @@ const Account = () => {
     );
   }
 
-  // If user is not authenticated, show login form
-  if (!user) {
-    return <LoginForm />;
+  // Transition loading — prevents AccountPage flash while login flow is in progress
+  if (loginFlow === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  // If user is authenticated, show account page
+  // 2FA modal — shown even when Firebase has signed the user in, gates navigation
+  if (loginFlow === '2fa') {
+    return (
+      <>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+        <TwoFactorChallengeModal
+          open={showTwoFactor}
+          phoneNumber={twoFactorPhone}
+          userId={pendingProfile?.uid ?? ''}
+          onSuccess={handleTwoFactorSuccess}
+          onCancel={handleTwoFactorCancel}
+        />
+      </>
+    );
+  }
+
+  // WhatsApp setup modal
+  if (loginFlow === 'whatsapp') {
+    return (
+      <>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+        <WhatsAppSetupModal
+          open={showWhatsApp}
+          onSuccess={handleWhatsAppSuccess}
+          onSkip={handleWhatsAppSkip}
+        />
+      </>
+    );
+  }
+
+  // If user is not authenticated, show login form
+  if (!user) {
+    return (
+      <LoginForm
+        onLoginStart={handleLoginStart}
+        onLoginError={handleLoginError}
+        onLoginComplete={handleLoginComplete}
+      />
+    );
+  }
+
+  // If user is authenticated and no login flow pending, show account page
   return <AccountPage />;
 };
 
 // Login Form Component
 type LoginTab = 'user' | 'delivery';
 
-const LoginForm = () => {
+interface LoginFormProps {
+  onLoginStart: () => void;
+  onLoginError: () => void;
+  onLoginComplete: (profile: UserProfile, destination: string, isGoogle: boolean) => Promise<void>;
+}
+
+const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as LoginTab | null;
   const [activeTab, setActiveTab] = useState<LoginTab>(tabFromUrl === 'delivery' ? 'delivery' : 'user');
@@ -123,22 +269,17 @@ const LoginForm = () => {
     
     setError('');
     setGoogleLoading(true);
+    onLoginStart(); // Prevent AccountPage flash
 
     try {
-      const userProfile = await loginWithGoogle();
-
-      if (userProfile.role === 'admin') {
-        navigate('/admin/dashboard');
-        // Don't reset loading - navigating away
-        return;
-      }
-
-      navigate('/', { replace: true });
-      // Don't reset loading - navigating away
-      return;
+      const profile = await loginWithGoogle();
+      const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
+      await onLoginComplete(profile, destination, true);
+      // Do NOT reset loading — navigating away or showing a modal
     } catch (err: any) {
       console.error('Google login error:', err);
       setGoogleLoading(false);
+      onLoginError();
       
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Sign-in popup was closed. Please try again.');
@@ -192,44 +333,44 @@ const LoginForm = () => {
     try {
       if (isSignUp) {
         await signup(email, password, fullName, phone || undefined, sameForWhatsApp);
+        // Signup: skip 2FA/WhatsApp flow (brand-new account)
+        onLoginStart();
         navigate('/', { replace: true });
-        // Don't reset emailLoading - we're navigating away
+        // Don't reset emailLoading - navigating away
         return;
       } else {
-        const userProfile = await login(email, password);
+        const profile = await login(email, password);
         
         // Handle delivery login
         if (activeTab === 'delivery') {
-          if (userProfile.role !== 'delivery') {
+          if (profile.role !== 'delivery') {
             setError('This login is for delivery partners only. Please use the User tab.');
             setEmailLoading(false);
             return;
           }
+          onLoginStart();
           navigate('/delivery/dashboard');
           // Don't reset loading - navigating away
           return;
         }
         
         // Handle user login - check they're not delivery
-        if (userProfile.role === 'delivery') {
+        if (profile.role === 'delivery') {
           setError('Delivery partners should use the Delivery tab to login.');
           setEmailLoading(false);
           return;
         }
 
-        if (userProfile.role === 'admin') {
-          navigate('/admin/dashboard');
-          // Don't reset loading - navigating away
-          return;
-        }
-
-        navigate('/', { replace: true });
-        // Don't reset loading - navigating away
+        const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
+        onLoginStart(); // Prevent AccountPage flash
+        await onLoginComplete(profile, destination, false);
+        // Do NOT reset loading — navigating away or showing a modal
         return;
       }
     } catch (err: any) {
       console.error('Email auth error:', err);
       setEmailLoading(false);
+      onLoginError();
       
       if (err.code === 'auth/user-not-found') {
         setError('No account found with this email.');

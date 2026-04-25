@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, UserProfile } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,9 @@ import { toast } from 'sonner';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import logo from '@/assets/dark.png';
+import { getSecuritySettings, generateDeviceFingerprint } from '@/services/securityService';
+import TwoFactorChallengeModal from '@/components/auth/TwoFactorChallengeModal';
+import WhatsAppSetupModal from '@/components/auth/WhatsAppSetupModal';
 
 type LoginTab = 'user' | 'delivery';
 
@@ -29,7 +32,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Email verification modal states
+  // Email verification modal states (kept for backwards-compat, never triggered)
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [resendCountdown, setResendCountdown] = useState(0);
@@ -37,7 +40,16 @@ const Login = () => {
   const [verifyLoading, setVerifyLoading] = useState(false);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { login, loginWithGoogle, logout, user, userProfile, isDelivery, loading: authLoading } = useAuth();
+  // 2FA / WhatsApp modal states
+  const loginFlowRef = useRef<'idle' | 'checking' | '2fa' | 'whatsapp'>('idle');
+  const [showTwoFactor, setShowTwoFactor] = useState(false);
+  const [twoFactorPhone, setTwoFactorPhone] = useState('');
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState('/');
+  const [pendingProfile, setPendingProfile] = useState<UserProfile | null>(null);
+  const [isGoogleLogin, setIsGoogleLogin] = useState(false);
+
+  const { login, loginWithGoogle, logout, updateUserProfile, user, userProfile, isDelivery, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // NOTE: Intentionally always redirect users to '/' (home) after login from
@@ -45,9 +57,9 @@ const Login = () => {
   // which made deep-linked screens (e.g. /wishlist) become the post-login
   // landing page — we no longer honour that.
 
-  // Redirect if already logged in.
+  // Redirect if already logged in — skip when a login flow (2FA / WhatsApp) is in progress.
   useEffect(() => {
-    if (!authLoading && user && userProfile) {
+    if (!authLoading && user && userProfile && loginFlowRef.current === 'idle') {
       if (isDelivery) {
         navigate('/delivery/dashboard', { replace: true });
       } else if (userProfile.role === 'admin') {
@@ -57,6 +69,84 @@ const Login = () => {
       }
     }
   }, [user, userProfile, isDelivery, authLoading, navigate]);
+
+  // ─── Post-login gate: check 2FA and WhatsApp ─────────────────────────────
+  const proceedAfterLogin = async (
+    profile: UserProfile,
+    destination: string,
+    isGoogle: boolean
+  ) => {
+    if (profile.role === 'user') {
+      // Check 2FA
+      try {
+        const settings = await getSecuritySettings(profile.uid);
+        if (settings.twoFactorEnabled) {
+          const fingerprint = generateDeviceFingerprint();
+          if (!settings.trustedDevices.includes(fingerprint)) {
+            const phone = profile.whatsappNumber || profile.phone || '';
+            if (!phone) {
+              toast.error('Two-factor authentication is enabled but no WhatsApp number is on file.');
+              await logout();
+              loginFlowRef.current = 'idle';
+              setLoading(false);
+              return;
+            }
+            setPendingDestination(destination);
+            setPendingProfile(profile);
+            setIsGoogleLogin(isGoogle);
+            setTwoFactorPhone(phone);
+            loginFlowRef.current = '2fa';
+            setShowTwoFactor(true);
+            return;
+          }
+        }
+      } catch {
+        // 2FA check failed — proceed without it
+      }
+
+      // Check WhatsApp collection (Google sign-in users only)
+      if (isGoogle && !profile.whatsappNumber) {
+        setPendingDestination(destination);
+        setPendingProfile(profile);
+        loginFlowRef.current = 'whatsapp';
+        setShowWhatsApp(true);
+        return;
+      }
+    }
+
+    navigate(destination, { replace: true });
+  };
+
+  const handleTwoFactorSuccess = async () => {
+    setShowTwoFactor(false);
+    if (isGoogleLogin && pendingProfile && !pendingProfile.whatsappNumber) {
+      loginFlowRef.current = 'whatsapp';
+      setShowWhatsApp(true);
+    } else {
+      loginFlowRef.current = 'idle';
+      navigate(pendingDestination, { replace: true });
+    }
+  };
+
+  const handleTwoFactorCancel = async () => {
+    setShowTwoFactor(false);
+    loginFlowRef.current = 'idle';
+    setLoading(false);
+    try { await logout(); } catch { /* ignore */ }
+  };
+
+  const handleWhatsAppSuccess = async (phone: string) => {
+    setShowWhatsApp(false);
+    loginFlowRef.current = 'idle';
+    try { await updateUserProfile({ whatsappNumber: phone }); } catch { /* ignore */ }
+    navigate(pendingDestination, { replace: true });
+  };
+
+  const handleWhatsAppSkip = () => {
+    setShowWhatsApp(false);
+    loginFlowRef.current = 'idle';
+    navigate(pendingDestination, { replace: true });
+  };
 
   // Load remembered delivery email
   useEffect(() => {
@@ -180,36 +270,39 @@ const Login = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    loginFlowRef.current = 'checking'; // prevent redirect useEffect
 
     try {
-      const userProfile = await login(email, password);
+      const profile = await login(email, password);
       
       if (activeTab === 'delivery') {
-        // Delivery login - check role
-        if (userProfile.role !== 'delivery') {
+        // Delivery login — skip 2FA/WhatsApp checks
+        if (profile.role !== 'delivery') {
           setError('This login is for delivery partners only. Please use the User tab.');
+          loginFlowRef.current = 'idle';
           setLoading(false);
           return;
         }
         localStorage.setItem('delivery_remembered_email', email);
         toast.success('Welcome back, delivery partner!');
+        loginFlowRef.current = 'idle';
         navigate('/delivery/dashboard', { replace: true });
-      } else {
-        // User login - check they're not delivery
-        if (userProfile.role === 'delivery') {
-          setError('Delivery partners should use the Delivery tab to login.');
-          setLoading(false);
-          return;
-        }
-        
-        // If admin, redirect to admin panel
-        if (userProfile.role === 'admin') {
-          navigate('/admin/dashboard', { replace: true });
-        } else {
-          navigate('/', { replace: true });
-        }
+        return;
       }
+
+      if (profile.role === 'delivery') {
+        setError('Delivery partners should use the Delivery tab to login.');
+        loginFlowRef.current = 'idle';
+        setLoading(false);
+        return;
+      }
+
+      const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
+      await proceedAfterLogin(profile, destination, false);
+      // Do NOT reset loading — either navigating away or showing a modal
     } catch (err: any) {
+      loginFlowRef.current = 'idle';
+      setLoading(false);
       console.error('Login error:', err);
       if (err.code === 'auth/user-not-found') {
         setError('No account found with this email.');
@@ -222,8 +315,6 @@ const Login = () => {
       } else {
         setError('Failed to login. Please check your credentials.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -235,19 +326,17 @@ const Login = () => {
     
     setError('');
     setLoading(true);
+    loginFlowRef.current = 'checking'; // prevent redirect useEffect
     try {
       const profile = await loginWithGoogle();
-
-      if (profile.role === 'admin') {
-        navigate('/admin/dashboard', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
+      await proceedAfterLogin(profile, destination, true);
+      // Do NOT reset loading — either navigating away or showing a modal
     } catch (err: any) {
+      loginFlowRef.current = 'idle';
+      setLoading(false);
       console.error('Google sign-in error:', err);
       setError('Failed to sign in with Google. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -445,7 +534,23 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Email Verification Modal */}
+      {/* 2FA Challenge Modal */}
+      <TwoFactorChallengeModal
+        open={showTwoFactor}
+        phoneNumber={twoFactorPhone}
+        userId={pendingProfile?.uid ?? ''}
+        onSuccess={handleTwoFactorSuccess}
+        onCancel={handleTwoFactorCancel}
+      />
+
+      {/* WhatsApp Setup Modal */}
+      <WhatsAppSetupModal
+        open={showWhatsApp}
+        onSuccess={handleWhatsAppSuccess}
+        onSkip={handleWhatsAppSkip}
+      />
+
+      {/* Email Verification Modal — kept but never triggered */}
       <Dialog open={showVerificationModal} onOpenChange={setShowVerificationModal}>
         <DialogContent className="sm:max-w-md rounded-2xl border-0 shadow-2xl backdrop-blur-sm bg-white/95 dark:bg-zinc-900/95 p-0 gap-0 overflow-hidden">
           {/* Close Button */}
