@@ -10,6 +10,7 @@
 import {
   collection,
   doc,
+  deleteField,
   getDoc,
   getDocs,
   setDoc,
@@ -170,7 +171,7 @@ export const updateSecuritySettings = async (
   const updateData: Record<string, any> = {};
 
   Object.entries(updates).forEach(([key, value]) => {
-    updateData[`securitySettings.${key}`] = value;
+    updateData[`securitySettings.${key}`] = value === undefined ? deleteField() : value;
   });
 
   updateData.updatedAt = serverTimestamp();

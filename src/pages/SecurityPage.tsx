@@ -691,8 +691,8 @@ const SecurityPage: React.FC = () => {
                 <div className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-white dark:bg-zinc-900 p-4 dark:border-amber-800/70 dark:bg-zinc-950/90">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-zinc-300 mb-1">WhatsApp number</label>
-                    <div className="flex items-stretch rounded-lg border border-gray-200 dark:border-zinc-800 overflow-hidden focus-within:ring-2 focus-within:ring-amber-300">
-                      <span className="px-3 py-2 bg-gray-50 dark:bg-zinc-900/50 text-sm text-gray-600 dark:text-zinc-400 border-r border-gray-200 dark:border-zinc-800">+91</span>
+                    <div className="flex flex-col sm:flex-row rounded-lg border border-gray-200 dark:border-zinc-800 overflow-hidden focus-within:ring-2 focus-within:ring-amber-300">
+                      <span className="px-3 py-2 bg-gray-50 dark:bg-zinc-900/50 text-sm text-gray-600 dark:text-zinc-400 border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-zinc-800">+91</span>
                       <input
                         type="tel"
                         inputMode="numeric"
@@ -701,10 +701,10 @@ const SecurityPage: React.FC = () => {
                         onChange={(e) => { setTwoFaPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); }}
                         placeholder="10-digit number"
                         disabled={twoFaOtp.isVerified || phoneAlreadyVerified}
-                        className="flex-1 px-3 py-2 text-sm outline-none disabled:bg-gray-50 dark:bg-zinc-900/50 disabled:text-gray-500 dark:text-zinc-500 dark:text-zinc-400"
+                        className="flex-1 min-w-0 px-3 py-2 text-sm outline-none disabled:bg-gray-50 dark:bg-zinc-900/50 disabled:text-gray-500 dark:text-zinc-500 dark:text-zinc-400"
                       />
                       {phoneAlreadyVerified ? (
-                        <span className="px-3 flex items-center text-xs font-semibold text-green-600 gap-1 border-l border-gray-200 dark:border-zinc-800">
+                        <span className="px-3 py-2 flex items-center justify-center sm:justify-start text-xs font-semibold text-green-600 gap-1 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-zinc-800">
                           <Check className="w-3.5 h-3.5" /> Verified
                         </span>
                       ) : (
@@ -712,7 +712,7 @@ const SecurityPage: React.FC = () => {
                           type="button"
                           onClick={twoFaOtp.sendOtp}
                           disabled={twoFaOtp.isBusy || twoFaOtp.isVerified || twoFaPhone.length !== 10}
-                          className="px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed border-l border-gray-200 dark:border-zinc-800"
+                          className="px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-zinc-800"
                         >
                           {twoFaOtp.phase === 'sending' ? 'Sending…' : twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verified' ? 'Resend' : 'Send code'}
                         </button>
@@ -726,7 +726,7 @@ const SecurityPage: React.FC = () => {
                   {!phoneAlreadyVerified && (twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verifying' || twoFaOtp.phase === 'verified') && (
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-zinc-300 mb-1">6-digit WhatsApp code</label>
-                      <div className="flex items-stretch gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch gap-2">
                         <input
                           type="text"
                           inputMode="numeric"
@@ -762,7 +762,7 @@ const SecurityPage: React.FC = () => {
                     className="w-full bg-green-600 hover:bg-green-700 text-white"
                   >
                     {actionLoading === 'enable-2fa' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
-                    Turn on Two-Factor Authentication
+                    Turn on 2FA
                   </Button>
                 </div>
               )}
