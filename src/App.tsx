@@ -14,6 +14,7 @@ import ShoppingCart from "@/components/ShoppingCart";
 import ProtectedRoute from "@/guards/ProtectedRoute";
 import AdminRoute from "@/guards/AdminRoute";
 import DeliveryRoute from "@/guards/DeliveryRoute";
+import DeliveryLightThemeWrapper from "@/components/DeliveryLightThemeWrapper";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -337,14 +338,23 @@ const App = () => {
                 <Route path="customers/:customerId" element={<AdminCustomerDetails />} />
               </Route>
 
-              {/* Delivery Partner Routes */}
+              {/* Delivery Partner Routes (always rendered in light mode) */}
               <Route path="/delivery" element={<Navigate to="/deliverypartner" replace />} />
-              <Route path="/deliverypartner" element={<DeliveryLogin />} />
+              <Route
+                path="/deliverypartner"
+                element={
+                  <DeliveryLightThemeWrapper>
+                    <DeliveryLogin />
+                  </DeliveryLightThemeWrapper>
+                }
+              />
               <Route
                 path="/delivery/dashboard"
                 element={
                   <DeliveryRoute>
-                    <DeliveryDashboard />
+                    <DeliveryLightThemeWrapper>
+                      <DeliveryDashboard />
+                    </DeliveryLightThemeWrapper>
                   </DeliveryRoute>
                 }
               />
@@ -352,7 +362,9 @@ const App = () => {
                 path="/delivery/order/:orderId"
                 element={
                   <DeliveryRoute>
-                    <DeliveryOrderDetails />
+                    <DeliveryLightThemeWrapper>
+                      <DeliveryOrderDetails />
+                    </DeliveryLightThemeWrapper>
                   </DeliveryRoute>
                 }
               />
@@ -360,7 +372,9 @@ const App = () => {
                 path="/delivery/map/:orderId"
                 element={
                   <DeliveryRoute>
-                    <DeliveryMapPage />
+                    <DeliveryLightThemeWrapper>
+                      <DeliveryMapPage />
+                    </DeliveryLightThemeWrapper>
                   </DeliveryRoute>
                 }
               />

@@ -8,6 +8,7 @@ import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
 import CategoryIconNav from '@/components/CategoryIconNav';
 import Footer from '@/components/Footer';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
@@ -1002,10 +1003,36 @@ const OrderDetailsPage = () => {
           </div>
         </div>
 
-        {/* Order Status Timeline */}
-        <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-5 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
-          <OrderStatusStepper status={order.status} isReturnPickedState={order.status === 'picked' && !!(order as any).returnScheduledAt} />
-        </div>
+        {/* Order Status Timeline (hidden for returned / refunded orders) */}
+        {order.status !== 'returned' && order.status !== 'refunded' && (
+          <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-5 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
+            <OrderStatusStepper status={order.status} isReturnPickedState={order.status === 'picked' && !!(order as any).returnScheduledAt} />
+          </div>
+        )}
+
+        {/* Refund receipt (visible to customer once admin uploads it) */}
+        {order.status === 'refunded' && order.refundReceiptUrl && (
+          <div className="rounded-[24px] border border-emerald-300/40 bg-emerald-50/70 px-4 py-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-emerald-700/40 dark:bg-emerald-900/20">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                  Refund processed
+                </p>
+                <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">
+                  Your refund receipt is available below.
+                </p>
+              </div>
+              <a
+                href={order.refundReceiptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-full text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
+              >
+                View Receipt
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Current Status Card */}
         <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
@@ -2063,6 +2090,10 @@ const OrderDetailsPage = () => {
         )}
       </AnimatePresence>
       <Footer />
+      {/* Mobile bottom navigation — ensures the side menu is reachable on phones */}
+      <div className="lg:hidden">
+        <MobileBottomNav />
+      </div>
     </div>
   );
 };

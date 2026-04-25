@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -6,115 +6,102 @@ interface LoadingScreenProps {
   onComplete?: () => void;
 }
 
-const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
-  const { resolvedTheme } = useTheme();
-  const [isLoading, setIsLoading] = useState(true);
-  const [phase, setPhase] = useState<"enter" | "shimmer" | "exit">("enter");
+// Public-folder logos provided by the user
+const LIGHT_MODE_LOGO = "/loading_black.png"; // dark logo on light bg
+const DARK_MODE_LOGO = "/loading_white.png";  // light logo on dark bg
 
-  const logoSrc = resolvedTheme === "dark" ? "/white_logo.png" : "/black_logo.png";
+const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const logoSrc = isDark ? DARK_MODE_LOGO : LIGHT_MODE_LOGO;
 
   useEffect(() => {
-    // Phase: logo animates in (0–700ms)
-    // Phase: shimmer plays (700ms–2100ms)
-    const shimmerTimer = setTimeout(() => setPhase("shimmer"), 700);
-    // Phase: exit fade (2100–2800ms)
-    const exitTimer = setTimeout(() => setPhase("exit"), 2100);
     const completeTimer = setTimeout(() => {
       setIsLoading(false);
       onComplete?.();
     }, 2800);
-
-    return () => {
-      clearTimeout(shimmerTimer);
-      clearTimeout(exitTimer);
-      clearTimeout(completeTimer);
-    };
+    return () => clearTimeout(completeTimer);
   }, [onComplete]);
 
   return (
     <AnimatePresence>
       {isLoading && (
         <motion.div
-          className="fixed inset-0 z-[9999] md:hidden flex items-center justify-center"
-          style={{ background: resolvedTheme === "dark" ? "#0d0c0b" : "#ffffff" }}
+          className={`fixed inset-0 z-[9999] flex items-center justify-center md:hidden ${
+            isDark ? "bg-[#0a0a0a]" : "bg-[#FBF8F3]"
+          }`}
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          exit={{ opacity: 0, scale: 1.05 }}
+          transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
         >
-          {/* Subtle radial glow behind logo */}
+          {/* Soft luxury radial backdrop */}
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="pointer-events-none absolute inset-0"
             style={{
-              background:
-                resolvedTheme === "dark"
-                  ? "radial-gradient(ellipse 55% 40% at 50% 50%, rgba(212,175,55,0.08) 0%, transparent 70%)"
-                  : "radial-gradient(ellipse 55% 40% at 50% 50%, rgba(212,175,55,0.06) 0%, transparent 70%)",
+              background: isDark
+                ? "radial-gradient(circle at 50% 50%, rgba(212,175,55,0.08), transparent 60%)"
+                : "radial-gradient(circle at 50% 50%, rgba(212,175,55,0.12), transparent 60%)",
             }}
           />
 
-          {/* Logo container */}
+          {/* Animated gold ring pulse behind the logo */}
           <motion.div
-            className="relative flex items-center justify-center"
-            initial={{ opacity: 0, scale: 0.88, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute rounded-full"
+            style={{
+              width: 260,
+              height: 260,
+              border: "1px solid rgba(212,175,55,0.35)",
+            }}
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: [0.7, 1.15, 0.95], opacity: [0, 0.6, 0] }}
+            transition={{ duration: 2.4, ease: "easeOut", repeat: Infinity }}
+          />
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: 200,
+              height: 200,
+              border: "1px solid rgba(212,175,55,0.25)",
+            }}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: [0.6, 1.1, 0.9], opacity: [0, 0.5, 0] }}
+            transition={{ duration: 2.4, ease: "easeOut", repeat: Infinity, delay: 0.4 }}
+          />
+
+          {/* Centered logo */}
+          <motion.div
+            className="relative flex flex-col items-center justify-center"
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <img
+            <motion.img
               src={logoSrc}
               alt="Sreerasthu Silvers"
-              className="w-52 h-auto object-contain select-none"
-              draggable={false}
+              className="w-44 h-auto object-contain drop-shadow-[0_8px_30px_rgba(212,175,55,0.25)]"
+              animate={{
+                filter: [
+                  "drop-shadow(0 0 0px rgba(212,175,55,0.0))",
+                  "drop-shadow(0 0 18px rgba(212,175,55,0.45))",
+                  "drop-shadow(0 0 0px rgba(212,175,55,0.0))",
+                ],
+              }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
             />
 
-            {/* Shimmer sweep */}
-            <AnimatePresence>
-              {phase === "shimmer" && (
-                <motion.div
-                  className="absolute inset-0 overflow-hidden pointer-events-none"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <motion.div
-                    className="absolute inset-y-0 w-16"
-                    style={{
-                      background:
-                        resolvedTheme === "dark"
-                          ? "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%)"
-                          : "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%)",
-                      left: "-4rem",
-                    }}
-                    animate={{ left: ["−4rem", "calc(100% + 4rem)"] }}
-                    transition={{ duration: 1.1, ease: "easeInOut", delay: 0.1 }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* Bottom pulse dots */}
-          <motion.div
-            className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-1.5"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: phase === "exit" ? 0 : 1 }}
-            transition={{ duration: 0.4, delay: 0.5 }}
-          >
-            {[0, 1, 2].map((i) => (
-              <motion.span
-                key={i}
-                className="block w-1.5 h-1.5 rounded-full"
-                style={{
-                  background: resolvedTheme === "dark" ? "rgba(212,175,55,0.6)" : "rgba(180,140,30,0.45)",
-                }}
-                animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
-                transition={{
-                  duration: 1.2,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                  ease: "easeInOut",
-                }}
-              />
-            ))}
+            {/* Thin shimmer line */}
+            <motion.div
+              className="mt-6 h-[2px] w-32 overflow-hidden rounded-full"
+              style={{
+                background: isDark
+                  ? "linear-gradient(90deg, transparent, rgba(212,175,55,0.6), transparent)"
+                  : "linear-gradient(90deg, transparent, rgba(180,140,40,0.7), transparent)",
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 0] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+            />
           </motion.div>
         </motion.div>
       )}

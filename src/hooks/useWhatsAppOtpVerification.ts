@@ -45,7 +45,11 @@ export const useWhatsAppOtpVerification = (phone: string, enabled: boolean) => {
       return true;
     } catch (err) {
       setPhase('idle');
-      setOtpError((err as Error).message || 'Failed to send WhatsApp verification code.');
+      const msg = (err as Error).message || 'Failed to send WhatsApp verification code.';
+      setOtpError(msg);
+      // Surface the real server error so the user / dev can act on it
+      console.error('[whatsapp-otp] sendOtp failed:', err);
+      toast.error(msg);
       return false;
     }
   };

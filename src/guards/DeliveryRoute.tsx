@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Truck } from 'lucide-react';
@@ -11,18 +11,6 @@ interface DeliveryRouteProps {
 const DeliveryRoute: React.FC<DeliveryRouteProps> = ({ children }) => {
   const { user, userProfile, loading, isDelivery } = useAuth();
   const location = useLocation();
-
-  // Force light mode for all delivery pages
-  useEffect(() => {
-    const root = document.documentElement;
-    const wasDark = root.classList.contains('dark');
-    root.classList.remove('dark');
-    root.classList.add('light');
-    return () => {
-      root.classList.remove('light');
-      root.classList.toggle('dark', wasDark);
-    };
-  }, []);
 
   // Show loading state while checking auth
   if (loading) {

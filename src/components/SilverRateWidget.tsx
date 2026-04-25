@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Scale } from "lucide-react";
+import { motion } from "framer-motion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   getCachedSilverRate,
-  subscribeSilverRate,
+  subscribeToFirestoreSilverRate,
   type SilverRate,
 } from "@/services/silverRateService";
 
@@ -21,12 +22,27 @@ const formatInr = (n: number) =>
     maximumFractionDigits: n >= 1000 ? 0 : 2,
   }).format(n);
 
+const formatRelative = (iso: string) => {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "just now";
+  const diffMs = Date.now() - then;
+  const sec = Math.max(1, Math.floor(diffMs / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  return `${day}d ago`;
+};
+
 const SilverRateWidget = ({ variant = "icon", className = "" }: SilverRateWidgetProps) => {
   const [rate, setRate] = useState<SilverRate | null>(() => getCachedSilverRate());
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeSilverRate((r) => setRate(r));
+    // Real-time Firestore subscription — admin updates propagate instantly
+    const unsub = subscribeToFirestoreSilverRate((r) => setRate(r));
     return () => unsub();
   }, []);
 
@@ -52,7 +68,7 @@ const SilverRateWidget = ({ variant = "icon", className = "" }: SilverRateWidget
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label="Silver rate"
+          aria-label="Live silver rate"
           className={`outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-full ${className}`}
         >
           {triggerInner}
@@ -61,38 +77,62 @@ const SilverRateWidget = ({ variant = "icon", className = "" }: SilverRateWidget
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[260px] p-0 overflow-hidden border-zinc-200 dark:border-zinc-700 shadow-2xl"
+        className="w-[280px] p-0 overflow-hidden border-zinc-200 dark:border-zinc-700 shadow-2xl"
       >
-        {/* Header */}
-        <div className="px-4 py-3 bg-gradient-to-br from-zinc-100 via-white to-zinc-200 dark:from-zinc-800 dark:via-zinc-900 dark:to-zinc-800 border-b border-zinc-200/70 dark:border-zinc-700/70">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-500 dark:from-zinc-500 dark:to-zinc-700 flex items-center justify-center shadow-inner flex-shrink-0">
-              <Scale className="w-5 h-5 text-white" strokeWidth={2} />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Current Price</p>
-              <p className="text-sm font-bold text-foreground leading-tight">Silver Rate</p>
+        {/* Premium silver-tone header */}
+        <div className="relative px-4 py-3 bg-gradient-to-br from-zinc-100 via-white to-zinc-200 dark:from-zinc-800 dark:via-zinc-900 dark:to-zinc-800 border-b border-zinc-200/70 dark:border-zinc-700/70">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-500 dark:from-zinc-500 dark:to-zinc-700 flex items-center justify-center shadow-inner">
+                <Scale className="w-5 h-5 text-white" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Silver rate
+                </p>
+                <p className="text-xs font-medium text-foreground/80">
+                  92.5% sterling indicative
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Rate rows */}
-        <div className="px-4 py-3 space-y-2.5 bg-card">
-          {rate ? (
-            <>
-              <RateRow label="Per gram" value={formatInr(rate.pricePerGramInr)} highlight />
-              <RateRow label="Per 10 grams" value={formatInr(rate.pricePerTenGramInr)} />
-              <RateRow label="Per kilogram" value={formatInr(rate.pricePerKgInr)} />
-            </>
+        {/* Rates body */}
+        <div className="px-4 py-3 space-y-2 bg-card">
+          {!rate ? (
+            <div className="py-4 text-center text-xs text-muted-foreground">
+              Loading rate…
+            </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-2">Loading rates…</p>
+            <>
+              <motion.div
+                key={rate.fetchedAt}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-2"
+              >
+                <RateRow label="Per gram" value={formatInr(rate.pricePerGramInr)} highlight />
+                <RateRow label="Per 10 grams" value={formatInr(rate.pricePer10gInr)} />
+                <RateRow label="Per kilogram" value={formatInr(rate.pricePerKgInr)} />
+              </motion.div>
+
+              <div className="flex items-center justify-end pt-2 border-t border-border/60">
+                <span className="text-[10px] text-muted-foreground">
+                  Updated {formatRelative(rate.fetchedAt)}
+                </span>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-4 py-2 bg-muted/40 border-t border-border/60">
           <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Prices set by admin · Updates in real-time. Actual product price may vary based on making charges and GST.
+            Indicative only. Actual product price may differ based on making
+            charges, GST and design.
+            {rate?.source === "fallback" && " (Showing fallback estimate.)"}
+            {rate?.source === "manual" && " (Store-set rate.)"}
           </p>
         </div>
       </PopoverContent>
@@ -122,5 +162,3 @@ const RateRow = ({
 );
 
 export default SilverRateWidget;
-
-

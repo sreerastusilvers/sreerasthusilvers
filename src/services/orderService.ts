@@ -169,6 +169,11 @@ export interface Order {
   deliveryFailedAt?: Timestamp;
   deliveryFailureReason?: string;
   deliveredAt?: Timestamp;
+  // Refund receipt fields (uploaded by admin when order is refunded)
+  refundReceiptUrl?: string;
+  refundReceiptUploadedAt?: Timestamp;
+  refundReceiptType?: 'pdf' | 'image';
+  refundReceiptName?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

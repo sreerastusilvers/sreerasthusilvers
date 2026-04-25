@@ -1,9 +1,11 @@
 /**
- * Client-side silver rate service.
+ * Silver rate service.
  *
- * Admin sets `manualPricePerGramInr` in Firestore `siteSettings/silverRate`.
- * This service subscribes in real-time via onSnapshot and computes 10g / 1kg.
- * Caches last known value in localStorage for first-paint performance.
+ * The live-rate / external-API system has been removed.
+ * The admin sets the price-per-gram in the admin dashboard
+ * (Firestore: `siteSettings/silverRate`) and ALL surfaces
+ * subscribe in real-time via onSnapshot. The 10g and 1kg
+ * values are derived automatically.
  */
 
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -11,19 +13,32 @@ import { db } from '@/config/firebase';
 
 export type SilverRate = {
   pricePerGramInr: number;
-  pricePerTenGramInr: number;
+  pricePer10gInr: number;
   pricePerKgInr: number;
-  timestamp: number;
+  change24hPct: number | null;
+  source: 'manual' | 'fallback';
+  fetchedAt: string;
 };
 
-const CACHE_KEY = 'silverRate.admin.v1';
+const FALLBACK_RATE: SilverRate = {
+  pricePerGramInr: 95,
+  pricePer10gInr: 950,
+  pricePerKgInr: 95000,
+  change24hPct: null,
+  source: 'fallback',
+  fetchedAt: new Date().toISOString(),
+};
+
+const CACHE_KEY = 'silverRate.cache.v4';
 
 function readCache(): SilverRate | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as SilverRate;
+    const parsed = JSON.parse(raw) as SilverRate;
+    if (!parsed || typeof parsed.pricePerGramInr !== 'number') return null;
+    return parsed;
   } catch {
     return null;
   }
@@ -38,32 +53,54 @@ function writeCache(rate: SilverRate) {
   }
 }
 
-/** Returns the last known silver rate from localStorage — useful for first paint. */
+/** Synchronous read of the last cached rate (for first paint, no flash). */
 export function getCachedSilverRate(): SilverRate | null {
   return readCache();
 }
 
+/** Build a SilverRate from a stored admin price-per-gram value. */
+function buildFromPerGram(pricePerGramInr: number): SilverRate {
+  return {
+    pricePerGramInr,
+    pricePer10gInr: pricePerGramInr * 10,
+    pricePerKgInr: pricePerGramInr * 1000,
+    change24hPct: null,
+    source: 'manual',
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 /**
- * Subscribes to the admin-set silver rate from Firestore in real-time.
- * Returns an unsubscribe function to clean up the listener.
+ * Subscribe to the admin-managed silver rate stored at
+ * `siteSettings/silverRate`. The callback fires immediately with the
+ * current value and again on every change in real-time.
+ *
+ * Returns an unsubscribe function.
  */
-export function subscribeSilverRate(handler: (rate: SilverRate) => void): () => void {
-  const rateRef = doc(db, 'siteSettings', 'silverRate');
-  const unsub = onSnapshot(rateRef, (snap) => {
-    if (!snap.exists()) return;
-    const data = snap.data();
-    const pricePerGram =
-      typeof data.manualPricePerGramInr === 'number' && data.manualPricePerGramInr > 0
-        ? data.manualPricePerGramInr
-        : 0;
-    const rate: SilverRate = {
-      pricePerGramInr: pricePerGram,
-      pricePerTenGramInr: pricePerGram * 10,
-      pricePerKgInr: pricePerGram * 1000,
-      timestamp: Date.now(),
-    };
-    writeCache(rate);
-    handler(rate);
-  });
+export function subscribeToFirestoreSilverRate(
+  callback: (rate: SilverRate) => void,
+): () => void {
+  // Push cached / fallback synchronously so the UI never shows a flash
+  const cached = readCache();
+  if (cached) callback(cached);
+
+  const ref = doc(db, 'siteSettings', 'silverRate');
+  const unsub = onSnapshot(
+    ref,
+    (snap) => {
+      const data = snap.exists() ? snap.data() : null;
+      const perGram =
+        typeof data?.manualPricePerGramInr === 'number' && data.manualPricePerGramInr > 0
+          ? data.manualPricePerGramInr
+          : null;
+      const rate = perGram != null ? buildFromPerGram(perGram) : FALLBACK_RATE;
+      writeCache(rate);
+      callback(rate);
+    },
+    (err) => {
+      console.error('[silverRateService] onSnapshot error:', err);
+      if (!cached) callback(FALLBACK_RATE);
+    },
+  );
   return unsub;
 }

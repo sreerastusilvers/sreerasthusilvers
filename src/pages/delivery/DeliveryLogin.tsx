@@ -21,18 +21,6 @@ const DeliveryLogin = () => {
   const location = useLocation();
   const { login, resetPassword, user, userProfile, isDelivery, loading: authLoading } = useAuth();
   
-  // Force light mode for delivery login page
-  useEffect(() => {
-    const root = document.documentElement;
-    const wasDark = root.classList.contains('dark');
-    root.classList.remove('dark');
-    root.classList.add('light');
-    return () => {
-      root.classList.remove('light');
-      root.classList.toggle('dark', wasDark);
-    };
-  }, []);
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

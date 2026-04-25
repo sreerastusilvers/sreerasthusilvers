@@ -1037,11 +1037,11 @@ const ProductDetail = () => {
             Buy at ₹{product?.price.toLocaleString("en-IN")}
           </motion.button>
         </div>
-        {/* Demo Video Call CTA (mobile sticky bar) */}
+        {/* Demo Video Call CTA (mobile sticky bar) — premium gradient pill */}
         <div className="px-4 pb-2">
           <button
             onClick={() => setShowVideoCallModal(true)}
-            className="w-full py-2.5 text-sm font-medium rounded-full border-2 border-amber-500 text-amber-700 dark:text-amber-400 flex items-center justify-center gap-2 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition"
+            className="w-full py-2.5 text-sm font-semibold rounded-full bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 active:scale-[0.98] transition"
           >
             <Video className="w-4 h-4" />
             Book a Demo Video Call

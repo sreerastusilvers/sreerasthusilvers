@@ -11,6 +11,8 @@ import {
   UserPlus,
   Calendar,
   Clock,
+  Receipt,
+  ExternalLink,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,6 +36,10 @@ import {
   updateOrderStatus,
   setDeliveryWindow,
 } from '@/services/orderService';
+import ImageUploader from '@/components/ImageUploader';
+import { storage, db } from '@/config/firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 
 /**
  * Canonical, simplified status options for the admin dropdown. Legacy values
@@ -603,6 +609,11 @@ const AdminOrderDetails = () => {
         </div>
       )}
 
+      {/* Refund receipt upload (visible only when order is refunded) */}
+      {normalizedStatus === 'refunded' && (
+        <RefundReceiptUploader order={order} />
+      )}
+
       {/* Address */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-zinc-100">
@@ -623,5 +634,66 @@ const AdminOrderDetails = () => {
     </div>
   );
 };
+
+// ============================================================
+// Refund Receipt Uploader (admin uploads PDF or image; customer sees it)
+// ============================================================
+function RefundReceiptUploader({ order }: { order: Order }) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const isPdf = file.type === 'application/pdf';
+      const ext = isPdf ? 'pdf' : (file.name.split('.').pop() || 'jpg');
+      const path = `orders/${order.id}/refund-receipt.${ext}`;
+      const ref = storageRef(storage, path);
+      await uploadBytes(ref, file, { contentType: file.type });
+      const url = await getDownloadURL(ref);
+      await updateDoc(doc(db, 'orders', order.id), {
+        refundReceiptUrl: url,
+        refundReceiptUploadedAt: serverTimestamp(),
+        refundReceiptType: isPdf ? 'pdf' : 'image',
+        refundReceiptName: file.name,
+      });
+      toast.success('Refund receipt uploaded');
+    } catch (err) {
+      console.error('[refund-receipt] upload failed:', err);
+      toast.error('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm dark:border-emerald-800/60 dark:bg-emerald-950/20">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+        <Receipt className="h-4 w-4" /> Refund Receipt
+      </h2>
+      <p className="mb-3 text-xs text-emerald-800/80 dark:text-emerald-300/80">
+        Upload the refund receipt (image or PDF). The customer will see a
+        “View Receipt” button on their order page.
+      </p>
+      <ImageUploader
+        acceptPdf
+        onImageSelected={handleUpload}
+        existingImageUrl={order.refundReceiptUrl || undefined}
+        existingFileName={order.refundReceiptName || undefined}
+        existingFileType={order.refundReceiptType || undefined}
+        isUploading={uploading}
+      />
+      {order.refundReceiptUrl && (
+        <a
+          href={order.refundReceiptUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:underline"
+        >
+          <ExternalLink className="h-3.5 w-3.5" /> Open current receipt
+        </a>
+      )}
+    </div>
+  );
+}
 
 export default AdminOrderDetails;

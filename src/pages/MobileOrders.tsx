@@ -285,6 +285,21 @@ const MobileOrders = () => {
                 </div>
               )}
 
+              {/* Refund receipt link */}
+              {order.status === 'refunded' && order.refundReceiptUrl && (
+                <div className="mt-3 pt-3 border-t border-[#d4af37]/12">
+                  <a
+                    href={order.refundReceiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                  >
+                    View Receipt
+                  </a>
+                </div>
+              )}
+
               <div className="mt-3 flex items-center justify-between border-t border-[#d4af37]/12 pt-3 text-xs text-gray-500 dark:text-zinc-500 dark:text-zinc-400">
                 <span>Order #{order.id.slice(-6).toUpperCase()}</span>
                 <span className="inline-flex items-center gap-1 font-medium text-[#832729]">

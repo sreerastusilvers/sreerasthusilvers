@@ -41,7 +41,10 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as any)?.from?.pathname || '/account';
+  // NOTE: Intentionally always redirect users to '/' (home) after login from
+  // mobile/desktop. Previously a `from` location-state var was being used
+  // which made deep-linked screens (e.g. /wishlist) become the post-login
+  // landing page — we no longer honour that.
 
   // Redirect if already logged in AND email is verified
   useEffect(() => {
@@ -62,7 +65,7 @@ const Login = () => {
         startResendCountdown();
       }
     }
-  }, [user, userProfile, isDelivery, authLoading, navigate, from]);
+  }, [user, userProfile, isDelivery, authLoading, navigate]);
 
   // Load remembered delivery email
   useEffect(() => {

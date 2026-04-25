@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-
 import {
   LayoutDashboard,
   Package,
@@ -36,6 +35,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+// Public-folder logos (same source as the customer Header)
+const lightModeLogo = "/black_logo.png";
+const darkModeLogo = "/white_logo.png";
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -112,7 +115,7 @@ const AdminLayout = () => {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-[#F5EFE6] dark:border-gray-800 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img src={resolvedTheme === 'dark' ? '/white_logo.png' : '/black_logo.png'} alt="Sreerasthu Silvers" className="h-8 w-auto" />
+            <img src={resolvedTheme === 'dark' ? darkModeLogo : lightModeLogo} alt="Sreerasthu Silvers" className="h-8 w-auto" />
           </div>
           <button
             onClick={() => setSidebarOpen(false)}

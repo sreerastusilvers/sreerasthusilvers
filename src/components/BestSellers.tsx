@@ -298,7 +298,6 @@ const BestSellers = () => {
           </div>
 
           <div className="relative hidden md:block">
-
             {loading ? (
               <div className="grid grid-cols-4 gap-4 pb-4">
                 {Array.from({ length: 4 }).map((_, index) => (
