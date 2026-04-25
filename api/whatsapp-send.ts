@@ -121,8 +121,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Try template "otp_login" first; fall back to plain text if not approved
       const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'otp_login';
-      // Meta dashboard shows template language as "English" = API code 'en' (NOT 'en_US').
-      // Error #132001 fires when the language code doesn't match the registered translation.
+      // otp_login template is registered as "English" in Meta = lang code 'en'.
+      // hello_world uses "English (US)" = 'en_US'. Override via WHATSAPP_OTP_LANG env var.
       const templateLang = process.env.WHATSAPP_OTP_LANG || 'en';
       let deliveryMode: 'template' | 'text' = 'template';
       let templateError: string | null = null;
