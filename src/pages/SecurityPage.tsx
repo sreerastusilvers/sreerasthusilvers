@@ -131,6 +131,7 @@ const SecurityPage: React.FC = () => {
         twoFactorEnabled: true,
         twoFactorMethod: 'sms',
         phoneVerified: true,
+        phoneNumber: twoFaPhone, // 10-digit — referenced at login time for OTP challenge
       });
       setSettings((prev) => prev ? {
         ...prev,

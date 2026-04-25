@@ -82,8 +82,9 @@ const Account = () => {
         const settings = await getSecuritySettings(profile.uid);
         if (settings.twoFactorEnabled) {
           const fingerprint = generateDeviceFingerprint();
-          if (!settings.trustedDevices.includes(fingerprint)) {
-            const phone = profile.whatsappNumber || profile.phone || '';
+          const trusted = settings.trustedDevices || [];
+          if (!trusted.includes(fingerprint)) {
+            const phone = settings.phoneNumber || profile.whatsappNumber || profile.phone || '';
             if (!phone) {
               toast.error('Two-factor authentication is enabled but no WhatsApp number is on file.');
               await logout();
@@ -122,27 +123,32 @@ const Account = () => {
       setLoginFlow('whatsapp');
       setShowWhatsApp(true);
     } else {
-      setLoginFlow('idle');
+      // Keep spinner — don't set idle before navigate (prevents AccountPage flash)
+      setLoginFlow('loading');
       navigate(pendingDestination, { replace: true });
     }
   };
 
   const handleTwoFactorCancel = async () => {
     setShowTwoFactor(false);
-    setLoginFlow('idle');
+    // Keep loginFlow as '2fa' (shows spinner bg) until logout completes,
+    // then set idle — user=null at that point so LoginForm shows (no AccountPage flash)
     try { await logout(); } catch { /* ignore */ }
+    setLoginFlow('idle');
   };
 
   const handleWhatsAppSuccess = async (phone: string) => {
     setShowWhatsApp(false);
-    setLoginFlow('idle');
+    // Keep spinner — don't set idle before navigate (prevents AccountPage flash)
+    setLoginFlow('loading');
     try { await updateUserProfile({ whatsappNumber: phone }); } catch { /* ignore */ }
     navigate(pendingDestination, { replace: true });
   };
 
   const handleWhatsAppSkip = () => {
     setShowWhatsApp(false);
-    setLoginFlow('idle');
+    // Keep spinner — don't set idle before navigate (prevents AccountPage flash)
+    setLoginFlow('loading');
     navigate(pendingDestination, { replace: true });
   };
 
