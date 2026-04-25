@@ -49,6 +49,7 @@ import {
   X,
   Edit,
   Phone,
+  Video,
 } from 'lucide-react';
 
 const Account = () => {
@@ -791,6 +792,7 @@ const AccountPage = () => {
 
   const menuItems = [
     { id: 'orders', label: 'My orders', icon: Package, path: null },
+    { id: 'videocalls', label: 'My Video Calls', icon: Video, path: '/my-video-calls' },
     { id: 'editProfile', label: 'Edit Profile', icon: Edit, path: '/account/profile-edit' },
     { id: 'addresses', label: 'Your addresses', icon: MapPin, path: '/account/addresses' },
     { id: 'security', label: 'Login & security', icon: Shield, path: '/security' },
@@ -811,6 +813,7 @@ const AccountPage = () => {
     { id: 'profile', label: 'Edit Profile', icon: User, color: 'text-blue-600', path: '/account/profile' },
     { id: 'cards', label: 'Saved Credit / Debit & Gift Cards', icon: CreditCard, color: 'text-purple-600', path: '/account/cards' },
     { id: 'addresses', label: 'Saved Addresses', icon: MapPin, color: 'text-red-600', path: '/account/addresses' },
+    { id: 'videocalls', label: 'My Video Calls', icon: Video, color: 'text-emerald-600', path: '/my-video-calls' },
     { id: 'language', label: 'Select Language', icon: Globe, color: 'text-blue-600', path: '/account/language' },
     { id: 'notifications', label: 'Notification Settings', icon: Bell, color: 'text-green-600', path: '/account/notifications' },
     { id: 'privacy', label: 'Privacy Center', icon: Shield, color: 'text-gray-600', path: '/account/privacy' },

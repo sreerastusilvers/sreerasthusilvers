@@ -368,5 +368,19 @@ service cloud.firestore {
                               || get(/databases/$(database)/documents/videoCalls/$(callId)).data.calleeUid == request.auth.uid);
       }
     }
+
+    // --- VIDEO CALL REQUESTS (demo booking) ---
+    match /videoCallRequests/{reqId} {
+      // Customer can create their own request
+      allow create: if isAuthenticated()
+                    && request.resource.data.customerUid == request.auth.uid;
+      // Customer can read/update (cancel) their own requests
+      allow read, update: if isAuthenticated()
+                    && (resource.data.customerUid == request.auth.uid || isAdmin());
+      // Only admin can delete
+      allow delete: if isAdmin();
+      // List-level: admins see all; customers query filtered by their uid
+      allow list: if isAuthenticated();
+    }
   }
 }

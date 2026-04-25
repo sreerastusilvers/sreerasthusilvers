@@ -83,6 +83,8 @@ import AdminVideos from './pages/admin/AdminVideos';
 import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminDeliveryBoyDetails from './pages/admin/AdminDeliveryBoyDetails';
 import AdminOrderDetails from './pages/admin/AdminOrderDetails';
+import AdminVideoCalls from './pages/admin/AdminVideoCalls';
+import MyVideoCalls from './pages/MyVideoCalls';
 import VideoCallPage from './pages/VideoCallPage';
 import WriteReview from "./pages/WriteReview";
 import ThankYouReview from "./pages/ThankYouReview";
@@ -232,6 +234,11 @@ const App = () => {
                   <SavedAddresses />
                 </ProtectedRoute>
               } />
+              <Route path="/my-video-calls" element={
+                <ProtectedRoute requireEmailVerification={false}>
+                  <MyVideoCalls />
+                </ProtectedRoute>
+              } />
               <Route path="/buy-again" element={
                 <ProtectedRoute requireEmailVerification={false}>
                   <BuyAgain />
@@ -315,6 +322,7 @@ const App = () => {
                 <Route path="gallery" element={<AdminGallery />} />
                 <Route path="coupons" element={<AdminCoupons />} />
                 <Route path="gift-cards" element={<AdminGiftCards />} />
+                <Route path="video-calls" element={<AdminVideoCalls />} />
                 <Route path="reviews" element={<AdminReviews />} />
                 <Route path="image-prompts" element={<AdminImagePrompts />} />
                 <Route path="home-banners" element={<AdminHomeBanners />} />

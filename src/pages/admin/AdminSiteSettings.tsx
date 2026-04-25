@@ -22,6 +22,7 @@ import {
   Clock,
   Globe,
   Sparkles,
+  Coins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +48,8 @@ import {
   DEFAULT_SIDEBAR_PROMO,
   type SidebarPromoSettings,
 } from '@/services/siteSettingsService';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 const PLATFORM_OPTIONS: { value: SocialPlatform; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'facebook', label: 'Facebook', Icon: Facebook },
@@ -147,11 +150,25 @@ const AdminSiteSettings = () => {
   const [promo, setPromo] = useState<SidebarPromoSettings>(DEFAULT_SIDEBAR_PROMO);
   const [savingPromo, setSavingPromo] = useState(false);
 
+  // Silver rate override state
+  const [silverOverride, setSilverOverride] = useState(false);
+  const [silverPricePerGram, setSilverPricePerGram] = useState<number>(95);
+  const [savingSilver, setSavingSilver] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
         const s = await getFooterSettings();
         setSettings(s);
+        // Load silver rate override from Firestore
+        const srSnap = await getDoc(doc(db, 'siteSettings', 'silverRate'));
+        if (srSnap.exists()) {
+          const d = srSnap.data() || {};
+          setSilverOverride(d.manualOverride === true);
+          if (typeof d.manualPricePerGramInr === 'number' && d.manualPricePerGramInr > 0) {
+            setSilverPricePerGram(d.manualPricePerGramInr);
+          }
+        }
       } catch (err) {
         console.error(err);
         toast.error('Failed to load settings');
@@ -163,6 +180,22 @@ const AdminSiteSettings = () => {
     const unsub = subscribeSidebarPromo(setPromo);
     return unsub;
   }, []);
+
+  const handleSaveSilver = async () => {
+    setSavingSilver(true);
+    try {
+      await setDoc(doc(db, 'siteSettings', 'silverRate'), {
+        manualOverride: silverOverride,
+        manualPricePerGramInr: silverPricePerGram,
+      }, { merge: true });
+      toast.success('Silver rate setting saved');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save silver rate setting');
+    } finally {
+      setSavingSilver(false);
+    }
+  };
 
   const update = <K extends keyof FooterSettings>(key: K, value: FooterSettings[K]) =>
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -510,6 +543,65 @@ const AdminSiteSettings = () => {
                 className="mt-1.5 bg-white dark:bg-gray-950"
               />
             </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Silver Rate Manual Override ── */}
+      <div className="border-t border-[#F5EFE6] dark:border-gray-800 pt-8">
+        <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 dark:text-zinc-400 font-medium mb-2 flex items-center gap-2">
+              <Coins className="w-3.5 h-3.5" /> Live Silver Rate
+            </p>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Rate Override
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              When enabled, the widget shows this fixed price instead of the live API rate.
+            </p>
+          </div>
+          <Button
+            onClick={handleSaveSilver}
+            disabled={savingSilver}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            {savingSilver ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…</>
+            ) : (
+              <><Save className="w-4 h-4 mr-2" /> Save rate</>
+            )}
+          </Button>
+        </div>
+        <Card title="Manual silver rate" subtitle="Overrides the live API price shown to customers." icon={Coins}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="silver-override"
+                checked={silverOverride}
+                onCheckedChange={setSilverOverride}
+              />
+              <Label htmlFor="silver-override" className="text-sm cursor-pointer">
+                Enable manual override
+              </Label>
+            </div>
+            {silverOverride && (
+              <div>
+                <Label className="text-xs text-gray-500">Price per gram (₹)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step={0.01}
+                  value={silverPricePerGram}
+                  onChange={(e) => setSilverPricePerGram(Number(e.target.value))}
+                  placeholder="e.g. 95"
+                  className="mt-1.5 bg-white dark:bg-gray-950 max-w-[200px]"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  10g → ₹{(silverPricePerGram * 10).toFixed(2)} · 1kg → ₹{(silverPricePerGram * 1000).toLocaleString('en-IN')}
+                </p>
+              </div>
+            )}
           </div>
         </Card>
       </div>

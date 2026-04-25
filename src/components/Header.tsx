@@ -9,6 +9,7 @@ import { getAllProducts, Product } from "@/services/productService";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import MobileHeader from "./MobileHeader";
 import ThemeToggle from "./ThemeToggle";
+import SilverRateWidget from "./SilverRateWidget";
 
 const Header = () => {
   const lightModeLogo = "/black_logo.png";
@@ -305,6 +306,9 @@ const Header = () => {
 
             {/* Right Actions */}
             <div className="flex items-center gap-5 flex-shrink-0">
+              {/* Live silver rate */}
+              <SilverRateWidget variant="icon" />
+
               {/* Theme Toggle */}
               <ThemeToggle />
 

@@ -16,6 +16,8 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import MobileSearchBar from "@/components/MobileSearchBar";
 import Footer from "@/components/Footer";
 import CategoryIconNav from "@/components/CategoryIconNav";
+import VideoCallRequestModal from "@/components/VideoCallRequestModal";
+import { Video } from "lucide-react";
 
 const ProductDetail = () => {
   const { productId } = useParams();
@@ -26,6 +28,7 @@ const ProductDetail = () => {
   const { isInWishlist, toggleWishlist } = useWishlist();
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [showVideoCallModal, setShowVideoCallModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [product, setProduct] = useState<UIProductDetail | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<UIProductDetail[]>([]);
@@ -696,6 +699,16 @@ const ProductDetail = () => {
                   </motion.button>
                 </div>
 
+                {/* Demo Video Call CTA */}
+                <motion.button
+                  onClick={() => setShowVideoCallModal(true)}
+                  whileTap={{ scale: 0.97 }}
+                  className="w-full mt-2 px-6 py-3 font-medium text-sm rounded-full border-2 border-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all flex items-center justify-center gap-2"
+                >
+                  <Video className="w-4 h-4" />
+                  Book a Demo Video Call
+                </motion.button>
+
                 {/* Share Popup */}
                 <AnimatePresence>
                   {showShareMenu && (
@@ -1024,8 +1037,27 @@ const ProductDetail = () => {
             Buy at ₹{product?.price.toLocaleString("en-IN")}
           </motion.button>
         </div>
+        {/* Demo Video Call CTA (mobile sticky bar) */}
+        <div className="px-4 pb-2">
+          <button
+            onClick={() => setShowVideoCallModal(true)}
+            className="w-full py-2.5 text-sm font-medium rounded-full border-2 border-amber-500 text-amber-700 dark:text-amber-400 flex items-center justify-center gap-2 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition"
+          >
+            <Video className="w-4 h-4" />
+            Book a Demo Video Call
+          </button>
+        </div>
       </div>
       )}
+
+      {/* Video Call Request Modal */}
+      <VideoCallRequestModal
+        open={showVideoCallModal}
+        onClose={() => setShowVideoCallModal(false)}
+        productId={product?.id}
+        productTitle={product?.name}
+        productImage={product?.images?.[0]}
+      />
 
       {/* Full Screen Image Popup for Mobile */}
       {showImagePopup && (

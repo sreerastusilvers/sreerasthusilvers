@@ -1,9 +1,10 @@
-import { Menu, Heart, ShoppingBag, LayoutGrid } from "lucide-react";
+import { Menu, Heart, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import SilverRateWidget from "./SilverRateWidget";
 
 const MobileHeader = () => {
   const lightModeLogo = "/black_logo.png";
@@ -55,14 +56,9 @@ const MobileHeader = () => {
 
         {/* Right: Icons row */}
         <div className="flex items-center gap-1">
-          {/* Grid/Store icon */}
-          <button
-            className="p-2 hover:bg-muted rounded-full transition-colors"
-            onClick={() => navigate('/categories')}
-            aria-label="Categories"
-          >
-            <LayoutGrid className="w-[22px] h-[22px] text-foreground/80" strokeWidth={1.5} />
-          </button>
+          {/* Live silver rate (replaces the old categories grid icon —
+              categories are still reachable from the hamburger + bottom nav) */}
+          <SilverRateWidget variant="icon" />
 
           {/* Wishlist */}
           <button
