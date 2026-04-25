@@ -65,11 +65,8 @@ const Signup = () => {
 
     try {
       await signup(email, password, username, phone || undefined, sameForWhatsApp);
-      toast.success('Account created! Please verify your email.');
-      // Store email in sessionStorage for verification page
-      sessionStorage.setItem('pendingVerificationEmail', email);
-      // Navigate to verification page with email in state
-      navigate('/verify-email', { state: { email }, replace: true });
+      toast.success('Account created! Welcome to Sreerasthu Silvers.');
+      navigate('/', { replace: true });
     } catch (err: any) {
       console.error('Signup error:', err);
       if (err.code === 'auth/email-already-in-use') {

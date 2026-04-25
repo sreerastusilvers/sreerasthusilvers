@@ -10,7 +10,6 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  sendEmailVerification,
 } from 'firebase/auth';
 import { PushNotifications } from '@/services/pushNotificationService';
 import {
@@ -163,17 +162,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Update display name
     await updateProfile(userCredential.user, { displayName: username });
-
-    // Send email verification with action code settings
-    try {
-      await sendEmailVerification(userCredential.user, {
-        url: window.location.origin + '/account',
-        handleCodeInApp: false,
-      });
-    } catch (verificationError) {
-      console.error('Failed to send verification email:', verificationError);
-      // Continue with signup even if verification email fails
-    }
 
     // Create user document in Firestore
     const userProfileData: UserProfile = {
