@@ -121,13 +121,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Try template "otp_login" first; fall back to plain text if not approved
       const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'otp_login';
-      const templateLang = process.env.WHATSAPP_OTP_LANG || 'en_US';
+      // Language code must exactly match the language selected in Meta dashboard.
+      // "English" (not "English US") = 'en'. Override via WHATSAPP_OTP_LANG env var.
+      const templateLang = process.env.WHATSAPP_OTP_LANG || 'en';
       let deliveryMode: 'template' | 'text' = 'template';
       let templateError: string | null = null;
       try {
-        // Authentication templates (e.g. otp_login) require both a body component
-        // AND a button component carrying the OTP code.  Send both; if the
-        // template only has a body the button component is silently ignored by Meta.
+        // Authentication templates require both a body component AND a button component.
+        // "Copy code" delivery type uses sub_type: 'copy_code' with coupon_code parameter.
         await sendToMeta({
           to,
           type: 'template',
@@ -136,7 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             language: { code: templateLang },
             components: [
               { type: 'body',   parameters: [{ type: 'text', text: otp }] },
-              { type: 'button', sub_type: 'url',  index: '0', parameters: [{ type: 'text', text: otp }] },
+              { type: 'button', sub_type: 'copy_code', index: '0', parameters: [{ type: 'coupon_code', coupon_code: otp }] },
             ],
           },
         });
