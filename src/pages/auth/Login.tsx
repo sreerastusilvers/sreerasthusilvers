@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import logo from '@/assets/dark.png';
-import { getSecuritySettings, generateDeviceFingerprint } from '@/services/securityService';
+import { getSecuritySettings, generateDeviceFingerprint, updateSecuritySettings } from '@/services/securityService';
 import TwoFactorChallengeModal from '@/components/auth/TwoFactorChallengeModal';
 import WhatsAppSetupModal from '@/components/auth/WhatsAppSetupModal';
 
@@ -138,7 +138,12 @@ const Login = () => {
   const handleWhatsAppSuccess = async (phone: string) => {
     setShowWhatsApp(false);
     loginFlowRef.current = 'idle';
-    try { await updateUserProfile({ whatsappNumber: phone }); } catch { /* ignore */ }
+    try {
+      await updateUserProfile({ whatsappNumber: phone });
+      if (user?.uid) {
+        await updateSecuritySettings(user.uid, { phoneVerified: true });
+      }
+    } catch { /* ignore */ }
     navigate(pendingDestination, { replace: true });
   };
 

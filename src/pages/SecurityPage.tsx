@@ -117,14 +117,16 @@ const SecurityPage: React.FC = () => {
     }
   }, [twoFaPanelOpen, userProfile, twoFaPhone]);
 
-  // True when the entered phone already matches the stored verified WhatsApp number —
-  // in that case we skip OTP re-verification (number was already verified when it was saved).
-  const profilePhone = (() => {
-    const raw = userProfile?.whatsappNumber || '';
-    const n = normalizePhoneNumber(raw);
-    return n.startsWith('91') ? n.slice(2) : n;
+  const isPhoneVerified = Boolean(settings?.phoneVerified || userProfile?.whatsappNumber);
+
+  // If a verified WhatsApp number already exists on the profile, or we previously marked
+  // the phone as verified in security settings, let users enable 2FA without repeating OTP.
+  const verifiedProfilePhone = (() => {
+    const raw = userProfile?.whatsappNumber || (settings?.phoneVerified ? userProfile?.phone : '') || '';
+    const normalized = normalizePhoneNumber(raw);
+    return normalized.startsWith('91') ? normalized.slice(2) : normalized;
   })();
-  const phoneAlreadyVerified = twoFaPhone.length === 10 && !!profilePhone && twoFaPhone === profilePhone;
+  const phoneAlreadyVerified = twoFaPhone.length === 10 && isPhoneVerified && !!verifiedProfilePhone && twoFaPhone === verifiedProfilePhone;
   const canEnable2FA = twoFaOtp.isVerified || phoneAlreadyVerified;
 
   const handleEnable2FA = async () => {
@@ -1055,14 +1057,9 @@ const SecurityPage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-gray-50">
                   <span className="text-sm text-gray-600 dark:text-zinc-400">Phone Verified</span>
-                  {(() => {
-                    const isPhoneVerified = settings?.phoneVerified || !!userProfile?.whatsappNumber;
-                    return (
-                      <span className={`text-sm font-medium flex items-center gap-1 ${isPhoneVerified ? 'text-green-600' : 'text-gray-400 dark:text-zinc-500'}`}>
-                        {isPhoneVerified ? <><CheckCircle2 className="w-4 h-4" /> Verified</> : 'Not set'}
-                      </span>
-                    );
-                  })()}
+                  <span className={`text-sm font-medium flex items-center gap-1 ${isPhoneVerified ? 'text-green-600' : 'text-gray-400 dark:text-zinc-500'}`}>
+                    {isPhoneVerified ? <><CheckCircle2 className="w-4 h-4" /> Verified</> : 'Not set'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-sm text-gray-600 dark:text-zinc-400">2FA</span>

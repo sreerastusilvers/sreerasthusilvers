@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadToCloudinary } from '@/services/cloudinaryService';
+import { updateSecuritySettings } from '@/services/securityService';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -431,6 +432,9 @@ const ProfileEditPage = () => {
         onSuccess={async (phone) => {
           try {
             await updateUserProfile({ whatsappNumber: phone });
+            if (user?.uid) {
+              await updateSecuritySettings(user.uid, { phoneVerified: true });
+            }
             toast.success('WhatsApp number saved');
           } catch {
             toast.error('Could not save number');

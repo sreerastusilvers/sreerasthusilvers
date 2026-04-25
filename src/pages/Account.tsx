@@ -12,7 +12,7 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn, cancelReturn } from '@/services/orderService';
 import { uploadToCloudinary, UploadProgress } from '@/services/cloudinaryService';
 import { useWhatsAppOtpVerification } from '@/hooks/useWhatsAppOtpVerification';
-import { getSecuritySettings, generateDeviceFingerprint } from '@/services/securityService';
+import { getSecuritySettings, generateDeviceFingerprint, updateSecuritySettings } from '@/services/securityService';
 import TwoFactorChallengeModal from '@/components/auth/TwoFactorChallengeModal';
 import WhatsAppSetupModal from '@/components/auth/WhatsAppSetupModal';
 import { toast } from 'sonner';
@@ -136,7 +136,12 @@ const Account = () => {
   const handleWhatsAppSuccess = async (phone: string) => {
     setShowWhatsApp(false);
     setLoginFlow('idle');
-    try { await updateUserProfile({ whatsappNumber: phone }); } catch { /* ignore */ }
+    try {
+      await updateUserProfile({ whatsappNumber: phone });
+      if (user?.uid) {
+        await updateSecuritySettings(user.uid, { phoneVerified: true });
+      }
+    } catch { /* ignore */ }
     navigate(pendingDestination, { replace: true });
   };
 

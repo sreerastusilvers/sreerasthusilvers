@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   User,
@@ -67,6 +67,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastSessionKeyRef = useRef<string | null>(null);
+
+  const getLoginMethod = (firebaseUser: User): 'email' | 'google' => {
+    const providerIds = firebaseUser.providerData.map((provider) => provider.providerId);
+    return providerIds.includes('google.com') ? 'google' : 'email';
+  };
+
+  const recordSessionLogin = (firebaseUser: User) => {
+    if (typeof window === 'undefined') return;
+
+    const sessionKey = `auth-session-login:${firebaseUser.uid}`;
+    lastSessionKeyRef.current = sessionKey;
+    if (sessionStorage.getItem(sessionKey)) return;
+
+    sessionStorage.setItem(sessionKey, '1');
+    recordLoginAttempt(firebaseUser.uid, getLoginMethod(firebaseUser), 'success').catch(() => {
+      sessionStorage.removeItem(sessionKey);
+    });
+  };
 
   // Fetch user profile from Firestore
   const fetchUserProfile = async (uid: string): Promise<UserProfile | null> => {
@@ -103,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           if (updatedUser) {
             const profile = await fetchUserProfile(updatedUser.uid);
+            recordSessionLogin(updatedUser);
 
             // Register for FCM push notifications (best-effort, non-blocking)
             PushNotifications.requestPermissionAndRegisterToken(updatedUser.uid).catch(() => {});
@@ -146,6 +166,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserProfile(profile);
         }
       } else {
+        if (typeof window !== 'undefined' && lastSessionKeyRef.current) {
+          sessionStorage.removeItem(lastSessionKeyRef.current);
+          lastSessionKeyRef.current = null;
+        }
         setUser(null);
         setUserProfile(null);
       }
@@ -211,8 +235,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setUserProfile(profile);
-    // Record successful login event (non-blocking)
-    recordLoginAttempt(uid, 'email', 'success').catch(() => {});
     return profile;
   };
   const loginWithGoogle = async (): Promise<UserProfile> => {
@@ -265,8 +287,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setUserProfile(profile);
-      // Record successful Google sign-in event (non-blocking)
-      recordLoginAttempt(uid, 'google', 'success').catch(() => {});
       return profile;
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);
@@ -278,6 +298,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Logout function
   const logout = async () => {
+    if (typeof window !== 'undefined' && lastSessionKeyRef.current) {
+      sessionStorage.removeItem(lastSessionKeyRef.current);
+      lastSessionKeyRef.current = null;
+    }
     await signOut(auth);
     setUser(null);
     setUserProfile(null);
