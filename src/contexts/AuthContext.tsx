@@ -19,6 +19,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
+import { recordLoginAttempt } from '@/services/securityService';
 
 // Types
 export interface UserProfile {
@@ -210,10 +211,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setUserProfile(profile);
+    // Record successful login event (non-blocking)
+    recordLoginAttempt(uid, 'email', 'success').catch(() => {});
     return profile;
   };
-
-  // Google login function
   const loginWithGoogle = async (): Promise<UserProfile> => {
     try {
       const provider = new GoogleAuthProvider();
@@ -264,6 +265,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setUserProfile(profile);
+      // Record successful Google sign-in event (non-blocking)
+      recordLoginAttempt(uid, 'google', 'success').catch(() => {});
       return profile;
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);

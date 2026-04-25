@@ -25,7 +25,6 @@ import {
 import {
   getSecuritySettings,
   updateSecuritySettings,
-  getLoginHistory,
   subscribeToLoginHistory,
   getActiveSessions,
   terminateSession,
@@ -118,9 +117,19 @@ const SecurityPage: React.FC = () => {
     }
   }, [twoFaPanelOpen, userProfile, twoFaPhone]);
 
+  // True when the entered phone already matches the stored verified WhatsApp number —
+  // in that case we skip OTP re-verification (number was already verified when it was saved).
+  const profilePhone = (() => {
+    const raw = userProfile?.whatsappNumber || '';
+    const n = normalizePhoneNumber(raw);
+    return n.startsWith('91') ? n.slice(2) : n;
+  })();
+  const phoneAlreadyVerified = twoFaPhone.length === 10 && !!profilePhone && twoFaPhone === profilePhone;
+  const canEnable2FA = twoFaOtp.isVerified || phoneAlreadyVerified;
+
   const handleEnable2FA = async () => {
     if (!user) return;
-    if (!twoFaOtp.isVerified) {
+    if (!canEnable2FA) {
       showMessage('error', 'Verify the WhatsApp code before enabling 2FA.');
       return;
     }
@@ -195,23 +204,19 @@ const SecurityPage: React.FC = () => {
     if (!user) return;
     const loadData = async () => {
       try {
-        const [sec, history, sess, dev, deletion] = await Promise.all([
+        const [sec, sess, dev, deletion] = await Promise.all([
           getSecuritySettings(user.uid).catch(() => null),
-          getLoginHistory(user.uid).catch(() => []),
           getActiveSessions(user.uid).catch(() => []),
           getTrustedDevices(user.uid).catch(() => []),
           getDeletionStatus(user.uid).catch(() => null),
         ]);
         setSettings(sec);
-        setLoginHistory(history || []);
         setSessions(sess || []);
         setDevices(dev || []);
         setDeletionStatus(deletion);
       } catch (error) {
         console.error('Security data load error:', error);
-        // Set defaults so page still works
         setSettings(null);
-        setLoginHistory([]);
         setSessions([]);
         setDevices([]);
         setDeletionStatus(null);
@@ -220,6 +225,14 @@ const SecurityPage: React.FC = () => {
       }
     };
     loadData();
+
+    // Subscribe to login history in real-time
+    const unsubHistory = subscribeToLoginHistory(
+      user.uid,
+      (entries) => setLoginHistory(entries),
+      () => setLoginHistory([])
+    );
+    return () => unsubHistory();
   }, [user]);
 
   // Pre-fill user email for password reset
@@ -683,23 +696,32 @@ const SecurityPage: React.FC = () => {
                         inputMode="numeric"
                         maxLength={10}
                         value={twoFaPhone}
-                        onChange={(e) => setTwoFaPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        onChange={(e) => { setTwoFaPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); }}
                         placeholder="10-digit number"
-                        disabled={twoFaOtp.isVerified}
+                        disabled={twoFaOtp.isVerified || phoneAlreadyVerified}
                         className="flex-1 px-3 py-2 text-sm outline-none disabled:bg-gray-50 dark:bg-zinc-900/50 disabled:text-gray-500 dark:text-zinc-500 dark:text-zinc-400"
                       />
-                      <button
-                        type="button"
-                        onClick={twoFaOtp.sendOtp}
-                        disabled={twoFaOtp.isBusy || twoFaOtp.isVerified || twoFaPhone.length !== 10}
-                        className="px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed border-l border-gray-200 dark:border-zinc-800"
-                      >
-                        {twoFaOtp.phase === 'sending' ? 'Sending…' : twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verified' ? 'Resend' : 'Send code'}
-                      </button>
+                      {phoneAlreadyVerified ? (
+                        <span className="px-3 flex items-center text-xs font-semibold text-green-600 gap-1 border-l border-gray-200 dark:border-zinc-800">
+                          <Check className="w-3.5 h-3.5" /> Verified
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={twoFaOtp.sendOtp}
+                          disabled={twoFaOtp.isBusy || twoFaOtp.isVerified || twoFaPhone.length !== 10}
+                          className="px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed border-l border-gray-200 dark:border-zinc-800"
+                        >
+                          {twoFaOtp.phase === 'sending' ? 'Sending…' : twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verified' ? 'Resend' : 'Send code'}
+                        </button>
+                      )}
                     </div>
+                    {phoneAlreadyVerified && (
+                      <p className="text-xs text-green-600 mt-1">This number is already verified on your account — you can proceed.</p>
+                    )}
                   </div>
 
-                  {(twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verifying' || twoFaOtp.phase === 'verified') && (
+                  {!phoneAlreadyVerified && (twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verifying' || twoFaOtp.phase === 'verified') && (
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-zinc-300 mb-1">6-digit WhatsApp code</label>
                       <div className="flex items-stretch gap-2">
@@ -734,7 +756,7 @@ const SecurityPage: React.FC = () => {
 
                   <Button
                     onClick={handleEnable2FA}
-                    disabled={!twoFaOtp.isVerified || actionLoading === 'enable-2fa'}
+                    disabled={!canEnable2FA || actionLoading === 'enable-2fa'}
                     className="w-full bg-green-600 hover:bg-green-700 text-white"
                   >
                     {actionLoading === 'enable-2fa' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
@@ -1033,9 +1055,14 @@ const SecurityPage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-gray-50">
                   <span className="text-sm text-gray-600 dark:text-zinc-400">Phone Verified</span>
-                  <span className={`text-sm font-medium flex items-center gap-1 ${settings?.phoneVerified ? 'text-green-600' : 'text-gray-400 dark:text-zinc-500'}`}>
-                    {settings?.phoneVerified ? <><CheckCircle2 className="w-4 h-4" /> Verified</> : 'Not set'}
-                  </span>
+                  {(() => {
+                    const isPhoneVerified = settings?.phoneVerified || !!userProfile?.whatsappNumber;
+                    return (
+                      <span className={`text-sm font-medium flex items-center gap-1 ${isPhoneVerified ? 'text-green-600' : 'text-gray-400 dark:text-zinc-500'}`}>
+                        {isPhoneVerified ? <><CheckCircle2 className="w-4 h-4" /> Verified</> : 'Not set'}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-sm text-gray-600 dark:text-zinc-400">2FA</span>
