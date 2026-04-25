@@ -120,27 +120,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       // Try template "otp_login" first; fall back to plain text if not approved
+      const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'otp_login';
+      const templateLang = process.env.WHATSAPP_OTP_LANG || 'en_US';
+      let deliveryMode: 'template' | 'text' = 'template';
+      let templateError: string | null = null;
       try {
+        // Authentication templates (e.g. otp_login) require both a body component
+        // AND a button component carrying the OTP code.  Send both; if the
+        // template only has a body the button component is silently ignored by Meta.
         await sendToMeta({
           to,
           type: 'template',
           template: {
-            name: process.env.WHATSAPP_OTP_TEMPLATE || 'otp_login',
-            language: { code: process.env.WHATSAPP_OTP_LANG || 'en_US' },
+            name: templateName,
+            language: { code: templateLang },
             components: [
-              { type: 'body', parameters: [{ type: 'text', text: otp }] },
+              { type: 'body',   parameters: [{ type: 'text', text: otp }] },
+              { type: 'button', sub_type: 'url',  index: '0', parameters: [{ type: 'text', text: otp }] },
             ],
           },
         });
-      } catch (templateErr) {
-        console.warn('[whatsapp-send] template failed, trying plain text:', (templateErr as any)?.message);
-        await sendToMeta({
-          to,
-          type: 'text',
-          text: { body: `Your Sreerasthu Silvers verification code is ${otp}. Valid for 10 minutes.` },
-        });
+      } catch (templateErr: any) {
+        templateError = templateErr?.message || String(templateErr);
+        console.error('[whatsapp-send] template error:', { template: templateName, lang: templateLang, to, error: templateError });
+        try {
+          await sendToMeta({
+            to,
+            type: 'text',
+            text: { body: `Your Sreerasthu Silvers verification code is ${otp}. Valid for 10 minutes.` },
+          });
+          deliveryMode = 'text';
+        } catch (textErr: any) {
+          const textErrorMsg = textErr?.message || String(textErr);
+          console.error('[whatsapp-send] text fallback error:', { to, error: textErrorMsg });
+          // Both attempts failed — surface a clear, actionable message
+          return res.status(502).json({
+            ok: false,
+            error: `Could not deliver WhatsApp OTP. ${textErrorMsg}`,
+            templateError,
+            hint: 'Verify WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, and that template "' + templateName + '" (' + templateLang + ') is approved in Meta dashboard. Also ensure the recipient has opted in to your WhatsApp Business number within the last 24 hours.',
+          });
+        }
       }
-      return res.status(200).json({ ok: true, otpRef: docId });
+      return res.status(200).json({ ok: true, otpRef: docId, mode: deliveryMode });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown kind' });
