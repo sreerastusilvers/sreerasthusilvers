@@ -10,6 +10,7 @@ import Cropper from 'react-easy-crop';
 import { Area } from 'react-easy-crop';
 import { motion } from 'framer-motion';
 import darkLogo from '@/assets/dark.png';
+import WhatsAppSetupModal from '@/components/auth/WhatsAppSetupModal';
 import {
   ZoomIn,
   ZoomOut,
@@ -89,6 +90,9 @@ const ProfileEditPage = () => {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
+
+  // WhatsApp inline editor modal
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
   useEffect(() => {
     if (userProfile?.avatar) {
@@ -402,7 +406,7 @@ const ProfileEditPage = () => {
                   </p>
                 </div>
                 <button
-                  onClick={() => navigate('/security')}
+                  onClick={() => setShowWhatsAppModal(true)}
                   className="text-emerald-600 text-xs font-semibold inline-flex items-center gap-1 self-center whitespace-nowrap"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
@@ -420,6 +424,22 @@ const ProfileEditPage = () => {
 
       {/* Desktop site footer */}
       <div className="hidden lg:block"><Footer /></div>
+
+      {/* ── WhatsApp inline editor modal ── */}
+      <WhatsAppSetupModal
+        open={showWhatsAppModal}
+        onSuccess={async (phone) => {
+          try {
+            await updateUserProfile({ whatsappNumber: phone });
+            toast.success('WhatsApp number saved');
+          } catch {
+            toast.error('Could not save number');
+          } finally {
+            setShowWhatsAppModal(false);
+          }
+        }}
+        onSkip={() => setShowWhatsAppModal(false)}
+      />
 
       {/* ── Crop Modal ── */}
       {showCropModal && imageToCrop && (

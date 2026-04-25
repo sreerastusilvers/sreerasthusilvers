@@ -82,9 +82,8 @@ const Account = () => {
         const settings = await getSecuritySettings(profile.uid);
         if (settings.twoFactorEnabled) {
           const fingerprint = generateDeviceFingerprint();
-          const trusted = settings.trustedDevices || [];
-          if (!trusted.includes(fingerprint)) {
-            const phone = settings.phoneNumber || profile.whatsappNumber || profile.phone || '';
+          if (!settings.trustedDevices.includes(fingerprint)) {
+            const phone = profile.whatsappNumber || profile.phone || '';
             if (!phone) {
               toast.error('Two-factor authentication is enabled but no WhatsApp number is on file.');
               await logout();
@@ -123,32 +122,27 @@ const Account = () => {
       setLoginFlow('whatsapp');
       setShowWhatsApp(true);
     } else {
-      // Keep spinner — don't set idle before navigate (prevents AccountPage flash)
-      setLoginFlow('loading');
+      setLoginFlow('idle');
       navigate(pendingDestination, { replace: true });
     }
   };
 
   const handleTwoFactorCancel = async () => {
     setShowTwoFactor(false);
-    // Keep loginFlow as '2fa' (shows spinner bg) until logout completes,
-    // then set idle — user=null at that point so LoginForm shows (no AccountPage flash)
-    try { await logout(); } catch { /* ignore */ }
     setLoginFlow('idle');
+    try { await logout(); } catch { /* ignore */ }
   };
 
   const handleWhatsAppSuccess = async (phone: string) => {
     setShowWhatsApp(false);
-    // Keep spinner — don't set idle before navigate (prevents AccountPage flash)
-    setLoginFlow('loading');
+    setLoginFlow('idle');
     try { await updateUserProfile({ whatsappNumber: phone }); } catch { /* ignore */ }
     navigate(pendingDestination, { replace: true });
   };
 
   const handleWhatsAppSkip = () => {
     setShowWhatsApp(false);
-    // Keep spinner — don't set idle before navigate (prevents AccountPage flash)
-    setLoginFlow('loading');
+    setLoginFlow('idle');
     navigate(pendingDestination, { replace: true });
   };
 
@@ -335,12 +329,12 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
     }
 
     setEmailLoading(true);
+    onLoginStart(); // Prevent AccountPage flash — must run before any await that could trigger auth state change
 
     try {
       if (isSignUp) {
         await signup(email, password, fullName, phone || undefined, sameForWhatsApp);
         // Signup: skip 2FA/WhatsApp flow (brand-new account)
-        onLoginStart();
         navigate('/', { replace: true });
         // Don't reset emailLoading - navigating away
         return;
@@ -352,9 +346,9 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
           if (profile.role !== 'delivery') {
             setError('This login is for delivery partners only. Please use the User tab.');
             setEmailLoading(false);
+            onLoginError();
             return;
           }
-          onLoginStart();
           navigate('/delivery/dashboard');
           // Don't reset loading - navigating away
           return;
@@ -364,11 +358,11 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
         if (profile.role === 'delivery') {
           setError('Delivery partners should use the Delivery tab to login.');
           setEmailLoading(false);
+          onLoginError();
           return;
         }
 
         const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
-        onLoginStart(); // Prevent AccountPage flash
         await onLoginComplete(profile, destination, false);
         // Do NOT reset loading — navigating away or showing a modal
         return;

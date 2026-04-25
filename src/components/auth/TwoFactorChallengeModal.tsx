@@ -56,7 +56,7 @@ const TwoFactorChallengeModal = ({
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="sm:max-w-sm mx-4"
+        className="w-[calc(100vw-1.5rem)] max-w-sm p-5 sm:p-6 rounded-2xl"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >

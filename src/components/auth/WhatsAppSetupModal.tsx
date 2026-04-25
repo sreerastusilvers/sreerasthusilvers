@@ -30,24 +30,24 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="sm:max-w-sm mx-4"
+        className="w-[calc(100vw-1.5rem)] max-w-sm p-5 sm:p-6 rounded-2xl"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+        <DialogHeader className="space-y-0">
+          <div className="flex items-start gap-3 pr-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 flex-shrink-0">
               <MessageCircle className="w-5 h-5 text-green-600" />
             </div>
-            <div>
-              <DialogTitle className="text-base">Add WhatsApp Number</DialogTitle>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base leading-tight">Add WhatsApp Number</DialogTitle>
               <p className="text-xs text-gray-500 mt-0.5">Verify to receive order updates</p>
             </div>
           </div>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 leading-snug">
             Verify your WhatsApp number to receive order updates and secure your account with
             two-factor authentication.
           </p>
@@ -58,7 +58,7 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
               WhatsApp number
             </label>
             <div className="flex items-stretch rounded-lg border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-green-300">
-              <span className="flex items-center px-3 bg-gray-50 text-sm text-gray-600 border-r border-gray-200 select-none">
+              <span className="flex items-center px-2.5 bg-gray-50 text-sm text-gray-600 border-r border-gray-200 select-none flex-shrink-0">
                 +91
               </span>
               <input
@@ -69,19 +69,19 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
                 onChange={(e) => handlePhoneChange(e.target.value)}
                 placeholder="10-digit number"
                 disabled={otp.isVerified}
-                className="flex-1 px-3 py-2 text-sm outline-none bg-white disabled:bg-gray-50 disabled:text-gray-500"
+                className="flex-1 min-w-0 px-2.5 py-2 text-sm outline-none bg-white disabled:bg-gray-50 disabled:text-gray-500"
               />
               <button
                 type="button"
                 onClick={otp.sendOtp}
                 disabled={otp.isBusy || otp.isVerified || phone.length !== 10}
-                className="px-3 py-2 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed border-l border-gray-200 transition-colors"
+                className="px-2.5 py-2 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed border-l border-gray-200 transition-colors flex-shrink-0"
               >
                 {otp.phase === 'sending'
                   ? 'Sending…'
                   : otp.phase !== 'idle'
                   ? 'Resend'
-                  : 'Send code'}
+                  : 'Send'}
               </button>
             </div>
           </div>
@@ -101,16 +101,16 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
                   onChange={(e) =>
                     otp.setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))
                   }
-                  placeholder="1 2 3 4 5 6"
+                  placeholder="123456"
                   disabled={otp.isVerified}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-green-300 tracking-[0.4em] font-mono text-center disabled:bg-gray-50 disabled:text-gray-500"
+                  className="flex-1 min-w-0 px-3 py-2 text-sm rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-green-300 tracking-[0.3em] font-mono text-center disabled:bg-gray-50 disabled:text-gray-500"
                 />
                 <Button
                   type="button"
                   size="sm"
                   onClick={otp.confirmOtp}
                   disabled={otp.isBusy || otp.isVerified || otp.otpCode.length !== 6}
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className="bg-green-600 hover:bg-green-700 text-white flex-shrink-0"
                 >
                   {otp.phase === 'verifying' ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -127,16 +127,16 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
           {/* Verified badge */}
           {otp.isVerified && (
             <p className="flex items-center gap-1.5 text-sm text-green-700 font-medium">
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
               Number verified successfully
             </p>
           )}
 
           {/* Error */}
           {otp.otpError && (
-            <p className="flex items-center gap-1 text-xs text-red-600">
-              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-              {otp.otpError}
+            <p className="flex items-start gap-1 text-xs text-red-600">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <span>{otp.otpError}</span>
             </p>
           )}
 
@@ -147,7 +147,7 @@ const WhatsAppSetupModal = ({ open, onSuccess, onSkip }: WhatsAppSetupModalProps
               variant="outline"
               size="sm"
               onClick={onSkip}
-              className="flex-1 text-gray-500"
+              className="flex-1 text-gray-600"
             >
               Skip for now
             </Button>

@@ -82,9 +82,8 @@ const Login = () => {
         const settings = await getSecuritySettings(profile.uid);
         if (settings.twoFactorEnabled) {
           const fingerprint = generateDeviceFingerprint();
-          const trusted = settings.trustedDevices || [];
-          if (!trusted.includes(fingerprint)) {
-            const phone = settings.phoneNumber || profile.whatsappNumber || profile.phone || '';
+          if (!settings.trustedDevices.includes(fingerprint)) {
+            const phone = profile.whatsappNumber || profile.phone || '';
             if (!phone) {
               toast.error('Two-factor authentication is enabled but no WhatsApp number is on file.');
               await logout();

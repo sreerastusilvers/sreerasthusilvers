@@ -699,11 +699,11 @@ const ProductDetail = () => {
                   </motion.button>
                 </div>
 
-                {/* Demo Video Call CTA — desktop only */}
+                {/* Demo Video Call CTA */}
                 <motion.button
                   onClick={() => setShowVideoCallModal(true)}
                   whileTap={{ scale: 0.97 }}
-                  className="hidden md:flex w-full mt-2 px-6 py-3 font-medium text-sm rounded-full border-2 border-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all items-center justify-center gap-2"
+                  className="w-full mt-2 px-6 py-3 font-medium text-sm rounded-full border-2 border-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all flex items-center justify-center gap-2"
                 >
                   <Video className="w-4 h-4" />
                   Book a Demo Video Call

@@ -54,7 +54,7 @@ type SecurityTab = 'overview' | 'password' | 'sessions' | 'login-history' | 'dev
 const SecurityPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, userProfile, loading: authLoading, logout } = useAuth();
+  const { user, userProfile, loading: authLoading, logout, updateUserProfile } = useAuth();
 
   // Tab & UI
   const [activeTab, setActiveTab] = useState<SecurityTab>('overview');
@@ -127,12 +127,28 @@ const SecurityPage: React.FC = () => {
     setActionLoading('enable-2fa');
     try {
       const fullPhone = normalizePhoneNumber(twoFaPhone);
+      // 1. Persist 2FA settings
       await updateSecuritySettings(user.uid, {
         twoFactorEnabled: true,
         twoFactorMethod: 'sms',
         phoneVerified: true,
-        phoneNumber: twoFaPhone, // 10-digit — referenced at login time for OTP challenge
       });
+      // 2. Save WhatsApp number to user profile so login flow can find it
+      //    Stored as 10 digits without country code (matches WhatsAppSetupModal contract)
+      if (twoFaPhone && twoFaPhone.length === 10) {
+        try {
+          await updateUserProfile({ whatsappNumber: twoFaPhone });
+        } catch {
+          /* non-fatal: 2FA still enabled */
+        }
+      }
+      // 3. Auto-trust the current device so the user enabling 2FA isn't
+      //    immediately challenged on this same device next time they log in.
+      try {
+        await trustCurrentDevice(user.uid);
+      } catch {
+        /* non-fatal */
+      }
       setSettings((prev) => prev ? {
         ...prev,
         twoFactorEnabled: true,
