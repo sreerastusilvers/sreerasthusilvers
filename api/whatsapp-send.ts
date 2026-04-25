@@ -48,8 +48,12 @@ async function sendToMeta(payload: Record<string, unknown>) {
   });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    const msg = (data as any)?.error?.message || `HTTP ${resp.status}`;
-    throw new Error(`Meta API error: ${msg}`);
+    // Include full error for debugging (#132018 and similar)
+    const errBody = (data as any)?.error || data;
+    const msg = errBody?.message || `HTTP ${resp.status}`;
+    const err = new Error(`Meta API error: ${msg}`);
+    (err as any).metaError = errBody;
+    throw err;
   }
   return data;
 }
@@ -126,9 +130,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const templateLang = process.env.WHATSAPP_OTP_LANG || 'en';
       let deliveryMode: 'template' | 'text' = 'template';
       let templateError: string | null = null;
+      let metaErrorDetails: unknown = null;
       try {
-        // Authentication templates with "Copy code": body has {{1}} = OTP.
-        // The "Copy code" button auto-uses {{1}} — do NOT send a separate button component.
+        // Authentication "Copy code" template: body has {{1}} = OTP, button copies it.
         await sendToMeta({
           to,
           type: 'template',
@@ -137,12 +141,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             language: { code: templateLang },
             components: [
               { type: 'body', parameters: [{ type: 'text', text: otp }] },
+              { type: 'button', sub_type: 'copy_code', index: '0', parameters: [{ type: 'coupon_code', coupon_code: otp }] },
             ],
           },
         });
       } catch (templateErr: any) {
         templateError = templateErr?.message || String(templateErr);
-        console.error('[whatsapp-send] template error:', { template: templateName, lang: templateLang, to, error: templateError });
+        metaErrorDetails = templateErr?.metaError;
+        console.error('[whatsapp-send] template error:', { template: templateName, lang: templateLang, to, error: templateError, meta: metaErrorDetails });
         try {
           await sendToMeta({
             to,
@@ -162,7 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
       }
-      return res.status(200).json({ ok: true, otpRef: docId, mode: deliveryMode, templateError: templateError || undefined, _debug: { templateName, templateLang } });
+      return res.status(200).json({ ok: true, otpRef: docId, mode: deliveryMode, templateError: templateError || undefined, metaErrorDetails: metaErrorDetails || undefined, _debug: { templateName, templateLang } });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown kind' });

@@ -138,6 +138,9 @@ try {
   if (data.templateError) {
     info(`Template error (fell back to text): ${Y(data.templateError)}`);
   }
+  if (data.metaErrorDetails) {
+    info(`Meta error details: ${Y(JSON.stringify(data.metaErrorDetails, null, 2))}`);
+  }
   info(`WhatsApp message should have been delivered to +${normalizedFor_api}`);
 } catch (err) {
   fail('Send OTP (production)', err);
