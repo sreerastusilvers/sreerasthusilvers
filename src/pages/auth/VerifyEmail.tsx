@@ -45,7 +45,9 @@ const VerifyEmail = () => {
       if (!user) {
         navigate('/login', { replace: true });
       } else {
-        checkVerification();
+        // Email verification is no longer required — send users home
+        sessionStorage.removeItem('pendingVerificationEmail');
+        navigate('/', { replace: true });
       }
     }
   }, [user, authLoading, navigate]);
