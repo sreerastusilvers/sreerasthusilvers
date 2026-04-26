@@ -86,6 +86,7 @@ import AdminNotifications from './pages/admin/AdminNotifications';
 import AdminDeliveryBoyDetails from './pages/admin/AdminDeliveryBoyDetails';
 import AdminOrderDetails from './pages/admin/AdminOrderDetails';
 import AdminVideoCalls from './pages/admin/AdminVideoCalls';
+import AdminNewsletterSubscriptions from './pages/admin/AdminNewsletterSubscriptions';
 import MyVideoCalls from './pages/MyVideoCalls';
 import VideoCallPage from './pages/VideoCallPage';
 import WriteReview from "./pages/WriteReview";
@@ -338,6 +339,7 @@ const App = () => {
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="customers" element={<AdminCustomers />} />
                 <Route path="customers/:customerId" element={<AdminCustomerDetails />} />
+                <Route path="newsletter" element={<AdminNewsletterSubscriptions />} />
               </Route>
 
               {/* Delivery Partner Routes (always rendered in light mode) */}

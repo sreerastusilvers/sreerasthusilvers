@@ -30,8 +30,7 @@ const Header = () => {
   const recognitionRef = useRef<any>(null);
 
   // Check if current page is an auth page
-  const isAuthPage = location.pathname.startsWith('/login') || 
-                     location.pathname.startsWith('/signup') || 
+  const isAuthPage = location.pathname.startsWith('/signup') || 
                      location.pathname.startsWith('/forgot-password') ||
                      location.pathname.startsWith('/admin');
 

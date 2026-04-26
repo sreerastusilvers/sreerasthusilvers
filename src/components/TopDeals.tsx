@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ChevronLeft, Heart } from "lucide-react";
+import { ChevronRight, ChevronLeft, Heart, ShoppingCart } from "lucide-react";
 import { subscribeToTopDeals } from "@/services/productService";
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
@@ -154,15 +154,25 @@ const TopDeals = () => {
                   </div>
                   <div className="p-2.5">
                     <p className="text-[11px] text-muted-foreground line-clamp-1 mb-0.5">{product.title}</p>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
-                      {product.oldPrice && product.oldPrice > product.price && (
-                        <p className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
-                      )}
+                    <div className="flex items-center justify-between gap-1">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
+                          {product.oldPrice && product.oldPrice > product.price && (
+                            <p className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
+                          )}
+                        </div>
+                        {product.discount && product.discount > 0 && (
+                          <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => handleAddToCart(e, product)}
+                        className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart flex-shrink-0"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white transition-colors" />
+                      </button>
                     </div>
-                    {product.discount && product.discount > 0 && (
-                      <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
-                    )}
                   </div>
                 </div>
               </motion.div>
@@ -248,11 +258,19 @@ const TopDeals = () => {
                     </div>
                     <div className="mt-auto">
                       <p className="text-[11px] text-muted-foreground line-clamp-1 mb-1">{product.title}</p>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</span>
-                        {product.oldPrice && product.oldPrice > product.price && (
-                          <span className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</span>
-                        )}
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</span>
+                          {product.oldPrice && product.oldPrice > product.price && (
+                            <span className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => handleAddToCart(e, product)}
+                          className="w-8 h-8 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart flex-shrink-0"
+                        >
+                          <ShoppingCart className="w-[16px] h-[16px] text-muted-foreground group-hover/cart:text-white transition-colors" />
+                        </button>
                       </div>
                     </div>
                   </motion.div>

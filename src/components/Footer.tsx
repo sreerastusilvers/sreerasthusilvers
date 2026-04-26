@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { subscribeEmail } from "@/services/newsletterService";
 import {
   Facebook,
   Instagram,
@@ -65,11 +67,33 @@ const Footer = () => {
   const darkModeLogo = "/white_logo.png";
   const [settings, setSettings] = useState<FooterSettings>(DEFAULT_FOOTER);
   const { resolvedTheme } = useTheme();
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeFooterSettings(setSettings);
     return unsub;
   }, []);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = newsletterEmail.trim();
+    if (!email) return;
+    setNewsletterLoading(true);
+    try {
+      const result = await subscribeEmail(email);
+      if (result === 'exists') {
+        toast.info('You are already subscribed!');
+      } else {
+        toast.success('Thank you for subscribing!');
+        setNewsletterEmail("");
+      }
+    } catch {
+      toast.error('Failed to subscribe. Please try again.');
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
 
   const activeSocials = (settings.socialLinks || []).filter((s) => s.active && s.url);
   const shopLinks = (settings.shopLinks || []).filter(Boolean);
@@ -94,20 +118,23 @@ const Footer = () => {
               </h3>
             </div>
             <form
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={handleNewsletterSubmit}
               className="flex w-full max-w-lg md:ml-auto rounded-full bg-white/5 backdrop-blur border border-white/10 p-1.5 focus-within:border-[#d4af37]/60 transition-colors overflow-hidden"
             >
               <input
                 type="email"
                 required
                 placeholder="Enter your email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
                 className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
               />
               <button
                 type="submit"
-                className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#d4af37] hover:bg-[#c5a02f] text-black px-4 md:px-6 py-2.5 text-xs font-semibold tracking-wide transition-colors"
+                disabled={newsletterLoading}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#d4af37] hover:bg-[#c5a02f] disabled:opacity-60 text-black px-4 md:px-6 py-2.5 text-xs font-semibold tracking-wide transition-colors"
               >
-                <span className="hidden sm:inline">Subscribe</span>
+                <span className="hidden sm:inline">{newsletterLoading ? 'Subscribing…' : 'Subscribe'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>

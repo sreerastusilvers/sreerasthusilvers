@@ -339,7 +339,6 @@ const Wishlist = () => {
           <button
             onClick={() => {
               if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                sessionStorage.setItem('openMobileSidebar', '1');
                 navigate('/');
               } else {
                 navigate(-1);

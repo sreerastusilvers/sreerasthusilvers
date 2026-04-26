@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, animate, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -42,6 +42,8 @@ const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: 
     if (info.offset.x > sliderWidth * 0.7) {
       setCompleted(true);
       onComplete();
+    } else {
+      animate(x, 0, { type: 'spring', stiffness: 400, damping: 30 });
     }
   };
 
@@ -116,11 +118,16 @@ const MobileCheckout = () => {
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
   const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
+  const [orderedItems, setOrderedItems] = useState<typeof items>([]);
   const [showAllItems, setShowAllItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [slideResetKey, setSlideResetKey] = useState(0);
   const [couponInput, setCouponInput] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+  // Ref-based flag so the navigation guard sees it synchronously before any re-render
+  const orderPlacedRef = useRef(false);
+  // Track if cart ever had items so we don't redirect when user taps cart icon with empty cart
+  const cartWasPopulatedRef = useRef(false);
   
   // Form state
   const [formData, setFormData] = useState<AddressFormData>({
@@ -134,12 +141,19 @@ const MobileCheckout = () => {
     isDefault: false,
   });
 
-  // Redirect to home when cart is empty (breaks back-button loop)
+  // Track when cart has items so we know if it was emptied during this session
   useEffect(() => {
-    if (!cartLoading && items.length === 0 && !showOrderSuccess) {
+    if (items.length > 0) cartWasPopulatedRef.current = true;
+  }, [items]);
+
+  // Redirect to home when cart is emptied DURING checkout (not on first arrival with empty cart)
+  // Uses orderPlacedRef (synchronous) in addition to showOrderSuccess state to prevent
+  // a race where clearCart's onSnapshot fires before the state batch commits.
+  useEffect(() => {
+    if (!cartLoading && items.length === 0 && cartWasPopulatedRef.current && !showOrderSuccess && !orderPlacedRef.current && currentStep > 1) {
       navigate('/', { replace: true });
     }
-  }, [items, cartLoading, showOrderSuccess]);
+  }, [items, cartLoading, showOrderSuccess, currentStep]);
 
   // Fetch addresses and suggested products
   const loadAddresses = async () => {
@@ -385,16 +399,22 @@ const MobileCheckout = () => {
       // Create order in Firestore
       await createOrder(orderData);
 
-      // Capture first product id BEFORE clearing the cart so DONE can return to it
-      setLastOrderedProductId(items[0]?.id || null);
+      // Snapshot items BEFORE clearing the cart
+      const snapshotItems = [...items];
+      setOrderedItems(snapshotItems);
+      setLastOrderedProductId(snapshotItems[0]?.id || null);
 
-      // Clear cart
-      clearCart();
+      // Mark order placed via ref FIRST so the navigation guard never fires
+      orderPlacedRef.current = true;
 
-      // Show success page
+      // Show success page immediately (before clearCart so state is committed)
       setShowOrderSuccess(true);
       setShowOrderAnimation(true);
       setTimeout(() => setShowOrderAnimation(false), 2800);
+
+      // Close payment modal and clear cart AFTER success flag is set
+      setShowPaymentDetails(false);
+      clearCart();
 
       toast({
         title: 'Success',
@@ -402,6 +422,7 @@ const MobileCheckout = () => {
       });
     } catch (error) {
       console.error('Error placing order:', error);
+      setSlideResetKey(k => k + 1);
       toast({
         title: 'Error',
         description: 'Failed to place order. Please try again.',
@@ -806,7 +827,25 @@ const MobileCheckout = () => {
         {/* ─── STEP 1: Cart Review ─── */}
         {currentStep === 1 && (
           <div className="pb-32">
+            {/* Empty Cart State */}
+            {items.length === 0 && !cartLoading && (
+              <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+                <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center mb-5">
+                  <ShoppingBag className="w-10 h-10 text-gray-400 dark:text-zinc-500" strokeWidth={1.5} />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-zinc-100 mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>Your cart is empty</h2>
+                <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Add some beautiful silver jewellery to get started</p>
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-6 py-3 bg-[#832729] text-white text-sm font-semibold rounded-full shadow-sm active:scale-95 transition-transform"
+                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                >
+                  Shop Now
+                </button>
+              </div>
+            )}
             {/* Cart Items */}
+            {items.length > 0 && (<>
             <div className="px-4 pt-4 pb-2">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Your Cart</h2>
             </div>
@@ -957,6 +996,7 @@ const MobileCheckout = () => {
                 </div>
               </div>
             </div>
+            </>)}
           </div>
         )}
 
@@ -996,104 +1036,38 @@ const MobileCheckout = () => {
           </button>
         </div>
 
-        {/* Review Your Order */}
-        <div className="px-4 pt-5 pb-2">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Review your Order</h2>
-        </div>
-
-        {/* Order Card */}
-        <div className="mx-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden mb-4">
-          {/* Delivery info header */}
-          <div className="px-4 py-3 flex items-center justify-between border-b border-gray-50">
-            <div className="flex items-center gap-1.5">
-              <Truck className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
+        {/* Compact Order Summary (step 2 — no duplicate full items list) */}
+        <div className="mx-4 mt-3 mb-3">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm px-4 py-3 flex items-center gap-3">
+            {/* Item thumbnails */}
+            <div className="flex -space-x-2">
+              {items.slice(0, 3).map((item, idx) => (
+                <div key={item.id} className="w-10 h-10 rounded-full overflow-hidden border-2 border-white dark:border-zinc-900 flex-shrink-0" style={{ zIndex: 3 - idx }}>
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                </div>
+              ))}
+              {items.length > 3 && (
+                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 border-2 border-white dark:border-zinc-900 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[10px] font-bold text-gray-600 dark:text-zinc-400">+{items.length - 3}</span>
+                </div>
+              )}
             </div>
-            <span className="text-xs text-gray-400 dark:text-zinc-500 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{totalItems} items</span>
+            {/* Count + total */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                {totalItems} item{totalItems !== 1 ? 's' : ''}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Total: {formatPrice(total)}</p>
+            </div>
+            {/* Edit cart link */}
+            <button
+              onClick={() => setCurrentStep(1)}
+              className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex-shrink-0"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              Edit
+            </button>
           </div>
-
-          {/* Cart items */}
-          <div className="divide-y divide-gray-50">
-            <AnimatePresence>
-              {items.map((item) => {
-                const originalPrice = Math.round(item.price * 1.3);
-                return (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center gap-3 px-4 py-3"
-                  >
-                    {/* Image */}
-                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900 ring-1 ring-gray-100">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                    </div>
-
-                    {/* Details */}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
-                    </div>
-
-                    {/* Quantity controls */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {/* Delete button */}
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" strokeWidth={2} />
-                      </button>
-
-                      {/* Minus button - transparent */}
-                      <button
-                        onClick={() => {
-                          if (item.quantity === 1) {
-                            removeFromCart(item.id);
-                          } else {
-                            updateQuantity(item.id, item.quantity - 1);
-                          }
-                        }}
-                        className="w-8 h-8 flex items-center justify-center bg-transparent border border-gray-900/20 hover:bg-gray-900/5 rounded-full transition-colors"
-                      >
-                        <Minus className="w-3.5 h-3.5 text-gray-900 dark:text-zinc-100" strokeWidth={2.5} />
-                      </button>
-
-                      {/* Quantity display */}
-                      <div className="w-8 h-8 flex items-center justify-center bg-gray-900 rounded-full">
-                        <span className="text-sm font-bold text-white" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.quantity}</span>
-                      </div>
-
-                      {/* Plus button - transparent */}
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="w-8 h-8 flex items-center justify-center bg-transparent border border-gray-900/20 hover:bg-gray-900/5 rounded-full transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-gray-900 dark:text-zinc-100" strokeWidth={2.5} />
-                      </button>
-                    </div>
-
-                    {/* Price */}
-                    <div className="text-right flex-shrink-0 ml-1">
-                      <p className="text-[11px] text-gray-400 dark:text-zinc-500 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(originalPrice * item.quantity)}</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price * item.quantity)}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* Missed Something? */}
-        <div className="mx-4 mb-4">
-          <button
-            onClick={() => navigate('/')}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-white dark:bg-zinc-900 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
-          >
-            <span className="text-sm text-gray-500 dark:text-zinc-500" style={{ fontFamily: "'Poppins', sans-serif" }}>Missed Something?</span>
-            <span className="text-sm font-semibold text-green-600" style={{ fontFamily: "'Poppins', sans-serif" }}>Add more items</span>
-          </button>
         </div>
 
         {/* Bill Summary */}
@@ -1198,7 +1172,7 @@ const MobileCheckout = () => {
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         <div className="px-4 py-3">
           {currentStep === 1 ? (
-            <button
+            items.length > 0 && <button
               onClick={() => setCurrentStep(2)}
               className="w-full h-14 bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
               style={{ fontFamily: "'Poppins', sans-serif" }}
@@ -1519,7 +1493,7 @@ const MobileCheckout = () => {
               <MobileHeader />
               <div className="flex items-center gap-3 px-4 py-2">
                 <button
-                  onClick={() => setShowOrderSuccess(false)}
+                  onClick={() => navigate('/', { replace: true })}
                   className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
@@ -1582,7 +1556,9 @@ const MobileCheckout = () => {
                 className="text-sm text-gray-600 dark:text-zinc-400 text-center mb-6"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
-                Payment is successfully processed and your Order is on the way.
+                {selectedPaymentMethod === 'Cash On Delivery'
+                  ? 'Your order is confirmed! Pay in cash when your order arrives.'
+                  : 'Payment is successfully processed and your Order is on the way.'}
               </motion.p>
 
               {/* Order Details */}
@@ -1593,7 +1569,9 @@ const MobileCheckout = () => {
                     Your order # is: <span className="font-bold">{orderId}</span>
                   </p>
                   <p className="text-xs text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                    Payment is successfully processed and your Order is on the way and this been sent your email ID.
+                    {selectedPaymentMethod === 'Cash On Delivery'
+                      ? 'Your order is confirmed and will be dispatched soon. Pay on delivery.'
+                      : 'Payment is successfully processed and your Order is on the way.'}
                   </p>
                 </div>
               </div>
@@ -1621,20 +1599,20 @@ const MobileCheckout = () => {
                 <h4 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Order Summary</h4>
                 <div className="space-y-3">
                   {/* First Item */}
-                  {items.length > 0 && (
+                  {orderedItems.length > 0 && (
                     <div className="flex gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-3">
                       <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
-                        <img src={items[0].image} alt={items[0].name} className="w-full h-full object-cover" />
+                        <img src={orderedItems[0].image} alt={orderedItems[0].name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1">
-                        <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{items[0].name}</h5>
-                        <p className="text-xs text-red-600 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery by: 10 July, 2024</p>
+                        <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{orderedItems[0].name}</h5>
+                        <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Qty: {orderedItems[0].quantity}</p>
                       </div>
                     </div>
                   )}
 
                   {/* Toggle for More Items */}
-                  {items.length > 1 && (
+                  {orderedItems.length > 1 && (
                     <>
                       <AnimatePresence>
                         {showAllItems && (
@@ -1645,14 +1623,14 @@ const MobileCheckout = () => {
                             transition={{ duration: 0.3 }}
                             className="space-y-3 overflow-hidden"
                           >
-                            {items.slice(1).map((item) => (
+                            {orderedItems.slice(1).map((item) => (
                               <div key={item.id} className="flex gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-3">
                                 <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
                                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-1">
                                   <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h5>
-                                  <p className="text-xs text-red-600 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery by: 10 July, 2024</p>
+                                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Qty: {item.quantity}</p>
                                 </div>
                               </div>
                             ))}
@@ -1666,7 +1644,7 @@ const MobileCheckout = () => {
                         className="w-full flex items-center justify-center gap-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
                         <span className="text-sm font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                          {showAllItems ? 'Show Less' : `+ ${items.length - 1} more item${items.length > 2 ? 's' : ''}`}
+                          {showAllItems ? 'Show Less' : `+ ${orderedItems.length - 1} more item${orderedItems.length > 2 ? 's' : ''}`}
                         </span>
                         <ChevronDown className={`w-4 h-4 transition-transform ${showAllItems ? 'rotate-180' : ''}`} />
                       </button>
@@ -1724,7 +1702,7 @@ const Checkout = () => {
   const [couponCode, setCouponCode] = useState('');
   const [showOffers, setShowOffers] = useState(false);
   const [showAllOffers, setShowAllOffers] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [showAddressSelector, setShowAddressSelector] = useState(false);
@@ -1739,6 +1717,7 @@ const Checkout = () => {
   const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const cartWasPopulatedRef = useRef(false);
   
   // Form state
   const [formData, setFormData] = useState<AddressFormData>({
@@ -1752,12 +1731,18 @@ const Checkout = () => {
     isDefault: false,
   });
 
-  // Redirect to home when cart is empty (breaks back-button loop)
+  // Track if cart was ever populated (to distinguish empty-on-arrival vs emptied-after-order)
   useEffect(() => {
-    if (!cartLoading && items.length === 0 && !showOrderSuccess) {
+    if (items.length > 0) cartWasPopulatedRef.current = true;
+  }, [items]);
+
+  // Redirect to home only when cart was populated then emptied (e.g. after order placed)
+  // Skip when isMobile — MobileCheckout has its own nav guard with step-awareness
+  useEffect(() => {
+    if (!isMobile && !cartLoading && items.length === 0 && cartWasPopulatedRef.current && !showOrderSuccess) {
       navigate('/', { replace: true });
     }
-  }, [items, cartLoading, showOrderSuccess]);
+  }, [items, cartLoading, showOrderSuccess, isMobile]);
 
   // Load addresses
   const loadAddresses = async () => {

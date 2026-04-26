@@ -10,7 +10,7 @@ const MobileHeader = () => {
   const lightModeLogo = "/black_logo.png";
   const darkModeLogo = "/white_logo.png";
   const navigate = useNavigate();
-  const { totalItems, toggleCart } = useCart();
+  const { totalItems } = useCart();
   const { user } = useAuth();
   const { resolvedTheme } = useTheme();
   const [isVisible, setIsVisible] = useState(true);
@@ -72,7 +72,7 @@ const MobileHeader = () => {
           {/* Cart */}
           <button
             className="p-2 hover:bg-muted rounded-full transition-colors relative"
-            onClick={toggleCart}
+            onClick={() => navigate('/checkout')}
             aria-label="Cart"
           >
             <ShoppingBag className="w-[22px] h-[22px] text-foreground/80" strokeWidth={1.5} />

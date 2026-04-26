@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Truck, Shield, RotateCcw, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
 import { getProduct, getActiveProducts } from "@/services/productService";
@@ -22,6 +22,7 @@ import { Video } from "lucide-react";
 const ProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart, openCart, closeCart } = useCart();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -701,7 +702,13 @@ const ProductDetail = () => {
 
                 {/* Demo Video Call CTA */}
                 <motion.button
-                  onClick={() => setShowVideoCallModal(true)}
+                  onClick={() => {
+                    if (!user) {
+                      navigate('/login', { state: { from: location } });
+                      return;
+                    }
+                    setShowVideoCallModal(true);
+                  }}
                   whileTap={{ scale: 0.97 }}
                   className="w-full mt-2 px-6 py-3 font-medium text-sm rounded-full border-2 border-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all flex items-center justify-center gap-2"
                 >

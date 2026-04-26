@@ -23,6 +23,14 @@ const ShoppingCart = () => {
   // checkout can only reduce it (no surprise increases).
   const pricing = useCheckoutPricing(subtotal, items.length === 0, 'cod');
 
+  // On mobile, redirect to /checkout instead of opening the drawer
+  useEffect(() => {
+    if (isCartOpen && window.innerWidth <= 768) {
+      closeCart();
+      navigate('/checkout');
+    }
+  }, [isCartOpen]);
+
   // Dispatch events to hide/show bottom navbar when cart opens/closes
   useEffect(() => {
     if (isCartOpen) {

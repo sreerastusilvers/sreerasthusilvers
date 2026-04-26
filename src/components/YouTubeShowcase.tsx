@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Play, Youtube as YoutubeIcon, ChevronLeft, ChevronRight, Maximize } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -28,8 +28,11 @@ const InlinePlayer = ({
   rounded?: string;
 }) => {
   const ratioCls = aspectClass(video.aspectRatio);
+
   return (
-    <div className={`relative w-full ${ratioCls} ${rounded} overflow-hidden bg-black ${className}`}>
+    <div
+      className={`relative w-full ${ratioCls} ${rounded} overflow-hidden bg-black ${className}`}
+    >
       {playing ? (
         <iframe
           key={video.videoId}
@@ -61,14 +64,12 @@ const InlinePlayer = ({
           </div>
         </button>
       )}
+      {/* Full Screen button — opens popup dialog */}
       <button
         type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpen();
-        }}
-        className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm transition-colors hover:bg-black/80"
-        aria-label={`Open ${video.title} in popup player`}
+        onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm transition-all duration-300 hover:bg-black/80 hover:scale-105"
+        aria-label={`Open ${video.title} in full screen`}
       >
         <Maximize className="h-3 w-3" /> Full Screen
       </button>
@@ -185,7 +186,10 @@ const YouTubeShowcase = () => {
                 video={featured}
                 playing={playingIds.has(featured.id || featured.videoId)}
                 onPlay={() => playInline(featured, featured.id || featured.videoId)}
-                onOpen={() => openVideo(featured)}
+                onOpen={() => {
+                  setPlayingIds(prev => { const s = new Set(prev); s.delete(featured.id || featured.videoId); return s; });
+                  openVideo(featured);
+                }}
                 rounded="rounded-[24px]"
               />
               {!playingIds.has(featured.id || featured.videoId) && (
@@ -284,7 +288,10 @@ const YouTubeShowcase = () => {
                         video={v}
                         playing={isPlaying}
                         onPlay={() => playInline(v, cardKey)}
-                        onOpen={() => openVideo(v)}
+                        onOpen={() => {
+                          setPlayingIds(prev => { const s = new Set(prev); s.delete(cardKey); return s; });
+                          openVideo(v);
+                        }}
                         rounded=""
                       />
                       {!isPlaying && v.featured && (

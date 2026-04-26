@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ChevronLeft, Heart } from "lucide-react";
+import { ChevronRight, ChevronLeft, Heart, ShoppingCart } from "lucide-react";
 import { subscribeToTrendProducts } from "@/services/productService";
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
@@ -137,15 +137,25 @@ const TrendProductSection = () => {
                   </div>
                   <div className="p-2.5">
                     <p className="text-[11px] text-muted-foreground line-clamp-1 mb-0.5">{product.title}</p>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
-                      {product.oldPrice && product.oldPrice > product.price && (
-                        <p className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
-                      )}
+                    <div className="flex items-center justify-between gap-1">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
+                          {product.oldPrice && product.oldPrice > product.price && (
+                            <p className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
+                          )}
+                        </div>
+                        {product.discount && product.discount > 0 && (
+                          <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => handleAddToCart(e, product)}
+                        className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart flex-shrink-0"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white transition-colors" />
+                      </button>
                     </div>
-                    {product.discount && product.discount > 0 && (
-                      <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
-                    )}
                   </div>
                 </div>
               </motion.div>
@@ -236,11 +246,19 @@ const TrendProductSection = () => {
                         <h3 className={`font-semibold text-white line-clamp-2 ${idx === 0 ? 'text-xl mb-2' : 'text-sm mb-1'}`} style={{ fontFamily: "'Playfair Display', serif" }}>
                           {product.title}
                         </h3>
-                        <div className="flex items-center gap-2">
-                          <span className={`font-bold text-white ${idx === 0 ? 'text-lg' : 'text-sm'}`}>₹{product.price.toLocaleString()}</span>
-                          {product.oldPrice && product.oldPrice > product.price && (
-                            <span className="text-[10px] text-white/50 line-through">₹{product.oldPrice.toLocaleString()}</span>
-                          )}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-white ${idx === 0 ? 'text-lg' : 'text-sm'}`}>₹{product.price.toLocaleString()}</span>
+                            {product.oldPrice && product.oldPrice > product.price && (
+                              <span className="text-[10px] text-white/50 line-through">₹{product.oldPrice.toLocaleString()}</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => handleAddToCart(e, product)}
+                            className="w-8 h-8 rounded-full bg-white/20 hover:bg-primary backdrop-blur flex items-center justify-center transition-colors group/cart flex-shrink-0"
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5 text-white transition-colors" />
+                          </button>
                         </div>
                         {idx === 0 && (
                           <button

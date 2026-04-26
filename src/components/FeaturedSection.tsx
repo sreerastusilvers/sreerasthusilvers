@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight, ChevronLeft, Heart } from "lucide-react";
+import { ChevronRight, ChevronLeft, Heart, ShoppingCart } from "lucide-react";
 import { subscribeToFeatured } from "@/services/productService";
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
@@ -105,11 +105,19 @@ const FeaturedSection = () => {
         <h3 className={`${compact ? "text-lg lg:text-xl" : "text-xl"} font-semibold text-white mb-2 line-clamp-2`} style={{ fontFamily: "'Playfair Display', serif" }}>
           {product.title}
         </h3>
-        <div className="flex items-center gap-2">
-          <span className={`${compact ? "text-base" : "text-lg"} font-bold text-white`}>₹{product.price.toLocaleString()}</span>
-          {product.oldPrice && product.oldPrice > product.price && (
-            <span className="text-xs text-white/50 line-through">₹{product.oldPrice.toLocaleString()}</span>
-          )}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className={`${compact ? "text-base" : "text-lg"} font-bold text-white`}>₹{product.price.toLocaleString()}</span>
+            {product.oldPrice && product.oldPrice > product.price && (
+              <span className="text-xs text-white/50 line-through">₹{product.oldPrice.toLocaleString()}</span>
+            )}
+          </div>
+          <button
+            onClick={(e) => handleAddToCart(e, product)}
+            className="w-9 h-9 rounded-full bg-white/20 hover:bg-primary backdrop-blur flex items-center justify-center transition-colors group/cart flex-shrink-0"
+          >
+            <ShoppingCart className="w-[18px] h-[18px] text-white transition-colors" />
+          </button>
         </div>
       </div>
     </motion.div>
@@ -189,7 +197,15 @@ const FeaturedSection = () => {
                     </div>
                     <div className="p-3">
                       <p className="text-[11px] text-muted-foreground line-clamp-1 mb-1">{product.title}</p>
-                      <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
+                        <button
+                          onClick={(e) => handleAddToCart(e, product)}
+                          className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart flex-shrink-0"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white transition-colors" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

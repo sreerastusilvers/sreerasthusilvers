@@ -422,6 +422,15 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
           transition={{ duration: 0.4 }}
           className="w-full max-w-md bg-card rounded-2xl shadow-lg border border-border p-6 sm:p-8"
         >
+          {/* Back Button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm font-medium">Back</span>
+          </button>
+
           {/* Tabs */}
           <div className="flex mb-6 bg-muted rounded-full p-1">
             <button
@@ -736,6 +745,7 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
         </motion.div>
       </div>
 
+      <Footer />
       {/* Mobile Bottom Nav */}
       <MobileBottomNav />
     </div>

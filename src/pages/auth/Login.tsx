@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { useAuth, UserProfile } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -354,9 +356,11 @@ const Login = () => {
   }
 
   return (
-    <div className="h-[100dvh] overflow-auto md:overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
-      <div className="flex-1 flex items-center justify-center py-6 md:py-4 px-4">
-        <div className="w-full max-w-md">
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+        <div className="flex-1 flex items-center justify-center py-8 px-4">
+          <div className="w-full max-w-md">
           {/* Brand Logo */}
           <div className="flex justify-center mb-4">
             <Link to="/">
@@ -365,10 +369,10 @@ const Login = () => {
           </div>
 
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 md:p-8 relative">
-            {/* Mobile Back Arrow */}
+            {/* Back Arrow — always visible */}
             <button
               onClick={() => navigate(-1)}
-              className="mb-3 flex items-center gap-2 text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:text-zinc-100 transition-colors lg:hidden"
+              className="mb-3 flex items-center gap-2 text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="text-sm font-medium">Back</span>
@@ -536,6 +540,7 @@ const Login = () => {
               </div>
             )}
           </div>
+          </div>
         </div>
       </div>
 
@@ -660,7 +665,8 @@ const Login = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      <Footer />
+    </>
   );
 };
 

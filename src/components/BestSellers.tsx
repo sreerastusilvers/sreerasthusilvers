@@ -118,6 +118,12 @@ const BestSellers = () => {
             </h2>
             <p className="text-sm text-muted-foreground mt-1 font-light">Our most loved pieces, chosen by you</p>
           </div>
+          <button
+            onClick={() => navigate('/products?tag=best-sellers')}
+            className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+          >
+            View All <ChevronRight className="w-4 h-4" />
+          </button>
         </motion.div>
         {/* Mobile header */}
         <div className="mb-4 md:hidden px-1">
@@ -147,6 +153,12 @@ const BestSellers = () => {
                 className="w-8 h-8 rounded-full border border-border/70 bg-background/90 dark:bg-zinc-900/80 flex items-center justify-center active:scale-95 transition-transform disabled:cursor-default disabled:opacity-40"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => navigate('/products?tag=best-sellers')}
+                className="text-xs font-medium text-primary tracking-wide ml-1"
+              >
+                View All
               </button>
             </div>
           </div>
