@@ -5,6 +5,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
 
 // ─── Slide to Proceed Button Component ───
 const SlideToProceedButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
@@ -73,39 +74,49 @@ const SlideToProceedButton = ({ amount, onComplete }: { amount: string; onComple
 };
 
 const MobileCart = () => {
-  const { items, updateQuantity, removeFromCart, subtotal, totalItems } = useCart();
+  const { items, updateQuantity, removeFromCart, subtotal, totalItems, openCart } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { resolvedTheme } = useTheme();
   const [promoCode, setPromoCode] = useState('');
-  const [promoApplied, setPromoApplied] = useState(false);
-  const [appliedCode, setAppliedCode] = useState('');
 
-  // Valid promo codes (you can expand this)
-  const validPromoCodes: Record<string, number> = {
-    '3H-K-KU7O': 220,
-    'SAVE10': 100,
-    'WELCOME': 50,
-  };
+  // Shared pricing engine — same source of truth as Checkout & ShoppingCart.
+  // Default to COD so the displayed total is the worst case.
+  const pricing = useCheckoutPricing(subtotal, items.length === 0, 'cod');
 
-  const handleApplyPromo = () => {
-    if (validPromoCodes[promoCode]) {
-      setPromoApplied(true);
-      setAppliedCode(promoCode);
-      setPromoCode('');
+  // Desktop users hitting /cart should see the slide-over drawer instead of
+  // the mobile page. We pushed /cart in their history before /checkout, so
+  // we open the drawer and silently replace the route back to home; that way
+  // their browser back from /checkout reopens the drawer on home.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(min-width: 768px)').matches) {
+      openCart();
+      navigate('/', { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleApplyPromo = async () => {
+    const code = promoCode.trim();
+    if (!code) return;
+    const r = await pricing.applyCoupon(code);
+    if (r.ok) setPromoCode('');
   };
 
   const handleRemovePromo = () => {
-    setPromoApplied(false);
-    setAppliedCode('');
+    pricing.removeCoupon();
   };
 
-  // Calculations
-  const promoDiscount = promoApplied && appliedCode ? validPromoCodes[appliedCode] : 0;
-  const deliveryFee = subtotal >= 5000 ? 0 : 60; // Free delivery above ₹5000
-  const taxAmount = Math.round(subtotal * 0.03); // 3% tax
-  const totalAmount = subtotal - promoDiscount + deliveryFee + taxAmount;
+  // Calculations from shared engine
+  const promoApplied = !!pricing.appliedCoupon;
+  const appliedCode = pricing.appliedCoupon?.code || '';
+  const promoDiscount = pricing.discount;
+  const deliveryFee = pricing.deliveryCharge;
+  const freeDelivery = pricing.freeDelivery;
+  const taxAmount = pricing.gstAddOnTop ? pricing.gstAmount : 0;
+  const codCharge = pricing.codCharge;
+  const totalAmount = pricing.total;
 
   const formatPrice = (price: number) => {
     return `₹ ${price.toFixed(2)}`;
@@ -260,7 +271,9 @@ const MobileCart = () => {
                     Apply
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-zinc-500 mt-2 ml-1">Try: 3H-K-KU7O, SAVE10, or WELCOME</p>
+                {pricing.couponError && (
+                  <p className="text-xs text-red-500 mt-2 ml-1">{pricing.couponError}</p>
+                )}
               </div>
             ) : (
               <div className="flex items-center justify-between mb-4 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
@@ -311,13 +324,23 @@ const MobileCart = () => {
                 
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-zinc-400">Delivery</span>
-                  <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(deliveryFee)}</span>
+                  <span className="text-gray-900 dark:text-zinc-100 font-medium">
+                    {freeDelivery ? 'FREE' : formatPrice(deliveryFee)}
+                  </span>
                 </div>
                 
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-zinc-400">Tax</span>
-                  <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(taxAmount)}</span>
-                </div>
+                {taxAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-zinc-400">GST</span>
+                    <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(taxAmount)}</span>
+                  </div>
+                )}
+                {codCharge > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-zinc-400">COD Charge</span>
+                    <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(codCharge)}</span>
+                  </div>
+                )}
 
                 <div className="h-px bg-gray-200 dark:bg-zinc-800 my-2" />
 

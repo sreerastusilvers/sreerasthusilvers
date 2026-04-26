@@ -11,7 +11,7 @@ import useAutoScroll from "@/hooks/useAutoScroll";
 
 const TopDeals = () => {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
   const [products, setProducts] = useState<UIProduct[]>([]);
@@ -47,6 +47,7 @@ const TopDeals = () => {
         image: product.image,
         category: product.category,
       });
+      openCart();
       
       toast({
         title: "Added to cart",
@@ -122,7 +123,7 @@ const TopDeals = () => {
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => navigate('/products')}
+                  onClick={() => navigate('/products?tag=top-deals')}
                   className="text-xs font-medium text-primary tracking-wide ml-1"
                 >
                   View All
@@ -185,7 +186,7 @@ const TopDeals = () => {
               <p className="text-sm text-muted-foreground mt-1 font-light">Handpicked deals on our finest pieces</p>
             </div>
             <button 
-              onClick={() => navigate('/products')}
+              onClick={() => navigate('/products?tag=top-deals')}
               className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
             >
               View All <ChevronRight className="w-4 h-4" />
@@ -275,7 +276,7 @@ const TopDeals = () => {
                   </button>
                 </div>
                 <button 
-                  onClick={() => navigate('/products')}
+                  onClick={() => navigate('/products?tag=top-deals')}
                   className="bg-primary text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-primary/90 transition-all duration-300 shadow-md"
                 >
                   View Collection

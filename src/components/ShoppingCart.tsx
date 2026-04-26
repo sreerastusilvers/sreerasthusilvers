@@ -7,6 +7,7 @@ import shoppingBags from '@/assets/shopping-bags.png';
 import loginCartImage from '@/assets/login-cart.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
 
 const ShoppingCart = () => {
   const { items, isCartOpen, closeCart, updateQuantity, removeFromCart, subtotal, totalItems, loading } = useCart();
@@ -14,7 +15,13 @@ const ShoppingCart = () => {
   const { user } = useAuth();
   const { resolvedTheme } = useTheme();
   const [isCouponExpanded, setIsCouponExpanded] = useState(false);
+  const [couponInput, setCouponInput] = useState('');
   const [currentStep] = useState(1); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
+
+  // Shared pricing engine — same source of truth as Checkout. Default to COD
+  // so the displayed total is the worst case; switching to UPI/online at
+  // checkout can only reduce it (no surprise increases).
+  const pricing = useCheckoutPricing(subtotal, items.length === 0, 'cod');
 
   // Dispatch events to hide/show bottom navbar when cart opens/closes
   useEffect(() => {
@@ -30,10 +37,25 @@ const ShoppingCart = () => {
     return `₹${price.toLocaleString('en-IN')}`;
   }, []);
 
-  // Delivery charge
-  const deliveryCharge = 60;
-  const taxAmount = Math.round(subtotal * 0.03); // GST 3%
-  const total = subtotal + deliveryCharge + taxAmount;
+  // Pricing values from the shared engine.
+  const deliveryCharge = pricing.deliveryCharge;
+  const freeDelivery = pricing.freeDelivery;
+  const gstAmount = pricing.gstAmount;
+  const gstAddOnTop = pricing.gstAddOnTop;
+  const codCharge = pricing.codCharge;
+  const discount = pricing.discount;
+  const total = pricing.total;
+
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) return;
+    setCouponLoading(true);
+    const r = await pricing.applyCoupon(code);
+    setCouponLoading(false);
+    if (r.ok) setCouponInput('');
+  };
 
   return (
     <AnimatePresence>
@@ -408,16 +430,44 @@ const ShoppingCart = () => {
                           exit={{ height: 0, opacity: 0 }}
                           className="px-4 pb-4 border-t border-border"
                         >
-                          <div className="flex gap-2 pt-3">
-                            <input
-                              type="text"
-                              placeholder="Enter coupon code"
-                              className="flex-1 px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:border-primary bg-background text-foreground"
-                            />
-                            <button className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary/90">
-                              Apply
-                            </button>
-                          </div>
+                          {pricing.appliedCoupon ? (
+                            <div className="flex items-center justify-between gap-2 pt-3">
+                              <div className="text-sm text-foreground">
+                                <span className="font-semibold text-green-600">{pricing.appliedCoupon.code}</span>{' '}
+                                <span className="text-muted-foreground">applied</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => pricing.removeCoupon()}
+                                className="text-xs font-medium text-primary hover:underline"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex gap-2 pt-3">
+                                <input
+                                  type="text"
+                                  value={couponInput}
+                                  onChange={(e) => setCouponInput(e.target.value)}
+                                  placeholder="Enter coupon code"
+                                  className="flex-1 px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:border-primary bg-background text-foreground"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleApplyCoupon}
+                                  disabled={couponLoading}
+                                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  {couponLoading ? '...' : 'Apply'}
+                                </button>
+                              </div>
+                              {pricing.couponError && (
+                                <p className="mt-2 text-xs text-red-500">{pricing.couponError}</p>
+                              )}
+                            </>
+                          )}
                         </motion.div>
                       )}
                     </div>
@@ -428,23 +478,47 @@ const ShoppingCart = () => {
                         <span className="text-muted-foreground">Sub Total</span>
                         <span className="text-foreground">₹ {subtotal.toLocaleString()}</span>
                       </div>
+                      {discount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Coupon Discount</span>
+                          <span className="text-green-600 font-medium">− ₹ {discount.toLocaleString()}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Product Discount</span>
-                        <span className="text-foreground">- ₹ 0</span>
+                        <span className="text-muted-foreground">Delivery</span>
+                        <span className={freeDelivery ? 'text-green-600 font-medium' : 'text-foreground'}>
+                          {freeDelivery ? 'FREE' : `₹ ${deliveryCharge.toLocaleString()}`}
+                        </span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Delivery Charge</span>
-                        <span className="text-foreground">₹ {deliveryCharge}</span>
-                      </div>
+                      {freeDelivery && (
+                        <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 dark:bg-green-950/30 dark:text-green-400 px-3 py-1.5 rounded-md">
+                          <span>🎉</span>
+                          <span>Free delivery on orders above ₹{pricing.delivery?.freeDeliveryAbove?.toLocaleString() ?? '999'}!</span>
+                        </div>
+                      )}
+                      {gstAddOnTop && gstAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">GST</span>
+                          <span className="text-foreground">₹ {gstAmount.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {codCharge > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">COD Charge</span>
+                          <span className="text-foreground">₹ {codCharge.toLocaleString()}</span>
+                        </div>
+                      )}
                       <div className="h-px bg-border" />
                       <div className="flex justify-between items-baseline">
                         <span className="text-sm font-bold text-foreground">TOTAL (Incl of all Taxes.)</span>
                         <span className="text-base font-bold text-foreground">₹ {total.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">You Save</span>
-                        <span className="text-green-600 font-medium">+ ₹ 0</span>
-                      </div>
+                      {discount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">You Save</span>
+                          <span className="text-green-600 font-medium">+ ₹ {discount.toLocaleString()}</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Desktop Action Buttons (hidden on mobile) */}

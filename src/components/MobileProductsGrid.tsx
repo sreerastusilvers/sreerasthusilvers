@@ -37,7 +37,7 @@ const MobileProductsGrid = () => {
   const [showSortModal, setShowSortModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { toast } = useToast();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
@@ -77,6 +77,7 @@ const MobileProductsGrid = () => {
         image: product.media.images[0] || "",
         category: product.category,
       });
+      openCart();
       
       toast({
         title: "Added to cart",

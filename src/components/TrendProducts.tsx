@@ -18,7 +18,7 @@ const TrendProducts = () => {
   const [products, setProducts] = useState<UIProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
   const {
@@ -76,6 +76,7 @@ const TrendProducts = () => {
         image: product.image,
         category: product.category,
       });
+      openCart();
       
       toast({
         title: "Added to cart",
@@ -121,7 +122,7 @@ const TrendProducts = () => {
             </h2>
             <p className="text-sm text-muted-foreground mt-1 font-light">Fresh designs crafted just for you</p>
           </div>
-          <button onClick={() => navigate('/category/jewellery')} className="text-sm text-primary font-medium hover:underline underline-offset-4 flex items-center gap-1">
+          <button onClick={() => navigate('/products?tag=new-arrivals')} className="text-sm text-primary font-medium hover:underline underline-offset-4 flex items-center gap-1">
             View All <ChevronRight className="w-4 h-4" />
           </button>
         </motion.div>
@@ -154,7 +155,7 @@ const TrendProducts = () => {
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => navigate('/category/jewellery')} className="text-xs text-primary font-medium ml-1">
+              <button onClick={() => navigate('/products?tag=new-arrivals')} className="text-xs text-primary font-medium ml-1">
                 View All
               </button>
             </div>

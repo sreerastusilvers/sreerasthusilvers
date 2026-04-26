@@ -28,7 +28,7 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { toast } = useToast();
 
   const handleAddToCart = async () => {
@@ -49,6 +49,7 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
         description: `${product.title}${quantity > 1 ? ` (×${quantity})` : ''} has been added to your cart.`,
       });
       onClose();
+      openCart();
     } catch (error) {
       toast({
         title: "Error",

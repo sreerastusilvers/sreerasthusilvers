@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -90,10 +90,17 @@ const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: 
 // ─── Mobile Checkout Component ───
 const MobileCheckout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const cameFromProduct = (location.state as { from?: string } | null)?.from === 'product';
+  const handleBack = () => {
+    if (currentStep > 1) { setCurrentStep(prev => prev - 1); return; }
+    if (cameFromProduct) navigate(-1);
+    else navigate('/');
+  };
   const { user, userProfile } = useAuth();
   const { resolvedTheme } = useTheme();
   const { items, subtotal, updateQuantity, removeFromCart, totalItems, addToCart, clearCart, openCart, loading: cartLoading } = useCart();
-  const [currentStep] = useState(2); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
+  const [currentStep, setCurrentStep] = useState(1); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
   const { toast } = useToast();
   const [suggestedProducts, setSuggestedProducts] = useState<UIProduct[]>([]);
   const [activeTab, setActiveTab] = useState('Did you forget?');
@@ -112,6 +119,8 @@ const MobileCheckout = () => {
   const [showAllItems, setShowAllItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [slideResetKey, setSlideResetKey] = useState(0);
+  const [couponInput, setCouponInput] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState<AddressFormData>({
@@ -246,6 +255,14 @@ const MobileCheckout = () => {
       setSelectedAddress(tempSelectedAddress);
     }
     handleCloseAddressSelector();
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    const result = await pricing.applyCoupon(couponInput.trim());
+    if (result.ok) setCouponInput('');
+    setCouponLoading(false);
   };
 
   const formatPrice = (price: number) => {
@@ -401,7 +418,7 @@ const MobileCheckout = () => {
       <div className="bg-white dark:bg-zinc-900 sticky top-0 z-50 shadow-sm">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={() => navigate(-1)} className="p-1">
+          <button onClick={handleBack} className="p-1">
             <ArrowLeft className="w-6 h-6 text-gray-800 dark:text-zinc-200" />
           </button>
           <img
@@ -786,6 +803,166 @@ const MobileCheckout = () => {
           </div>
         </div>
 
+        {/* ─── STEP 1: Cart Review ─── */}
+        {currentStep === 1 && (
+          <div className="pb-32">
+            {/* Cart Items */}
+            <div className="px-4 pt-4 pb-2">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Your Cart</h2>
+            </div>
+            <div className="mx-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden mb-4">
+              <div className="divide-y divide-gray-50 dark:divide-zinc-800">
+                <AnimatePresence>
+                  {items.map((item) => {
+                    const origPrice = Math.round(item.price * 1.3);
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-center gap-3 px-4 py-3"
+                      >
+                        <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-800 ring-1 ring-gray-100 dark:ring-zinc-700">
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price)}</span>
+                            <span className="text-[10px] text-gray-400 dark:text-zinc-500 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(origPrice)}</span>
+                          </div>
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <button
+                              onClick={() => item.quantity === 1 ? removeFromCart(item.id) : updateQuantity(item.id, item.quantity - 1)}
+                              className="w-7 h-7 flex items-center justify-center bg-transparent border border-gray-900/20 dark:border-zinc-100/20 hover:bg-gray-900/5 rounded-full transition-colors"
+                            >
+                              <Minus className="w-3 h-3 text-gray-900 dark:text-zinc-100" strokeWidth={2.5} />
+                            </button>
+                            <div className="w-7 h-7 flex items-center justify-center bg-gray-900 dark:bg-zinc-100 rounded-full">
+                              <span className="text-xs font-bold text-white dark:text-zinc-900" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.quantity}</span>
+                            </div>
+                            <button
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              className="w-7 h-7 flex items-center justify-center bg-transparent border border-gray-900/20 dark:border-zinc-100/20 hover:bg-gray-900/5 rounded-full transition-colors"
+                            >
+                              <Plus className="w-3 h-3 text-gray-900 dark:text-zinc-100" strokeWidth={2.5} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="w-7 h-7 flex items-center justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+                          </button>
+                          <span className="text-sm font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price * item.quantity)}</span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Add more items */}
+            <div className="mx-4 mb-4">
+              <button
+                onClick={() => navigate('/')}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-white dark:bg-zinc-900 border border-dashed border-gray-200 dark:border-zinc-700 rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <span className="text-sm text-gray-500 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Missed something?</span>
+                <span className="text-sm font-semibold text-green-600" style={{ fontFamily: "'Poppins', sans-serif" }}>Add more items</span>
+              </button>
+            </div>
+
+            {/* Coupon Section */}
+            <div className="mx-4 mb-4">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-4">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Apply Coupon</h3>
+                {pricing.appliedCoupon ? (
+                  <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-green-600" />
+                      <div>
+                        <span className="text-sm font-bold text-green-700 dark:text-green-400" style={{ fontFamily: "'Poppins', sans-serif" }}>{pricing.appliedCoupon.code}</span>
+                        <p className="text-xs text-green-600 dark:text-green-500" style={{ fontFamily: "'Poppins', sans-serif" }}>− {formatPrice(discount)} saved</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => pricing.removeCoupon()}
+                      className="text-xs text-red-500 font-medium hover:text-red-700 transition-colors"
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                    >Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                      placeholder="Enter coupon code"
+                      className="flex-1 h-10 px-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-zinc-100/20 text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500"
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                      onKeyDown={e => { if (e.key === 'Enter' && couponInput.trim()) handleApplyCoupon(); }}
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponInput.trim()}
+                      className="h-10 px-4 text-sm font-semibold text-white bg-gray-900 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl disabled:opacity-50 transition-colors"
+                      style={{ fontFamily: "'Poppins', sans-serif" }}
+                    >
+                      {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                    </button>
+                  </div>
+                )}
+                {pricing.couponError && !pricing.appliedCoupon && (
+                  <p className="text-xs text-red-500 mt-2" style={{ fontFamily: "'Poppins', sans-serif" }}>{pricing.couponError}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Bill Summary */}
+            <div className="mx-4 mb-4">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-4">
+                <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Bill Summary</h3>
+                <div className="space-y-2.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Item Total</span>
+                    <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery Fee</span>
+                    <span className={`font-medium ${deliveryCharge === 0 ? 'text-green-600' : 'text-gray-900 dark:text-zinc-100'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      {deliveryCharge === 0 ? 'FREE' : formatPrice(deliveryCharge)}
+                    </span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-600" style={{ fontFamily: "'Poppins', sans-serif" }}>Coupon Discount</span>
+                      <span className="text-green-600 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>− {formatPrice(discount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>GST (3%)</span>
+                    <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(taxAmount)}</span>
+                  </div>
+                  <div className="h-px bg-gray-200 dark:bg-zinc-800 my-2" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>To Pay</span>
+                    <span className="text-lg font-bold text-green-600" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(total)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── STEP 2+: Checkout ─── */}
+        {currentStep >= 2 && (<>
+
         {/* Address bar - scrolls with content */}
         <div className="px-4 pt-4 pb-2">
           <button
@@ -1014,24 +1191,35 @@ const MobileCheckout = () => {
             </div>
           </div>
         )}
+        </>)}
       </div>
 
       {/* ─── Bottom Fixed Section ─── */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        {/* Slide to Pay */}
         <div className="px-4 py-3">
-          <SlideToPayButton
-            key={slideResetKey}
-            amount={formatPrice(total)}
-            onComplete={() => {
-              if (!selectedAddress) {
-                setSlideResetKey(k => k + 1);
-                setShowAddressSelector(true);
-                return;
-              }
-              setShowPaymentDetails(true);
-            }}
-          />
+          {currentStep === 1 ? (
+            <button
+              onClick={() => setCurrentStep(2)}
+              className="w-full h-14 bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              Proceed to Checkout
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <SlideToPayButton
+              key={slideResetKey}
+              amount={formatPrice(total)}
+              onComplete={() => {
+                if (!selectedAddress) {
+                  setSlideResetKey(k => k + 1);
+                  setShowAddressSelector(true);
+                  return;
+                }
+                setShowPaymentDetails(true);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -1523,6 +1711,12 @@ const MobileCheckout = () => {
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const cameFromProduct = (location.state as { from?: string } | null)?.from === 'product';
+  const handleBack = () => {
+    if (cameFromProduct) navigate(-1);
+    else navigate('/');
+  };
   const { user, userProfile } = useAuth();
   const { items, subtotal, clearCart, removeFromCart, closeCart, loading: cartLoading } = useCart();
   const { toast } = useToast();
@@ -1827,7 +2021,7 @@ const Checkout = () => {
   const offers = pricing.coupons
     .filter((c) => c.active)
     .map((c) => {
-      const value = c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`;
+      const value = c.type === 'percent' ? `${c.value}%` : `₹${c.value}`;
       const min = c.minOrderValue ? ` on min spend of ₹${c.minOrderValue}` : '';
       return `${value} OFF with code ${c.code}${min}—${c.description}`;
     });
@@ -1842,7 +2036,7 @@ const Checkout = () => {
       <div className="container mx-auto px-4 py-8 max-w-6xl" style={{ fontFamily: "'Poppins', sans-serif" }}>
         {/* Back Button */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
           style={{ fontFamily: "'Poppins', sans-serif" }}
         >
@@ -2359,8 +2553,8 @@ const Checkout = () => {
                       variant="outline"
                       className="text-primary border-primary"
                       style={{ fontFamily: "'Poppins', sans-serif" }}
-                      onClick={() => {
-                        const r = pricing.applyCoupon(couponCode);
+                      onClick={async () => {
+                        const r = await pricing.applyCoupon(couponCode);
                         if (r.ok) {
                           toast({ title: 'Coupon applied', description: `Saved ${formatPrice(pricing.discount)}` });
                         } else {

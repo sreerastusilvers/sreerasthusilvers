@@ -210,7 +210,7 @@ const ProductDetail = () => {
       }
       // Close cart drawer and navigate to checkout
       closeCart();
-      navigate('/checkout');
+      navigate('/checkout', { state: { from: 'product' } });
     } catch (error) {
       console.error('Error:', error);
     }

@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const FeaturedSection = () => {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
   const [products, setProducts] = useState<UIProduct[]>([]);
@@ -37,6 +37,7 @@ const FeaturedSection = () => {
         image: product.image,
         category: product.category,
       });
+      openCart();
       toast({
         title: "Added to cart",
         description: `${product.title} has been added to your cart.`,
@@ -132,7 +133,7 @@ const FeaturedSection = () => {
               <h2 className="text-xl font-semibold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
                 The spotlight edit
               </h2>
-              <button onClick={() => navigate('/category/jewellery')} className="text-xs font-medium text-primary tracking-wide">
+              <button onClick={() => navigate('/products?tag=featured')} className="text-xs font-medium text-primary tracking-wide">
                 View All
               </button>
             </div>
@@ -216,7 +217,7 @@ const FeaturedSection = () => {
               <button onClick={nextPage} className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-all shadow-sm">
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
-              <button onClick={() => navigate('/category/jewellery')} className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 ml-2">
+              <button onClick={() => navigate('/products?tag=featured')} className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 ml-2">
                 View All <ChevronRight className="w-4 h-4" />
               </button>
             </div>

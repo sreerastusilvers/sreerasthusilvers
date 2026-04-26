@@ -154,8 +154,8 @@ const App = () => {
               {/* Public Routes */}
               <Route path="/" element={<Index />} />
               
-              {/* Mobile Cart Page */}
-              <Route path="/cart" element={<MobileCart />} />
+              {/* Mobile Cart Page — redirect to checkout (cart is now step 1 of checkout) */}
+              <Route path="/cart" element={<Navigate to="/checkout" replace />} />
               
               {/* Mobile Search Pages */}
               <Route path="/search" element={<MobileSearch />} />
@@ -170,7 +170,7 @@ const App = () => {
               <Route path="/furniture" element={<Navigate to="/category/furniture" replace />} />
               <Route path="/articles" element={<Navigate to="/category/articles" replace />} />
               <Route path="/articles/:articleSlug" element={<LegacyArticlesRedirect />} />
-              <Route path="/products" element={<Navigate to="/category/others" replace />} />
+              <Route path="/products" element={<CategoryPage />} />
               <Route path="/home-decor" element={<Navigate to="/category/others" replace />} />
               <Route path="/home-decor/:itemSlug" element={<LegacyHomeDecorRedirect />} />
               <Route path="/gifts" element={<Navigate to="/category/articles" replace />} />

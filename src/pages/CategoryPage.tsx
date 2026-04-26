@@ -64,7 +64,7 @@ const CategoryPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
 
@@ -78,6 +78,17 @@ const CategoryPage = () => {
   const activeSubSub = searchParams.get("subsub") || "";
   const activePriceIdx = searchParams.get("price") || "";
   const activeSortBy = searchParams.get("sort") || "recent";
+  const activeTag = searchParams.get("tag") || "";
+
+  // Map known tag slugs to their Firestore flag + display label.
+  const TAG_MAP: Record<string, { flag: string; label: string }> = {
+    'top-deals': { flag: 'isTopDeal', label: 'Top Deals' },
+    'best-sellers': { flag: 'isBestSeller', label: 'Best Sellers' },
+    'new-arrivals': { flag: 'isNewArrival', label: 'New Arrivals' },
+    'trending': { flag: 'isTrendProduct', label: 'Trending Now' },
+    'featured': { flag: 'isFeatured', label: 'Featured Products' },
+  };
+  const tagMeta = activeTag ? TAG_MAP[activeTag] : undefined;
 
   // UI
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -206,6 +217,28 @@ const CategoryPage = () => {
   // We re-subscribe with raw data to keep subcategory info
   const [rawProducts, setRawProducts] = useState<any[]>([]);
   useEffect(() => {
+    // Tag-only mode (e.g. /products?tag=top-deals — no category slug):
+    // pull every active product and keep only those whose flag matches.
+    if (!categorySlug && tagMeta) {
+      setLoading(true);
+      const unsub = subscribeToProducts((fbProducts) => {
+        const matching = fbProducts.filter(
+          (p: any) => p?.flags?.[tagMeta.flag] === true
+        );
+        const uiProducts = matching.map((fp) => {
+          const ui = adaptFirebaseArrayToUI([fp])[0];
+          return {
+            ...ui,
+            subcategory: fp.subcategory || "",
+            subSubcategory: (fp as any).subSubcategory || "",
+          };
+        });
+        setAllProducts(uiProducts);
+        setRawProducts(matching);
+        setLoading(false);
+      }, true);
+      return unsub;
+    }
     if (!currentCategory) return;
     const unsub = subscribeToProducts((fbProducts) => {
       const catProducts = fbProducts.filter(
@@ -225,7 +258,7 @@ const CategoryPage = () => {
       setLoading(false);
     }, true);
     return unsub;
-  }, [currentCategory]);
+  }, [currentCategory, categorySlug, activeTag]);
 
   // ── Render: filter sidebar content (reused desktop + mobile) ──
   const FilterContent = () => (
@@ -360,6 +393,7 @@ const CategoryPage = () => {
         image: product.image,
       });
 
+      openCart();
       toast({ title: "Added to cart" });
     };
 
@@ -446,7 +480,7 @@ const CategoryPage = () => {
     );
   };
 
-  if (!currentCategory && !loading && categories.length > 0) {
+  if (!currentCategory && !tagMeta && !loading && categories.length > 0) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -476,7 +510,7 @@ const CategoryPage = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-lg font-semibold text-foreground">
-            {currentCategory?.name || "Products"}
+            {currentCategory?.name || tagMeta?.label || "Products"}
             {activeSub && currentCategory && (
               <span className="text-muted-foreground font-normal">
                 {" / "}
@@ -491,7 +525,7 @@ const CategoryPage = () => {
       <div className="lg:hidden sticky top-0 z-30 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-lg font-bold text-foreground">
-            {currentCategory?.name || "Products"}
+            {currentCategory?.name || tagMeta?.label || "Products"}
           </h1>
           <div className="flex gap-2">
             {/* Sort */}

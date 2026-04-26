@@ -15,7 +15,7 @@ const BestSellers = () => {
   const [products, setProducts] = useState<UIProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
   const {
@@ -65,6 +65,7 @@ const BestSellers = () => {
         image: product.image,
         category: product.category,
       });
+      openCart();
       
       toast({
         title: "Added to cart",

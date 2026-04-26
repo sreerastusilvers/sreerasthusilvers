@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { subscribeToActiveBanners, Banner } from "@/services/bannerService";
 import { useNavigate } from "react-router-dom";
 
@@ -98,6 +98,27 @@ const HeroBanner = () => {
     setCurrentIndex(index);
   };
 
+  const goToPrev = () => {
+    if (!hasMultipleBanners) return;
+    setIsPaused(true);
+    setTransitionsEnabled(true);
+    setCurrentIndex((prev) => {
+      const realIdx = ((prev % banners.length) + banners.length) % banners.length;
+      return realIdx === 0 ? banners.length - 1 : realIdx - 1;
+    });
+    window.setTimeout(() => setIsPaused(false), 4200);
+  };
+
+  const goToNext = () => {
+    if (!hasMultipleBanners) return;
+    setIsPaused(true);
+    setTransitionsEnabled(true);
+    setCurrentIndex((prev) => prev + 1);
+    window.setTimeout(() => setIsPaused(false), 4200);
+  };
+
+  const touchStartXRef = useRef<number | null>(null);
+
   const handleTrackTransitionEnd = () => {
     if (!hasMultipleBanners || currentIndex < banners.length) return;
 
@@ -154,8 +175,23 @@ const HeroBanner = () => {
       <div className="relative px-3 pt-1 lg:px-4">
         <div
           className="relative overflow-hidden rounded-[28px] shadow-[0_30px_80px_-55px_rgba(0,0,0,0.55)]"
-          onTouchStart={() => setIsPaused(true)}
-          onTouchEnd={() => setIsPaused(false)}
+          onTouchStart={(e) => {
+            touchStartXRef.current = e.touches[0]?.clientX ?? null;
+            setIsPaused(true);
+          }}
+          onTouchEnd={(e) => {
+            const startX = touchStartXRef.current;
+            const endX = e.changedTouches[0]?.clientX ?? null;
+            touchStartXRef.current = null;
+            setIsPaused(false);
+            if (startX !== null && endX !== null) {
+              const dx = endX - startX;
+              if (Math.abs(dx) > 40) {
+                if (dx < 0) goToNext();
+                else goToPrev();
+              }
+            }
+          }}
         >
           <div
             className="flex"
@@ -193,7 +229,28 @@ const HeroBanner = () => {
           </div>
 
           {hasMultipleBanners && (
-            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-2 backdrop-blur-md lg:bottom-5">
+            <>
+              <button
+                type="button"
+                onClick={goToPrev}
+                aria-label="Previous banner"
+                className="absolute left-3 top-1/2 z-10 hidden -translate-y-1/2 sm:grid h-10 w-10 place-items-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={goToNext}
+                aria-label="Next banner"
+                className="absolute right-3 top-1/2 z-10 hidden -translate-y-1/2 sm:grid h-10 w-10 place-items-center rounded-full bg-black/30 text-white backdrop-blur-md transition hover:bg-black/50"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </>
+          )}
+
+          {hasMultipleBanners && (
+            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-transparent px-2 py-1 lg:bottom-5">
               {banners.map((_, index) => (
                 <button
                   key={`hero-dot-${index}`}

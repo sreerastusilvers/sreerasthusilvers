@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 const ProductDetailSection = () => {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, openCart } = useCart();
   const { toast } = useToast();
 
   const handleAddToCart = async () => {
@@ -22,6 +22,7 @@ const ProductDetailSection = () => {
           category: 'Chair Collection',
         });
       }
+      openCart();
       toast({
         title: "Added to cart",
         description: `Royal Silver Sofa${quantity > 1 ? ` (×${quantity})` : ''} has been added to your cart.`,

@@ -93,10 +93,10 @@ const MobileBottomNav = () => {
 
         {/* Center floating button */}
         <button
-          onClick={() => navigate("/cart")}
+          onClick={() => navigate("/checkout")}
           className="absolute left-1/2 -translate-x-1/2 top-0 z-10"
         >
-          <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg ${isActive("/cart") ? "bg-emerald-700" : "bg-emerald-600"}`}>
+          <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg ${isActive("/checkout") ? "bg-emerald-700" : "bg-emerald-600"}`}>
             <ShoppingCart className="w-5 h-5 text-white" strokeWidth={1.5} />
           </div>
           {totalItems > 0 && (
