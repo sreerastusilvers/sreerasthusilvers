@@ -93,10 +93,9 @@ const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: 
 const MobileCheckout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const cameFromProduct = (location.state as { from?: string } | null)?.from === 'product';
   const handleBack = () => {
     if (currentStep > 1) { setCurrentStep(prev => prev - 1); return; }
-    if (cameFromProduct) navigate(-1);
+    if (window.history.length > 1) navigate(-1);
     else navigate('/');
   };
   const { user, userProfile } = useAuth();
@@ -117,6 +116,7 @@ const MobileCheckout = () => {
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
+  const [firestoreOrderId, setFirestoreOrderId] = useState<string | null>(null);
   const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
   const [orderedItems, setOrderedItems] = useState<typeof items>([]);
   const [showAllItems, setShowAllItems] = useState(false);
@@ -397,7 +397,8 @@ const MobileCheckout = () => {
       };
 
       // Create order in Firestore
-      await createOrder(orderData);
+      const docId = await createOrder(orderData);
+      setFirestoreOrderId(docId);
 
       // Snapshot items BEFORE clearing the cart
       const snapshotItems = [...items];
@@ -415,11 +416,6 @@ const MobileCheckout = () => {
       // Close payment modal and clear cart AFTER success flag is set
       setShowPaymentDetails(false);
       clearCart();
-
-      toast({
-        title: 'Success',
-        description: '✓ Order placed successfully!',
-      });
     } catch (error) {
       console.error('Error placing order:', error);
       setSlideResetKey(k => k + 1);
@@ -745,9 +741,17 @@ const MobileCheckout = () => {
         {/* Stepper - scrolls with content (hidden when cart is empty on step 1) */}
         {!(currentStep === 1 && items.length === 0 && !cartLoading) && (
         <div className="px-4 pt-4 pb-3">
-          <div className="flex items-center justify-between">
+          <div className="relative flex justify-between">
+            {/* Gray background rail: from center of step 1 to center of step 4 */}
+            <div className="absolute top-4 h-0.5 bg-gray-200" style={{ left: '12.5%', right: '12.5%' }} />
+            {/* Green active rail: grows from step 1 center toward step 4 center */}
+            <div
+              className="absolute top-4 h-0.5 bg-green-500 transition-all duration-300"
+              style={{ left: '12.5%', width: `calc((100% - 25%) * ${(currentStep - 1) / 3})` }}
+            />
+
             {/* Step 1: Cart */}
-            <div className="flex flex-col items-center flex-1">
+            <div className="relative z-10 flex flex-col items-center w-1/4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                 currentStep >= 1 ? 'bg-green-500' : 'bg-gray-200'
               }`}>
@@ -763,12 +767,9 @@ const MobileCheckout = () => {
                 currentStep >= 1 ? 'text-green-600 font-semibold' : 'text-gray-400'
               }`}>Cart</span>
             </div>
-            <div className={`flex-1 h-0.5 -mt-5 ${
-              currentStep >= 2 ? 'bg-green-500' : 'bg-gray-200'
-            }`} />
-            
+
             {/* Step 2: Checkout */}
-            <div className="flex flex-col items-center flex-1">
+            <div className="relative z-10 flex flex-col items-center w-1/4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                 currentStep >= 2 ? 'bg-green-500' : 'bg-gray-200'
               }`}>
@@ -784,12 +785,9 @@ const MobileCheckout = () => {
                 currentStep >= 2 ? 'text-green-600 font-semibold' : 'text-gray-400'
               }`}>Checkout</span>
             </div>
-            <div className={`flex-1 h-0.5 -mt-5 ${
-              currentStep >= 3 ? 'bg-green-500' : 'bg-gray-200'
-            }`} />
-            
+
             {/* Step 3: Payment */}
-            <div className="flex flex-col items-center flex-1">
+            <div className="relative z-10 flex flex-col items-center w-1/4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                 currentStep >= 3 ? 'bg-green-500' : 'bg-gray-200'
               }`}>
@@ -805,18 +803,19 @@ const MobileCheckout = () => {
                 currentStep >= 3 ? 'text-green-600 font-semibold' : 'text-gray-400'
               }`}>Payment</span>
             </div>
-            <div className={`flex-1 h-0.5 -mt-5 ${
-              currentStep >= 4 ? 'bg-green-500' : 'bg-gray-200'
-            }`} />
-            
+
             {/* Step 4: Confirm */}
-            <div className="flex flex-col items-center flex-1">
+            <div className="relative z-10 flex flex-col items-center w-1/4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                 currentStep >= 4 ? 'bg-green-500' : 'bg-gray-200'
               }`}>
-                <span className={`text-xs font-bold ${
-                  currentStep === 4 ? 'text-white' : 'text-gray-500'
-                }`}>4</span>
+                {currentStep > 4 ? (
+                  <Check className="w-4 h-4 text-white" />
+                ) : (
+                  <span className={`text-xs font-bold ${
+                    currentStep === 4 ? 'text-white' : 'text-gray-500'
+                  }`}>4</span>
+                )}
               </div>
               <span className={`text-xs mt-1 ${
                 currentStep >= 4 ? 'text-green-600 font-semibold' : 'text-gray-400'
@@ -1236,36 +1235,38 @@ const MobileCheckout = () => {
             <div className="overflow-y-auto pb-24" style={{ height: 'calc(100vh - 60px)' }}>
               {/* Stepper - scrolls with content */}
               <div className="px-4 pt-4 pb-3">
-                <div className="flex items-center justify-between">
+                <div className="relative flex justify-between">
+                  {/* Gray background rail */}
+                  <div className="absolute top-4 h-0.5 bg-gray-200 dark:bg-zinc-700" style={{ left: '12.5%', right: '12.5%' }} />
+                  {/* Green active rail (steps 1-3 done, step 4 pending) */}
+                  <div className="absolute top-4 h-0.5 bg-green-500" style={{ left: '12.5%', width: '50%' }} />
+
                   {/* Step 1: Cart */}
-                  <div className="flex flex-col items-center flex-1">
+                  <div className="relative z-10 flex flex-col items-center w-1/4">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
                       <Check className="w-4 h-4 text-white" />
                     </div>
                     <span className="text-xs mt-1 text-green-600 font-semibold">Cart</span>
                   </div>
-                  <div className="flex-1 h-0.5 -mt-5 bg-green-500" />
-                  
+
                   {/* Step 2: Checkout */}
-                  <div className="flex flex-col items-center flex-1">
+                  <div className="relative z-10 flex flex-col items-center w-1/4">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
                       <Check className="w-4 h-4 text-white" />
                     </div>
                     <span className="text-xs mt-1 text-green-600 font-semibold">Checkout</span>
                   </div>
-                  <div className="flex-1 h-0.5 -mt-5 bg-green-500" />
-                  
+
                   {/* Step 3: Payment */}
-                  <div className="flex flex-col items-center flex-1">
+                  <div className="relative z-10 flex flex-col items-center w-1/4">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
                       <span className="text-xs font-bold text-white">3</span>
                     </div>
                     <span className="text-xs mt-1 text-green-600 font-semibold">Payment</span>
                   </div>
-                  <div className="flex-1 h-0.5 -mt-5 bg-gray-200 dark:bg-zinc-800" />
-                  
+
                   {/* Step 4: Confirm */}
-                  <div className="flex flex-col items-center flex-1">
+                  <div className="relative z-10 flex flex-col items-center w-1/4">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-zinc-800">
                       <span className="text-xs font-bold text-gray-500 dark:text-zinc-500">4</span>
                     </div>
@@ -1668,7 +1669,7 @@ const MobileCheckout = () => {
             <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-4 flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
               <Button
                 onClick={() => {
-                  navigate(`/account/orders/${orderId}`);
+                  navigate(`/account/orders/${firestoreOrderId ?? orderId}`);
                 }}
                 variant="outline"
                 className="flex-1 h-12 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-zinc-100 font-semibold text-sm rounded-lg"
@@ -1700,9 +1701,9 @@ const MobileCheckout = () => {
 const Checkout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const cameFromProduct = (location.state as { from?: string } | null)?.from === 'product';
+  void location; // location kept for future use
   const handleBack = () => {
-    if (cameFromProduct) navigate(-1);
+    if (window.history.length > 1) navigate(-1);
     else navigate('/');
   };
   const { user, userProfile } = useAuth();
@@ -1724,6 +1725,7 @@ const Checkout = () => {
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
+  const [firestoreOrderId, setFirestoreOrderId] = useState<string | null>(null);
   const [lastOrderedProductId, setLastOrderedProductId] = useState<string | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -1982,7 +1984,8 @@ const Checkout = () => {
       };
 
       // Create order in Firestore
-      await createOrder(orderData);
+      const docId = await createOrder(orderData);
+      setFirestoreOrderId(docId);
 
       // Capture first product id BEFORE clearing the cart so DONE can return to it
       setLastOrderedProductId(items[0]?.id || null);
@@ -1995,11 +1998,6 @@ const Checkout = () => {
       setShowOrderSuccess(true);
       setShowOrderAnimation(true);
       setTimeout(() => setShowOrderAnimation(false), 2800);
-
-      toast({
-        title: 'Success',
-        description: '✓ Order placed successfully!',
-      });
     } catch (error) {
       console.error('Error placing order:', error);
       toast({
@@ -2698,36 +2696,38 @@ const Checkout = () => {
                 <div className="px-6 py-6 space-y-6">
                   {/* Stepper - scrolls with content */}
                   <div className="rounded-2xl border border-[#d4af37]/15 bg-white/80 dark:bg-zinc-900/80 px-4 py-4 shadow-[0_20px_50px_-40px_rgba(0,0,0,0.45)]">
-                    <div className="flex items-center justify-between">
+                    <div className="relative flex justify-between">
+                      {/* Gray background rail */}
+                      <div className="absolute top-4 h-0.5 bg-gray-200 dark:bg-zinc-700" style={{ left: '12.5%', right: '12.5%' }} />
+                      {/* Green active rail (steps 1-3 done) */}
+                      <div className="absolute top-4 h-0.5 bg-green-500" style={{ left: '12.5%', width: '50%' }} />
+
                       {/* Step 1: Cart */}
-                      <div className="flex flex-col items-center flex-1">
+                      <div className="relative z-10 flex flex-col items-center w-1/4">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
                           <Check className="w-4 h-4 text-white" />
                         </div>
                         <span className="text-xs mt-1 text-green-600 font-semibold">Cart</span>
                       </div>
-                      <div className="flex-1 h-0.5 -mt-5 bg-green-500" />
-                      
+
                       {/* Step 2: Checkout */}
-                      <div className="flex flex-col items-center flex-1">
+                      <div className="relative z-10 flex flex-col items-center w-1/4">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
                           <Check className="w-4 h-4 text-white" />
                         </div>
                         <span className="text-xs mt-1 text-green-600 font-semibold">Checkout</span>
                       </div>
-                      <div className="flex-1 h-0.5 -mt-5 bg-green-500" />
-                      
+
                       {/* Step 3: Payment */}
-                      <div className="flex flex-col items-center flex-1">
+                      <div className="relative z-10 flex flex-col items-center w-1/4">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
                           <span className="text-xs font-bold text-white">3</span>
                         </div>
                         <span className="text-xs mt-1 text-green-600 font-semibold">Payment</span>
                       </div>
-                      <div className="flex-1 h-0.5 -mt-5 bg-gray-200 dark:bg-zinc-800" />
-                      
+
                       {/* Step 4: Confirm */}
-                      <div className="flex flex-col items-center flex-1">
+                      <div className="relative z-10 flex flex-col items-center w-1/4">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-zinc-800">
                           <span className="text-xs font-bold text-gray-500 dark:text-zinc-500">4</span>
                         </div>
@@ -3141,7 +3141,7 @@ const Checkout = () => {
                   <div className="flex gap-4">
                     <Button
                       onClick={() => {
-                        navigate(`/account/orders/${orderId}`);
+                        navigate(`/account/orders/${firestoreOrderId ?? orderId}`);
                       }}
                       variant="outline"
                       className="flex-1 h-12 border-gray-300 dark:border-zinc-700 text-gray-900 dark:text-zinc-100 font-semibold text-sm"

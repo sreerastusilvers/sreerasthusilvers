@@ -55,25 +55,27 @@ function CtrlBtn({
   label: string;
   large?: boolean;
 }) {
-  const base = 'flex flex-col items-center gap-1.5 focus:outline-none active:scale-95 transition-transform';
-  const size = large ? 'w-16 h-16' : 'w-13 h-13';
-  let ring = '';
   let bg = '';
   if (danger) {
-    bg = 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-900/50';
-    ring = '';
+    bg = 'bg-red-500 hover:bg-red-600 shadow-xl shadow-red-900/60 border-2 border-red-400/40';
   } else if (active) {
-    bg = 'bg-red-500/80 backdrop-blur-sm';
+    bg = 'bg-red-500/80 border-2 border-red-400/40 shadow-lg shadow-red-900/40';
   } else {
-    bg = 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20';
+    bg = 'bg-white/10 hover:bg-white/20 border border-white/25 shadow-md shadow-black/30';
   }
 
+  const btnSize = large ? 'w-16 h-16' : 'w-13 h-13';
+
   return (
-    <button onClick={onClick} aria-label={label} className={base}>
-      <div className={`${large ? 'w-16 h-16' : 'w-13 h-13'} rounded-full flex items-center justify-center ${bg} ${ring}`}>
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className="flex flex-col items-center gap-2 focus:outline-none active:scale-90 transition-all duration-150"
+    >
+      <div className={`${btnSize} rounded-full flex items-center justify-center backdrop-blur-sm transition-all duration-200 ${bg}`}>
         {children}
       </div>
-      <span className="text-[10px] text-white/60">{label}</span>
+      <span className="text-[11px] font-medium text-white/70 tracking-wide">{label}</span>
     </button>
   );
 }
@@ -455,24 +457,24 @@ const VideoCallPage = () => {
       </div>
 
       {/* ── Controls bar ── */}
-      <div className="relative z-20 pb-6 pt-4 px-6">
+      <div className="relative z-20 pb-8 pt-3 px-4">
         {/* Glass pill */}
-        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl px-5 py-4 max-w-sm mx-auto shadow-2xl">
-          <div className="flex items-end justify-between gap-3">
+        <div className="bg-black/50 backdrop-blur-2xl border border-white/12 rounded-[32px] px-6 py-5 max-w-sm mx-auto shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+          <div className="flex items-center justify-between">
             {/* Mute */}
             <CtrlBtn active={muted} onClick={toggleMute} label={muted ? 'Unmute' : 'Mute'}>
               {muted
                 ? <MicOff className="w-5 h-5 text-white" />
-                : <Mic className="w-5 h-5 text-white" />
+                : <Mic className="w-5 h-5 text-white/90" />
               }
             </CtrlBtn>
 
             {/* Flip camera */}
             <CtrlBtn onClick={switchCamera} label="Flip Cam">
-              <SwitchCamera className="w-5 h-5 text-white" />
+              <SwitchCamera className="w-5 h-5 text-white/90" />
             </CtrlBtn>
 
-            {/* Hang up */}
+            {/* Hang up — centre, larger */}
             <CtrlBtn danger onClick={() => setShowConfirmEnd(true)} label="End Call" large>
               <PhoneOff className="w-6 h-6 text-white" />
             </CtrlBtn>
@@ -481,7 +483,7 @@ const VideoCallPage = () => {
             <CtrlBtn active={camOff} onClick={toggleCam} label={camOff ? 'Start Cam' : 'Stop Cam'}>
               {camOff
                 ? <VideoOff className="w-5 h-5 text-white" />
-                : <VideoIcon className="w-5 h-5 text-white" />
+                : <VideoIcon className="w-5 h-5 text-white/90" />
               }
             </CtrlBtn>
           </div>
