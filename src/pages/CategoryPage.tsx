@@ -452,17 +452,19 @@ const CategoryPage = () => {
               {product.rating} ({product.reviews})
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-foreground">
-              ₹{product.price.toLocaleString("en-IN")}
-            </span>
-            {product.oldPrice && (
-              <span className="text-xs text-muted-foreground line-through">
-                ₹{product.oldPrice.toLocaleString("en-IN")}
+          <div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-sm font-bold text-foreground">
+                ₹{product.price.toLocaleString("en-IN")}
               </span>
-            )}
+              {product.oldPrice && (
+                <span className="text-xs text-muted-foreground line-through">
+                  ₹{product.oldPrice.toLocaleString("en-IN")}
+                </span>
+              )}
+            </div>
             {product.discount && product.discount > 0 && (
-              <span className="text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73]">
+              <span className="text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73] block">
                 {product.discount}% Off
               </span>
             )}

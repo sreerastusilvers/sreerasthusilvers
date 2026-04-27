@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, ChevronRight, Package, MapPin, ShieldCheck, Heart, MessageCircle, LogOut, Sun, Moon, UserCog } from "lucide-react";
+import { X, User, ChevronRight, Package, MapPin, ShieldCheck, Heart, MessageCircle, LogOut, Sun, Moon, UserCog, Video } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -26,6 +26,7 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
 
   const menuItems = [
     { name: "My Orders", icon: Package, href: "/account/orders" },
+    { name: "My Video Calls", icon: Video, href: "/my-video-calls" },
     { name: "Edit Profile", icon: UserCog, href: "/account/profile-edit" },
     { name: "Your Addresses", icon: MapPin, href: "/account/addresses" },
     { name: "Login & Security", icon: ShieldCheck, href: "/security" },
