@@ -154,9 +154,7 @@ const CustomerSupport = () => {
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,rgba(212,175,55,0.06)_0%,rgba(255,255,255,1)_20%),linear-gradient(135deg,rgba(131,39,41,0.03)_0%,rgba(255,255,255,1)_55%)] dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]">
-      <div className="hidden lg:block">
-        <Header />
-      </div>
+      <Header />
       
       <div className="max-w-2xl mx-auto px-3 py-4 pb-24 lg:px-4 lg:py-6 lg:pb-8">
         {/* Back Button - Mobile */}
@@ -474,9 +472,7 @@ const CustomerSupport = () => {
         </AnimatePresence>
       </div>
 
-      <div className="hidden lg:block">
-        <Footer />
-      </div>
+      <Footer />
       <MobileBottomNav />
     </div>
   );

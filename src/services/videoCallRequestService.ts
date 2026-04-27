@@ -6,7 +6,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
   serverTimestamp,
   Timestamp,
@@ -64,8 +63,12 @@ const COL = 'videoCallRequests';
 export async function createVideoCallRequest(
   payload: CreatePayload
 ): Promise<string> {
+  // Firestore rejects `undefined` values — strip optional fields that were not provided
+  const clean = Object.fromEntries(
+    Object.entries(payload).filter(([, v]) => v !== undefined)
+  );
   const ref = await addDoc(collection(db, COL), {
-    ...payload,
+    ...clean,
     status: 'pending',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -87,13 +90,17 @@ export function listenMyRequests(
 ): Unsubscribe {
   const q = query(
     collection(db, COL),
-    where('customerUid', '==', uid),
-    orderBy('createdAt', 'desc')
+    where('customerUid', '==', uid)
   );
   return onSnapshot(q, (snap) => {
-    onChange(
-      snap.docs.map((d) => ({ id: d.id, ...d.data() } as VideoCallRequest))
-    );
+    const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as VideoCallRequest));
+    // Sort client-side to avoid requiring a composite index
+    docs.sort((a, b) => {
+      const aMs = a.createdAt?.toMillis?.() ?? 0;
+      const bMs = b.createdAt?.toMillis?.() ?? 0;
+      return bMs - aMs;
+    });
+    onChange(docs);
   });
 }
 
@@ -107,13 +114,17 @@ export function listenAdminQueue(
 ): Unsubscribe {
   const q = query(
     collection(db, COL),
-    where('status', 'in', ['pending', 'confirmed', 'live']),
-    orderBy('createdAt', 'desc')
+    where('status', 'in', ['pending', 'confirmed', 'live'])
   );
   return onSnapshot(q, (snap) => {
-    onChange(
-      snap.docs.map((d) => ({ id: d.id, ...d.data() } as VideoCallRequest))
-    );
+    const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as VideoCallRequest));
+    // Sort client-side (newest first) to avoid requiring a composite index
+    docs.sort((a, b) => {
+      const aMs = a.createdAt?.toMillis?.() ?? 0;
+      const bMs = b.createdAt?.toMillis?.() ?? 0;
+      return bMs - aMs;
+    });
+    onChange(docs);
   });
 }
 
@@ -123,13 +134,17 @@ export function listenAdminHistory(
 ): Unsubscribe {
   const q = query(
     collection(db, COL),
-    where('status', 'in', ['completed', 'cancelled', 'no_show']),
-    orderBy('createdAt', 'desc')
+    where('status', 'in', ['completed', 'cancelled', 'no_show'])
   );
   return onSnapshot(q, (snap) => {
-    onChange(
-      snap.docs.map((d) => ({ id: d.id, ...d.data() } as VideoCallRequest))
-    );
+    const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as VideoCallRequest));
+    // Sort client-side (newest first) to avoid requiring a composite index
+    docs.sort((a, b) => {
+      const aMs = a.createdAt?.toMillis?.() ?? 0;
+      const bMs = b.createdAt?.toMillis?.() ?? 0;
+      return bMs - aMs;
+    });
+    onChange(docs);
   });
 }
 

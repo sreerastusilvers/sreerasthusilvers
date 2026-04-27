@@ -742,7 +742,8 @@ const MobileCheckout = () => {
 
       {/* ─── Main Content ─── */}
       <div className="flex-1 overflow-y-auto">
-        {/* Stepper - scrolls with content */}
+        {/* Stepper - scrolls with content (hidden when cart is empty on step 1) */}
+        {!(currentStep === 1 && items.length === 0 && !cartLoading) && (
         <div className="px-4 pt-4 pb-3">
           <div className="flex items-center justify-between">
             {/* Step 1: Cart */}
@@ -823,6 +824,7 @@ const MobileCheckout = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* ─── STEP 1: Cart Review ─── */}
         {currentStep === 1 && (
@@ -861,16 +863,16 @@ const MobileCheckout = () => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="flex items-center gap-3 px-4 py-3"
+                        className="flex items-center gap-3 px-4 py-4"
                       >
-                        <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-800 ring-1 ring-gray-100 dark:ring-zinc-700">
+                        <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-800 ring-1 ring-gray-100 dark:ring-zinc-700">
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
-                          <div className="mt-1 flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price)}</span>
-                            <span className="text-[10px] text-gray-400 dark:text-zinc-500 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(origPrice)}</span>
+                          <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <span className="text-sm font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price)}</span>
+                            <span className="text-xs text-gray-400 dark:text-zinc-500 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(origPrice)}</span>
                           </div>
                           <div className="mt-2 flex items-center gap-1.5">
                             <button
@@ -1042,22 +1044,22 @@ const MobileCheckout = () => {
             {/* Item thumbnails */}
             <div className="flex -space-x-2">
               {items.slice(0, 3).map((item, idx) => (
-                <div key={item.id} className="w-10 h-10 rounded-full overflow-hidden border-2 border-white dark:border-zinc-900 flex-shrink-0" style={{ zIndex: 3 - idx }}>
+                <div key={item.id} className="w-14 h-14 rounded-full overflow-hidden border-2 border-white dark:border-zinc-900 flex-shrink-0" style={{ zIndex: 3 - idx }}>
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                 </div>
               ))}
               {items.length > 3 && (
-                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 border-2 border-white dark:border-zinc-900 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-bold text-gray-600 dark:text-zinc-400">+{items.length - 3}</span>
+                <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-zinc-800 border-2 border-white dark:border-zinc-900 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-gray-600 dark:text-zinc-400">+{items.length - 3}</span>
                 </div>
               )}
             </div>
             {/* Count + total */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <p className="text-base font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {totalItems} item{totalItems !== 1 ? 's' : ''}
               </p>
-              <p className="text-xs text-gray-500 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Total: {formatPrice(total)}</p>
+              <p className="text-sm text-gray-500 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Total: {formatPrice(total)}</p>
             </div>
             {/* Edit cart link */}
             <button

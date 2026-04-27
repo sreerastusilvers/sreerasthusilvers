@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Video, Calendar, Phone, User, X, Loader2 } from 'lucide-react';
+import { Video, Calendar, Phone, User, X, Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ const VideoCallRequestModal = ({
   productImage,
 }: VideoCallRequestModalProps) => {
   const { user, userProfile } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('instant');
   const [name, setName] = useState(userProfile?.username || userProfile?.name || '');
   const [phone, setPhone] = useState(userProfile?.phone || userProfile?.whatsappNumber || '');
@@ -126,11 +128,20 @@ const VideoCallRequestModal = ({
                 <p className="text-sm text-muted-foreground">
                   Our team will confirm your{' '}
                   {tab === 'instant' ? 'video call' : 'scheduled appointment'} shortly.
-                  You can track it under <strong>My Video Calls</strong> in your account.
                 </p>
-                <Button onClick={handleClose} className="bg-amber-600 hover:bg-amber-700 text-white w-full">
-                  Done
-                </Button>
+                <div className="flex flex-col gap-2 pt-1">
+                  <Button
+                    onClick={() => { handleClose(); navigate('/my-video-calls'); }}
+                    className="bg-amber-600 hover:bg-amber-700 text-white w-full gap-2"
+                  >
+                    <Video className="w-4 h-4" />
+                    Track My Video Calls
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" onClick={handleClose} className="w-full text-muted-foreground text-sm">
+                    Done
+                  </Button>
+                </div>
               </div>
             ) : (
               <>

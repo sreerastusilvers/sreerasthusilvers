@@ -62,6 +62,19 @@ const toSlug = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const categoryParentMap: Record<string, string> = {
+  gifting: "articles",
+  "pooja-items": "articles",
+  mens: "jewellery",
+  wedding: "jewellery",
+};
+
+const buildCategoryHref = (name: string) => {
+  const slug = toSlug(name);
+  const parent = categoryParentMap[slug];
+  return parent ? `/category/${parent}?sub=${slug}` : `/category/${slug}`;
+};
+
 const Footer = () => {
   const lightModeLogo = "/black_logo.png";
   const darkModeLogo = "/white_logo.png";
@@ -197,7 +210,7 @@ const Footer = () => {
               {categoryLinks.map((name) => (
                 <li key={name}>
                   <Link
-                    to={`/category/${toSlug(name)}`}
+                    to={buildCategoryHref(name)}
                     className="text-sm text-white/50 hover:text-[#d4af37] transition-colors font-light"
                   >
                     {name}
