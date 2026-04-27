@@ -105,7 +105,7 @@ const getMedia = () =>
  * Returns immediately with a session handle; remote media arrives via handlers.
  */
 export const startCall = async (
-  params: { callerUid: string; calleeUid: string },
+  params: { callerUid: string; calleeUid: string; callIdOverride?: string },
   handlers: CallEventHandlers = {},
 ): Promise<CallSession> => {
   const localStream = await getMedia();
@@ -113,7 +113,9 @@ export const startCall = async (
   attachRemoteStream(pc, handlers);
   localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
 
-  const callRef = doc(collection(db, 'videoCalls'));
+  const callRef = params.callIdOverride
+    ? doc(db, 'videoCalls', params.callIdOverride)
+    : doc(collection(db, 'videoCalls'));
   const callerCandidates = collection(callRef, 'callerCandidates');
   const calleeCandidates = collection(callRef, 'calleeCandidates');
 
@@ -177,8 +179,15 @@ export const answerCall = async (
   handlers: CallEventHandlers = {},
 ): Promise<CallSession> => {
   const callRef = doc(db, 'videoCalls', params.callId);
-  const snap = await getDoc(callRef);
-  if (!snap.exists()) throw new Error('Call not found');
+
+  // Wait up to 15 s for the call doc to appear — the admin may still be
+  // acquiring camera/mic and creating the WebRTC offer.
+  let snap = await getDoc(callRef);
+  for (let i = 0; i < 15 && !snap.exists(); i++) {
+    await new Promise<void>((r) => setTimeout(r, 1000));
+    snap = await getDoc(callRef);
+  }
+  if (!snap.exists()) throw new Error('Call not found. The admin may have cancelled.');
   const data = snap.data() as { offer: RTCSessionDescriptionInit };
 
   const localStream = await getMedia();

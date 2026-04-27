@@ -143,8 +143,9 @@ const VideoCallPage = () => {
         } else {
           const to = search.get('to');
           if (!to) throw new Error('Missing ?to=<uid>');
+          const callIdOverride = search.get('callIdOverride') ?? undefined;
           setStatus('ringing');
-          s = await VideoCall.startCall({ callerUid: user.uid, calleeUid: to }, handlers);
+          s = await VideoCall.startCall({ callerUid: user.uid, calleeUid: to, callIdOverride }, handlers);
         }
         if (cancelled) { await s.cleanup(); return; }
         setSession(s);

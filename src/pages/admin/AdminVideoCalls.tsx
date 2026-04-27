@@ -13,6 +13,7 @@ import {
   listenAdminQueue,
   listenAdminHistory,
   confirmWithMeet,
+  confirmInApp,
   adminCancelRequest,
   markCompleted,
   markNoShow,
@@ -82,9 +83,19 @@ const AdminVideoCalls = () => {
     }
   };
 
-  const handleStartInApp = (req: VideoCallRequest) => {
-    // Open existing video call room with customer's UID as callee
-    navigate(`/call?to=${req.customerUid}&requestId=${req.id}`);
+  const handleStartInApp = async (req: VideoCallRequest) => {
+    if (!user) return;
+    setAction(req.id, true);
+    try {
+      // Commit callId = req.id to Firestore immediately so the customer sees the
+      // "Join Call" button before the admin's camera/WebRTC setup finishes.
+      await confirmInApp(req.id, req.id, user.uid);
+      navigate(`/call?to=${req.customerUid}&requestId=${req.id}&callIdOverride=${req.id}`);
+    } catch {
+      toast.error('Failed to start call');
+    } finally {
+      setAction(req.id, false);
+    }
   };
 
   const handleMarkCompleted = async (id: string) => {

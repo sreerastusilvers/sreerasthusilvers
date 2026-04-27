@@ -870,9 +870,12 @@ const MobileCheckout = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
-                          <div className="mt-1.5 flex items-center gap-2">
-                            <span className="text-sm font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price)}</span>
-                            <span className="text-xs text-gray-400 dark:text-zinc-500 line-through" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(origPrice)}</span>
+                          <div className="mt-1.5">
+                            <span className="text-base font-bold text-gray-900 dark:text-zinc-100 whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price)}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className="text-xs text-gray-400 dark:text-zinc-500 line-through whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(origPrice)}</span>
+                              <span className="text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded-full whitespace-nowrap">{Math.round((1 - item.price / origPrice) * 100)}% OFF</span>
+                            </div>
                           </div>
                           <div className="mt-2 flex items-center gap-1.5">
                             <button
@@ -892,14 +895,19 @@ const MobileCheckout = () => {
                             </button>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <div className="flex flex-col items-end justify-between self-stretch flex-shrink-0">
                           <button
                             onClick={() => removeFromCart(item.id)}
                             className="w-7 h-7 flex items-center justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
                           </button>
-                          <span className="text-sm font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price * item.quantity)}</span>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-gray-900 dark:text-zinc-100 whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price * item.quantity)}</p>
+                            {item.quantity > 1 && (
+                              <p className="text-[10px] text-gray-400 dark:text-zinc-500 whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.quantity} × {formatPrice(item.price)}</p>
+                            )}
+                          </div>
                         </div>
                       </motion.div>
                     );
@@ -939,20 +947,20 @@ const MobileCheckout = () => {
                     >Remove</button>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 min-w-0">
                     <input
                       type="text"
                       value={couponInput}
                       onChange={e => setCouponInput(e.target.value.toUpperCase())}
                       placeholder="Enter coupon code"
-                      className="flex-1 h-10 px-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-zinc-100/20 text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500"
+                      className="flex-1 min-w-0 h-10 px-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-zinc-100/20 text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500"
                       style={{ fontFamily: "'Poppins', sans-serif" }}
                       onKeyDown={e => { if (e.key === 'Enter' && couponInput.trim()) handleApplyCoupon(); }}
                     />
                     <button
                       onClick={handleApplyCoupon}
                       disabled={couponLoading || !couponInput.trim()}
-                      className="h-10 px-4 text-sm font-semibold text-white bg-gray-900 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl disabled:opacity-50 transition-colors"
+                      className="h-10 px-4 text-sm font-semibold text-white bg-gray-900 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl disabled:opacity-50 transition-colors flex-shrink-0 whitespace-nowrap"
                       style={{ fontFamily: "'Poppins', sans-serif" }}
                     >
                       {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
