@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { VideoCall, type CallSession } from '@/services/videoCallService';
+import { confirmInApp, markLive } from '@/services/videoCallRequestService';
 import {
   Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff,
   Loader2,
@@ -115,6 +116,7 @@ const VideoCallPage = () => {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    const requestId = search.get('requestId') ?? null;
 
     const handlers = {
       onRemoteStream: (stream: MediaStream) => {
@@ -123,6 +125,8 @@ const VideoCallPage = () => {
           remoteRef.current.play().catch(() => {});
         }
         setStatus('connected');
+        // Mark the request as live once the remote stream arrives (call is connected)
+        if (requestId) markLive(requestId).catch(() => {});
       },
       onConnectionState: (s: RTCPeerConnectionState) => {
         if (s === 'connected') setStatus('connected');
@@ -149,7 +153,13 @@ const VideoCallPage = () => {
           localRef.current.srcObject = s.localStream;
           localRef.current.play().catch(() => {});
         }
-        if (!routeCallId) void notifyIncomingCall(s.callId);
+        if (!routeCallId) {
+          void notifyIncomingCall(s.callId);
+          // Write callId + meetingType back to the request so the customer sees "Join" button
+          if (requestId) {
+            confirmInApp(requestId, s.callId, user.uid).catch(() => {});
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to start call');
         setStatus('error');

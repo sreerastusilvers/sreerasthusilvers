@@ -9,7 +9,6 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
-import MobileHeader from '@/components/MobileHeader';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -119,7 +118,6 @@ const MyVideoCalls = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <MobileHeader />
 
       <main className="max-w-2xl mx-auto px-4 py-6 pb-28 md:pb-10">
 
