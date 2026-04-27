@@ -237,14 +237,14 @@ const TopDeals = () => {
 
             {/* Right: Product Cards Grid */}
             <div className="w-[62%] rounded-3xl border border-white/50 dark:border-border/70 bg-background/80 p-6 flex flex-col justify-between shadow-inner">
-              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                {restProducts.map((product) => (
+              <div className="grid grid-cols-4 gap-4">
+                {visibleProducts.map((product) => (
                   <motion.div 
                     key={product.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="min-w-[130px] flex-shrink-0 bg-card rounded-2xl p-3 cursor-pointer hover:shadow-lg transition-all duration-300 flex flex-col group"
+                    className="bg-card rounded-2xl p-3 cursor-pointer hover:shadow-lg transition-all duration-300 flex flex-col group"
                     onClick={() => navigate(`/product/${product.id}`)}
                   >
                     <div className="aspect-square rounded-xl overflow-hidden bg-muted mb-2.5 relative">
@@ -258,23 +258,18 @@ const TopDeals = () => {
                     </div>
                     <div className="mt-auto">
                       <p className="text-[11px] text-muted-foreground line-clamp-1 mb-1">{product.title}</p>
-                      <div className="flex items-center justify-between gap-1">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-baseline gap-1">
-                            <span className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</span>
-                            {product.oldPrice && product.oldPrice > product.price && (
-                              <span className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</span>
-                            )}
-                          </div>
-                          {product.discount && product.discount > 0 && (
-                            <span className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</span>
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex flex-col min-w-0 overflow-hidden">
+                          <span className="text-sm font-bold text-foreground truncate">₹{product.price.toLocaleString()}</span>
+                          {product.oldPrice && product.oldPrice > product.price && (
+                            <span className="text-[10px] text-muted-foreground line-through truncate">₹{product.oldPrice.toLocaleString()}</span>
                           )}
                         </div>
                         <button
                           onClick={(e) => handleAddToCart(e, product)}
-                          className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart flex-shrink-0 ml-1"
+                          className="w-8 h-8 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart flex-shrink-0 ml-1"
                         >
-                          <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white transition-colors" />
+                          <ShoppingCart className="w-[16px] h-[16px] text-muted-foreground group-hover/cart:text-white transition-colors" />
                         </button>
                       </div>
                     </div>
@@ -282,8 +277,22 @@ const TopDeals = () => {
                 ))}
               </div>
 
-              {/* Bottom: View Collection */}
-              <div className="flex items-center justify-end mt-5 pt-3">
+              {/* Bottom: Navigation arrows + Shop Now */}
+              <div className="flex items-center justify-between mt-5 pt-3">
+                <div className="flex gap-2">
+                  <button 
+                    onClick={prevPage}
+                    className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted hover:border-border transition-all duration-200 shadow-sm"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <button 
+                    onClick={nextPage}
+                    className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted hover:border-border transition-all duration-200 shadow-sm"
+                  >
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
                 <button 
                   onClick={() => navigate('/products?tag=top-deals')}
                   className="bg-primary text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-primary/90 transition-all duration-300 shadow-md"
