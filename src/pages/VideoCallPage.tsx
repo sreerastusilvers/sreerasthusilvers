@@ -86,6 +86,15 @@ const VideoCallPage = () => {
   const { callId: routeCallId } = useParams<{ callId?: string }>();
   const [search] = useSearchParams();
   const navigate = useNavigate();
+
+  // Reliably return home even when the page was opened via a direct link/notification
+  const goBack = useCallback(() => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
   const { user } = useAuth();
 
   const localRef = useRef<HTMLVideoElement>(null);
@@ -133,7 +142,10 @@ const VideoCallPage = () => {
       onConnectionState: (s: RTCPeerConnectionState) => {
         if (s === 'connected') setStatus('connected');
       },
-      onEnded: () => setStatus('ended'),
+      onEnded: () => {
+        setStatus('ended');
+        setTimeout(() => goBack(), 1500);
+      },
     };
 
     const init = async () => {
@@ -170,13 +182,13 @@ const VideoCallPage = () => {
     };
     init();
     return () => { cancelled = true; };
-  }, [notifyIncomingCall, routeCallId, search, user]);
+  }, [goBack, notifyIncomingCall, routeCallId, search, user]);
 
   const hangup = async () => {
     setShowConfirmEnd(false);
     if (session) await session.cleanup();
     setStatus('ended');
-    setTimeout(() => navigate(-1), 1200);
+    setTimeout(() => goBack(), 1500);
   };
 
   const toggleMute = () => {
@@ -408,7 +420,7 @@ const VideoCallPage = () => {
               <p className="text-white font-semibold mb-2">Connection Failed</p>
               <p className="text-white/50 text-sm mb-6">{error || 'Unable to connect.'}</p>
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => goBack()}
                 className="w-full py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition"
               >
                 Go Back
