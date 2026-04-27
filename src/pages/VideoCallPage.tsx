@@ -6,16 +6,17 @@ import { VideoCall, type CallSession } from '@/services/videoCallService';
 import { confirmInApp, markLive } from '@/services/videoCallRequestService';
 import {
   Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff,
-  Loader2,
+  Loader2, SwitchCamera,
 } from 'lucide-react';
 
 // ─── Brand mark ──────────────────────────────────────────────────────────────
 const BrandWatermark = () => (
-  <div className="flex items-center gap-2">
-    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-900/30">
-      <span className="text-white font-bold text-[10px] leading-none">SS</span>
-    </div>
-    <span className="text-white/90 text-sm font-semibold tracking-wide drop-shadow">Sreerasthu Silvers</span>
+  <div className="flex items-center gap-2.5">
+    <img
+      src="/white_logo.png"
+      alt="Sreerasthu Silvers"
+      className="h-8 w-auto object-contain drop-shadow-lg"
+    />
   </div>
 );
 
@@ -95,6 +96,7 @@ const VideoCallPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [callId, setCallId] = useState<string | null>(routeCallId || null);
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
 
@@ -187,6 +189,59 @@ const VideoCallPage = () => {
     if (!session) return;
     session.localStream.getVideoTracks().forEach((t) => (t.enabled = camOff));
     setCamOff(!camOff);
+  };
+
+  const switchCamera = async () => {
+    if (!session) return;
+    const newFacing: 'user' | 'environment' = facingMode === 'user' ? 'environment' : 'user';
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: newFacing } },
+        audio: false,
+      });
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      if (!newVideoTrack) return;
+
+      // Replace the video sender's track in the peer connection
+      const sender = session.pc.getSenders().find((s) => s.track?.kind === 'video');
+      if (sender) await sender.replaceTrack(newVideoTrack);
+
+      // Stop old video tracks, swap in the new one
+      session.localStream.getVideoTracks().forEach((t) => {
+        t.stop();
+        session.localStream.removeTrack(t);
+      });
+      session.localStream.addTrack(newVideoTrack);
+
+      // Refresh local preview
+      if (localRef.current) {
+        localRef.current.srcObject = null;
+        localRef.current.srcObject = session.localStream;
+        localRef.current.play().catch(() => {});
+      }
+
+      setFacingMode(newFacing);
+    } catch {
+      // `exact` facingMode fails on desktop — try without `exact`
+      try {
+        const fallback = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: newFacing },
+          audio: false,
+        });
+        const track = fallback.getVideoTracks()[0];
+        if (!track) return;
+        const sender = session.pc.getSenders().find((s) => s.track?.kind === 'video');
+        if (sender) await sender.replaceTrack(track);
+        session.localStream.getVideoTracks().forEach((t) => { t.stop(); session.localStream.removeTrack(t); });
+        session.localStream.addTrack(track);
+        if (localRef.current) {
+          localRef.current.srcObject = null;
+          localRef.current.srcObject = session.localStream;
+          localRef.current.play().catch(() => {});
+        }
+        setFacingMode(newFacing);
+      } catch { /* camera switch not supported on this device */ }
+    }
   };
 
   // ─── End-call confirmation dialog ──────────────────────────────────────────
@@ -331,7 +386,7 @@ const VideoCallPage = () => {
                 <span className="absolute inset-3 rounded-full border-2 border-amber-400/40 animate-ping [animation-delay:300ms]" />
                 <span className="absolute inset-6 rounded-full border-2 border-amber-400/60 animate-ping [animation-delay:600ms]" />
                 <div className="absolute inset-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-xl shadow-amber-900/50">
-                  <span className="text-white font-bold text-sm">SS</span>
+                  <img src="/white_logo.png" alt="Sreerasthu Silvers" className="w-8 h-8 object-contain" />
                 </div>
               </div>
               <p className="text-white/90 font-medium">Connecting to expert…</p>
@@ -390,8 +445,8 @@ const VideoCallPage = () => {
       {/* ── Controls bar ── */}
       <div className="relative z-20 pb-6 pt-4 px-6">
         {/* Glass pill */}
-        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl px-6 py-4 max-w-xs mx-auto shadow-2xl">
-          <div className="flex items-end justify-between gap-4">
+        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl px-5 py-4 max-w-sm mx-auto shadow-2xl">
+          <div className="flex items-end justify-between gap-3">
             {/* Mute */}
             <CtrlBtn active={muted} onClick={toggleMute} label={muted ? 'Unmute' : 'Mute'}>
               {muted
@@ -400,12 +455,17 @@ const VideoCallPage = () => {
               }
             </CtrlBtn>
 
+            {/* Flip camera */}
+            <CtrlBtn onClick={switchCamera} label="Flip Cam">
+              <SwitchCamera className="w-5 h-5 text-white" />
+            </CtrlBtn>
+
             {/* Hang up */}
             <CtrlBtn danger onClick={() => setShowConfirmEnd(true)} label="End Call" large>
               <PhoneOff className="w-6 h-6 text-white" />
             </CtrlBtn>
 
-            {/* Camera */}
+            {/* Camera on/off */}
             <CtrlBtn active={camOff} onClick={toggleCam} label={camOff ? 'Start Cam' : 'Stop Cam'}>
               {camOff
                 ? <VideoOff className="w-5 h-5 text-white" />
