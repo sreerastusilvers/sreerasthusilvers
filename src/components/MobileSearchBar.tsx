@@ -1,6 +1,7 @@
 import { Search, Gift, Mic } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 
 const MobileSearchBar = () => {
@@ -27,7 +28,13 @@ const MobileSearchBar = () => {
     e.stopPropagation();
     
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Voice search is not supported in your browser');
+      toast.error('Voice search is not supported in your browser');
+      return;
+    }
+
+    // If already listening, stop instead
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (_) {}
       return;
     }
 
@@ -45,12 +52,21 @@ const MobileSearchBar = () => {
 
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
+      setIsListening(false);
+      recognitionRef.current = null;
       navigate(`/search?q=${encodeURIComponent(transcript)}`);
     };
 
     recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
       setIsListening(false);
+      recognitionRef.current = null;
+      if (event.error === 'not-allowed') {
+        toast.error('Microphone access denied. Please allow mic permission and try again.');
+      } else if (event.error === 'no-speech') {
+        toast.info('No speech detected. Please try again.');
+      } else if (event.error !== 'aborted') {
+        toast.error('Voice search failed. Please try again.');
+      }
     };
 
     recognition.onend = () => {
@@ -58,7 +74,13 @@ const MobileSearchBar = () => {
       recognitionRef.current = null;
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (err) {
+      setIsListening(false);
+      recognitionRef.current = null;
+      toast.error('Could not start voice search. Please try again.');
+    }
   };
 
   const handleCancelVoice = (e: React.MouseEvent) => {
@@ -132,7 +154,7 @@ const MobileSearchBar = () => {
         {/* Right Icons: Gift + Mic — always visible, never shrink */}
         <div className="flex items-center gap-0 pr-2.5 flex-shrink-0">
           <button 
-            onClick={(e) => { e.stopPropagation(); navigate('/category/gifting'); }}
+            onClick={(e) => { e.stopPropagation(); navigate('/category/articles?sub=gifting'); }}
             className="p-1.5 hover:bg-background/60 rounded-full transition-colors" 
             aria-label="Gift articles"
           >

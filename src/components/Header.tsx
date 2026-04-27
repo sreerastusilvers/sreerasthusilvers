@@ -202,7 +202,7 @@ const Header = () => {
                   {/* Gift and Mic icons on right */}
                   <div className="absolute right-3 flex items-center gap-2">
                     <button 
-                      onClick={() => navigate('/category/gifting')}
+                      onClick={() => navigate('/category/articles?sub=gifting')}
                       className="p-1 hover:bg-muted rounded-full transition-colors" 
                       aria-label="Gift articles"
                     >
