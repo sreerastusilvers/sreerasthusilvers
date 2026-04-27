@@ -202,8 +202,8 @@ const BestSellers = () => {
                           alt={products[0].title}
                           className="w-full h-full object-cover aspect-[4/5]"
                         />
-                        <span className="absolute top-2.5 left-2.5 inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider text-black shadow-md" style={{ background: 'linear-gradient(135deg, #f4d57a 0%, #d4af37 50%, #b8941f 100%)' }}>
-                          ★ #1 BESTSELLER
+                        <span className="absolute top-2 left-2 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[8px] font-bold tracking-wide text-black shadow-sm" style={{ background: 'linear-gradient(135deg, #f4d57a 0%, #d4af37 50%, #b8941f 100%)' }}>
+                          ★ #1 BEST
                         </span>
                       </div>
                       <div className="flex-1 p-4 flex flex-col justify-between">
@@ -251,10 +251,10 @@ const BestSellers = () => {
                     return (
                       <motion.div
                         key={`${product.id}-${idx}`}
-                        initial={{ opacity: 0, y: 15 }}
-                        whileInView={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
-                        transition={{ delay: idx * 0.05, duration: 0.4 }}
+                        transition={{ delay: Math.min(idx, 4) * 0.05, duration: 0.4 }}
                         onClick={() => navigate(`/product/${product.id}`)}
                         className="group cursor-pointer flex-shrink-0 w-[150px] flex flex-col overflow-hidden rounded-[20px] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,249,240,0.98)_100%)] shadow-[0_12px_28px_-22px_rgba(114,77,31,0.45)] transition-all duration-300 active:scale-[0.98] dark:border-[#d4af37]/15 dark:bg-[linear-gradient(180deg,rgba(28,22,16,0.98)_0%,rgba(16,14,12,0.98)_100%)] dark:shadow-[0_14px_28px_-20px_rgba(0,0,0,0.7)]"
                       >

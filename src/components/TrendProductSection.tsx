@@ -118,14 +118,14 @@ const TrendProductSection = () => {
             {mobileTrendingProducts.map((product, index) => (
               <motion.div
                 key={`${product.id}-${index}`}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.06 }}
+                transition={{ delay: Math.min(index, 4) * 0.06 }}
                 className="flex-shrink-0 w-[150px] cursor-pointer"
                 onClick={() => navigate(`/product/${product.id}`)}
               >
-                <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border">
+                <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/70">
                   <div className="aspect-square overflow-hidden bg-muted relative">
                     <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
                     <button
@@ -137,16 +137,14 @@ const TrendProductSection = () => {
                   </div>
                   <div className="p-2.5">
                     <p className="text-[11px] text-muted-foreground line-clamp-1 mb-0.5">{product.title}</p>
-                    <div className="flex items-center justify-between gap-1">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
-                          {product.oldPrice && product.oldPrice > product.price && (
-                            <p className="text-[10px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
-                          )}
-                        </div>
+                    <div className="flex items-end justify-between gap-1">
+                      <div className="flex flex-col min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-tight">₹{product.price.toLocaleString()}</p>
+                        {product.oldPrice && product.oldPrice > product.price && (
+                          <p className="text-[10px] text-muted-foreground line-through leading-tight">₹{product.oldPrice.toLocaleString()}</p>
+                        )}
                         {product.discount && product.discount > 0 && (
-                          <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
+                          <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73] leading-tight">{product.discount}% Off</p>
                         )}
                       </div>
                       <button
