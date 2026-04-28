@@ -407,7 +407,7 @@ const AdminImagePrompts = () => {
           : 'Custom logo active — prompts will place the uploaded mark directly without recreating it.';
 
   const tabs = [
-    { id: 'product-model' as PromptCategory, label: 'Product + Model', icon: Gem, description: 'Jewelry on celebrity-level model' },
+    { id: 'product-model' as PromptCategory, label: 'Product + Model', icon: Gem, description: 'Website-ready model product photo' },
     { id: 'product-studio' as PromptCategory, label: 'Studio Product', icon: Camera, description: 'Clean studio product shots' },
     { id: 'hero-section' as PromptCategory, label: 'Hero Banners', icon: Gift, description: 'Festival / Offer hero banners' },
     { id: 'custom' as PromptCategory, label: 'Custom Prompt', icon: Wand2, description: 'Any custom image need' },
@@ -595,7 +595,7 @@ const AdminImagePrompts = () => {
             AI Image Prompt Generator
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Upload your jewelry image → Gemini auto-detects everything → generates world-class prompts
+            Upload your jewelry image → generate reference-locked Nano Banana Pro prompts for product photos and banners
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-400 bg-white px-3 py-1.5 rounded-full border border-[#F5EFE6]">
@@ -660,18 +660,19 @@ const AdminImagePrompts = () => {
                   preview={productPreview}
                   onSelect={handleProductImageSelect}
                   onClear={() => { setProductImage(null); setProductPreview(''); }}
-                  hint="AI auto-detects jewelry type, metal, stones, design — no manual input needed"
+                  hint="Prompt locks this exact product as the source asset — no manual product description needed"
                   required
                 />
 
                 {activeTab === 'product-model' && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
-                    <p className="text-xs text-amber-800 font-semibold">Real DSLR Model Photoshoot</p>
+                    <p className="text-xs text-amber-800 font-semibold">Website Product Page Model Shot</p>
                     <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
-                      <li>Stunning Indian model — DSLR photographed, not AI-looking</li>
+                      <li>Premium Indian model — DSLR photographed, not AI-looking</li>
                       <li>Real skin pores, catchlights, hair flyaways, natural imperfections</li>
-                      <li>Professional makeup & styling done specifically for this jewelry</li>
-                      <li>Your EXACT product preserved 100% — only environment enhanced</li>
+                      <li>Product stays large, sharp, centered, and inspectable for the product page</li>
+                      <li>Your exact uploaded product is treated as the locked source asset</li>
+                      <li>Background, pose, lighting, and styling improve without changing the jewelry</li>
                       <li>After generating, click <strong>"Different Angle / Pose"</strong> for variations</li>
                       <li>Use <strong>"Refine"</strong> to modify any detail you want changed</li>
                     </ul>
@@ -682,7 +683,7 @@ const AdminImagePrompts = () => {
                     <p className="text-xs text-amber-800 font-semibold">Studio Product Photoshoot</p>
                     <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
                       <li>Product-only premium studio shot — no model</li>
-                      <li>AI auto-detects metal, stones, style from your image</li>
+                      <li>Keeps original metal color, stones, beads, pearls, and proportions</li>
                       <li>Macro-level detail — every texture and engraving razor-sharp</li>
                       <li>Premium surface auto-selected to complement the jewelry</li>
                       <li>1:1, 4K, Canon macro lens, focus stacking</li>
@@ -1127,7 +1128,7 @@ const AdminImagePrompts = () => {
                     <Wand2 className="h-8 w-8 text-gray-300" />
                   </div>
                   <p className="text-sm">Upload your jewelry image, then click "Generate Prompt"</p>
-                  <p className="text-xs">Gemini auto-detects metal, type, stones — no manual input needed</p>
+                  <p className="text-xs">The prompt will lock your uploaded product as the exact source asset</p>
                 </div>
               )}
             </div>
@@ -1139,7 +1140,7 @@ const AdminImagePrompts = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-600">
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">1</span>
-                <span><strong>Upload</strong> your jewelry image → Gemini auto-detects everything (type, metal, stones, style) and generates an accurate prompt.</span>
+                <span><strong>Upload</strong> your jewelry image → Gemini builds a prompt that uses it as a locked product reference, not a text description.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">2</span>
@@ -1147,7 +1148,7 @@ const AdminImagePrompts = () => {
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">3</span>
-                <span>The prompt says <strong>"do not alter the product/logo"</strong> — Nano Banana Pro should preserve originals and enhance only the scene.</span>
+                <span>The prompt says <strong>"use the attached product image directly"</strong> — Nano Banana Pro should preserve the original and enhance only the scene.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">4</span>

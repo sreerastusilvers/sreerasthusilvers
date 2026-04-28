@@ -85,7 +85,13 @@ const NANO_BANANA_PRO_HANDOFF = `NANO BANANA PRO WORKFLOW:
 This prompt is meant for Nano Banana Pro with attached reference images. The generated image must use those attached references as source assets, not as loose inspiration. The prompt must tell Nano Banana Pro exactly what to preserve, what to enhance, and what final ratio/quality to output.`;
 
 const PRODUCT_FIDELITY_RULE = `PRODUCT FIDELITY - THE NON-NEGOTIABLE CORE:
-Use the attached jewellery/product image exactly as provided. Preserve the exact design, shape, proportions, chain/setting, stone positions, engraving, polish, metal color, scale, silhouette, clasp details, defects, and craftsmanship. Do not redesign it, simplify it, add extra stones, remove parts, turn silver into gold, change gemstones, invent a matching set, or replace it with a similar-looking piece. Only improve the scene around it: lighting, camera, model, styling, environment, reflections, shadows, and composition.`;
+Use the attached jewellery/product image exactly as provided. Preserve the exact design, shape, proportions, chain/setting, stone positions, engraving, polish, metal color, scale, silhouette, clasp details, defects, and craftsmanship. Do not redesign it, simplify it, add extra stones, remove parts, change the metal tone, change gemstones, invent a matching set, or replace it with a similar-looking piece. Only improve the scene around it: lighting, camera, model, styling, environment, reflections, shadows, and composition.`;
+
+const REFERENCE_LOCKED_PROMPT_STYLE = `REFERENCE-LOCKED PROMPT STYLE:
+The generated prompt must treat the uploaded jewellery image as a locked visual asset, not as an object to describe from memory. Do not describe the product motif, stones, beads, color, or material in the generated prompt. Instead, instruct Nano Banana Pro to use the attached jewellery reference directly as the product layer/source asset. Product words create hallucinated replacements; asset-lock language preserves the real product.`;
+
+const PRODUCT_TRANSFER_RULE = `PRODUCT TRANSFER RULE:
+If the uploaded jewellery is photographed on a display bust, tray, hand, table, or rough store background, remove or replace only the support/background. Transfer the exact jewellery itself onto the model or studio setup without redrawing it. Keep every pendant, chain link, bead, pearl, stone, engraving, oxidized area, plating tone, and spacing identical to the uploaded photo. If a part must curve naturally on a model, adapt only perspective and contact shadow while preserving the visible design exactly.`;
 
 const REFERENCE_DISCIPLINE_RULE = `REFERENCE DISCIPLINE:
 Study every attached reference carefully. Keep the uploaded product/reference subject real and unchanged, like a professional retouching brief: preserve identity, geometry, materials, and proportions while upgrading the scene to a premium photographed result. If a reference is low quality, use it to preserve the product accurately, then rebuild only the lighting, surroundings, and photographic quality around it.`;
@@ -93,19 +99,25 @@ Study every attached reference carefully. Keep the uploaded product/reference su
 const PHOTOREALISM_RULE = `PHOTOREALISM - MUST LOOK LIKE A REAL CAMERA CAPTURE:
 - Real skin texture if a model appears: visible pores, tiny facial hair, natural moles/freckles, slight skin tone variation, real lip lines, non-perfect symmetry, natural under-eye and cheek texture.
 - Real eyes and hair: believable catchlights from softboxes/windows, individual hair strands, flyaways, imperfect hairline, no CG helmet hair.
-- Real material response: silver has cool-toned specular highlights, fabric weave is visible, stones refract light naturally, shadows contact the surface correctly.
+- Real material response: the metal color and finish follow the uploaded product exactly; silver stays cool, gold plating stays warm, oxidized areas stay dark, beads/pearls/stones keep their original colors. Fabric weave is visible, stones refract light naturally, shadows contact the surface correctly.
 - Real camera behavior: Canon EOS R5 or Hasselblad-style editorial capture, accurate lens compression, natural depth of field, subtle film grain, true light falloff, no overdone HDR.
 - Real environment: floors, walls, props, flowers, fabric folds, marble, velvet, and reflections must have scale, texture, depth, and natural imperfections.
 - Banned AI tells: plastic skin, wax faces, floating jewellery, impossible shadows, deformed fingers, warped text, random extra jewellery, fake sparkle noise, over-smoothed surfaces, perfect symmetry, digital glow.`;
 
 const ATTIRE_AND_STYLING_RULE = `DYNAMIC ATTIRE AND STYLING - DO NOT DEFAULT TO GREEN SAREE:
-Choose attire based on the uploaded jewellery style and campaign mood. Options include Kanjivaram silk saree, Banarasi saree, handloom drape, bridal lehenga, modern structured gown, velvet blouse, minimalist editorial black/ivory outfit, or contemporary festive styling. The outfit must complement the jewellery and never compete with it. Avoid repeating green saree by default; use emerald or green only when it is clearly the best cultural/compositional choice. Prefer rich, varied palettes such as deep wine, ivory, champagne, sapphire, antique rose, charcoal, royal blue, temple red, pearl white, or muted gold accents while keeping silver jewellery cool-toned and accurate.`;
+Choose attire based on the uploaded jewellery style and campaign mood. Options include Kanjivaram silk saree, Banarasi saree, handloom drape, bridal lehenga, modern structured gown, velvet blouse, minimalist editorial black/ivory outfit, or contemporary festive styling. The outfit must complement the jewellery and never compete with it. Avoid repeating green saree by default; use emerald or green only when it is clearly the best cultural/compositional choice. Prefer rich, varied palettes such as deep wine, ivory, champagne, sapphire, antique rose, charcoal, royal blue, temple red, pearl white, or muted gold accents while keeping the uploaded product's exact color/material unchanged.`;
 
 const LUXURY_ENVIRONMENT_RULE = `WORLD-CLASS ENVIRONMENT:
 Create a real, high-budget luxury photography setting rather than a flat backdrop. Choose one setting that fits the product: editorial studio with sculpted light, palace corridor, temple-inspired architectural detail, marble atelier, velvet/silk styling table, premium boutique interior, garden at golden hour, or cinematic festive set. The environment must have foreground/midground/background depth, natural shadows, physically plausible reflections, and professional art direction.`;
 
 const SILVER_COLOR_RULE = `SILVER JEWELLERY COLOR ANCHOR:
 Sreerasthu Silvers sells 92.5% silver jewellery. Silver must remain cool, luminous, and premium. Do not warm it into yellow gold or bronze. Any gold, maroon, green, or festive colors belong to the set, props, text, or attire only - never to the silver product unless the uploaded reference itself contains those tones.`;
+
+const MATERIAL_FIDELITY_RULE = `MATERIAL AND COLOR FIDELITY:
+The uploaded jewellery reference is the source of truth. Do not force the product to become cool silver if the uploaded piece appears gold-polished, oxidized, rose-toned, rhodium, two-tone, coral-beaded, pearl-accented, gemstone-set, or otherwise colored. Preserve the exact metal tone, bead color, pearl color, stone color, polish, oxidation, patina, and contrast from the reference. Brand context must never override the product image.`;
+
+const PRODUCT_PAGE_MODEL_SHOT_RULE = `PRODUCT PAGE MODEL SHOT:
+This is for a website product page primary image, not a poster, not a social ad, and not a loose fashion portrait. The jewellery must be the clearest hero: large, centered, sharply focused, fully visible, correctly scaled on the model, and suitable for a customer to inspect before buying. The model should look premium and real, but her face, outfit, and background must support the product rather than steal attention. Use a clean luxury crop with minimal distractions, natural skin, believable neck/collarbone anatomy, and a background that adds class without hiding or competing with the jewellery.`;
 
 function heroFormatInstruction(format: HeroOutputFormat) {
   if (format === 'desktop-16:9') {
@@ -150,25 +162,29 @@ ${hasLogos(logoImages) ? `- Logo reference(s): ${logoImages.length} attached log
 Create the final prompt for a WORLD-CLASS product + model jewellery photoshoot.
 
 ${PRODUCT_FIDELITY_RULE}
+${REFERENCE_LOCKED_PROMPT_STYLE}
+${PRODUCT_TRANSFER_RULE}
 ${REFERENCE_DISCIPLINE_RULE}
-${SILVER_COLOR_RULE}
+${MATERIAL_FIDELITY_RULE}
+${PRODUCT_PAGE_MODEL_SHOT_RULE}
 ${ATTIRE_AND_STYLING_RULE}
 ${LUXURY_ENVIRONMENT_RULE}
 ${PHOTOREALISM_RULE}
 
 CAMPAIGN REQUIREMENTS:
 - Output ratio: 1:1 square, 4096x4096, 4K.
-- The image must feel like a real luxury editorial campaign shot by a top photographer, not a generated composite.
-- Select the model pose dynamically from the jewellery type: necklace/choker gets collarbone/neck framing; earrings get hair swept aside and side profile; bangles/rings get elegant hand choreography; anklets get graceful foot/hem composition; sets get balanced 3/4 body framing.
-- Use a dynamic, editorial pose with real gesture and body language. Avoid passport-photo frontality unless it is creatively justified.
+- The image must feel like a real luxury e-commerce photoshoot by a top photographer, not a generated composite or fashion poster.
+- Select the crop dynamically from the jewellery type only for framing: necklace/choker gets collarbone/neck framing; earrings get hair swept aside and side profile; bangles/rings get elegant hand choreography; anklets get graceful foot/hem composition; sets get balanced 3/4 body framing. Do not describe the product's motif, stones, beads, color, or material in the final prompt.
+- Use a composed product-page pose with real gesture and body language. Avoid passport-photo frontality, over-dramatic fashion poses, or distant crops where the jewellery is too small.
 - Use camera/lens choices that match the product: 85mm beauty portrait, 100mm macro detail, 70mm 3/4 editorial, or low-angle glamour. Include physically plausible depth of field and lighting.
-- The attached jewellery must be sharp, correctly scaled, and naturally worn or placed with believable contact shadows.
+- The attached jewellery must be sharp, correctly scaled, and naturally worn or placed with believable contact shadows while remaining the exact uploaded product asset.
+- The final prompt must say: "Do not generate a similar jewellery design. Use the attached product image directly and keep the jewellery unchanged."
 - The final prompt must explicitly say to upload and use the attached product reference in Nano Banana Pro.
 ${logoInstruction(logoImages, logoMode)}
 
 Generate ONLY the final Nano Banana Pro prompt text. No markdown, no explanation.`;
 
-  const userMessage = `Create one premium 1:1 4K product + model prompt for Nano Banana Pro. The uploaded jewellery must remain exactly unchanged. Build a dynamic world-class campaign around it with realistic model, premium attire, luxury environment, exact silver fidelity, and no repetitive green-saree default.`;
+  const userMessage = `Create one premium 1:1 4K product-page model prompt for Nano Banana Pro. The uploaded jewellery must remain exactly unchanged as a locked visual asset. Do not describe or reinterpret the jewellery; build a realistic premium model photo around the exact product, with material/color fidelity to the reference and no repetitive green-saree default.`;
 
   return generateWithFallback(
     buildContents(`${systemPrompt}\n\n${userMessage}`, [productImage, ...logoImages])
@@ -191,8 +207,10 @@ ${hasLogos(logoImages) ? `- Logo reference(s): ${logoImages.length} attached log
 Create the final prompt for a PRODUCT-ONLY world-class studio photoshoot.
 
 ${PRODUCT_FIDELITY_RULE}
+${REFERENCE_LOCKED_PROMPT_STYLE}
+${PRODUCT_TRANSFER_RULE}
 ${REFERENCE_DISCIPLINE_RULE}
-${SILVER_COLOR_RULE}
+${MATERIAL_FIDELITY_RULE}
 ${PHOTOREALISM_RULE}
 
 STUDIO REQUIREMENTS:
@@ -200,14 +218,14 @@ STUDIO REQUIREMENTS:
 - Output ratio: 1:1 square, 4096x4096, 4K.
 - Use a premium still-life setup chosen to flatter the uploaded jewellery: black velvet, ivory silk, white/grey marble, smoked acrylic riser, museum plinth, jewellery box, satin folds, brushed stone, or subtle flower petals.
 - Use Canon EOS R5 / Hasselblad-style macro product photography, 100mm macro lens, ISO 100, focus stacking, calibrated white balance, softbox key light, rim light, flags, reflectors, and controlled specular highlights.
-- Preserve every product detail: metal grain, stone facets, engravings, clasps, chain links, bends, surface wear, and exact proportions.
+- Preserve every product detail from the uploaded asset: metal grain, stone facets, engravings, clasps, chain links, bends, surface wear, color tone, and exact proportions. Do not describe or recreate a similar design from words.
 - Do not add matching pieces, extra gemstones, fake chains, fake sparkle overlays, or text unless logo placement is requested.
 - Make the image look like a real high-end e-commerce/still-life photograph with natural shadows and contact reflections.
 ${logoInstruction(logoImages, logoMode)}
 
 Generate ONLY the final Nano Banana Pro prompt text. No markdown, no explanation.`;
 
-  const userMessage = `Create one premium 1:1 4K studio product prompt for Nano Banana Pro. Use the uploaded jewellery exactly as-is, no model, no redesigned product, and produce a world-class macro luxury still-life shot.`;
+  const userMessage = `Create one premium 1:1 4K studio product prompt for Nano Banana Pro. Use the uploaded jewellery exactly as a locked visual asset, no model, no redesigned product, no descriptive replacement, and produce a world-class macro luxury still-life shot.`;
 
   return generateWithFallback(
     buildContents(`${systemPrompt}\n\n${userMessage}`, [productImage, ...logoImages])
@@ -244,9 +262,8 @@ ATTACHED IMAGES:
 ${hasRef ? `- ${refCount} product/reference image(s) are attached. Use the exact jewellery/product assets from these images unchanged. If multiple products are attached, include them cohesively without redesigning any piece.` : '- No product image may be attached; create premium 92.5 silver jewellery suitable for the campaign, but do not invent a fake brand logo.'}
 ${hasLogos(logoImages) ? `- ${logoImages.length} logo image(s) are attached. ${logoInstruction(logoImages, logoMode)}` : '- No usable logo image may be attached. Reserve a clean brand area but do not invent a fake logo.'}
 
-${hasRef ? PRODUCT_FIDELITY_RULE : SILVER_COLOR_RULE}
+${hasRef ? `${PRODUCT_FIDELITY_RULE}\n${REFERENCE_LOCKED_PROMPT_STYLE}\n${PRODUCT_TRANSFER_RULE}\n${MATERIAL_FIDELITY_RULE}` : SILVER_COLOR_RULE}
 ${REFERENCE_DISCIPLINE_RULE}
-${SILVER_COLOR_RULE}
 ${ATTIRE_AND_STYLING_RULE}
 ${PHOTOREALISM_RULE}
 
@@ -256,7 +273,7 @@ CAMPAIGN ART DIRECTION:
 - Make this a complete publish-ready homepage banner, not a plain product photo with empty space.
 - Use the festival/event as the real visual language: culturally accurate colors, props, flowers, fabric, motifs, and emotional mood.
 - Avoid one-note color defaults. Do not let green dominate every campaign; use green only when culturally/compositionally needed and balance it with silver, ivory, wine, amber, maroon, blue, or neutral luxury tones.
-- Silver jewellery must remain cool-toned, premium, and bright. Do not turn silver into gold.
+- Jewellery color and material must follow the uploaded reference exactly. If no product reference is attached, keep created Sreerasthu jewellery cool-toned silver.
 - Text must be rendered inside the image with luxury typography: headline, offer title, optional offer details, and a premium CTA such as "SHOP NOW" or "EXPLORE NOW".
 - The offer badge must look premium, not like a cheap sticker. Use refined spacing, strong contrast, and clean hierarchy.
 - Keep all text readable and inside safe zones for the selected ratio. No cropped words, warped letters, or unreadable decorative text.
@@ -269,7 +286,7 @@ FINAL PROMPT MUST INCLUDE:
 1. A clear instruction to attach and use the product/reference images exactly as provided.
 2. A clear instruction to generate the selected ratio(s): ${outputFormat}.
 3. The exact headline/offer requirements.
-4. Product fidelity and silver color fidelity.
+4. Product fidelity and material/color fidelity from the uploaded reference.
 5. Realism rules for model, product, materials, and environment.
 6. Contrast-aware black/white logo placement when logo references are attached.
 
@@ -308,6 +325,7 @@ ${referenceImage ? '- A product/reference image is attached. Use it exactly as p
 ${hasLogos(logoImages) ? `- Logo reference(s): ${logoImages.length} attached image(s). ${logoInstruction(logoImages, logoMode)}` : '- No usable logo image may be attached. Do not invent a fake logo.'}
 
 ${referenceImage ? PRODUCT_FIDELITY_RULE : SILVER_COLOR_RULE}
+${referenceImage ? `${REFERENCE_LOCKED_PROMPT_STYLE}\n${PRODUCT_TRANSFER_RULE}\n${MATERIAL_FIDELITY_RULE}` : ''}
 ${REFERENCE_DISCIPLINE_RULE}
 ${PHOTOREALISM_RULE}
 ${LUXURY_ENVIRONMENT_RULE}
@@ -348,16 +366,21 @@ ${originalPrompt}
 VARIATION REQUIREMENTS:
 - Keep the exact uploaded jewellery unchanged.
 - Keep the same luxury campaign quality and product fidelity.
+- Keep the same product-page usefulness: jewellery large, sharp, inspectable, and true to the uploaded asset.
 - Change the camera angle, crop, model pose, expression, hand placement, and composition enough to feel like a different shot from the same world-class session.
 - Do not default to green saree. Choose attire and palette dynamically based on the jewellery and original mood.
 - Preserve the same general brand mood unless the original prompt was weak; improve realism and premium art direction where needed.
 ${PRODUCT_FIDELITY_RULE}
+${REFERENCE_LOCKED_PROMPT_STYLE}
+${PRODUCT_TRANSFER_RULE}
+${MATERIAL_FIDELITY_RULE}
+${PRODUCT_PAGE_MODEL_SHOT_RULE}
 ${PHOTOREALISM_RULE}
 ${logoInstruction(logoImages, logoMode)}
 
 Generate ONLY the complete replacement Nano Banana Pro prompt. No markdown, no explanation.`;
 
-  const userMessage = `Create a different angle/pose variation for the uploaded jewellery. Product must remain exactly unchanged. Output should still be 1:1 4K world-class realistic jewellery campaign photography.`;
+  const userMessage = `Create a different angle/pose variation for the uploaded jewellery. Product must remain exactly unchanged as a locked visual asset. Output should still be 1:1 4K world-class realistic website product-page model photography.`;
 
   return generateWithFallback(
     buildContents(`${systemPrompt}\n\n${userMessage}`, [productImage, ...logoImages])
@@ -378,7 +401,7 @@ ${currentPrompt}
 USER'S REFINEMENT REQUEST:
 "${refinementInstruction}"
 
-Apply the requested change while preserving all product/reference fidelity, Nano Banana Pro attachment instructions, ratio instructions, realism rules, silver color accuracy, and logo contrast rules. Output the complete updated prompt, not a patch note.
+Apply the requested change while preserving all product/reference fidelity, locked visual asset instructions, Nano Banana Pro attachment instructions, ratio instructions, realism rules, material/color accuracy from the uploaded reference, product-page suitability, and logo contrast rules. Output the complete updated prompt, not a patch note.
 
 Generate ONLY the refined prompt text. No explanations, no markdown.`;
 
