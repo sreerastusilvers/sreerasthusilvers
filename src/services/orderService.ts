@@ -87,18 +87,20 @@ const makeItemsSummary = (items?: Array<{ name: string; quantity?: number }>): s
 const dispatchStatusNotifications = async (
   orderId: string,
   status: Order['status'],
-  ctx?: { phone?: string; customerName?: string; items?: OrderItem[] },
+  ctx?: { phone?: string; userPhone?: string; customerName?: string; items?: OrderItem[] },
 ): Promise<void> => {
   try {
-    if (ctx?.phone) {
+    // Prefer the customer's registered WhatsApp number over the shipping address mobile
+    const notifyPhone = ctx?.userPhone || ctx?.phone;
+    if (notifyPhone) {
       // Use the pre-approved Meta template; fall back to free-form text if it
       // fails (e.g. template not yet approved in WhatsApp Manager).
       void sendOrderStatusTemplate({
-        to: ctx.phone,
-        customerName: ctx.customerName || 'Customer',
+        to: notifyPhone,
+        customerName: ctx?.customerName || 'Customer',
         orderId,
         status,
-        itemsSummary: makeItemsSummary(ctx.items),
+        itemsSummary: makeItemsSummary(ctx?.items),
       });
     }
     // Web push to the customer — fire-and-forget. Recipient tokens are
@@ -149,6 +151,7 @@ export interface Order {
   userId: string;
   userEmail: string;
   userName: string;
+  userPhone?: string; // Customer's registered WhatsApp/phone number — used for notifications
   items: OrderItem[];
   subtotal: number;
   deliveryCharge: number;
@@ -379,8 +382,12 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
     });
 
     // WhatsApp template: customer confirmation.
+    // Prefer the customer's registered WhatsApp/phone number; fall back to the
+    // shipping address mobile so orders placed before userPhone was introduced
+    // still get a notification.
+    const customerNotifyPhone = orderData.userPhone || orderData.shippingAddress?.mobile;
     void sendOrderPlacedTemplate({
-      to: normalizePhoneNumber(orderData.shippingAddress?.mobile),
+      to: normalizePhoneNumber(customerNotifyPhone),
       customerName: orderData.userName || 'Customer',
       orderId: docRef.id,
       total: orderData.total,
@@ -623,6 +630,7 @@ export const updateOrderStatus = async (
     // Notify customer (WhatsApp + push). Best effort — never blocks the write.
     void dispatchStatusNotifications(orderId, status, {
       phone: currentData?.shippingAddress?.mobile || currentData?.customerPhone,
+      userPhone: currentData?.userPhone,
       customerName: currentData?.customerName || currentData?.shippingAddress?.fullName,
       items: currentData?.items as OrderItem[],
     });
@@ -697,6 +705,7 @@ export const updateOrderTracking = async (
 
     void dispatchStatusNotifications(orderId, trackingData.status, {
       phone: currentData?.shippingAddress?.mobile || currentData?.customerPhone,
+      userPhone: currentData?.userPhone,
       customerName: currentData?.customerName || currentData?.shippingAddress?.fullName,
       items: currentData?.items as OrderItem[],
     });
@@ -892,6 +901,7 @@ export const assignOrderToDeliveryBoy = async (
     // Best-effort customer notification (WhatsApp + push).
     void dispatchStatusNotifications(orderId, 'outForDelivery', {
       phone: currentData.shippingAddress?.mobile,
+      userPhone: currentData.userPhone,
       customerName: currentData.shippingAddress?.fullName || currentData.userName,
       items: currentData.items as OrderItem[],
     });
@@ -982,6 +992,7 @@ export const updateDeliveryStatusByDeliveryBoy = async (
     const data = orderDoc.data() || {};
     void dispatchStatusNotifications(orderId, status, {
       phone: data.shippingAddress?.mobile || data.customerPhone,
+      userPhone: data.userPhone,
       customerName: data.shippingAddress?.fullName || data.userName,
       items: data.items as OrderItem[],
     });
@@ -1065,6 +1076,7 @@ export const verifyDeliveryOTP = async (
     // Notify the customer that their order was delivered (push + WhatsApp).
     void dispatchStatusNotifications(orderId, 'delivered', {
       phone: orderData.shippingAddress?.mobile || orderData.customerPhone,
+      userPhone: orderData.userPhone,
       customerName: orderData.shippingAddress?.fullName || orderData.userName,
       items: orderData.items as OrderItem[],
     });
@@ -1191,6 +1203,7 @@ export const assignReturnPickupPartner = async (
     // Notify customer + the assigned return-pickup partner.
     void dispatchStatusNotifications(orderId, 'returnScheduled', {
       phone: currentData.shippingAddress?.mobile,
+      userPhone: currentData.userPhone,
       customerName: currentData.shippingAddress?.fullName || currentData.userName,
       items: currentData.items as OrderItem[],
     });
@@ -1606,6 +1619,26 @@ export const approveReturn = async (orderId: string): Promise<void> => {
         },
       ],
     });
+
+    // Notify the customer that their return request was approved.
+    const notifyPhone = orderData.userPhone || orderData.shippingAddress?.mobile;
+    if (notifyPhone) {
+      void sendOrderStatusTemplate({
+        to: notifyPhone,
+        customerName: orderData.shippingAddress?.fullName || orderData.userName || 'Customer',
+        orderId,
+        status: 'returnRequested',
+        itemsSummary: makeItemsSummary(orderData.items as OrderItem[]),
+      });
+    }
+    void notifyOrder({
+      orderId,
+      audience: 'customer',
+      title: 'Return approved',
+      body: `Your return request for order ${shortOrderRef(orderId)} has been approved. A pickup will be scheduled soon.`,
+      url: `/account/orders/${orderId}`,
+      data: { type: 'return-approved' },
+    });
   } catch (error) {
     console.error('Error approving return:', error);
     throw error;
@@ -1647,6 +1680,26 @@ export const rejectReturn = async (orderId: string): Promise<void> => {
           note: 'Return request rejected by admin',
         },
       ],
+    });
+
+    // Notify the customer that their return request was rejected.
+    const notifyPhone = orderData.userPhone || orderData.shippingAddress?.mobile;
+    if (notifyPhone) {
+      void sendOrderStatusTemplate({
+        to: notifyPhone,
+        customerName: orderData.shippingAddress?.fullName || orderData.userName || 'Customer',
+        orderId,
+        status: 'delivered',
+        itemsSummary: makeItemsSummary(orderData.items as OrderItem[]),
+      });
+    }
+    void notifyOrder({
+      orderId,
+      audience: 'customer',
+      title: 'Return request rejected',
+      body: `Your return request for order ${shortOrderRef(orderId)} has been rejected. Please contact support for help.`,
+      url: `/account/orders/${orderId}`,
+      data: { type: 'return-rejected' },
     });
   } catch (error) {
     console.error('Error rejecting return:', error);

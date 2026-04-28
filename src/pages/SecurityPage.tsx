@@ -102,6 +102,11 @@ const SecurityPage: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
 
+  // Change Phone Number
+  const [changePhoneOpen, setChangePhoneOpen] = useState(false);
+  const [newPhoneInput, setNewPhoneInput] = useState('');
+  const changePhoneOtp = useWhatsAppOtpVerification(newPhoneInput, changePhoneOpen && newPhoneInput.length === 10);
+
   // 2FA via WhatsApp OTP
   const [twoFaPanelOpen, setTwoFaPanelOpen] = useState(false);
   const [twoFaPhone, setTwoFaPhone] = useState('');
@@ -128,6 +133,26 @@ const SecurityPage: React.FC = () => {
   })();
   const phoneAlreadyVerified = twoFaPhone.length === 10 && isPhoneVerified && !!verifiedProfilePhone && twoFaPhone === verifiedProfilePhone;
   const canEnable2FA = twoFaOtp.isVerified || phoneAlreadyVerified;
+
+  const handleChangePhone = async () => {
+    if (!user) return;
+    if (!changePhoneOtp.isVerified) {
+      showMessage('error', 'Please verify the OTP before saving.');
+      return;
+    }
+    setActionLoading('change-phone');
+    try {
+      const fullPhone = normalizePhoneNumber(newPhoneInput);
+      await updateUserProfile({ whatsappNumber: fullPhone, phone: fullPhone });
+      showMessage('success', 'Phone number updated successfully.');
+      setChangePhoneOpen(false);
+      setNewPhoneInput('');
+    } catch {
+      showMessage('error', 'Failed to update phone number.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleEnable2FA = async () => {
     if (!user) return;
@@ -525,34 +550,25 @@ const SecurityPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      <div className="hidden lg:block"><Header /></div>
+      <Header />
 
-      {/* Desktop Back Button */}
-      <div className="hidden lg:block border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 dark:border-zinc-800 dark:bg-zinc-950/90">
-        <div className="max-w-4xl mx-auto px-4">
+      {/* Back Button */}
+      <div className="border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 dark:bg-zinc-950/90">
+        <div className="max-w-4xl mx-auto px-4 flex items-center gap-3">
           <button
-            onClick={() => navigate('/account')}
-            className="flex items-center gap-2 py-3 text-gray-600 dark:text-zinc-400 transition-colors hover:text-gray-900 dark:text-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100"
+            onClick={() => {
+              if (activeTab !== 'overview') { setActiveTab('overview'); return; }
+              navigate('/account');
+            }}
+            className="flex items-center gap-2 py-3 text-gray-600 dark:text-zinc-400 transition-colors hover:text-gray-900 dark:hover:text-zinc-100"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">Back to Account</span>
           </button>
+          <span className="ml-2 text-sm font-semibold text-gray-900 dark:text-zinc-100 lg:hidden">
+            {getSectionTitle(activeTab)}
+          </span>
         </div>
-      </div>
-
-      {/* Mobile Header */}
-      <div className="lg:hidden sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/90">
-        <button onClick={() => {
-          if (activeTab !== 'overview') { setActiveTab('overview'); return; }
-          if (window.innerWidth >= 1024) { navigate('/account'); return; }
-          sessionStorage.setItem('openMobileSidebar', '1');
-          navigate('/');
-        }} className="rounded-full p-1 hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800">
-          <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300 dark:text-zinc-100" />
-        </button>
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
-          {getSectionTitle(activeTab)}
-        </h1>
       </div>
 
       {/* Message Toast */}
@@ -1093,6 +1109,85 @@ const SecurityPage: React.FC = () => {
                     {isPhoneVerified ? <><CheckCircle2 className="w-4 h-4" /> Verified</> : 'Not set'}
                   </span>
                 </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                  <span className="text-sm text-gray-600 dark:text-zinc-400">Phone Number</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">
+                      {(userProfile?.whatsappNumber || userProfile?.phone)
+                        ? `+91 ${(userProfile?.whatsappNumber || userProfile?.phone || '').replace(/\D/g, '').slice(-10)}`
+                        : <span className="text-gray-400 dark:text-zinc-500">Not set</span>}
+                    </span>
+                    <button
+                      onClick={() => { setChangePhoneOpen(true); setNewPhoneInput(''); }}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    >
+                      Change
+                    </button>
+                  </div>
+                </div>
+                {changePhoneOpen && (
+                  <div className="py-3 border-b border-gray-50">
+                    <p className="text-sm text-gray-600 dark:text-zinc-400 mb-3">Enter your new 10-digit WhatsApp number to receive a verification code.</p>
+                    <div className="flex gap-2 mb-3">
+                      <div className="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 border border-gray-200 dark:border-zinc-700 select-none">+91</div>
+                      <input
+                        type="tel"
+                        maxLength={10}
+                        placeholder="10-digit number"
+                        value={newPhoneInput}
+                        onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-400 outline-none"
+                      />
+                      <button
+                        onClick={() => changePhoneOtp.sendOtp()}
+                        disabled={newPhoneInput.length !== 10 || changePhoneOtp.isBusy || changePhoneOtp.isVerified}
+                        className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        {changePhoneOtp.phase === 'sent' || changePhoneOtp.phase === 'verifying' || changePhoneOtp.phase === 'verified' ? 'Resend' : 'Send OTP'}
+                      </button>
+                    </div>
+                    {(changePhoneOtp.phase === 'sent' || changePhoneOtp.phase === 'verifying') && !changePhoneOtp.isVerified && (
+                      <div className="flex gap-2 mb-3">
+                        <input
+                          type="text"
+                          maxLength={6}
+                          placeholder="Enter 6-digit OTP"
+                          value={changePhoneOtp.otpCode}
+                          onChange={(e) => changePhoneOtp.setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                        <button
+                          onClick={() => changePhoneOtp.confirmOtp()}
+                          disabled={changePhoneOtp.otpCode.length !== 6 || changePhoneOtp.isBusy}
+                          className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700 transition-colors font-medium"
+                        >
+                          Verify
+                        </button>
+                      </div>
+                    )}
+                    {changePhoneOtp.isVerified && (
+                      <p className="text-sm text-green-600 flex items-center gap-1 mb-3"><CheckCircle2 className="w-4 h-4" /> OTP verified</p>
+                    )}
+                    {changePhoneOtp.otpError && (
+                      <p className="text-sm text-red-500 mb-2">{changePhoneOtp.otpError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleChangePhone}
+                        disabled={!changePhoneOtp.isVerified || actionLoading === 'change-phone'}
+                        className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg disabled:opacity-50 hover:bg-green-700 transition-colors font-medium"
+                      >
+                        {actionLoading === 'change-phone' ? 'Saving…' : 'Save Number'}
+                      </button>
+                      <button
+                        onClick={() => { setChangePhoneOpen(false); setNewPhoneInput(''); }}
+                        className="px-4 py-2 text-sm border border-gray-200 dark:border-zinc-700 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors font-medium text-gray-600 dark:text-zinc-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between py-2">
                   <span className="text-sm text-gray-600 dark:text-zinc-400">2FA</span>
                   <span className={`text-sm font-medium flex items-center gap-1 ${settings?.twoFactorEnabled ? 'text-green-600' : 'text-gray-400 dark:text-zinc-500'}`}>
@@ -1144,8 +1239,8 @@ const SecurityPage: React.FC = () => {
         )}
       </div>
 
-      <div className="hidden lg:block"><Footer /></div>
-      <div className="lg:hidden"><MobileBottomNav /></div>
+      <Footer />
+      <MobileBottomNav />
     </div>
   );
 };
