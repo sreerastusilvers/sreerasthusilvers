@@ -17,6 +17,7 @@ import MobileSearchBar from "@/components/MobileSearchBar";
 import Footer from "@/components/Footer";
 import CategoryIconNav from "@/components/CategoryIconNav";
 import VideoCallRequestModal from "@/components/VideoCallRequestModal";
+import ProductCard from "@/components/ProductCard";
 import { Video } from "lucide-react";
 
 const ProductDetail = () => {
@@ -44,6 +45,7 @@ const ProductDetail = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [swipeDir, setSwipeDir] = useState<1 | -1>(1);
   const touchStartRef = useRef<number | null>(null);
+  const videoOverlayRef = useRef<HTMLDivElement | null>(null);
   // Desktop hover-zoom on main image
   const [isZooming, setIsZooming] = useState(false);
   const [zoomPos, setZoomPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
@@ -528,13 +530,32 @@ const ProductDetail = () => {
                         className="absolute inset-0"
                       >
                         {allMedia[selectedImage]?.type === 'video' ? (
-                          <iframe
-                            src={allMedia[selectedImage].src}
-                            title="Product video"
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          />
+                          <>
+                            <iframe
+                              src={allMedia[selectedImage].src}
+                              title="Product video"
+                              className="w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            />
+                            {/* Transparent overlay to capture swipe events on the iframe */}
+                            <div
+                              ref={videoOverlayRef}
+                              className="absolute inset-0 z-10"
+                              onTouchStart={onTouchStart}
+                              onTouchMove={onTouchMove}
+                              onTouchEnd={(e) => {
+                                onTouchEnd();
+                                // If it was a tap (not a real swipe), let pointer through to iframe
+                                if (!didSwipeRef.current && videoOverlayRef.current) {
+                                  videoOverlayRef.current.style.pointerEvents = 'none';
+                                  setTimeout(() => {
+                                    if (videoOverlayRef.current) videoOverlayRef.current.style.pointerEvents = 'auto';
+                                  }, 350);
+                                }
+                              }}
+                            />
+                          </>
                         ) : (
                           <>
                             {/* Desktop image with zoom */}
@@ -1027,56 +1048,16 @@ const ProductDetail = () => {
             </h2>
             {/* Mobile: Horizontal Scroll */}
             <div className="md:hidden flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
-              {relatedProducts.map((relatedProduct) => (
-                <motion.a
-                  key={relatedProduct.id}
-                  href={`/product/${relatedProduct.id}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="group flex-shrink-0 w-32"
-                >
-                  <div className="relative bg-muted rounded-lg overflow-hidden aspect-square mb-2">
-                    <img
-                      src={relatedProduct.image}
-                      alt={relatedProduct.alt}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <h3 className="font-medium text-foreground group-hover:text-primary transition-colors text-xs text-center line-clamp-2">
-                    {relatedProduct.title}
-                  </h3>
-                  <p className="text-center font-semibold mt-1 text-xs">
-                    ₹{relatedProduct.price.toLocaleString("en-IN")}
-                  </p>
-                </motion.a>
+              {relatedProducts.map((relatedProduct, idx) => (
+                <div key={relatedProduct.id} className="flex-shrink-0 w-40">
+                  <ProductCard product={relatedProduct} index={idx} />
+                </div>
               ))}
             </div>
             {/* Desktop: Grid */}
             <div className="hidden md:grid grid-cols-4 lg:grid-cols-5 gap-4">
-              {relatedProducts.map((relatedProduct) => (
-                <motion.a
-                  key={relatedProduct.id}
-                  href={`/product/${relatedProduct.id}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="group"
-                >
-                  <div className="relative bg-muted rounded-lg overflow-hidden aspect-square mb-2">
-                    <img
-                      src={relatedProduct.image}
-                      alt={relatedProduct.alt}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <h3 className="font-medium text-foreground group-hover:text-primary transition-colors text-xs md:text-sm text-center line-clamp-2">
-                    {relatedProduct.title}
-                  </h3>
-                  <p className="text-center font-semibold mt-1 text-sm">
-                    ₹{relatedProduct.price.toLocaleString("en-IN")}
-                  </p>
-                </motion.a>
+              {relatedProducts.map((relatedProduct, idx) => (
+                <ProductCard key={relatedProduct.id} product={relatedProduct} index={idx} />
               ))}
             </div>
           </div>
