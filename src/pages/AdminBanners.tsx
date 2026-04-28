@@ -24,8 +24,11 @@ const AdminBanners = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedDesktopFile, setSelectedDesktopFile] = useState<File | null>(null);
+  const [selectedMobileFile, setSelectedMobileFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
+    imageUrl: '',
+    mobileImageUrl: '',
     redirectLink: '',
     order: 1,
     status: 'active' as 'active' | 'inactive',
@@ -57,26 +60,33 @@ const AdminBanners = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedFile && !editingBanner) {
-      toast.error('Please select an image');
+    if (!selectedDesktopFile && !formData.imageUrl) {
+      toast.error('Please select a desktop banner image');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      let imageUrl = editingBanner?.imageUrl || '';
+      let imageUrl = formData.imageUrl;
+      let mobileImageUrl = formData.mobileImageUrl;
 
-      // Upload new image if selected
-      if (selectedFile) {
-        toast.loading('Compressing and uploading image...', { id: 'upload' });
-        imageUrl = await uploadBannerImage(selectedFile);
-        toast.success('Image uploaded successfully!', { id: 'upload' });
+      if (selectedDesktopFile) {
+        toast.loading('Uploading desktop banner image...', { id: 'upload-desktop' });
+        imageUrl = await uploadBannerImage(selectedDesktopFile);
+        toast.success('Desktop image uploaded successfully!', { id: 'upload-desktop' });
+      }
+
+      if (selectedMobileFile) {
+        toast.loading('Uploading mobile banner image...', { id: 'upload-mobile' });
+        mobileImageUrl = await uploadBannerImage(selectedMobileFile);
+        toast.success('Mobile image uploaded successfully!', { id: 'upload-mobile' });
       }
 
       // Create or update banner
       if (editingBanner) {
         await updateBanner(editingBanner.id!, {
           imageUrl,
+          mobileImageUrl,
           redirectLink: formData.redirectLink,
           order: formData.order,
           status: formData.status,
@@ -85,6 +95,7 @@ const AdminBanners = () => {
       } else {
         await createBanner({
           imageUrl,
+          mobileImageUrl,
           redirectLink: formData.redirectLink,
           order: formData.order,
           status: formData.status,
@@ -95,8 +106,8 @@ const AdminBanners = () => {
       // Reset form and reload
       resetForm();
       await loadBanners();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save banner');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save banner');
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -111,8 +122,8 @@ const AdminBanners = () => {
       await deleteBanner(banner.id!, banner.imageUrl);
       toast.success('Banner deleted successfully!', { id: 'delete' });
       await loadBanners();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to delete banner', { id: 'delete' });
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete banner', { id: 'delete' });
       console.error(error);
     }
   };
@@ -120,6 +131,8 @@ const AdminBanners = () => {
   const handleEdit = (banner: Banner) => {
     setEditingBanner(banner);
     setFormData({
+      imageUrl: banner.imageUrl,
+      mobileImageUrl: banner.mobileImageUrl || '',
       redirectLink: banner.redirectLink,
       order: banner.order,
       status: banner.status,
@@ -129,8 +142,11 @@ const AdminBanners = () => {
 
   const resetForm = () => {
     setEditingBanner(null);
-    setSelectedFile(null);
+    setSelectedDesktopFile(null);
+    setSelectedMobileFile(null);
     setFormData({
+      imageUrl: '',
+      mobileImageUrl: '',
       redirectLink: '',
       order: banners.length + 1,
       status: 'active',
@@ -186,18 +202,40 @@ const AdminBanners = () => {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Image Upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Banner Image
-                </label>
-                <ImageUploader
-                  key={editingBanner?.id || 'new'}
-                  onImageSelected={setSelectedFile}
-                  existingImageUrl={editingBanner?.imageUrl}
-                  onRemove={() => setSelectedFile(null)}
-                  isUploading={isSubmitting}
-                />
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Desktop Banner Image
+                  </label>
+                  <p className="mb-3 text-xs text-gray-500">Use the wide desktop hero asset.</p>
+                  <ImageUploader
+                    key={`${editingBanner?.id || 'new'}-desktop`}
+                    onImageSelected={setSelectedDesktopFile}
+                    existingImageUrl={formData.imageUrl || undefined}
+                    onRemove={() => {
+                      setSelectedDesktopFile(null);
+                      setFormData((prev) => ({ ...prev, imageUrl: '' }));
+                    }}
+                    isUploading={isSubmitting}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mobile Banner Image <span className="text-gray-400 text-xs">(Optional)</span>
+                  </label>
+                  <p className="mb-3 text-xs text-gray-500">Use a taller 4:5 mobile crop. If omitted, desktop image is used on mobile.</p>
+                  <ImageUploader
+                    key={`${editingBanner?.id || 'new'}-mobile`}
+                    onImageSelected={setSelectedMobileFile}
+                    existingImageUrl={formData.mobileImageUrl || undefined}
+                    onRemove={() => {
+                      setSelectedMobileFile(null);
+                      setFormData((prev) => ({ ...prev, mobileImageUrl: '' }));
+                    }}
+                    isUploading={isSubmitting}
+                  />
+                </div>
               </div>
 
               {/* Redirect Link */}
@@ -298,12 +336,21 @@ const AdminBanners = () => {
                 >
                   <div className="flex gap-6">
                     {/* Image Preview */}
-                    <div className="w-48 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
-                      <img
-                        src={banner.imageUrl}
-                        alt="Banner preview"
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="flex flex-shrink-0 gap-3">
+                      <div className="w-40 h-24 rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={banner.imageUrl}
+                          alt="Desktop banner preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="w-20 h-24 rounded-lg overflow-hidden bg-gray-100 border border-dashed border-gray-200">
+                        <img
+                          src={banner.mobileImageUrl || banner.imageUrl}
+                          alt="Mobile banner preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     </div>
 
                     {/* Info */}
@@ -336,6 +383,9 @@ const AdminBanners = () => {
                           </div>
                           <p className="text-sm text-gray-600 mb-1">
                             <span className="font-medium">Link:</span> {banner.redirectLink}
+                          </p>
+                          <p className="text-xs text-gray-500 mb-1">
+                            <span className="font-medium">Mobile image:</span> {banner.mobileImageUrl ? 'Added' : 'Using desktop fallback'}
                           </p>
                           <p className="text-xs text-gray-400">
                             ID: {banner.id}

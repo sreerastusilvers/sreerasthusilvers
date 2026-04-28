@@ -2,15 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
 import admin from 'firebase-admin';
 
-const MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-flash-latest',
-  'gemini-flash-lite-latest',
-  'gemini-3.1-flash-lite-preview',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-];
+const MODEL = 'gemini-2.5-flash';
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -79,25 +71,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  let lastError: unknown = null;
 
-  for (const model of MODELS) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: body.contents as never,
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      contents: body.contents as never,
+    });
+
+    if (!response.text) {
+      return res.status(502).json({
+        error: `${MODEL} returned no text`,
       });
-
-      if (response.text) {
-        return res.status(200).json({ ok: true, text: response.text, model });
-      }
-    } catch (error) {
-      lastError = error;
     }
-  }
 
-  return res.status(500).json({
-    error: 'All Gemini models failed',
-    detail: lastError instanceof Error ? lastError.message : 'Unknown Gemini error',
-  });
+    return res.status(200).json({ ok: true, text: response.text, model: MODEL });
+  } catch (error) {
+    return res.status(500).json({
+      error: `${MODEL} failed`,
+      detail: error instanceof Error ? error.message : 'Unknown Gemini error',
+    });
+  }
 }

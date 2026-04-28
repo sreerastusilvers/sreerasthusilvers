@@ -17,6 +17,7 @@ import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig } from '@/config/cloudinary';
 export interface Banner {
   id?: string;
   imageUrl: string;
+  mobileImageUrl?: string;
   redirectLink: string;
   order: number;
   status: 'active' | 'inactive';

@@ -5,9 +5,15 @@ export interface ImageInput {
   mimeType: string;
 }
 
-// Helper: build multimodal contents array
+export type HeroOutputFormat = 'desktop-16:9' | 'mobile-4:5' | 'both';
+export type LogoMode = 'auto-contrast' | 'black' | 'white' | 'custom';
+
+type GeminiPart =
+  | { inlineData: { mimeType: string; data: string } }
+  | { text: string };
+
 function buildContents(text: string, images: ImageInput[]) {
-  const parts: any[] = [];
+  const parts: GeminiPart[] = [];
 
   for (const img of images) {
     parts.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
@@ -18,7 +24,6 @@ function buildContents(text: string, images: ImageInput[]) {
   return [{ role: "user" as const, parts }];
 }
 
-// Helper: try each model in order until one succeeds
 async function generateWithFallback(
   contents: string | ReturnType<typeof buildContents>
 ): Promise<string> {
@@ -50,144 +55,164 @@ async function generateWithFallback(
   return payload.text;
 }
 
-const LOGO_WATERMARK_INSTRUCTION = `LOGO RULE — SIMPLE AND ABSOLUTE:
-A brand logo IMAGE FILE is attached. Place it EXACTLY as-is in the final image. Do NOT recreate, redraw, retype, or redesign it in any way. Simply overlay the attached logo image file directly.
+function hasLogos(logoImages?: ImageInput[]) {
+  return !!logoImages && logoImages.length > 0;
+}
 
-- Place the attached logo image as-is — do NOT write any text as a substitute
-- Size: 15-20% of image width (must be clearly visible and readable)
-- Opacity: 80-100% (it should be clearly seen, NOT faded or ghostly)
-- Position: top-left or top-center (prominent brand placement)
-- The logo is an IMAGE FILE — just place it, don't describe it, don't recreate it`;
+function logoModeLabel(mode: LogoMode) {
+  if (mode === 'black') return 'black logo variant';
+  if (mode === 'white') return 'white logo variant';
+  if (mode === 'custom') return 'custom uploaded logo';
+  return 'black and white logo variants for automatic contrast selection';
+}
 
-const PRODUCT_IMAGE_RULE = `JEWELRY IMAGE RULE — SIMPLE AND ABSOLUTE:
-A jewelry product image is attached. Use it EXACTLY as-is in the final image. Do NOT alter, redesign, change, or reimagine the jewelry in any way. Whatever jewelry is in the attached image (necklace, ring, earrings, bangles — whatever it is), place that EXACT piece in the generated image unchanged. Only change the background, lighting, environment, and model around it — the jewelry itself must be identical to the attached image.`;
+function logoInstruction(logoImages?: ImageInput[], logoMode: LogoMode = 'auto-contrast') {
+  if (!hasLogos(logoImages)) {
+    return 'LOGO: Reserve a clean, premium space for the Sreerasthu Silvers brand mark, but do not invent or render a fake logo.';
+  }
 
-// ─── Product + Model Prompt ──────────────────────────────────────────────
+  return `LOGO RULE - CONTRAST-AWARE AND ABSOLUTE:
+Attached logo image file(s) are provided as ${logoModeLabel(logoMode)}. Use the attached logo artwork directly; do NOT redraw it, retype it, convert it into random text, or place it on an opaque block.
+- If both black and white logo variants are attached, choose the variant that is most readable against the final background: white logo on dark/rich backgrounds, black logo on light/bright backgrounds.
+- Preserve the transparent PNG edges. No black box, white box, rectangle, glow blob, or muddy background behind the logo.
+- Size: 12-18% of image width for product images; 10-16% for hero banners. It must be readable but never overpower the jewellery or offer.
+- Position: choose the cleanest safe area with strong contrast, usually top-left or top-center for banners and a corner for product images.
+- Opacity: 100% unless the background is extremely simple; never make the logo faded or hard to read.
+- State exactly in the final prompt: "Place the attached logo image directly; choose black or white version based on background contrast; do not recreate it as text."`;
+}
+
+const NANO_BANANA_PRO_HANDOFF = `NANO BANANA PRO WORKFLOW:
+This prompt is meant for Nano Banana Pro with attached reference images. The generated image must use those attached references as source assets, not as loose inspiration. The prompt must tell Nano Banana Pro exactly what to preserve, what to enhance, and what final ratio/quality to output.`;
+
+const PRODUCT_FIDELITY_RULE = `PRODUCT FIDELITY - THE NON-NEGOTIABLE CORE:
+Use the attached jewellery/product image exactly as provided. Preserve the exact design, shape, proportions, chain/setting, stone positions, engraving, polish, metal color, scale, silhouette, clasp details, defects, and craftsmanship. Do not redesign it, simplify it, add extra stones, remove parts, turn silver into gold, change gemstones, invent a matching set, or replace it with a similar-looking piece. Only improve the scene around it: lighting, camera, model, styling, environment, reflections, shadows, and composition.`;
+
+const REFERENCE_DISCIPLINE_RULE = `REFERENCE DISCIPLINE:
+Study every attached reference carefully. Keep the uploaded product/reference subject real and unchanged, like a professional retouching brief: preserve identity, geometry, materials, and proportions while upgrading the scene to a premium photographed result. If a reference is low quality, use it to preserve the product accurately, then rebuild only the lighting, surroundings, and photographic quality around it.`;
+
+const PHOTOREALISM_RULE = `PHOTOREALISM - MUST LOOK LIKE A REAL CAMERA CAPTURE:
+- Real skin texture if a model appears: visible pores, tiny facial hair, natural moles/freckles, slight skin tone variation, real lip lines, non-perfect symmetry, natural under-eye and cheek texture.
+- Real eyes and hair: believable catchlights from softboxes/windows, individual hair strands, flyaways, imperfect hairline, no CG helmet hair.
+- Real material response: silver has cool-toned specular highlights, fabric weave is visible, stones refract light naturally, shadows contact the surface correctly.
+- Real camera behavior: Canon EOS R5 or Hasselblad-style editorial capture, accurate lens compression, natural depth of field, subtle film grain, true light falloff, no overdone HDR.
+- Real environment: floors, walls, props, flowers, fabric folds, marble, velvet, and reflections must have scale, texture, depth, and natural imperfections.
+- Banned AI tells: plastic skin, wax faces, floating jewellery, impossible shadows, deformed fingers, warped text, random extra jewellery, fake sparkle noise, over-smoothed surfaces, perfect symmetry, digital glow.`;
+
+const ATTIRE_AND_STYLING_RULE = `DYNAMIC ATTIRE AND STYLING - DO NOT DEFAULT TO GREEN SAREE:
+Choose attire based on the uploaded jewellery style and campaign mood. Options include Kanjivaram silk saree, Banarasi saree, handloom drape, bridal lehenga, modern structured gown, velvet blouse, minimalist editorial black/ivory outfit, or contemporary festive styling. The outfit must complement the jewellery and never compete with it. Avoid repeating green saree by default; use emerald or green only when it is clearly the best cultural/compositional choice. Prefer rich, varied palettes such as deep wine, ivory, champagne, sapphire, antique rose, charcoal, royal blue, temple red, pearl white, or muted gold accents while keeping silver jewellery cool-toned and accurate.`;
+
+const LUXURY_ENVIRONMENT_RULE = `WORLD-CLASS ENVIRONMENT:
+Create a real, high-budget luxury photography setting rather than a flat backdrop. Choose one setting that fits the product: editorial studio with sculpted light, palace corridor, temple-inspired architectural detail, marble atelier, velvet/silk styling table, premium boutique interior, garden at golden hour, or cinematic festive set. The environment must have foreground/midground/background depth, natural shadows, physically plausible reflections, and professional art direction.`;
+
+const SILVER_COLOR_RULE = `SILVER JEWELLERY COLOR ANCHOR:
+Sreerasthu Silvers sells 92.5% silver jewellery. Silver must remain cool, luminous, and premium. Do not warm it into yellow gold or bronze. Any gold, maroon, green, or festive colors belong to the set, props, text, or attire only - never to the silver product unless the uploaded reference itself contains those tones.`;
+
+function heroFormatInstruction(format: HeroOutputFormat) {
+  if (format === 'desktop-16:9') {
+    return `OUTPUT FORMAT: Generate one desktop hero banner, 16:9 ratio, 3840x2160 or 4096x2304. Use horizontal composition, generous side safe zones, readable typography, and no cropped product/model face.`;
+  }
+
+  if (format === 'mobile-4:5') {
+    return `OUTPUT FORMAT: Generate one mobile hero banner, 4:5 ratio, 3200x4000 or 4096x5120. Use vertical composition for phone screens, keep all text inside central safe zones, keep the jewellery and model face fully visible, and leave enough breathing room near top/bottom UI crop areas.`;
+  }
+
+  return `OUTPUT FORMAT: Generate TWO separate final banner images from the same premium campaign concept:
+1. Desktop version: 16:9 ratio, 3840x2160 or 4096x2304, horizontal composition with readable text and logo safe zones.
+2. Mobile version: 4:5 ratio, 3200x4000 or 4096x5120, vertical composition with all text, offer, jewellery, model face, and logo inside safe zones.
+Both images must feel like the same campaign, but each must be composed natively for its ratio. Do not simply crop the desktop into mobile.`;
+}
+
+function modelInstruction(includeModel: 'auto' | 'yes' | 'no', festivalOrEvent: string) {
+  if (includeModel === 'yes') {
+    return `MODEL DIRECTION: Include a real-looking Indian model styled for "${festivalOrEvent}". She must look photographed, not generated. Choose pose, expression, attire, makeup, and camera angle based on the jewellery type. The model supports the jewellery; the product remains the hero.`;
+  }
+
+  if (includeModel === 'no') {
+    return `MODEL DIRECTION: No model. Create a breathtaking product-and-design composition using the exact attached jewellery, premium props, typography, fabric, light, and festival elements.`;
+  }
+
+  return `MODEL DECISION: Decide whether model or product-only gives the strongest luxury banner for "${festivalOrEvent}". Do not include a model automatically. Use a model for bridal/emotional/lifestyle scale; choose product-only for collections, offer-led banners, intricate jewellery, or clean premium layouts. Either choice must feel like a real Tanishq/Kalyan/Malabar-level campaign.`;
+}
 
 export async function generateProductModelPrompt(
   productImage: ImageInput,
-  logoImage?: ImageInput
+  logoImages: ImageInput[] = [],
+  logoMode: LogoMode = 'auto-contrast'
 ): Promise<string> {
-  const hasLogo = !!logoImage;
+  const systemPrompt = `You are a world-class AI image prompt engineer and luxury jewellery creative director for Sreerasthu Silvers, a premium 92.5% silver jewellery brand.
 
-  const systemPrompt = `You are a world-class AI image prompt engineer specializing in luxury jewelry advertising photography — think Tanishq, Tiffany & Co, Cartier level campaigns.
+${NANO_BANANA_PRO_HANDOFF}
 
-IMPORTANT — ATTACHED IMAGES:
-- A jewelry product image is attached. Use this EXACT jewelry as-is in the generated image — do NOT alter, redesign, or create different jewelry. Whatever is in the attached image (necklace, ring, earrings, bangles — whatever it is), that EXACT piece must appear unchanged.
-${hasLogo ? '- A brand logo image is attached. Place it EXACTLY as-is — do NOT recreate or redraw it. Just overlay the attached logo file directly. Size: 15-20% of image width, Opacity: 80-100%, Position: top-left or top-center.' : ''}
+ATTACHED IMAGES:
+- Jewellery/product reference: attached first. Preserve it exactly.
+${hasLogos(logoImages) ? `- Logo reference(s): ${logoImages.length} attached logo image(s). ${logoInstruction(logoImages, logoMode)}` : '- No usable logo image may be attached. Do not invent a fake logo.'}
 
-YOUR GOAL: Create a production-ready prompt for a WORLD-CLASS product photoshoot image — luxury brand website and Vogue magazine level.
+Create the final prompt for a WORLD-CLASS product + model jewellery photoshoot.
 
-MANDATORY REQUIREMENTS:
-1. REAL HUMAN MODEL — PHOTOGRAPHED, NOT RENDERED: Feature a stunning Indian woman — the kind you see in Tanishq, Kalyan, or Malabar Gold campaigns. She must look PHOTOGRAPHED by a real camera, NOT generated by AI. Absolutely critical realism markers:
-   - Visible skin pores, fine facial hair, subtle skin imperfections (moles, slight uneven skin tone)
-   - Natural subsurface scattering on skin (light passing through ear edges, fingertips)
-   - Real catchlights in eyes (rectangular/circular reflections of studio softboxes)
-   - Micro-texture on lips (natural lip lines, not smooth plastic)
-   - Individual hair strands with natural flyaways (not perfectly smooth CG hair)
-   - Natural skin shine on forehead, nose bridge, cheekbones (sebum, not digital glow)
-   - Depth of field falloff on shoulders/hair when face is in focus
-   - Film grain / sensor noise consistent with ISO 100-200 on full-frame sensor
-2. EDITORIAL POSE — NOT A PASSPORT PHOTO: The model's pose must be DYNAMIC and EDITORIAL, like a Tanishq or Vogue campaign — NOT stiff and straight-on. Choose the best pose to showcase the attached jewelry:
-   - For NECKLACE/CHOKER: 3/4 profile with chin slightly lifted, one hand near collarbone, slight head tilt to show the piece draped on the neck
-   - For EARRINGS: Head tilted or turned to one side, hair swept back to expose the ear, hand lightly touching jaw or neck
-   - For BANGLES/BRACELETS: Hand raised gracefully near face or resting on shoulder, wrist angled to catch light on the piece
-   - For RINGS: Hand near face with fingers elegantly spread, or resting on collarbone/opposite arm
-   - Gaze: slightly off-camera (3/4 gaze) or looking down with a soft smile — NOT staring directly at camera
-   - Body language: confident, graceful, storytelling — like she's in a moment, not posing for an ID photo
-3. HIGH-FASHION MAKEUP & STYLING — EDITORIAL LEVEL:
-   - FACE: Sculpted contouring on cheekbones, highlighted bridge of nose, luminous DEWY finish (not flat matte). Natural-looking foundation that lets skin texture show through.
-   - EYES: Dramatic but elegant — smokey kohl-lined eyes OR defined winged liner, voluminous lashes (real, not obviously fake), thin kajal on waterline, well-shaped brows
-   - LIPS: Bold lip color that complements the jewelry metal — nude-rose or warm mauve for silver jewelry, warm berry or deep wine for gold-toned pieces. Visible lip gloss/sheen.
-   - HAIR: Styled but with LIFE and MOVEMENT — loose tendrils framing the face, slight wind-blown effect, NOT stiff salon-blowdry. For traditional shoots: elegant updo with fresh jasmine gajra (flowers). For modern: flowing waves with volume.
-   - OUTFIT: Coordinated with jewelry style — rich silk saree/lehenga for traditional pieces, sleek contemporary for modern designs. The outfit COMPLEMENTS, never competes with the jewelry.
-4. THE ATTACHED JEWELRY IS THE HERO: Use the attached jewelry image EXACTLY as-is. Do NOT describe it — just say "use the attached jewelry image unchanged". The model enhances the jewelry.
-5. CAMERA — EDITORIAL DSLR PHOTOGRAPHY: Canon EOS R5 with lens chosen for the composition:
-   - For CLOSE-UP beauty shots (face + jewelry): 85mm f/1.4L at f/2.0 — tight crop, creamy bokeh isolating the model
-   - For 3/4 BODY shots (full necklace display): 70mm f/2.8 — showing more of the styling and jewelry in context
-   - For DRAMATIC angles: slightly LOW angle (shooting up) adds power and glamour; OVER-THE-SHOULDER for earring focus
-   - NEVER shoot straight-on at eye level like a passport photo — always vary the angle
-   - Shallow depth of field with natural bokeh circles (not uniform blur)
-   - Lens vignetting at corners, subtle chromatic aberration on high-contrast edges
-   - Film grain consistent with ISO 100-200 on full-frame sensor
-   - Three-point studio lighting with visible light falloff — key light creating sculpted shadows on face
-   - Specular highlights on jewelry that look like real light reflections, not digital glare
-6. BACKGROUND — RICH AND VARIED (not plain studio backdrop):
-   - Choose a background that tells a STORY and matches the jewelry style:
-   - TRADITIONAL jewelry: flowing silk/velvet drapes in deep jewel tones (emerald, maroon, royal blue), palatial interiors with carved pillars, temple architecture details
-   - MODERN jewelry: clean marble surfaces, architectural elements, soft natural light through windows, minimalist luxury interiors
-   - NATURE/ROMANTIC: garden with bougainvillea flowers, golden hour outdoor light, beach with ocean bokeh, lush green foliage
-   - The background must have DEPTH — foreground blur elements, midground model, soft background — never flat
-7. ASPECT RATIO: 1:1 (4096x4096), 4K quality.
-8. QUALITY: Must be INDISTINGUISHABLE from a real photograph. No plastic skin, no uniform lighting, no perfect symmetry, no CG hair, no digital glow, no unnaturally smooth surfaces.
-9. LOGO: ${hasLogo ? 'State: "Place the attached logo image as-is — do not recreate it. 80-100% opacity, 15-20% width, top-left."' : 'Reserve space for brand watermark.'}
+${PRODUCT_FIDELITY_RULE}
+${REFERENCE_DISCIPLINE_RULE}
+${SILVER_COLOR_RULE}
+${ATTIRE_AND_STYLING_RULE}
+${LUXURY_ENVIRONMENT_RULE}
+${PHOTOREALISM_RULE}
 
-CRITICAL: In the prompt, do NOT try to describe what the jewelry looks like. Simply state "use the attached jewelry image exactly as provided — do not alter it". Same for the logo — "place the attached logo image as-is".
+CAMPAIGN REQUIREMENTS:
+- Output ratio: 1:1 square, 4096x4096, 4K.
+- The image must feel like a real luxury editorial campaign shot by a top photographer, not a generated composite.
+- Select the model pose dynamically from the jewellery type: necklace/choker gets collarbone/neck framing; earrings get hair swept aside and side profile; bangles/rings get elegant hand choreography; anklets get graceful foot/hem composition; sets get balanced 3/4 body framing.
+- Use a dynamic, editorial pose with real gesture and body language. Avoid passport-photo frontality unless it is creatively justified.
+- Use camera/lens choices that match the product: 85mm beauty portrait, 100mm macro detail, 70mm 3/4 editorial, or low-angle glamour. Include physically plausible depth of field and lighting.
+- The attached jewellery must be sharp, correctly scaled, and naturally worn or placed with believable contact shadows.
+- The final prompt must explicitly say to upload and use the attached product reference in Nano Banana Pro.
+${logoInstruction(logoImages, logoMode)}
 
-Generate ONLY the prompt text. No explanations, no notes, no markdown.`;
+Generate ONLY the final Nano Banana Pro prompt text. No markdown, no explanation.`;
 
-  const userMessage = `Create an EDITORIAL product photoshoot prompt — Tanishq/Vogue campaign level. A gorgeous Indian model wearing the EXACT attached jewelry (do NOT change it, use as-is). 
-
-KEY REQUIREMENTS:
-- POSE: Editorial and dynamic — 3/4 profile, slight head tilt, hand near jewelry, gaze slightly off-camera. NOT a stiff passport photo. The pose must SHOWCASE the attached jewelry piece.
-- MAKEUP: High-fashion editorial — sculpted contouring, dramatic kohl-lined eyes, dewy luminous skin, bold lip color. Hair with movement and life (loose tendrils, slight wind), NOT stiff salon-blowdry.
-- CAMERA ANGLE: Choose the most flattering angle for the jewelry — close-up beauty shot, 3/4 body, slightly low angle for glamour. NEVER straight-on at eye level.
-- REALISM: She MUST look ACTUALLY PHOTOGRAPHED with a Canon EOS R5 — visible skin pores, real catchlights, hair flyaways, natural imperfections, DSLR bokeh, film grain. INDISTINGUISHABLE from a real person — NOT AI-looking.
-- BACKGROUND: Rich and story-telling — silk drapes, palatial interiors, garden, or golden hour light. NOT a plain studio backdrop.
-${hasLogo ? '- LOGO: Place the attached logo image as-is (do NOT recreate it). 80-100% opacity, 15-20% width, top-left.' : ''}
-World-class quality for our premium e-commerce website.`;
-
-  const images: ImageInput[] = [productImage];
-  if (logoImage) images.push(logoImage);
+  const userMessage = `Create one premium 1:1 4K product + model prompt for Nano Banana Pro. The uploaded jewellery must remain exactly unchanged. Build a dynamic world-class campaign around it with realistic model, premium attire, luxury environment, exact silver fidelity, and no repetitive green-saree default.`;
 
   return generateWithFallback(
-    buildContents(`${systemPrompt}\n\n${userMessage}`, images)
+    buildContents(`${systemPrompt}\n\n${userMessage}`, [productImage, ...logoImages])
   );
 }
-
-// ─── Studio Product Prompt ───────────────────────────────────────────────
 
 export async function generateProductStudioPrompt(
   productImage: ImageInput,
-  logoImage?: ImageInput
+  logoImages: ImageInput[] = [],
+  logoMode: LogoMode = 'auto-contrast'
 ): Promise<string> {
-  const hasLogo = !!logoImage;
+  const systemPrompt = `You are a world-class prompt engineer for luxury jewellery studio photography: Cartier/Tiffany-level macro product imagery adapted for Sreerasthu Silvers.
 
-  const systemPrompt = `You are a world-class AI image prompt engineer specializing in luxury jewelry studio product photography — Tiffany, Cartier, premium Indian jewelry brand level.
+${NANO_BANANA_PRO_HANDOFF}
 
-IMPORTANT — ATTACHED IMAGES:
-- A jewelry product image is attached. Use this EXACT jewelry as-is — do NOT alter, redesign, or create different jewelry. Whatever is in the attached image, that EXACT piece must appear unchanged.
-${hasLogo ? '- A brand logo image is attached. Place it EXACTLY as-is — do NOT recreate or redraw it. Just overlay the attached logo file. Size: 15-20% of image width, Opacity: 80-100%, Position: top-left or top-center.' : ''}
+ATTACHED IMAGES:
+- Jewellery/product reference: attached first. Preserve it exactly.
+${hasLogos(logoImages) ? `- Logo reference(s): ${logoImages.length} attached logo image(s). ${logoInstruction(logoImages, logoMode)}` : '- No usable logo image may be attached. Do not invent a fake logo.'}
 
-YOUR GOAL: Generate a prompt for the most stunning STUDIO PRODUCT SHOT — product only, no model.
+Create the final prompt for a PRODUCT-ONLY world-class studio photoshoot.
 
-MANDATORY REQUIREMENTS:
-1. PRODUCT-ONLY SHOT: Just the attached jewelry piece — no human model.
-2. DO NOT DESCRIBE THE JEWELRY: Simply state "use the attached jewelry image exactly as provided". Do NOT try to describe what it looks like — that causes the AI to create a different version.
-3. PREMIUM SURFACE: Place it on black velvet, white marble, rose gold silk, or a complementary surface.
-4. CAMERA: Canon EOS R5, Canon RF 100mm f/2.8L Macro, ISO 100, focus stacking. Softbox key + rim light for metal highlights.
-5. RAZOR-SHARP DETAIL: Metal grain, stone facets, engravings — macro-level detail.
-6. LIGHTING: Professional studio lighting, natural metal brilliance, controlled specular highlights.
-7. ASPECT RATIO: 1:1 (4096x4096), 4K.
-8. QUALITY: Ultra realistic camera capture — must look like a real photograph. Combined with professional graphic design quality — clean layout, luxury color grading.
-9. PREMIUM PROPS (optional): Subtle complementary props — flower petal, bokeh sparkles — never distracting.
-10. LOGO: ${hasLogo ? 'State: "Place the attached logo image as-is — 80-100% opacity, 15-20% width, top-left."' : 'Reserve space for watermark.'}
+${PRODUCT_FIDELITY_RULE}
+${REFERENCE_DISCIPLINE_RULE}
+${SILVER_COLOR_RULE}
+${PHOTOREALISM_RULE}
 
-CRITICAL: Do NOT describe the jewelry or logo in the prompt. Just say "use the attached image as-is". Describing them causes the AI to generate its own version.
+STUDIO REQUIREMENTS:
+- No model, no hands, no human body, no mannequin unless explicitly needed for scale. Product-only.
+- Output ratio: 1:1 square, 4096x4096, 4K.
+- Use a premium still-life setup chosen to flatter the uploaded jewellery: black velvet, ivory silk, white/grey marble, smoked acrylic riser, museum plinth, jewellery box, satin folds, brushed stone, or subtle flower petals.
+- Use Canon EOS R5 / Hasselblad-style macro product photography, 100mm macro lens, ISO 100, focus stacking, calibrated white balance, softbox key light, rim light, flags, reflectors, and controlled specular highlights.
+- Preserve every product detail: metal grain, stone facets, engravings, clasps, chain links, bends, surface wear, and exact proportions.
+- Do not add matching pieces, extra gemstones, fake chains, fake sparkle overlays, or text unless logo placement is requested.
+- Make the image look like a real high-end e-commerce/still-life photograph with natural shadows and contact reflections.
+${logoInstruction(logoImages, logoMode)}
 
-Generate ONLY the prompt text. No explanations.`;
+Generate ONLY the final Nano Banana Pro prompt text. No markdown, no explanation.`;
 
-  const userMessage = `Create a premium studio product photography prompt using the EXACT attached jewelry image as-is — do NOT change or redesign it. ${hasLogo ? 'Place the attached logo image as-is (do NOT recreate it). Make it clearly visible — 80-100% opacity, 15-20% width, top-left.' : ''} Luxury e-commerce website quality.`;
-
-  const images: ImageInput[] = [productImage];
-  if (logoImage) images.push(logoImage);
+  const userMessage = `Create one premium 1:1 4K studio product prompt for Nano Banana Pro. Use the uploaded jewellery exactly as-is, no model, no redesigned product, and produce a world-class macro luxury still-life shot.`;
 
   return generateWithFallback(
-    buildContents(`${systemPrompt}\n\n${userMessage}`, images)
+    buildContents(`${systemPrompt}\n\n${userMessage}`, [productImage, ...logoImages])
   );
 }
-
-// ─── Hero Banner Prompt ──────────────────────────────────────────────────
 
 export async function generateHeroSectionPrompt(
   festivalOrEvent: string,
@@ -195,177 +220,66 @@ export async function generateHeroSectionPrompt(
   offerInfo: string,
   bannerHeadline: string,
   includeModel: 'auto' | 'yes' | 'no',
+  outputFormat: HeroOutputFormat = 'both',
   referenceImages?: ImageInput[],
-  logoImage?: ImageInput
+  logoImages: ImageInput[] = [],
+  logoMode: LogoMode = 'auto-contrast'
 ): Promise<string> {
   const hasRef = !!referenceImages && referenceImages.length > 0;
   const refCount = referenceImages?.length || 0;
-  const hasLogo = !!logoImage;
 
-  const modelInstruction = includeModel === 'yes'
-    ? `INCLUDE A MODEL: Yes — feature a stunning Indian woman PHOTOGRAPHED with a REAL DSLR camera. She must look ACTUALLY PHOTOGRAPHED, not AI-rendered. She should be styled head-to-toe for the "${festivalOrEvent}" theme — outfit (saree/lehenga/contemporary matching the occasion), makeup, hair, jewelry, expression all cohesive with the festival. She ENHANCES the banner — she doesn't overpower the jewelry or offer.
+  const systemPrompt = `You are the creative director at India's #1 luxury jewellery advertising agency. You create homepage campaigns for premium jewellery brands and now you are creating a Sreerasthu Silvers hero banner for Nano Banana Pro.
 
-CRITICAL REALISM FOR THE MODEL — she must exhibit ALL of these:
-- Visible skin pores, fine facial hair, subtle skin imperfections (moles, slight uneven skin tone)
-- Real catchlights in eyes (rectangular/circular reflections of studio softboxes)
-- Micro-texture on lips (natural lip lines, not smooth plastic)
-- Individual hair strands with natural flyaways (not perfectly smooth CG hair)
-- Natural skin shine / sebum on forehead, nose bridge, cheekbones
-- Subsurface scattering on ear edges and fingertips
-- DSLR depth of field: face sharp, background/shoulders with natural bokeh falloff
-- Film grain consistent with Canon EOS R5 at ISO 100-200
-- NO plastic skin, NO uniform lighting, NO perfect symmetry, NO CG hair, NO digital glow`
-    : includeModel === 'no'
-      ? `NO MODEL: Product-and-design focused. Use only jewelry pieces, props, textures, and design elements — no human model.`
-      : `MODEL DECISION — GENUINELY YOUR CREATIVE CALL: For "${festivalOrEvent}", decide whether a MODEL or PRODUCT-ONLY composition creates the most VISUALLY STUNNING, PREMIUM result. Both approaches are equally valid and premium — Tanishq uses BOTH extensively:
+${NANO_BANANA_PRO_HANDOFF}
 
-PRODUCT-ONLY compositions are STUNNING when:
-- Showcasing a COLLECTION of multiple jewelry pieces (arrange artistically on silk/velvet/marble/wooden props)
-- The jewelry itself is the visual star — intricate designs, gemstone colors, craftsmanship details
-- You want a CLEAN, editorial, minimalist luxury feel (think: jewelry on rich fabric folds, in an elegant box, draped over a wooden bowl, on petals/stones)
-- Sale/discount banners where the OFFER is the hero, not a person
-- Everyday/casual jewelry collections
+CREATIVE BRIEF:
+- Festival/Event/Offer Type: "${festivalOrEvent}"
+- Banner Headline: ${bannerHeadline ? `Use exactly "${bannerHeadline}"` : `Create a refined 3-7 word headline that includes or clearly references "${festivalOrEvent}"`}
+- Offer Title: "${offerTitle}"
+${offerInfo ? `- Offer Details: "${offerInfo}"` : '- Offer Details: none provided; keep the offer design clean and not cluttered.'}
+- Model Preference: ${includeModel}
+- Output Selection: ${outputFormat}
 
-MODEL compositions work well when:
-- Bridal/wedding themes where showing how jewelry is WORN conveys emotion and aspiration
-- A SINGLE hero piece needs a human to show scale, movement, and lifestyle context
-- The festival theme benefits from human expression and traditional styling (but this is NOT automatic — a product-only Diwali banner with diyas and jewelry can be equally powerful)
+ATTACHED IMAGES:
+${hasRef ? `- ${refCount} product/reference image(s) are attached. Use the exact jewellery/product assets from these images unchanged. If multiple products are attached, include them cohesively without redesigning any piece.` : '- No product image may be attached; create premium 92.5 silver jewellery suitable for the campaign, but do not invent a fake brand logo.'}
+${hasLogos(logoImages) ? `- ${logoImages.length} logo image(s) are attached. ${logoInstruction(logoImages, logoMode)}` : '- No usable logo image may be attached. Reserve a clean brand area but do not invent a fake logo.'}
 
-DO NOT default to including a model. Choose based on what makes the BEST composition for this specific brief.
+${hasRef ? PRODUCT_FIDELITY_RULE : SILVER_COLOR_RULE}
+${REFERENCE_DISCIPLINE_RULE}
+${SILVER_COLOR_RULE}
+${ATTIRE_AND_STYLING_RULE}
+${PHOTOREALISM_RULE}
 
-IF you choose to include a model — she MUST look ACTUALLY PHOTOGRAPHED with a real DSLR, not AI-generated:
-- Visible skin pores, fine facial hair, natural imperfections (moles, uneven skin tone)
-- Real catchlights in eyes reflecting studio softboxes
-- Micro-texture on lips, individual hair strands with flyaways
-- Natural sebum shine on T-zone, subsurface scattering on ear edges
-- DSLR depth of field with natural bokeh, film grain at ISO 100-200
-- NO plastic skin, NO CG hair, NO digital glow, NO uniform lighting
+${heroFormatInstruction(outputFormat)}
 
-IF you choose product-only — make it BREATHTAKING: dramatic fabric textures, beautiful props (wooden bowls, stone surfaces, silk scarves), scattered petals/cultural elements, cinematic lighting that makes the silver jewelry GLOW.`;
+CAMPAIGN ART DIRECTION:
+- Make this a complete publish-ready homepage banner, not a plain product photo with empty space.
+- Use the festival/event as the real visual language: culturally accurate colors, props, flowers, fabric, motifs, and emotional mood.
+- Avoid one-note color defaults. Do not let green dominate every campaign; use green only when culturally/compositionally needed and balance it with silver, ivory, wine, amber, maroon, blue, or neutral luxury tones.
+- Silver jewellery must remain cool-toned, premium, and bright. Do not turn silver into gold.
+- Text must be rendered inside the image with luxury typography: headline, offer title, optional offer details, and a premium CTA such as "SHOP NOW" or "EXPLORE NOW".
+- The offer badge must look premium, not like a cheap sticker. Use refined spacing, strong contrast, and clean hierarchy.
+- Keep all text readable and inside safe zones for the selected ratio. No cropped words, warped letters, or unreadable decorative text.
+- Include logo using the contrast-aware rule above.
 
-  const systemPrompt = `You are the creative director at India's #1 luxury jewelry advertising agency. Your team has created campaigns for Tanishq, Kalyan Jewellers, Malabar Gold — now you're designing a hero banner for "Sreerasthu Silvers", a premium 92.5% pure silver jewelry brand.
+${modelInstruction(includeModel, festivalOrEvent)}
+${LUXURY_ENVIRONMENT_RULE}
 
-${hasRef ? `REFERENCE IMAGES ATTACHED: ${refCount} reference image(s) are attached. Study ALL of them carefully — they show the jewelry pieces, style references, and/or visual direction for this banner. Use the EXACT jewelry shown in the attached images — do NOT change them, do NOT create different jewelry, do NOT substitute with other designs. Whatever jewelry pieces are in the attached images, those EXACT pieces must appear in the banner. Build the banner design, background, text, and layout incorporating ALL attached reference images. The jewelry itself stays unchanged.` : ''}
+FINAL PROMPT MUST INCLUDE:
+1. A clear instruction to attach and use the product/reference images exactly as provided.
+2. A clear instruction to generate the selected ratio(s): ${outputFormat}.
+3. The exact headline/offer requirements.
+4. Product fidelity and silver color fidelity.
+5. Realism rules for model, product, materials, and environment.
+6. Contrast-aware black/white logo placement when logo references are attached.
 
-${hasLogo ? `BRAND LOGO ATTACHED: A logo image file is attached. Simply place it as-is in the banner. ${LOGO_WATERMARK_INSTRUCTION}` : ''}
+Generate ONLY the final Nano Banana Pro prompt text. No markdown, no explanation.`;
 
-═══ THE CREATIVE BRIEF ═══
-
-Festival/Event: "${festivalOrEvent}"
-Offer: "${offerTitle}"
-${offerInfo ? `Details: "${offerInfo}"` : ''}
-Headline: ${bannerHeadline ? `"${bannerHeadline}" (use this EXACT text — it MUST include "${festivalOrEvent}" or reference to it)` : `Create the perfect headline that MUST include the festival/event name "${festivalOrEvent}" — emotionally powerful, elegant, culturally resonant. 3-7 words max. Example: "Akshaya Tritiya: Prosperity Unfolds" or "Diwali Sparkle Collection". The festival name MUST be visible in the headline text.`}
-
-═══ FESTIVAL-SPECIFIC DESIGN DIRECTION ═══
-
-The festival "${festivalOrEvent}" MUST deeply influence EVERY design choice. This is NOT just a label — it defines the entire visual language:
-
-Research and incorporate the REAL cultural elements of this festival:
-- What are its traditional colors? (e.g., Akshaya Tritiya = gold + auspicious yellow/red + mango green; Diwali = deep red + gold + warm amber; Navratri = vibrant multi-colors; Christmas = red + green + silver + snow white; Pongal = rice white + turmeric yellow + sugarcane green)
-- What are its iconic visual symbols? (e.g., Akshaya Tritiya = gold coins, kalash, mango leaves, turmeric, prosperity symbols; Diwali = diyas, rangoli, sparklers, marigolds; Wedding = mandap, flowers, sindoor, mangalsutra; Onam = pookalam, banana leaf)  
-- What is the emotional mood? (e.g., Akshaya Tritiya = prosperity, auspiciousness, new beginnings; Diwali = joy, light, celebration; Wedding = romance, commitment, tradition)
-- What traditional fabrics/textures fit? (e.g., Akshaya Tritiya = rich Kanjivaram silk in gold/red; Diwali = velvet in deep maroon; Wedding = bridal pink/red silk)
-
-WEAVE these elements into the banner naturally — they should feel like an integral part of the design, not pasted on top. Like how Tanishq's Akshaya Tritiya banners show gold alongside mango leaves, traditional motifs, and a warm prosperity-filled atmosphere.
-
-═══ TYPOGRAPHY & TEXT (MUST BE RENDERED IN THE IMAGE) ═══
-
-The banner text is NOT overlaid later — it is PART of the generated image:
-
-1. HEADLINE: ${bannerHeadline ? `"${bannerHeadline}"` : `A culturally resonant, emotionally powerful tagline for "${festivalOrEvent}"`}
-   - Choose typography that MATCHES the festival mood:
-     • Traditional festival (Akshaya Tritiya, Diwali, Navratri) → Elegant serif or decorative Devanagari-inspired English serif
-     • Romantic/celebration (Valentine's, Wedding) → Flowing script/calligraphy
-     • Modern sale (Flash Sale, Clearance) → Bold clean sans-serif
-     • Nature/seasonal → Organic script with delicate serifs
-   - Size it LARGE — it should be one of the first things the eye sees
-   - Color must contrast beautifully with the background
-
-2. OFFER BADGE: "${offerTitle}" designed as a PREMIUM visual element:
-   - The number (e.g., "30%") should be LARGE and bold, "OFF" smaller
-   - Frame it in an elegant badge/shape — gold border, decorative frame, or subtle background panel
-   - It must feel luxury, NEVER cheap or cluttered
-   ${offerInfo ? `- "${offerInfo}" in smaller elegant text below the badge` : ''}
-
-3. CTA BUTTON: "SHOP NOW" or "EXPLORE NOW" — a clean, premium rectangular button that matches the color palette
-
-4. LAYOUT: Position text wherever creates the BEST composition — could be right side (like Tanishq often does), left side, center, or split. The text area needs enough contrast for readability — use soft gradient overlays, darker regions, or naturally lighter areas.
-
-═══ JEWELRY (THE HERO) ═══
-
-${hasRef ? `The attached jewelry reference images ARE the heroes. Use ALL the EXACT jewelry pieces as-is — do NOT describe new jewelry, do NOT create different pieces, do NOT change any designs. Place ALL the attached jewelry pieces prominently in the banner. They can be: worn by a model, artistically arranged on fabric/props, or displayed as the centerpiece — but they must be the SAME jewelry from the attached images, unchanged. Arrange them in an aesthetically pleasing composition.` : `Silver jewelry (92.5 pure silver) MUST be the hero of this banner:
-- Feature beautiful silver jewelry suitable for "${festivalOrEvent}"
-- The jewelry can be: worn by a model, artistically arranged as props (on silk/velvet/marble), or displayed as the centerpiece
-- The silver metal should GLOW with beautiful lighting — catch the shimmer and brilliance`}
-- Light the jewelry beautifully — catch every shimmer and metallic gleam
-
-═══ COMPOSITION & DESIGN ═══
-
-${modelInstruction}
-
-BACKGROUND: Rich, textured, festival-appropriate:
-- Flowing fabric (silk, velvet, satin) in colors that match "${festivalOrEvent}"
-- Cultural props and elements specific to the festival  
-- Natural elements (flowers, petals, leaves) if seasonally appropriate
-- Premium textures (marble, gold leaf, wood) for luxury feel
-- Depth and dimension — foreground elements, midground jewelry, soft background
-
-COLOR PALETTE: Derive ENTIRELY from "${festivalOrEvent}" cultural context. Every color must feel intentional. The palette should instantly communicate the festival feeling before reading any text.
-
-LIGHTING: Warm, cinematic, atmospheric. Volumetric light rays where appropriate. Subtle sparkle on the jewelry. Professional 3-point lighting if a model is included. The light should enhance the festive mood.
-
-═══ TECHNICAL SPECS ═══
-
-- Ultra-wide: 1920×600 (3.2:1) or 3840×1080 (16:9) hero banner
-- 4K quality — shot on Canon EOS R5 with appropriate lens for the composition
-- PHOTOREALISM IS NON-NEGOTIABLE — the image must be INDISTINGUISHABLE from a real photograph:
-  • If a model is included: visible skin pores, fine facial hair, natural moles/imperfections, real catchlights in eyes reflecting studio softboxes, lip micro-texture, individual hair strands with flyaways, natural sebum shine on T-zone, subsurface scattering on ear edges, natural skin color variation
-  • DSLR camera characteristics: shallow depth of field with natural bokeh circles, lens vignetting at corners, subtle chromatic aberration, film grain (ISO 100-200 on full-frame sensor), natural light falloff from source
-  • Real material textures: fabric weave visible on saree/outfit, real metal reflections on jewelry (not digital glare), natural shadow softness based on light distance
-  • BANNED AI TELLS: No plastic/smooth skin, no uniform lighting, no perfect facial symmetry, no CG hair, no digital glow, no unnaturally smooth surfaces, no overdone HDR look
-- Professional graphic design quality — clean typography, balanced layout, luxury color grading
-- Must look like a REAL Tanishq/Kalyan luxury advertisement — photographed by a top photographer, styled by a professional team, designed by a senior art director
-${hasRef ? `- Match the quality level and design sophistication of the attached references. All ${refCount} reference image(s) must be incorporated.` : ''}
-
-═══ LOGO PLACEMENT ═══
-
-${hasLogo ? `The attached logo image must appear clearly in the banner:
-- Simply place the attached logo image file directly — do NOT recreate or redraw it
-- Position: top-left or top-center (prominent, like Tanishq places their logo)
-- Size: 15-20% of banner width — it must be CLEARLY VISIBLE and readable
-- Opacity: 80-100% — the logo should be bold and clear, NOT faded
-- State: "Place the attached logo image exactly as-is — do not recreate it as text"` : 'Reserve a space for the brand logo watermark.'}
-
-═══ CRITICAL RULES ═══
-
-1. This is a COMPLETE, PUBLISH-READY banner — not a photo with empty space
-2. Text, imagery, offers, and branding are all ONE inseparable design
-3. The festival theme must be DEEPLY felt, not just surface decoration
-4. The festival/event name "${festivalOrEvent}" MUST appear as visible text somewhere in the banner (headline or as a design element)
-5. ${hasLogo ? 'LOGO: Just place the attached logo image as-is — do NOT write brand name in a font' : ''}
-6. ${hasRef ? `JEWELRY: Use ALL ${refCount} attached jewelry image(s) EXACTLY as-is — do NOT create different jewelry` : 'Jewelry is always the HERO'}
-7. Do NOT describe or recreate attached images — simply USE them unchanged
-8. PHOTOREALISM: The model (if any) must look ACTUALLY PHOTOGRAPHED with a real DSLR — visible pores, real catchlights, hair flyaways, natural imperfections, film grain, bokeh. NO plastic skin, NO CG hair, NO digital glow.
-
-Generate ONLY the prompt text. No explanations, no markdown, no notes. Ready to paste.`;
-
-  const userMessage = `Create the ultimate hero banner for Sreerasthu Silvers:
-
-Theme: ${festivalOrEvent}
-Headline: ${bannerHeadline || '(Create a stunning one)'}
-Offer: "${offerTitle}" ${offerInfo ? `— ${offerInfo}` : ''}
-Model: ${includeModel === 'auto' ? 'Your creative call — choose model OR product-only, whichever makes the BEST composition. Both are equally premium (Tanishq uses both). Do NOT default to a model.' : includeModel === 'yes' ? 'Yes, include a model' : 'No model'}
-
-This goes LIVE on our homepage. It must be Tanishq-campaign quality — complete with beautiful typography rendered in the image, silver jewelry as the hero, festival-accurate cultural elements for "${festivalOrEvent}", a premium offer badge, and a CTA button. One cohesive luxury composition.
-
-PHOTOREALISM REMINDER: If a model is included, she MUST look ACTUALLY PHOTOGRAPHED with a real DSLR camera — real skin pores, real catchlights in eyes, natural hair flyaways, subtle skin imperfections (moles, uneven tone), DSLR bokeh and film grain. The entire image must be INDISTINGUISHABLE from a real photograph. NO plastic skin, NO CG hair, NO digital glow.
-
-${hasRef ? `REMINDER: ALL ${refCount} attached jewelry/reference image(s) must appear EXACTLY as-is — do NOT change them or create different jewelry. Study all attached images and incorporate them into one cohesive banner design.` : ''}
-${hasLogo ? 'REMINDER: The attached logo must appear EXACTLY as-is — just place the image file, do NOT redraw or recreate it. Make it clearly visible (80-100% opacity, 15-20% width).' : ''}`;
+  const userMessage = `Create the ultimate Sreerasthu Silvers hero banner prompt for Nano Banana Pro. Theme: ${festivalOrEvent}. Headline: ${bannerHeadline || 'AI creates one'}. Offer: ${offerTitle}${offerInfo ? ` - ${offerInfo}` : ''}. Output: ${outputFormat}. Use all attached product/reference images exactly as-is and create a world-class luxury advertisement with realistic photography, premium typography, safe zones, and contrast-aware logo handling.`;
 
   const images: ImageInput[] = [];
   if (referenceImages) images.push(...referenceImages);
-  if (logoImage) images.push(logoImage);
+  images.push(...logoImages);
 
   return generateWithFallback(
     images.length > 0
@@ -374,94 +288,87 @@ ${hasLogo ? 'REMINDER: The attached logo must appear EXACTLY as-is — just plac
   );
 }
 
-// ─── Custom Prompt Generation ────────────────────────────────────────────
-
 export async function generateCustomImagePrompt(
   customRequirement: string,
   imageType: string,
   referenceImage?: ImageInput,
-  logoImage?: ImageInput
+  logoImages: ImageInput[] = [],
+  logoMode: LogoMode = 'auto-contrast'
 ): Promise<string> {
-  const hasRef = !!referenceImage;
-  const hasLogo = !!logoImage;
+  const systemPrompt = `You are an expert AI image prompt engineer for Sreerasthu Silvers, a premium 92.5% silver jewellery brand.
 
-  const systemPrompt = `You are an expert AI image prompt engineer for "Sreerasthu Silvers", a premium silver jewelry brand.
+${NANO_BANANA_PRO_HANDOFF}
+
+CUSTOM REQUEST:
+- Image type: ${imageType}
+- User requirement: "${customRequirement}"
 
 ATTACHED IMAGES:
-${hasRef ? '- A reference image is attached. Use it EXACTLY as-is — do NOT alter, redesign, or reimagine it. Simply say "use the attached reference image unchanged" in the prompt. Do NOT describe what it looks like.' : ''}
-${hasLogo ? '- A brand logo image is attached. Place it as-is — do NOT recreate or redraw. Size: 15-20% width, Opacity: 80-100%, Position: top-left.' : ''}
+${referenceImage ? '- A product/reference image is attached. Use it exactly as provided and preserve the subject/product without redesigning it.' : '- No product/reference image is attached.'}
+${hasLogos(logoImages) ? `- Logo reference(s): ${logoImages.length} attached image(s). ${logoInstruction(logoImages, logoMode)}` : '- No usable logo image may be attached. Do not invent a fake logo.'}
+
+${referenceImage ? PRODUCT_FIDELITY_RULE : SILVER_COLOR_RULE}
+${REFERENCE_DISCIPLINE_RULE}
+${PHOTOREALISM_RULE}
+${LUXURY_ENVIRONMENT_RULE}
+${logoInstruction(logoImages, logoMode)}
 
 Rules:
-- Real DSLR photograph look, 4K, photorealistic, professional lighting
-- Premium luxury aesthetic
-- Camera settings, lighting details, composition
-- Image type: ${imageType}
-- CRITICAL: Do NOT describe attached images in the prompt. Simply state "use the attached image as-is". Describing them causes AI to generate different versions.
+- The user's custom requirement is the creative direction, but product/reference fidelity and photorealism are mandatory.
+- Use real camera, real materials, real lighting, believable scale, and premium jewellery art direction.
+- If this is a banner/hero/social post, include safe text areas, readable typography, and premium layout.
+- If this is product photography, keep jewellery/product as the hero and avoid distracting props.
 
-Generate ONLY the prompt text. No explanations.`;
+Generate ONLY the final Nano Banana Pro prompt text. No markdown, no explanation.`;
 
   const images: ImageInput[] = [];
   if (referenceImage) images.push(referenceImage);
-  if (logoImage) images.push(logoImage);
+  images.push(...logoImages);
 
   return generateWithFallback(
     images.length > 0
-      ? buildContents(`${systemPrompt}\n\nCustom Requirement: ${customRequirement}`, images)
-      : `${systemPrompt}\n\nCustom Requirement: ${customRequirement}`
+      ? buildContents(systemPrompt, images)
+      : systemPrompt
   );
 }
-
-// ─── Product + Model Variation Prompt ────────────────────────────────────
 
 export async function generateVariationPrompt(
   originalPrompt: string,
   productImage: ImageInput,
-  logoImage?: ImageInput
+  logoImages: ImageInput[] = [],
+  logoMode: LogoMode = 'auto-contrast'
 ): Promise<string> {
-  const hasLogo = !!logoImage;
-
-  const systemPrompt = `You are a world-class AI image prompt engineer. You have already created one product photoshoot prompt (shown below). Now create a VARIATION of that same photoshoot with DIFFERENT:
-
-- Camera angle (close-up, wide shot, 3/4 angle, overhead, low angle, profile, back-angle showing jewelry from behind, etc.)
-- Model pose (different arm position, head tilt, different expression, looking away, looking down at jewelry, candid moment, etc.)
-- Composition (different framing, different crop, jewelry positioned differently in frame)
-
-BUT KEEP THE SAME:
-- Background/environment (same setting, same overall mood)
-- Model (same person, same makeup, same outfit)
-- Jewelry (use the attached jewelry image EXACTLY as-is — unchanged)
-- Lighting mood (same overall lighting feel)
-- Quality level (same camera, same 4K, same DSLR look)
-${hasLogo ? '- Logo placement (place the attached logo image as-is, 80-100% opacity, 15-20% width, top-left)' : ''}
+  const systemPrompt = `You are a world-class AI image prompt engineer for Nano Banana Pro. Create a new standalone variation of the existing product + model jewellery photoshoot prompt.
 
 ORIGINAL PROMPT:
 """
 ${originalPrompt}
 """
 
-Generate a COMPLETE new prompt (not a modification instruction). It should be a standalone prompt ready to paste. Choose a DRAMATICALLY different angle/pose than the original — make it feel like a different shot from the same photoshoot session.
+VARIATION REQUIREMENTS:
+- Keep the exact uploaded jewellery unchanged.
+- Keep the same luxury campaign quality and product fidelity.
+- Change the camera angle, crop, model pose, expression, hand placement, and composition enough to feel like a different shot from the same world-class session.
+- Do not default to green saree. Choose attire and palette dynamically based on the jewellery and original mood.
+- Preserve the same general brand mood unless the original prompt was weak; improve realism and premium art direction where needed.
+${PRODUCT_FIDELITY_RULE}
+${PHOTOREALISM_RULE}
+${logoInstruction(logoImages, logoMode)}
 
-CRITICAL: Do NOT describe what the jewelry looks like. Just say "use the attached jewelry image exactly as-is". Same for logo — "place the attached logo image as-is".
+Generate ONLY the complete replacement Nano Banana Pro prompt. No markdown, no explanation.`;
 
-Generate ONLY the prompt text. No explanations.`;
-
-  const userMessage = `Create a variation of the above photoshoot with a completely different camera angle and model pose, but same background environment. Use the attached jewelry image EXACTLY as-is. This should feel like a different shot from the same session.`;
-
-  const images: ImageInput[] = [productImage];
-  if (logoImage) images.push(logoImage);
+  const userMessage = `Create a different angle/pose variation for the uploaded jewellery. Product must remain exactly unchanged. Output should still be 1:1 4K world-class realistic jewellery campaign photography.`;
 
   return generateWithFallback(
-    buildContents(`${systemPrompt}\n\n${userMessage}`, images)
+    buildContents(`${systemPrompt}\n\n${userMessage}`, [productImage, ...logoImages])
   );
 }
-
-// ─── Refine / Modify Prompt ──────────────────────────────────────────────
 
 export async function refinePrompt(
   currentPrompt: string,
   refinementInstruction: string
 ): Promise<string> {
-  const systemPrompt = `You are a world-class AI image prompt engineer. A prompt has already been generated, and the user wants to MODIFY it based on their feedback.
+  const systemPrompt = `You are a world-class AI image prompt engineer. A Nano Banana Pro prompt has already been generated, and the user wants to modify it.
 
 CURRENT PROMPT:
 """
@@ -471,15 +378,9 @@ ${currentPrompt}
 USER'S REFINEMENT REQUEST:
 "${refinementInstruction}"
 
-Apply the user's requested changes to the prompt. Keep everything else the same — only change what the user asked for. Output the COMPLETE updated prompt (not just the changes).
+Apply the requested change while preserving all product/reference fidelity, Nano Banana Pro attachment instructions, ratio instructions, realism rules, silver color accuracy, and logo contrast rules. Output the complete updated prompt, not a patch note.
 
-IMPORTANT RULES:
-- Keep all "use the attached image as-is" instructions unchanged
-- Keep all "do not alter/redesign" instructions unchanged  
-- Keep the same quality level, camera settings, and technical specs
-- Only modify what the user specifically asked for
-
-Generate ONLY the refined prompt text. No explanations, no "Here's the updated prompt:", no markdown.`;
+Generate ONLY the refined prompt text. No explanations, no markdown.`;
 
   return generateWithFallback(systemPrompt);
 }

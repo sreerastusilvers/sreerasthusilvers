@@ -26,6 +26,8 @@ import {
   generateVariationPrompt,
   refinePrompt,
   type ImageInput,
+  type HeroOutputFormat,
+  type LogoMode,
 } from '@/services/geminiService';
 import {
   savePromptToHistory,
@@ -62,6 +64,10 @@ async function urlToImageInput(url: string): Promise<ImageInput> {
   const res = await fetch(url);
   const blob = await res.blob();
   return fileToImageInput(new File([blob], 'logo.png', { type: blob.type }));
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 // ─── Drop Zone Component ─────────────────────────────────────────────────
@@ -248,6 +254,7 @@ const AdminImagePrompts = () => {
   const [offerInfo, setOfferInfo] = useState('');
   const [bannerHeadline, setBannerHeadline] = useState('');
   const [includeModel, setIncludeModel] = useState<'auto' | 'yes' | 'no'>('auto');
+  const [heroOutputFormat, setHeroOutputFormat] = useState<HeroOutputFormat>('both');
 
   // Custom form state
   const [customRequirement, setCustomRequirement] = useState('');
@@ -258,22 +265,37 @@ const AdminImagePrompts = () => {
   const [productPreview, setProductPreview] = useState('');
   const [logoImage, setLogoImage] = useState<ImageInput | null>(null);
   const [logoPreview, setLogoPreview] = useState('');
+  const [logoMode, setLogoMode] = useState<LogoMode>('auto-contrast');
+  const [blackLogoImage, setBlackLogoImage] = useState<ImageInput | null>(null);
+  const [blackLogoPreview, setBlackLogoPreview] = useState('');
+  const [whiteLogoImage, setWhiteLogoImage] = useState<ImageInput | null>(null);
+  const [whiteLogoPreview, setWhiteLogoPreview] = useState('');
   const [referenceImage, setReferenceImage] = useState<ImageInput | null>(null);
   const [referencePreview, setReferencePreview] = useState('');
   // Hero multi-image state
   const [heroImages, setHeroImages] = useState<ImageInput[]>([]);
   const [heroPreviews, setHeroPreviews] = useState<string[]>([]);
 
-  // Auto-load logo
+  // Auto-load contrast-aware logo variants
   useEffect(() => {
-    urlToImageInput('/logo-new.png')
-      .then((img) => {
-        setLogoImage(img);
-        setLogoPreview('/logo-new.png');
-      })
-      .catch(() => {
-        // logo-new.png not found, user can upload manually
-      });
+    Promise.allSettled([
+      urlToImageInput('/black_logo.png'),
+      urlToImageInput('/white_logo.png'),
+      urlToImageInput('/logo-new.png'),
+    ]).then(([blackResult, whiteResult, fallbackResult]) => {
+      if (blackResult.status === 'fulfilled') {
+        setBlackLogoImage(blackResult.value);
+        setBlackLogoPreview('/black_logo.png');
+      } else if (fallbackResult.status === 'fulfilled') {
+        setBlackLogoImage(fallbackResult.value);
+        setBlackLogoPreview('/logo-new.png');
+      }
+
+      if (whiteResult.status === 'fulfilled') {
+        setWhiteLogoImage(whiteResult.value);
+        setWhiteLogoPreview('/white_logo.png');
+      }
+    });
   }, []);
 
   // Subscribe to Firestore prompt history (persistent across sessions)
@@ -329,7 +351,45 @@ const AdminImagePrompts = () => {
     const img = await fileToImageInput(file);
     setLogoImage(img);
     setLogoPreview(URL.createObjectURL(file));
+    setLogoMode('custom');
   };
+
+  const getLogoImages = useCallback((): ImageInput[] => {
+    if (logoMode === 'black') {
+      return blackLogoImage ? [blackLogoImage] : logoImage ? [logoImage] : [];
+    }
+
+    if (logoMode === 'white') {
+      return whiteLogoImage ? [whiteLogoImage] : logoImage ? [logoImage] : [];
+    }
+
+    if (logoMode === 'custom') {
+      return logoImage ? [logoImage] : [];
+    }
+
+    const contrastLogos = [blackLogoImage, whiteLogoImage].filter(Boolean) as ImageInput[];
+    return contrastLogos.length > 0 ? contrastLogos : logoImage ? [logoImage] : [];
+  }, [blackLogoImage, logoImage, logoMode, whiteLogoImage]);
+
+  const activeLogoPreview = logoMode === 'white'
+    ? whiteLogoPreview
+    : logoMode === 'black'
+      ? blackLogoPreview
+      : logoMode === 'custom'
+        ? logoPreview
+        : blackLogoPreview || whiteLogoPreview || logoPreview;
+
+  const activeLogoCount = getLogoImages().length;
+
+  const activeLogoStatus = activeLogoCount === 0
+    ? 'No logo loaded. Add black_logo.png / white_logo.png in public or upload a custom logo.'
+    : logoMode === 'auto-contrast'
+      ? `${activeLogoCount} logo reference${activeLogoCount > 1 ? 's' : ''} active — prompts will choose black or white based on the generated background.`
+      : logoMode === 'black'
+        ? 'Black logo active — prompts will use it on light or high-contrast backgrounds.'
+        : logoMode === 'white'
+          ? 'White logo active — prompts will use it on dark or rich backgrounds.'
+          : 'Custom logo active — prompts will place the uploaded mark directly without recreating it.';
 
   const tabs = [
     { id: 'product-model' as PromptCategory, label: 'Product + Model', icon: Gem, description: 'Jewelry on celebrity-level model' },
@@ -354,6 +414,7 @@ const AdminImagePrompts = () => {
     try {
       let prompt = '';
       let inputs: Record<string, string> = {};
+      const activeLogoImages = getLogoImages();
 
       switch (activeTab) {
         case 'product-model':
@@ -363,9 +424,9 @@ const AdminImagePrompts = () => {
             return;
           }
           prompt = await generateProductModelPrompt(
-            productImage, logoImage || undefined
+            productImage, activeLogoImages, logoMode
           );
-          inputs = { type: 'Product + Model' };
+          inputs = { type: 'Product + Model', logoMode };
           break;
 
         case 'product-studio':
@@ -375,9 +436,9 @@ const AdminImagePrompts = () => {
             return;
           }
           prompt = await generateProductStudioPrompt(
-            productImage, logoImage || undefined
+            productImage, activeLogoImages, logoMode
           );
-          inputs = { type: 'Studio Product' };
+          inputs = { type: 'Studio Product', logoMode };
           break;
 
         case 'hero-section':
@@ -393,19 +454,19 @@ const AdminImagePrompts = () => {
           }
           prompt = await generateHeroSectionPrompt(
             festivalOrEvent, offerTitle, offerInfo,
-            bannerHeadline || '', includeModel,
-            heroImages.length > 0 ? heroImages : undefined, logoImage || undefined
+            bannerHeadline || '', includeModel, heroOutputFormat,
+            heroImages.length > 0 ? heroImages : undefined, activeLogoImages, logoMode
           );
-          inputs = { festivalOrEvent, offerTitle, offerInfo, bannerHeadline, includeModel };
+          inputs = { festivalOrEvent, offerTitle, offerInfo, bannerHeadline, includeModel, heroOutputFormat, logoMode };
           break;
 
         case 'custom':
           if (!customRequirement.trim()) { toast.error('Please describe your requirement'); setLoading(false); return; }
           prompt = await generateCustomImagePrompt(
             customRequirement, customImageType,
-            referenceImage || productImage || undefined, logoImage || undefined
+            referenceImage || productImage || undefined, activeLogoImages, logoMode
           );
-          inputs = { customRequirement, customImageType };
+          inputs = { customRequirement, customImageType, logoMode };
           break;
       }
 
@@ -429,9 +490,9 @@ const AdminImagePrompts = () => {
       }).catch((e) => console.warn('[promptHistory] save failed:', e));
 
       toast.success('Prompt generated successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Gemini API error:', error);
-      toast.error(error?.message || 'Failed to generate prompt. Please try again.');
+      toast.error(getErrorMessage(error, 'Failed to generate prompt. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -473,8 +534,8 @@ const AdminImagePrompts = () => {
       setHistory(prev => [newEntry, ...prev].slice(0, 20));
       savePromptToHistory({ category: activeTab, prompt: refined, inputs: { type: 'Refined' } })
         .catch((e) => console.warn('[promptHistory] save failed:', e));
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to refine prompt');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to refine prompt'));
     } finally {
       setRefining(false);
     }
@@ -484,7 +545,7 @@ const AdminImagePrompts = () => {
     if (!generatedPrompt || !productImage) return;
     setVariationLoading(true);
     try {
-      const variation = await generateVariationPrompt(generatedPrompt, productImage, logoImage || undefined);
+      const variation = await generateVariationPrompt(generatedPrompt, productImage, getLogoImages(), logoMode);
       setGeneratedPrompt(variation);
       toast.success('Variation generated — different angle & pose, same background!');
       const newEntry: GeneratedPrompt = {
@@ -497,8 +558,8 @@ const AdminImagePrompts = () => {
       setHistory(prev => [newEntry, ...prev].slice(0, 20));
       savePromptToHistory({ category: 'product-model', prompt: variation, inputs: { type: 'Variation' } })
         .catch((e) => console.warn('[promptHistory] save failed:', e));
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to generate variation');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to generate variation'));
     } finally {
       setVariationLoading(false);
     }
@@ -766,6 +827,33 @@ const AdminImagePrompts = () => {
                     ))}
                   </div>
                 </div>
+                <div>
+                  <label className={labelStyles}>Hero Output Format</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: 'desktop-16:9', label: 'Desktop', desc: '16:9' },
+                      { value: 'mobile-4:5', label: 'Mobile', desc: '4:5' },
+                      { value: 'both', label: 'Both', desc: '16:9 + 4:5' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setHeroOutputFormat(opt.value)}
+                        className={`text-center px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+                          heroOutputFormat === opt.value
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                            : 'border-[#F5EFE6] text-gray-500 hover:border-amber-400 hover:text-amber-700'
+                        }`}
+                      >
+                        <div>{opt.label}</div>
+                        <div className={`text-[10px] font-normal mt-0.5 ${heroOutputFormat === opt.value ? 'text-amber-100' : 'text-gray-400'}`}>{opt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Mobile banners use the homepage's 4:5 crop; Both asks Nano Banana Pro for two native campaign outputs.
+                  </p>
+                </div>
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
                   <p className="text-xs text-amber-800 font-semibold">Complete Banner Design</p>
                   <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
@@ -775,7 +863,7 @@ const AdminImagePrompts = () => {
                     <li>SHOP NOW / CTA button included in the design</li>
                     <li>Logo placed where it fits best (not always bottom-right)</li>
                     <li>AI decides model vs product-only — both equally premium</li>
-                    <li>Ultra-wide 4K, luxury aesthetic, real DSLR camera quality</li>
+                    <li>Desktop 16:9, mobile 4:5, or both — luxury aesthetic, real DSLR camera quality</li>
                   </ul>
                 </div>
               </>
@@ -849,18 +937,42 @@ const AdminImagePrompts = () => {
               <Shield className="h-4 w-4 text-amber-600" />
               <h3 className="font-semibold text-gray-900 text-sm">Brand Watermark</h3>
             </div>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {([
+                { value: 'auto-contrast', label: 'Auto Contrast' },
+                { value: 'black', label: 'Black Logo' },
+                { value: 'white', label: 'White Logo' },
+                { value: 'custom', label: 'Custom' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setLogoMode(opt.value)}
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                    logoMode === opt.value
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                      : 'border-[#F5EFE6] text-gray-500 hover:border-amber-400 hover:text-amber-700'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {activeLogoPreview && logoMode !== 'custom' && (
+              <div className="mb-3 rounded-lg border border-[#F5EFE6] bg-gray-50 p-3">
+                <img src={activeLogoPreview} alt="selected logo" className="h-12 w-full object-contain" />
+              </div>
+            )}
             <ImageDropZone
-              label=""
+              label="Custom Logo Upload"
               image={logoImage}
               preview={logoPreview}
               onSelect={handleLogoSelect}
               onClear={() => { setLogoImage(null); setLogoPreview(''); }}
-              hint="Upload your brand logo — auto-loaded from logo-new.png"
+              hint="Optional. Auto mode uses black_logo.png + white_logo.png and lets Nano Banana Pro choose contrast."
             />
             <p className="text-[10px] text-gray-400 mt-2">
-              {logoImage
-                ? 'Logo loaded — prompts will auto-select best placement & color for each image composition.'
-                : 'No logo loaded. Upload one or ensure logo-new.png exists in public/.'}
+              {activeLogoStatus}
             </p>
           </div>
         </div>
@@ -947,11 +1059,16 @@ const AdminImagePrompts = () => {
                       </Button>
                     )}
                     <span className="text-xs text-gray-400">
-                      Copy prompt → paste into Midjourney / DALL-E 3 / Flux
+                      Copy prompt → paste into Nano Banana Pro with the same reference images
                     </span>
-                    {(productImage || referenceImage) && (
+                    {(productImage || referenceImage || heroImages.length > 0) && (
                       <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-xs font-medium">
-                        Attach your uploaded image alongside the prompt
+                        Attach product/reference images alongside the prompt
+                      </span>
+                    )}
+                    {activeTab === 'hero-section' && heroOutputFormat === 'both' && (
+                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                        Expects two outputs: desktop 16:9 + mobile 4:5
                       </span>
                     )}
                   </div>
@@ -1011,15 +1128,15 @@ const AdminImagePrompts = () => {
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">2</span>
-                <span><strong>Copy</strong> the prompt and paste into Midjourney/DALL-E/Flux. <strong>Attach the same jewelry image</strong> as reference.</span>
+                <span><strong>Copy</strong> the prompt and paste into Nano Banana Pro. <strong>Attach the same jewelry and logo references</strong> alongside it.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">3</span>
-                <span>The prompt says <strong>"do not alter the product/logo"</strong> — AI tools will preserve your originals and only enhance the scene.</span>
+                <span>The prompt says <strong>"do not alter the product/logo"</strong> — Nano Banana Pro should preserve originals and enhance only the scene.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">4</span>
-                <span>Your <strong>logo watermark</strong> is auto-loaded. Prompt auto-selects best placement & color for each composition.</span>
+                <span>Your <strong>logo watermark</strong> can use black or white variants. Auto Contrast asks the prompt to choose based on background readability.</span>
               </div>
             </div>
           </div>

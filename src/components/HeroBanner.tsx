@@ -20,6 +20,9 @@ const HeroBanner = () => {
   const [transitionsEnabled, setTransitionsEnabled] = useState(true);
   const preloadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
 
+  const getBannerImageSources = (banner: Banner) =>
+    [banner.imageUrl, banner.mobileImageUrl].filter((value): value is string => Boolean(value));
+
   useEffect(() => {
     const unsubscribe = subscribeToActiveBanners(
       (activeBanners) => {
@@ -39,28 +42,36 @@ const HeroBanner = () => {
       setImagesReady(true);
       return;
     }
-    let loadedCount = 0;
-    const total = banners.length;
-    banners.forEach((banner) => {
-      if (preloadedImages.current.has(banner.imageUrl)) {
-        loadedCount++;
-        if (loadedCount >= total) setImagesReady(true);
-        return;
-      }
-      const img = new Image();
-      img.onload = () => {
-        preloadedImages.current.set(banner.imageUrl, img);
-        loadedCount++;
-        if (loadedCount >= total) setImagesReady(true);
-      };
-      img.onerror = () => {
-        loadedCount++;
-        if (loadedCount >= total) setImagesReady(true);
-      };
-      img.src = banner.imageUrl;
+    setImagesReady(false);
+    let cancelled = false;
+    const urls = [...new Set(banners.flatMap(getBannerImageSources))];
+    if (urls.length === 0) {
+      setImagesReady(true);
+      return;
+    }
+
+    Promise.allSettled(
+      urls.map((url) => {
+        if (preloadedImages.current.has(url)) return Promise.resolve();
+        return new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            preloadedImages.current.set(url, img);
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = url;
+        });
+      })
+    ).then(() => {
+      if (!cancelled) setImagesReady(true);
     });
+
     const fallbackTimer = setTimeout(() => setImagesReady(true), 3000);
-    return () => clearTimeout(fallbackTimer);
+    return () => {
+      cancelled = true;
+      clearTimeout(fallbackTimer);
+    };
   }, [banners]);
 
   const handleBannerClick = (banner: Banner) => {
@@ -209,14 +220,17 @@ const HeroBanner = () => {
                 className="relative aspect-[4/5] w-full flex-shrink-0 cursor-pointer overflow-hidden bg-black text-left lg:aspect-auto lg:h-[500px] xl:h-[560px]"
                 aria-label={`Hero banner ${((idx % banners.length) || 0) + 1}`}
               >
-                <img
-                  src={banner.imageUrl}
-                  alt={`Hero banner ${((idx % banners.length) || 0) + 1}`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  loading="eager"
-                  decoding="async"
-                  draggable={false}
-                />
+                <picture>
+                  <source media="(max-width: 1023px)" srcSet={banner.mobileImageUrl || banner.imageUrl} />
+                  <img
+                    src={banner.imageUrl}
+                    alt={`Hero banner ${((idx % banners.length) || 0) + 1}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="eager"
+                    decoding="async"
+                    draggable={false}
+                  />
+                </picture>
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/15 to-black/20 lg:from-black/55 lg:via-black/10 lg:to-black/25" />
                 <div className="absolute inset-x-0 bottom-0 top-auto p-5 lg:p-8">
                   <div className="flex items-center gap-2">
