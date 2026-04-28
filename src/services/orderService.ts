@@ -68,6 +68,14 @@ const STATUS_PHRASE: Record<string, string> = {
 
 const shortOrderRef = (orderId: string) => `#${orderId.slice(-6).toUpperCase()}`;
 
+/** Summarise order items into a short human-readable string for notifications. */
+const makeItemsSummary = (items?: Array<{ name: string; quantity?: number }>): string => {
+  if (!items || items.length === 0) return 'your items';
+  if (items.length === 1) return items[0].name;
+  if (items.length === 2) return `${items[0].name} & ${items[1].name}`;
+  return `${items[0].name} + ${items.length - 1} more`;
+};
+
 /**
  * Best-effort delivery of WhatsApp + web-push notifications when an order's
  * status changes. Never throws — Firestore writes are the source of truth.
@@ -79,7 +87,7 @@ const shortOrderRef = (orderId: string) => `#${orderId.slice(-6).toUpperCase()}`
 const dispatchStatusNotifications = async (
   orderId: string,
   status: Order['status'],
-  ctx?: { phone?: string; customerName?: string },
+  ctx?: { phone?: string; customerName?: string; items?: OrderItem[] },
 ): Promise<void> => {
   try {
     if (ctx?.phone) {
@@ -90,6 +98,7 @@ const dispatchStatusNotifications = async (
         customerName: ctx.customerName || 'Customer',
         orderId,
         status,
+        itemsSummary: makeItemsSummary(ctx.items),
       });
     }
     // Web push to the customer — fire-and-forget. Recipient tokens are
@@ -375,6 +384,7 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
       customerName: orderData.userName || 'Customer',
       orderId: docRef.id,
       total: orderData.total,
+      itemsSummary: makeItemsSummary(orderData.items),
     });
 
     // WhatsApp template: admin new-order alert (phone from siteSettings).
@@ -385,6 +395,7 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
         orderId: docRef.id,
         total: orderData.total,
         customerName: orderData.userName || 'a customer',
+        itemsSummary: makeItemsSummary(orderData.items),
       });
     })();
 
@@ -613,6 +624,7 @@ export const updateOrderStatus = async (
     void dispatchStatusNotifications(orderId, status, {
       phone: currentData?.shippingAddress?.mobile || currentData?.customerPhone,
       customerName: currentData?.customerName || currentData?.shippingAddress?.fullName,
+      items: currentData?.items as OrderItem[],
     });
   } catch (error) {
     console.error('Error updating order status:', error);
@@ -686,6 +698,7 @@ export const updateOrderTracking = async (
     void dispatchStatusNotifications(orderId, trackingData.status, {
       phone: currentData?.shippingAddress?.mobile || currentData?.customerPhone,
       customerName: currentData?.customerName || currentData?.shippingAddress?.fullName,
+      items: currentData?.items as OrderItem[],
     });
   } catch (error) {
     console.error('❌ [Update] Error updating order tracking:', error);
@@ -880,6 +893,7 @@ export const assignOrderToDeliveryBoy = async (
     void dispatchStatusNotifications(orderId, 'outForDelivery', {
       phone: currentData.shippingAddress?.mobile,
       customerName: currentData.shippingAddress?.fullName || currentData.userName,
+      items: currentData.items as OrderItem[],
     });
 
     // Notify the assigned delivery partner that they have a new pickup.
@@ -906,6 +920,7 @@ export const assignOrderToDeliveryBoy = async (
         partnerName: deliveryBoyName,
         orderId,
         deliveryAddress: deliveryAddress || 'address in app',
+        itemsSummary: makeItemsSummary(currentData.items as OrderItem[]),
       });
     }
 
@@ -968,6 +983,7 @@ export const updateDeliveryStatusByDeliveryBoy = async (
     void dispatchStatusNotifications(orderId, status, {
       phone: data.shippingAddress?.mobile || data.customerPhone,
       customerName: data.shippingAddress?.fullName || data.userName,
+      items: data.items as OrderItem[],
     });
   } catch (error) {
     console.error('Error updating delivery status:', error);
@@ -1050,6 +1066,7 @@ export const verifyDeliveryOTP = async (
     void dispatchStatusNotifications(orderId, 'delivered', {
       phone: orderData.shippingAddress?.mobile || orderData.customerPhone,
       customerName: orderData.shippingAddress?.fullName || orderData.userName,
+      items: orderData.items as OrderItem[],
     });
 
     return { success: true, message: 'Delivery confirmed successfully!' };
@@ -1175,6 +1192,7 @@ export const assignReturnPickupPartner = async (
     void dispatchStatusNotifications(orderId, 'returnScheduled', {
       phone: currentData.shippingAddress?.mobile,
       customerName: currentData.shippingAddress?.fullName || currentData.userName,
+      items: currentData.items as OrderItem[],
     });
     void notifyOrder({
       orderId,
