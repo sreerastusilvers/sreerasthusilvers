@@ -15,6 +15,7 @@ import html2canvas from 'html2canvas';
 import { generateInvoicePDF } from '@/services/invoiceService';
 import { db } from '@/config/firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { hasUserReviewedProduct } from '@/services/reviewService';
 import { createOrderMessage, OrderMessage, subscribeToCustomerOrderMessages } from '@/services/orderMessagingService';
 import { notifyOrder } from '@/services/pushNotificationService';
 import {
@@ -182,11 +183,9 @@ const OrderDetailsPage = () => {
   const [hasRated, setHasRated] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
 
-  // Product rating states
-  const [productRating, setProductRating] = useState(0);
-  const [productRatingComment, setProductRatingComment] = useState('');
-  const [hasRatedProduct, setHasRatedProduct] = useState(false);
-  const [submittingProductRating, setSubmittingProductRating] = useState(false);
+  // Product review state (links to the proper reviews collection)
+  const [hasReviewedProduct, setHasReviewedProduct] = useState(false);
+  const [checkingReview, setCheckingReview] = useState(false);
 
   // Conversation collapsible
   const [conversationOpen, setConversationOpen] = useState(false);
@@ -252,38 +251,17 @@ const OrderDetailsPage = () => {
       .catch(() => {});
   }, [order, user]);
 
-  // Check if user has already rated the product
+  // Check if user has already submitted a review for this product
   useEffect(() => {
     if (!order || order.status !== 'delivered' || !user) return;
-    getDocs(query(collection(db, 'productRatings'), where('orderId', '==', order.id), where('userId', '==', user.uid)))
-      .then(snap => { if (!snap.empty) setHasRatedProduct(true); })
-      .catch(() => {});
+    const productId = order.items[0]?.productId;
+    if (!productId) return;
+    setCheckingReview(true);
+    hasUserReviewedProduct(user.uid, productId)
+      .then(reviewed => setHasReviewedProduct(reviewed))
+      .catch(() => {})
+      .finally(() => setCheckingReview(false));
   }, [order, user]);
-
-  const submitProductRating = async () => {
-    if (!order || !user || productRating === 0) {
-      toast.error('Please select a star rating');
-      return;
-    }
-    setSubmittingProductRating(true);
-    try {
-      await addDoc(collection(db, 'productRatings'), {
-        productId: order.items[0]?.productId || order.id,
-        productName: order.items[0]?.name,
-        orderId: order.id,
-        userId: user.uid,
-        rating: productRating,
-        comment: productRatingComment.trim(),
-        createdAt: serverTimestamp(),
-      });
-      setHasRatedProduct(true);
-      toast.success('Thank you for rating the product!');
-    } catch {
-      toast.error('Failed to submit rating. Please try again.');
-    } finally {
-      setSubmittingProductRating(false);
-    }
-  };
 
   const submitDeliveryRating = async () => {
     if (!order?.deliveryBoyId || !user || deliveryRating === 0) {
@@ -1117,50 +1095,41 @@ const OrderDetailsPage = () => {
           </div>
         )}
 
-        {/* Rate the Product - for all delivered orders */}
+        {/* Write a Review - for all delivered orders */}
         {order.status === 'delivered' && (
           <div className="bg-white/92 rounded-[24px] border border-[#d4af37]/12 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur overflow-hidden">
             <h3 className="px-4 py-3 text-base font-semibold text-gray-900 dark:text-zinc-100 border-b border-[#d4af37]/10" style={{ fontFamily: "'Poppins', sans-serif" }}>Rate the product</h3>
             <div className="px-4 py-4">
-              {hasRatedProduct ? (
+              {checkingReview ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                </div>
+              ) : hasReviewedProduct ? (
                 <div className="flex flex-col items-center py-4 gap-2">
-                  <div className="flex items-center gap-1">
-                    {[1,2,3,4,5].map(n => (
-                      <Star key={n} className={`h-6 w-6 ${n <= productRating ? 'text-amber-400 fill-current' : 'text-gray-200 fill-current'}`} />
-                    ))}
-                  </div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">Product rated!</p>
-                  <p className="text-xs text-gray-400 dark:text-zinc-500">Thank you for your feedback</p>
+                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                  <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">Review submitted!</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">Thank you for sharing your experience</p>
                 </div>
               ) : (
                 <>
-                  <div className="mb-3 flex items-center gap-3">
+                  <div className="mb-4 flex items-center gap-3">
                     {order.items[0]?.image && (
                       <img src={order.items[0].image} alt={order.items[0].name} className="h-10 w-10 rounded-lg object-cover" />
                     )}
-                    <p className="text-sm text-gray-600 dark:text-zinc-400">How would you rate {order.items[0]?.name || 'this product'}?</p>
+                    <p className="text-sm text-gray-600 dark:text-zinc-400">Share your experience with {order.items[0]?.name || 'this product'}</p>
                   </div>
-                  <div className="flex items-center gap-2 mb-3">
-                    {[1,2,3,4,5].map(n => (
-                      <button key={n} onClick={() => setProductRating(n)}>
-                        <Star className={`h-8 w-8 transition-colors ${n <= productRating ? 'text-amber-400 fill-current' : 'text-gray-200 fill-current hover:text-amber-300'}`} />
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    value={productRatingComment}
-                    onChange={e => setProductRatingComment(e.target.value)}
-                    placeholder="Share details about the product (optional)"
-                    rows={2}
-                    className="w-full text-sm border border-gray-200 dark:border-zinc-800 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 mb-3 dark:bg-zinc-900 dark:text-zinc-100"
-                  />
                   <button
-                    onClick={submitProductRating}
-                    disabled={submittingProductRating || productRating === 0}
-                    className="w-full py-2.5 bg-[#832729] text-white text-sm font-semibold rounded-xl hover:bg-[#6d2022] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    onClick={() => navigate('/write-review', {
+                      state: {
+                        productId: order.items[0]?.productId,
+                        productName: order.items[0]?.name,
+                        productImage: order.items[0]?.image,
+                      }
+                    })}
+                    className="w-full py-2.5 bg-[#832729] text-white text-sm font-semibold rounded-xl hover:bg-[#6d2022] transition-colors flex items-center justify-center gap-2"
                   >
-                    {submittingProductRating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Submit Product Rating
+                    <Star className="h-4 w-4" />
+                    Write a Review
                   </button>
                 </>
               )}

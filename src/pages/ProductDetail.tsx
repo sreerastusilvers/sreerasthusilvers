@@ -131,10 +131,14 @@ const ProductDetail = () => {
         setReviews(fetchedReviews);
         setReviewStats(stats);
         
-        // Check if logged-in user can write a review
+        // Check if logged-in user can write a review (must have purchased AND not yet reviewed)
         if (user?.uid) {
-          const purchased = await hasUserPurchasedProduct(user.uid, productId);
-          setCanWriteReview(purchased);
+          const [purchased, alreadyReviewed] = await Promise.all([
+            hasUserPurchasedProduct(user.uid, productId),
+            hasUserReviewedProduct(user.uid, productId),
+          ]);
+          setHasReviewed(alreadyReviewed);
+          setCanWriteReview(purchased && !alreadyReviewed);
         }
       } catch (error) {
         console.error('Error fetching reviews:', error);
@@ -931,7 +935,7 @@ const ProductDetail = () => {
                   </p>
                   <p className="text-xs text-muted-foreground/70 mb-4">*T&C Applied</p>
 
-                  {/* Write a Review Button */}
+                  {/* Write a Review Button / Already Reviewed state */}
                   {canWriteReview && (
                     <button
                       onClick={() => navigate('/write-review', {
@@ -946,6 +950,12 @@ const ProductDetail = () => {
                       <PenLine size={16} />
                       Write a Review
                     </button>
+                  )}
+                  {hasReviewed && (
+                    <div className="w-full py-2 border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700/40 rounded-full flex items-center justify-center gap-2 mb-4 text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+                      <CheckCircle size={16} />
+                      You've reviewed this product — pending admin approval
+                    </div>
                   )}
 
                   {/* Individual Reviews */}
