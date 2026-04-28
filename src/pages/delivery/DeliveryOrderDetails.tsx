@@ -245,6 +245,10 @@ const DeliveryOrderDetails = () => {
 
   // OTP handlers
   const openOtp = () => {
+    if (paymentPending) {
+      toast.error('Mark the COD payment as collected before entering the OTP.');
+      return;
+    }
     setOtpInput('');
     setOtpError('');
     setOtpOpen(true);
@@ -252,6 +256,12 @@ const DeliveryOrderDetails = () => {
 
   const handleVerify = async () => {
     if (!order || !user) return;
+    if (paymentPending) {
+      const message = 'Mark the COD payment as collected before entering the OTP.';
+      setOtpError(message);
+      toast.error(message);
+      return;
+    }
     if (otpInput.length !== 4) { setOtpError('Enter the 4-digit OTP'); return; }
     setVerifying(true);
     try {
@@ -363,12 +373,14 @@ const DeliveryOrderDetails = () => {
   const isCod = isCashOnDeliveryOrder(order);
   const isPaid = isPaymentSettled(order);
   const paymentPending = isCod && !isPaid;
+  const collectorName =
+    user?.displayName || order.delivery_partner_name || order.delivery_boy_name || 'Delivery partner';
 
   const handleMarkPaymentCollected = async () => {
     if (!order || !user || collectingPayment || !paymentPending) return;
     setCollectingPayment(true);
     try {
-      await markCODPaymentCollected(order.id, user.uid, user.displayName || 'Delivery partner');
+      await markCODPaymentCollected(order.id, user.uid, collectorName);
       toast.success('COD payment marked as collected. You can now complete the delivery.');
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to mark payment collected'));
