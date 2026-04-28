@@ -15,9 +15,35 @@ import {
   DocumentData
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { sendOrderStatusAlert } from '@/services/whatsappService';
+import {
+  sendOrderPlacedTemplate,
+  sendAdminNewOrderTemplate,
+  sendDeliveryAssignedTemplate,
+  sendOrderStatusTemplate,
+  normalizePhoneNumber,
+} from '@/services/whatsappService';
 import { notifyOrder } from '@/services/pushNotificationService';
 import { incrementCouponUsage } from '@/services/couponService';
+
+/**
+ * Lazily fetches the admin's WhatsApp notification number from
+ * `siteSettings/customerSupport`. The result is cached for the lifetime of
+ * the page so subsequent orders don't trigger an extra Firestore read.
+ * Returns an empty string if the setting is missing or the read fails.
+ */
+let _cachedAdminPhone: string | null = null;
+const getAdminNotificationPhone = async (): Promise<string> => {
+  if (_cachedAdminPhone !== null) return _cachedAdminPhone;
+  try {
+    const snap = await getDoc(doc(db, 'siteSettings', 'customerSupport'));
+    const phone = snap.exists() ? String(snap.data()?.whatsapp || '') : '';
+    _cachedAdminPhone = phone;
+    return phone;
+  } catch {
+    _cachedAdminPhone = '';
+    return '';
+  }
+};
 
 /**
  * Friendly phrasing for each canonical/legacy status — shared between
@@ -57,11 +83,13 @@ const dispatchStatusNotifications = async (
 ): Promise<void> => {
   try {
     if (ctx?.phone) {
-      void sendOrderStatusAlert({
+      // Use the pre-approved Meta template; fall back to free-form text if it
+      // fails (e.g. template not yet approved in WhatsApp Manager).
+      void sendOrderStatusTemplate({
         to: ctx.phone,
+        customerName: ctx.customerName || 'Customer',
         orderId,
         status,
-        customerName: ctx.customerName,
       });
     }
     // Web push to the customer — fire-and-forget. Recipient tokens are
@@ -340,6 +368,25 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
       url: `/admin/orders/${docRef.id}`,
       data: { type: 'order-placed' },
     });
+
+    // WhatsApp template: customer confirmation.
+    void sendOrderPlacedTemplate({
+      to: normalizePhoneNumber(orderData.shippingAddress?.mobile),
+      customerName: orderData.userName || 'Customer',
+      orderId: docRef.id,
+      total: orderData.total,
+    });
+
+    // WhatsApp template: admin new-order alert (phone from siteSettings).
+    void (async () => {
+      const adminPhone = await getAdminNotificationPhone();
+      void sendAdminNewOrderTemplate({
+        to: normalizePhoneNumber(adminPhone),
+        orderId: docRef.id,
+        total: orderData.total,
+        customerName: orderData.userName || 'a customer',
+      });
+    })();
 
     return docRef.id;
   } catch (error) {
@@ -844,6 +891,23 @@ export const assignOrderToDeliveryBoy = async (
       url: `/delivery/orders/${orderId}`,
       data: { type: 'delivery-assigned' },
     });
+
+    // WhatsApp template to the delivery partner (if phone is known).
+    if (deliveryBoyPhone) {
+      const deliveryAddress = [
+        currentData.shippingAddress?.address,
+        currentData.shippingAddress?.locality,
+        currentData.shippingAddress?.city,
+      ]
+        .filter(Boolean)
+        .join(', ');
+      void sendDeliveryAssignedTemplate({
+        to: normalizePhoneNumber(deliveryBoyPhone),
+        partnerName: deliveryBoyName,
+        orderId,
+        deliveryAddress: deliveryAddress || 'address in app',
+      });
+    }
 
     return { otp };
   } catch (error) {

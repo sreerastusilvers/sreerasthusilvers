@@ -542,9 +542,11 @@ const ProductDetail = () => {
                             <div
                               ref={videoOverlayRef}
                               className="absolute inset-0 z-10"
-                              onTouchStart={onTouchStart}
-                              onTouchMove={onTouchMove}
+                              style={{ touchAction: 'pan-x' }}
+                              onTouchStart={(e) => { e.stopPropagation(); onTouchStart(e); }}
+                              onTouchMove={(e) => { e.stopPropagation(); onTouchMove(e); }}
                               onTouchEnd={(e) => {
+                                e.stopPropagation();
                                 onTouchEnd();
                                 // If it was a tap (not a real swipe), let pointer through to iframe
                                 if (!didSwipeRef.current && videoOverlayRef.current) {
