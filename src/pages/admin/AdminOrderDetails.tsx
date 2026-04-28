@@ -30,10 +30,14 @@ import { subscribeToDeliveryBoys, DeliveryBoy } from '@/services/deliveryBoyServ
 import {
   assignDeliveryPartner,
   assignReturnPickupPartner,
+  approveReturn,
   getNextStatus,
+  isCashOnDeliveryOrder,
+  isPaymentSettled,
   isValidStatusTransition,
   normalizeOrderStatus,
   Order,
+  rejectReturn,
   subscribeToOrder,
   updateOrderStatus,
   setDeliveryWindow,
@@ -128,7 +132,9 @@ const formatDateTime = (value: TimestampLike) => {
       ? value.toDate()
       : typeof value === 'object' && typeof value.seconds === 'number'
         ? new Date(value.seconds * 1000)
-        : new Date(value);
+        : typeof value === 'string' || typeof value === 'number'
+          ? new Date(value)
+          : new Date();
   return date.toLocaleString('en-IN', {
     day: 'numeric',
     month: 'short',
@@ -149,6 +155,7 @@ const AdminOrderDetails = () => {
   const [deliveryPartners, setDeliveryPartners] = useState<DeliveryBoy[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [assigningReturn, setAssigningReturn] = useState(false);
+  const [returnReviewing, setReturnReviewing] = useState<'approve' | 'reject' | null>(null);
 
   // Delivery window state
   const [windowDate, setWindowDate] = useState('');
@@ -411,6 +418,32 @@ const AdminOrderDetails = () => {
     setReturnWindowTo(r.to);
   };
 
+  const handleApproveReturn = async () => {
+    if (!order) return;
+    setReturnReviewing('approve');
+    try {
+      await approveReturn(order.id);
+      toast.success('Return approved. You can now assign a pickup partner below.');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to approve return'));
+    } finally {
+      setReturnReviewing(null);
+    }
+  };
+
+  const handleRejectReturn = async () => {
+    if (!order) return;
+    setReturnReviewing('reject');
+    try {
+      await rejectReturn(order.id);
+      toast.info('Return request rejected. Order reverted to delivered.');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to reject return'));
+    } finally {
+      setReturnReviewing(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -423,8 +456,8 @@ const AdminOrderDetails = () => {
 
   const badge = STATUS_BADGE[normalizedStatus] || STATUS_BADGE.pending;
   const nextStatus = normalizedStatus === 'picked' ? ('returned' as Order['status']) : getNextStatus(normalizedStatus);
-  const isPaid =
-    order.paymentStatus === 'paid' || order.paymentMethod?.toLowerCase().includes('online');
+  const isCod = isCashOnDeliveryOrder(order);
+  const isPaid = isPaymentSettled(order);
   const partnerName = order.delivery_partner_name || order.delivery_boy_name;
   const partnerPhone = order.delivery_partner_phone;
   const otp = order.delivery_otp;
@@ -473,8 +506,14 @@ const AdminOrderDetails = () => {
               {order.paymentMethod || 'COD'}
             </p>
             <p className={`text-xs font-medium ${isPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
-              {isPaid ? 'Paid' : 'Pending'}
+              {isPaid ? (isCod ? 'COD collected' : 'Paid') : 'COD pending'}
             </p>
+            {order.paymentCollectedAt && (
+              <p className="mt-1 text-[11px] text-gray-500">
+                Collected {formatDateTime(order.paymentCollectedAt)}
+                {order.paymentCollectedByName ? ` by ${order.paymentCollectedByName}` : ''}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-widest text-gray-400">Placed</p>
@@ -487,6 +526,11 @@ const AdminOrderDetails = () => {
         {NEXT_STEP_HINT[normalizedStatus] && (
           <div className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
             <span className="font-semibold">Next:</span> {NEXT_STEP_HINT[normalizedStatus]}
+          </div>
+        )}
+        {isCod && !isPaid && normalizedStatus === 'outForDelivery' && (
+          <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+            COD payment is still pending. The delivery partner must collect cash and mark it received before the order can be completed.
           </div>
         )}
       </div>
@@ -689,6 +733,29 @@ const AdminOrderDetails = () => {
           <p className="mt-2 text-xs text-gray-500">
             Changes save automatically. Status can only move forward.
           </p>
+          {normalizedStatus === 'returnRequested' && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                disabled={returnReviewing !== null || returnMeta.returnStatus === 'approved'}
+                onClick={handleApproveReturn}
+              >
+                {returnReviewing === 'approve' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {returnMeta.returnStatus === 'approved' ? 'Return Approved' : 'Approve Return'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                disabled={returnReviewing !== null || returnMeta.returnStatus === 'rejected'}
+                onClick={handleRejectReturn}
+              >
+                {returnReviewing === 'reject' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {returnMeta.returnStatus === 'rejected' ? 'Return Rejected' : 'Reject Return'}
+              </Button>
+            </div>
+          )}
           {nextStatus && (
             <Button
               className="mt-3 w-full"
@@ -719,8 +786,7 @@ const AdminOrderDetails = () => {
             <div className="space-y-2">
               {returnMeta.returnStatus !== 'approved' && (
                 <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200">
-                  Approve the return request first (use the “Approve &amp; Assign Pickup”
-                  button in the orders list) before assigning a pickup partner.
+                  Approve the return request above before assigning a pickup partner.
                 </p>
               )}
               <Select

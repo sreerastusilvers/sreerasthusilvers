@@ -25,6 +25,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  isCashOnDeliveryOrder,
+  isPaymentSettled,
+  markCODPaymentCollected,
   Order,
   subscribeToOrder,
   updateOrderStatus,
@@ -183,6 +186,7 @@ const DeliveryOrderDetails = () => {
   const [windowTo, setWindowTo]         = useState('');
   const [windowNote, setWindowNote]     = useState('');
   const [savingWindow, setSavingWindow] = useState(false);
+  const [collectingPayment, setCollectingPayment] = useState(false);
 
   // Customer unavailable / failed delivery states
   const [unavailableOpen, setUnavailableOpen]           = useState(false);
@@ -356,9 +360,22 @@ const DeliveryOrderDetails = () => {
     );
   }
 
-  const isPaid = order.paymentStatus === 'paid' ||
-    (order.paymentMethod || '').toLowerCase().includes('online') ||
-    (order.paymentMethod || '').toLowerCase().includes('upi');
+  const isCod = isCashOnDeliveryOrder(order);
+  const isPaid = isPaymentSettled(order);
+  const paymentPending = isCod && !isPaid;
+
+  const handleMarkPaymentCollected = async () => {
+    if (!order || !user || collectingPayment || !paymentPending) return;
+    setCollectingPayment(true);
+    try {
+      await markCODPaymentCollected(order.id, user.uid, user.displayName || 'Delivery partner');
+      toast.success('COD payment marked as collected. You can now complete the delivery.');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to mark payment collected'));
+    } finally {
+      setCollectingPayment(false);
+    }
+  };
 
   const handleMarkReturned = async () => {
     if (markingReturned) return;
@@ -487,7 +504,7 @@ const DeliveryOrderDetails = () => {
               isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
             }`}
           >
-            {isPaid ? 'Prepaid' : 'COD'} · {formatCurrency(order.total)}
+            {isPaid ? (isCod ? 'COD Collected' : 'Prepaid') : 'COD Due'} · {formatCurrency(order.total)}
           </span>
         </div>
       </div>
@@ -576,7 +593,7 @@ const DeliveryOrderDetails = () => {
             </div>
             <div className="text-right shrink-0">
               <p className="text-xs text-stone-400 uppercase tracking-wider mb-0.5">
-                {isPaid ? 'Prepaid' : 'Collect'}
+                    {isPaid ? 'Paid' : 'Collect'}
               </p>
               <p className="text-lg font-bold text-stone-900">
                 {isPaid ? '—' : formatCurrency(order.total)}
@@ -664,6 +681,18 @@ const DeliveryOrderDetails = () => {
             <p className="mt-0.5 text-xs text-red-600">Head back to the store and enter the Store OTP below to complete the return.</p>
           </div>
         )}
+
+        {paymentPending && canDeliver && !isReturnPickedUp && !isDeliveryFailed && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-amber-700">Cash On Delivery</p>
+            <p className="mt-1 text-sm font-semibold text-amber-900">
+              Collect {formatCurrency(order.total)} from the customer before asking for the OTP.
+            </p>
+            <p className="mt-1 text-xs text-amber-700">
+              Once cash is received, mark it collected below. Delivery completion is blocked until you do that.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Sticky Slide-to-Deliver bar ── */}
@@ -671,15 +700,34 @@ const DeliveryOrderDetails = () => {
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-white/95 px-4 pb-safe py-4 shadow-[0_-8px_30px_rgba(0,0,0,0.07)] backdrop-blur">
           <div className="mx-auto max-w-xl">
             {hasDeliveryWindow ? (
-              <>
-                <SlideToDeliver onConfirm={openOtp} />
-                <p className="mt-2 text-center text-xs text-stone-400">
-                  Slide to verify the customer’s 4-digit OTP and complete delivery.
-                </p>
-                <p className="mt-1 text-center text-[11px] font-medium text-purple-700">
-                  Window: {order.delivery_window_date} · {order.delivery_window_from}–{order.delivery_window_to}
-                </p>
-              </>
+              paymentPending ? (
+                <>
+                  <button
+                    onClick={handleMarkPaymentCollected}
+                    disabled={collectingPayment}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 py-4 text-base font-bold text-white shadow-lg shadow-amber-500/30 hover:from-amber-600 hover:to-orange-600 disabled:opacity-60"
+                  >
+                    {collectingPayment ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
+                    {collectingPayment ? 'Saving Payment…' : `Mark ${formatCurrency(order.total)} as Collected`}
+                  </button>
+                  <p className="mt-2 text-center text-xs text-stone-400">
+                    Take the COD cash from the customer, then tap here before completing delivery.
+                  </p>
+                  <p className="mt-1 text-center text-[11px] font-medium text-purple-700">
+                    Window: {order.delivery_window_date} · {order.delivery_window_from}–{order.delivery_window_to}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <SlideToDeliver onConfirm={openOtp} />
+                  <p className="mt-2 text-center text-xs text-stone-400">
+                    Slide to verify the customer’s 4-digit OTP and complete delivery.
+                  </p>
+                  <p className="mt-1 text-center text-[11px] font-medium text-purple-700">
+                    Window: {order.delivery_window_date} · {order.delivery_window_from}–{order.delivery_window_to}
+                  </p>
+                </>
+              )
             ) : (
               <button
                 onClick={openDeliveryWindow}

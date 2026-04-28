@@ -132,6 +132,10 @@ export interface Order {
   gstInclusive?: boolean;
   // COD surcharge applied to this order (0 when not COD).
   codCharge?: number;
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
+  paymentCollectedAt?: Timestamp;
+  paymentCollectedBy?: string;
+  paymentCollectedByName?: string;
   shippingAddress: ShippingAddress;
   paymentMethod: string;
   // Canonical statuses. Legacy values 'shipped' | 'assigned' | 'picked' are kept in the
@@ -201,6 +205,30 @@ export interface Order {
 export type OrderFormData = Omit<Order, 'id' | 'createdAt' | 'updatedAt'>;
 
 const ORDERS_COLLECTION = 'orders';
+
+const isPrepaidPaymentMethod = (paymentMethod?: string | null): boolean => {
+  const value = String(paymentMethod || '').toLowerCase();
+  return (
+    value.includes('online') ||
+    value.includes('upi') ||
+    value.includes('card') ||
+    value.includes('net banking') ||
+    value.includes('wallet') ||
+    value.includes('razorpay')
+  );
+};
+
+export const isCashOnDeliveryOrder = (order: Pick<Order, 'paymentMethod'>): boolean => {
+  const value = String(order.paymentMethod || '').toLowerCase();
+  return value.includes('cash on delivery') || value === 'cod' || value.includes('cash');
+};
+
+export const isPaymentSettled = (
+  order: Pick<Order, 'paymentMethod' | 'paymentStatus'>,
+): boolean => {
+  if (order.paymentStatus === 'paid') return true;
+  return isPrepaidPaymentMethod(order.paymentMethod);
+};
 
 /**
  * Normalise a raw status (which may include legacy values shipped/assigned/picked)
@@ -272,8 +300,10 @@ export const getNextStatus = (current: Order['status']): Order['status'] | null 
 export const createOrder = async (orderData: OrderFormData): Promise<string> => {
   try {
     const now = Timestamp.now();
+    const paymentStatus = isPrepaidPaymentMethod(orderData.paymentMethod) ? 'paid' : 'pending';
     const orderWithTimestamps = {
       ...orderData,
+      paymentStatus,
       createdAt: now,
       updatedAt: now,
     };
@@ -499,7 +529,7 @@ export const updateOrderStatus = async (
     const currentData = orderSnap.data();
     const statusHistory = currentData?.statusHistory || [];
     
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       status,
       updatedAt: now,
       lastUpdated: now,
@@ -567,7 +597,7 @@ export const updateOrderTracking = async (
     const currentData = orderSnap.data();
     const statusHistory = currentData?.statusHistory || [];
     
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       status: trackingData.status,
       updatedAt: now,
       lastUpdated: now,
@@ -735,9 +765,9 @@ export const subscribeToDeliveryBoyOrders = (
     );
 
     return unsubscribe;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error setting up delivery boy orders subscription:', error);
-    onError(new Error(error.message || 'Failed to subscribe to orders'));
+    onError(new Error(error instanceof Error ? error.message : 'Failed to subscribe to orders'));
     return () => {};
   }
 };
@@ -768,7 +798,7 @@ export const assignOrderToDeliveryBoy = async (
         ? (currentData.delivery_otp as string)
         : generateOTP();
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       // Legacy fields kept in sync with new canonical names.
       delivery_boy_id: deliveryBoyId,
       delivery_boy_name: deliveryBoyName,
@@ -845,7 +875,7 @@ export const updateDeliveryStatusByDeliveryBoy = async (
     const existingHistory = orderDoc.data()?.statusHistory || [];
     
     // Build update object - only include defined values
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       status,
       updatedAt: now,
       lastUpdated: now,
@@ -921,6 +951,10 @@ export const verifyDeliveryOTP = async (
       return { success: false, message: 'Set a delivery window before completing this delivery.' };
     }
 
+    if (isCashOnDeliveryOrder(orderData as Pick<Order, 'paymentMethod'>) && !isPaymentSettled(orderData as Pick<Order, 'paymentMethod' | 'paymentStatus'>)) {
+      return { success: false, message: 'Collect and mark the COD payment before completing this delivery.' };
+    }
+
     // Verify OTP
     if (orderData.delivery_otp !== inputOtp) {
       return { success: false, message: 'Invalid OTP. Please try again.' };
@@ -962,6 +996,64 @@ export const verifyDeliveryOTP = async (
 };
 
 /**
+ * Mark a COD order as paid by the assigned delivery partner.
+ * This persists the collection event so admin/customer views stop inferring
+ * payment state from the method string alone.
+ */
+export const markCODPaymentCollected = async (
+  orderId: string,
+  collectorId: string,
+  collectorName?: string,
+): Promise<void> => {
+  try {
+    const docRef = doc(db, ORDERS_COLLECTION, orderId);
+    const orderDoc = await getDoc(docRef);
+
+    if (!orderDoc.exists()) {
+      throw new Error('Order not found');
+    }
+
+    const orderData = orderDoc.data() as Partial<Order>;
+    const assignedId = orderData.delivery_partner_id || orderData.delivery_boy_id;
+
+    if (assignedId !== collectorId) {
+      throw new Error('You are not assigned to this order');
+    }
+    if (!isCashOnDeliveryOrder(orderData as Pick<Order, 'paymentMethod'>)) {
+      throw new Error('This order is not a cash on delivery order');
+    }
+    if (orderData.status !== 'outForDelivery') {
+      throw new Error('COD payment can only be collected while the order is out for delivery');
+    }
+    if (isPaymentSettled(orderData as Pick<Order, 'paymentMethod' | 'paymentStatus'>)) {
+      return;
+    }
+
+    const now = Timestamp.now();
+    const statusHistory = orderData.statusHistory || [];
+    await updateDoc(docRef, {
+      paymentStatus: 'paid',
+      paymentCollectedAt: now,
+      paymentCollectedBy: collectorId,
+      paymentCollectedByName: collectorName || 'Delivery partner',
+      updatedAt: now,
+      lastUpdated: now,
+      statusHistory: [
+        ...statusHistory,
+        {
+          status: orderData.status || 'outForDelivery',
+          timestamp: now,
+          note: `COD payment collected by ${collectorName || 'delivery partner'}`,
+        },
+      ],
+    });
+  } catch (error: unknown) {
+    console.error('Error marking COD payment collected:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to mark COD payment collected');
+  }
+};
+
+/**
  * Assign a delivery partner for return pickup.
  * Sets status → 'returnScheduled', generates a return_otp, stores partner fields.
  */
@@ -986,7 +1078,7 @@ export const assignReturnPickupPartner = async (
     const now = Timestamp.now();
     const otp = generateOTP();
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       delivery_boy_id: deliveryBoyId,
       delivery_boy_name: deliveryBoyName,
       delivery_partner_id: deliveryBoyId,
@@ -1030,9 +1122,9 @@ export const assignReturnPickupPartner = async (
     });
 
     return { otp };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error assigning return pickup partner:', error);
-    throw new Error(error?.message || 'Failed to assign return pickup partner');
+    throw new Error(error instanceof Error ? error.message : 'Failed to assign return pickup partner');
   }
 };
 

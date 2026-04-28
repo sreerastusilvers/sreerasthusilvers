@@ -292,6 +292,26 @@ service cloud.firestore {
         let newStatus = request.resource.data.status;
         return currentStatus == 'delivered' && newStatus == 'returnRequested';
       }
+
+      // Helper: Assigned delivery partner can mark COD payment as collected
+      // without changing the fulfillment status. This keeps collection state
+      // persisted on the order instead of being inferred from payment method.
+      function isValidCodPaymentCollectionUpdate() {
+        return resource.data.paymentMethod == 'Cash On Delivery'
+          && resource.data.status == 'outForDelivery'
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.paymentStatus == 'paid'
+          && resource.data.paymentStatus != 'paid'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'paymentStatus',
+            'paymentCollectedAt',
+            'paymentCollectedBy',
+            'paymentCollectedByName',
+            'updatedAt',
+            'lastUpdated',
+            'statusHistory'
+          ]);
+      }
       
       // READ: Admins see all; Customers see their orders; Delivery boys see assigned orders
       allow read: if isAuthenticated() && 
@@ -309,6 +329,7 @@ service cloud.firestore {
       allow update: if isAdmin() || 
         (isOrderOwner() && isValidCancellation()) ||
         (isOrderOwner() && isValidReturnRequest()) ||
+        (isAssignedDeliveryBoy() && isValidCodPaymentCollectionUpdate()) ||
         (isAssignedDeliveryBoy() && isValidStatusTransition() && isValidOTPUpdate());
       
       // DELETE: Only admin can delete orders
