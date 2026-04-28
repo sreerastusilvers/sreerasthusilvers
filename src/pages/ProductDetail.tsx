@@ -40,6 +40,10 @@ const ProductDetail = () => {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [swipeDir, setSwipeDir] = useState<1 | -1>(1);
+  const touchStartRef = useRef<number | null>(null);
   // Desktop hover-zoom on main image
   const [isZooming, setIsZooming] = useState(false);
   const [zoomPos, setZoomPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
@@ -332,29 +336,60 @@ const ProductDetail = () => {
   const minSwipeDistance = 50;
   const didSwipeRef = useRef(false);
 
+  // Slide variants: dir 1 = next (left swipe), dir -1 = prev (right swipe)
+  const slideVariants = {
+    enter: (dir: number) => ({ x: dir > 0 ? '100%' : '-100%' }),
+    center: { x: '0%' },
+    exit: (dir: number) => ({ x: dir > 0 ? '-100%' : '100%' }),
+  };
+
+  // Navigate with direction tracking — used by thumbnails and swipe
+  const navigateMedia = (newIndex: number) => {
+    setSwipeDir(newIndex >= selectedImage ? 1 : -1);
+    setSelectedImage(newIndex);
+  };
+
   const onTouchStart = (e: React.TouchEvent) => {
+    const x = e.targetTouches[0].clientX;
+    touchStartRef.current = x;
     didSwipeRef.current = false;
+    setIsDragging(true);
+    setDragX(0);
     setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    setTouchStart(x);
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    const currentX = e.targetTouches[0].clientX;
+    setTouchEnd(currentX);
+    if (touchStartRef.current !== null) {
+      setDragX(currentX - touchStartRef.current);
+    }
   };
 
   const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
+    setIsDragging(false);
+    if (!touchStart || !touchEnd) {
+      setDragX(0);
+      return;
+    }
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
-    
-    if (isLeftSwipe && selectedImage < allMedia.length - 1) {
+
+    if (isLeftSwipe) {
       didSwipeRef.current = true;
-      setSelectedImage(selectedImage + 1);
-    }
-    if (isRightSwipe && selectedImage > 0) {
+      setDragX(0);
+      setSwipeDir(1);
+      setSelectedImage(prev => (prev + 1) % allMedia.length);
+    } else if (isRightSwipe) {
       didSwipeRef.current = true;
-      setSelectedImage(selectedImage - 1);
+      setDragX(0);
+      setSwipeDir(-1);
+      setSelectedImage(prev => (prev - 1 + allMedia.length) % allMedia.length);
+    } else {
+      // Not enough — snap back
+      setDragX(0);
     }
   };
 
@@ -473,33 +508,56 @@ const ProductDetail = () => {
                     setZoomPos({ x, y });
                   }}
                 >
-                  {allMedia[selectedImage]?.type === 'video' ? (
-                    <iframe
-                      src={allMedia[selectedImage].src}
-                      title="Product video"
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <img
-                      src={allMedia[selectedImage]?.src || product.image}
-                      alt={product.alt}
-                      className="w-full h-full object-cover transition-transform duration-200 ease-out hidden md:block"
-                      style={{
-                        transform: isZooming ? 'scale(2)' : 'scale(1)',
-                        transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-                      }}
-                    />
-                  )}
-                  {/* Mobile image (no zoom) */}
-                  {allMedia[selectedImage]?.type !== 'video' && (
-                    <img
-                      src={allMedia[selectedImage]?.src || product.image}
-                      alt={product.alt}
-                      className="w-full h-full object-cover md:hidden"
-                    />
-                  )}
+                  {/* Live-drag + slide animation wrapper */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      transform: `translateX(${dragX}px)`,
+                      transition: isDragging ? 'none' : 'transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    }}
+                  >
+                    <AnimatePresence custom={swipeDir} mode="popLayout" initial={false}>
+                      <motion.div
+                        key={selectedImage}
+                        custom={swipeDir}
+                        variants={slideVariants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ type: 'tween', ease: [0.25, 0.46, 0.45, 0.94], duration: 0.28 }}
+                        className="absolute inset-0"
+                      >
+                        {allMedia[selectedImage]?.type === 'video' ? (
+                          <iframe
+                            src={allMedia[selectedImage].src}
+                            title="Product video"
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        ) : (
+                          <>
+                            {/* Desktop image with zoom */}
+                            <img
+                              src={allMedia[selectedImage]?.src || product.image}
+                              alt={product.alt}
+                              className="w-full h-full object-cover transition-transform duration-200 ease-out hidden md:block"
+                              style={{
+                                transform: isZooming ? 'scale(2)' : 'scale(1)',
+                                transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                              }}
+                            />
+                            {/* Mobile image (no zoom) */}
+                            <img
+                              src={allMedia[selectedImage]?.src || product.image}
+                              alt={product.alt}
+                              className="w-full h-full object-cover md:hidden"
+                            />
+                          </>
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
                   {/* Subtle gold ring on hover (desktop) */}
                   <div className="hidden md:block absolute inset-0 ring-1 ring-inset ring-primary/0 group-hover:ring-primary/30 rounded-2xl transition-all pointer-events-none" />
                   
@@ -540,7 +598,7 @@ const ProductDetail = () => {
                     {allMedia.map((item, index) => (
                       <button
                         key={index}
-                        onClick={() => setSelectedImage(index)}
+                        onClick={() => navigateMedia(index)}
                         className={`aspect-square bg-muted rounded-lg overflow-hidden border-2 transition-all relative ${
                           selectedImage === index
                             ? "border-primary"
