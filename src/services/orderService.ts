@@ -26,21 +26,23 @@ import { notifyOrder } from '@/services/pushNotificationService';
 import { incrementCouponUsage } from '@/services/couponService';
 
 /**
- * Lazily fetches the admin's WhatsApp notification number from
- * `siteSettings/customerSupport`. The result is cached for the lifetime of
- * the page so subsequent orders don't trigger an extra Firestore read.
- * Returns an empty string if the setting is missing or the read fails.
+ * Fetches the admin's WhatsApp notification number.
+ * Priority: siteSettings/adminNotification.whatsappNumber (set from /admin/settings page)
+ * Fallback: siteSettings/customerSupport.whatsapp (set from Commerce → Customer Support)
+ * Not cached — ensures the latest number is always used.
  */
-let _cachedAdminPhone: string | null = null;
 const getAdminNotificationPhone = async (): Promise<string> => {
-  if (_cachedAdminPhone !== null) return _cachedAdminPhone;
   try {
+    // Primary: admin settings page
+    const adminSnap = await getDoc(doc(db, 'siteSettings', 'adminNotification'));
+    if (adminSnap.exists()) {
+      const num = String(adminSnap.data()?.whatsappNumber || '').trim();
+      if (num) return num;
+    }
+    // Fallback: Commerce → Customer Support whatsapp field
     const snap = await getDoc(doc(db, 'siteSettings', 'customerSupport'));
-    const phone = snap.exists() ? String(snap.data()?.whatsapp || '') : '';
-    _cachedAdminPhone = phone;
-    return phone;
+    return snap.exists() ? String(snap.data()?.whatsapp || '') : '';
   } catch {
-    _cachedAdminPhone = '';
     return '';
   }
 };
@@ -1571,6 +1573,20 @@ export const requestReturn = async (
         },
       ],
     });
+
+    // Notify admin via WhatsApp that a return was requested
+    void (async () => {
+      const adminPhone = await getAdminNotificationPhone();
+      if (adminPhone) {
+        void sendAdminNewOrderTemplate({
+          to: normalizePhoneNumber(adminPhone),
+          orderId,
+          total: orderData.total || 0,
+          customerName: orderData.userName || 'Customer',
+          itemsSummary: `Return requested: ${makeItemsSummary(orderData.items as OrderItem[])}`,
+        });
+      }
+    })();
   } catch (error) {
     console.error('Error requesting return:', error);
     throw error;

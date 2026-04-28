@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 const AdminSettings = () => {
   const { userProfile, updateUserProfile } = useAuth();
@@ -23,7 +25,14 @@ const AdminSettings = () => {
     }
     setSaving(true);
     try {
-      await updateUserProfile({ username: username.trim(), phone: phone.trim(), whatsappNumber: whatsappNumber.trim() });
+      const trimmedWhatsapp = whatsappNumber.trim();
+      await updateUserProfile({ username: username.trim(), phone: phone.trim(), whatsappNumber: trimmedWhatsapp });
+      // Also persist to siteSettings so order notifications use this number
+      await setDoc(
+        doc(db, 'siteSettings', 'adminNotification'),
+        { whatsappNumber: trimmedWhatsapp, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
       toast({ title: 'Success', description: 'Settings updated successfully' });
     } catch {
       toast({ title: 'Error', description: 'Failed to update settings', variant: 'destructive' });
