@@ -47,15 +47,30 @@ interface GeneratedPrompt {
 
 // ─── Image Upload Helper ─────────────────────────────────────────────────
 
-function fileToImageInput(file: File): Promise<ImageInput> {
+function fileToImageInput(file: File, maxPx = 1024): Promise<ImageInput> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      resolve({ base64, mimeType: file.type });
-    };
     reader.onerror = reject;
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const { width, height } = img;
+        const scale = Math.min(1, maxPx / Math.max(width, height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Re-encode as JPEG at 0.85 quality if original is not a transparent PNG
+        const outMime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const resized = canvas.toDataURL(outMime, 0.85);
+        const base64 = resized.split(',')[1];
+        resolve({ base64, mimeType: outMime });
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    };
     reader.readAsDataURL(file);
   });
 }

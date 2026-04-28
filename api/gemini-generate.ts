@@ -4,6 +4,15 @@ import admin from 'firebase-admin';
 
 const MODEL = 'gemini-2.5-flash';
 
+// Increase body size limit to 20MB to handle base64-encoded product images
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '20mb',
+    },
+  },
+};
+
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
