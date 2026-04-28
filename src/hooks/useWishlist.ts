@@ -51,25 +51,49 @@ const broadcastWishlistUpdate = () => {
   }
 };
 
+/**
+ * Compare two product-id arrays for set equality (order-insensitive). Used to
+ * suppress redundant `setWishlist` calls that would otherwise cause the heart
+ * icon to "flash" twice on a single toggle (optimistic update + broadcast +
+ * Firestore snapshot all writing the same array).
+ */
+const sameWishlist = (a: string[], b: string[]) => {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  for (const id of b) {
+    if (!set.has(id)) return false;
+  }
+  return true;
+};
+
 export const useWishlist = () => {
   const { user } = useAuth();
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const mergedLocalWishlistRef = useRef<string | null>(null);
+  // Tracks whether THIS hook instance just broadcast a change so the matching
+  // self-broadcast handler can skip redundant re-syncs.
+  const selfBroadcastRef = useRef(false);
 
   const storageKey = getWishlistStorageKey(user?.uid);
 
+  const setWishlistIfChanged = useCallback((next: string[]) => {
+    setWishlist((prev) => (sameWishlist(prev, next) ? prev : next));
+  }, []);
+
   const syncWishlist = useCallback(() => {
-    setWishlist(getWishlistFromStorage(storageKey));
-  }, [storageKey]);
+    setWishlistIfChanged(getWishlistFromStorage(storageKey));
+  }, [storageKey, setWishlistIfChanged]);
 
   const updateWishlistCache = useCallback((nextWishlist: string[], shouldBroadcast = true) => {
     saveWishlistToStorage(storageKey, nextWishlist);
-    setWishlist(nextWishlist);
+    setWishlistIfChanged(nextWishlist);
     if (shouldBroadcast) {
+      selfBroadcastRef.current = true;
       broadcastWishlistUpdate();
     }
-  }, [storageKey]);
+  }, [storageKey, setWishlistIfChanged]);
 
   const persistWishlist = useCallback((nextWishlist: string[]) => {
     updateWishlistCache(nextWishlist, true);
@@ -91,6 +115,14 @@ export const useWishlist = () => {
     };
 
     const handleWishlistUpdated = () => {
+      // Skip the broadcast we triggered ourselves — `updateWishlistCache`
+      // already called `setWishlistIfChanged` on this instance, so re-reading
+      // localStorage here would just produce a redundant render and cause the
+      // wishlist heart to flicker.
+      if (selfBroadcastRef.current) {
+        selfBroadcastRef.current = false;
+        return;
+      }
       syncWishlist();
     };
 
@@ -115,7 +147,7 @@ export const useWishlist = () => {
 
     const cachedWishlist = getWishlistFromStorage(storageKey);
     if (cachedWishlist.length) {
-      setWishlist(cachedWishlist);
+      setWishlistIfChanged(cachedWishlist);
     }
 
     const unsubscribe = subscribeToUserWishlist(

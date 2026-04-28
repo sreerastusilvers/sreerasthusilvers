@@ -23,6 +23,7 @@ import {
   Youtube,
   PanelTop,
   Bell,
+  MessagesSquare,
   LayoutGrid,
   Video,
   Coins,
@@ -79,6 +80,7 @@ const AdminLayout = () => {
     { path: '/admin/commerce-settings', icon: Settings, label: 'Commerce' },
     { path: '/admin/image-prompts', icon: Sparkles, label: 'AI Prompts' },
     { path: '/admin/marketing', icon: Bell, label: 'Marketing' },
+    { path: '/admin/whatsapp', icon: MessagesSquare, label: 'WhatsApp' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
   ];
 
@@ -100,6 +102,20 @@ const AdminLayout = () => {
         .admin-panel h1, .admin-panel h2, .admin-panel h3, 
         .admin-panel h4, .admin-panel h5, .admin-panel h6 {
           font-family: 'Poppins', sans-serif !important;
+        }
+        .admin-nav-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(180, 83, 9, 0.45) transparent;
+        }
+        .admin-nav-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .admin-nav-scroll::-webkit-scrollbar-thumb {
+          background: rgba(180, 83, 9, 0.35);
+          border-radius: 999px;
+        }
+        .admin-nav-scroll::-webkit-scrollbar-track {
+          background: transparent;
         }
       `}</style>
       {/* Mobile Sidebar Overlay */}
@@ -129,13 +145,8 @@ const AdminLayout = () => {
           </button>
         </div>
 
-        {/* Navigation - Scrollable (hidden scrollbar) */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          <style>{`
-            .scrollbar-hide::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
+        {/* Navigation */}
+        <nav className="admin-nav-scroll flex-1 overflow-y-auto p-4 pr-3 space-y-1">
           {/* Main nav items (all except Settings) */}
           {mainNavItems.slice(0, -1).map((item) => (
             <NavLink

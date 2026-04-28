@@ -38,7 +38,7 @@ const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: 
   const textOpacity = useTransform(x, [0, sliderWidth * 0.3], [1, 0]);
   const checkOpacity = useTransform(x, [sliderWidth * 0.7, sliderWidth], [0, 1]);
 
-  const handleDragEnd = (_: any, info: PanInfo) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.x > sliderWidth * 0.7) {
       setCompleted(true);
       onComplete();
@@ -124,6 +124,8 @@ const MobileCheckout = () => {
   const [slideResetKey, setSlideResetKey] = useState(0);
   const [couponInput, setCouponInput] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+  const [showOffers, setShowOffers] = useState(false);
+  const [showAllOffers, setShowAllOffers] = useState(false);
   // Ref-based flag so the navigation guard sees it synchronously before any re-render
   const orderPlacedRef = useRef(false);
   // Track if cart ever had items so we don't redirect when user taps cart icon with empty cart
@@ -287,6 +289,7 @@ const MobileCheckout = () => {
   const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod);
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
+  const gstLabel = `GST (${pricing.gst.rate}%${pricing.gst.inclusive ? ' included' : ''})`;
   const savings = items.reduce((acc, item) => {
     const originalPrice = Math.round(item.price * 1.3);
     return acc + (originalPrice - item.price) * item.quantity;
@@ -379,6 +382,17 @@ const MobileCheckout = () => {
         taxAmount: taxAmount,
         discount: discount,
         total: total,
+        ...(pricing.appliedCoupon ? {
+          couponCode: pricing.appliedCoupon.code,
+          couponId: pricing.appliedCoupon.id,
+          couponDescription: pricing.appliedCoupon.description || '',
+          couponType: pricing.appliedCoupon.type,
+          couponValue: pricing.appliedCoupon.value,
+          couponDiscount: pricing.discount,
+        } : {}),
+        gstRate: pricing.gst.rate,
+        gstInclusive: !!pricing.gst.inclusive,
+        codCharge: pricing.codCharge || 0,
         shippingAddress: {
           fullName: selectedAddress.fullName,
           mobile: selectedAddress.phoneNumber,
@@ -926,6 +940,63 @@ const MobileCheckout = () => {
               </button>
             </div>
 
+            {/* Available Offers */}
+            {pricing.coupons.filter((c) => c.active).length > 0 && (() => {
+              const activeOffers = pricing.coupons
+                .filter((c) => c.active)
+                .map((c) => {
+                  const value = c.type === 'percent' ? `${c.value}%` : `₹${c.value}`;
+                  const min = c.minOrderValue ? ` on min spend of ₹${c.minOrderValue}` : '';
+                  return `${value} OFF with code ${c.code}${min}${c.description ? `—${c.description}` : ''}`;
+                });
+              const visibleMobileOffers = showAllOffers ? activeOffers : activeOffers.slice(0, 2);
+              return (
+                <div className="mx-4 mb-4">
+                  <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-4">
+                    <button
+                      onClick={() => setShowOffers((prev) => !prev)}
+                      className="flex items-center justify-between w-full"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center">
+                          <Tag className="w-3.5 h-3.5 text-gray-700 dark:text-zinc-300" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                          Available Offers ({activeOffers.length})
+                        </h3>
+                      </div>
+                      <ChevronDown
+                        className={`w-4 h-4 text-gray-500 dark:text-zinc-400 transition-transform ${showOffers ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                    {showOffers && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="mt-3 space-y-2"
+                      >
+                        {visibleMobileOffers.map((offer, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-xs">
+                            <span className="text-green-600 font-bold mt-0.5">•</span>
+                            <p className="text-gray-600 dark:text-zinc-400 leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>{offer}</p>
+                          </div>
+                        ))}
+                        {activeOffers.length > 2 && (
+                          <button
+                            onClick={() => setShowAllOffers((prev) => !prev)}
+                            className="text-xs font-semibold text-green-600 hover:text-green-700 mt-1"
+                            style={{ fontFamily: "'Poppins', sans-serif" }}
+                          >
+                            {showAllOffers ? 'Show Less' : `Show ${activeOffers.length - 2} More`}
+                          </button>
+                        )}
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Coupon Section */}
             <div className="mx-4 mb-4">
               <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-4">
@@ -994,7 +1065,7 @@ const MobileCheckout = () => {
                     </div>
                   )}
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>GST (3%)</span>
+                    <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>{gstLabel}</span>
                     <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(taxAmount)}</span>
                   </div>
                   <div className="h-px bg-gray-200 dark:bg-zinc-800 my-2" />
@@ -1098,7 +1169,7 @@ const MobileCheckout = () => {
               </div>
               
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>GST (3%)</span>
+                <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>{gstLabel}</span>
                 <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(taxAmount)}</span>
               </div>
 
@@ -1875,6 +1946,7 @@ const Checkout = () => {
   const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod);
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
+  const gstLabel = `GST (${pricing.gst.rate}%${pricing.gst.inclusive ? ' included' : ''})`;
   const discount = pricing.discount;
   const desktopTotal = pricing.total;
 
@@ -1966,6 +2038,17 @@ const Checkout = () => {
         taxAmount: taxAmount,
         discount: discount,
         total: total,
+        ...(pricing.appliedCoupon ? {
+          couponCode: pricing.appliedCoupon.code,
+          couponId: pricing.appliedCoupon.id,
+          couponDescription: pricing.appliedCoupon.description || '',
+          couponType: pricing.appliedCoupon.type,
+          couponValue: pricing.appliedCoupon.value,
+          couponDiscount: pricing.discount,
+        } : {}),
+        gstRate: pricing.gst.rate,
+        gstInclusive: !!pricing.gst.inclusive,
+        codCharge: pricing.codCharge || 0,
         shippingAddress: {
           fullName: selectedAddress.fullName,
           mobile: selectedAddress.phoneNumber,
@@ -2590,7 +2673,7 @@ const Checkout = () => {
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">GST ({pricing.gst.rate}%{pricing.gst.inclusive ? ' incl.' : ''})</span>
+                  <span className="text-muted-foreground">{gstLabel}</span>
                   <span>{formatPrice(taxAmount)}</span>
                 </div>
 

@@ -30,7 +30,7 @@ export interface FooterSettings {
   categoryLinks: string[];
   socialLinks: SocialLink[];
   copyrightSuffix?: string;
-  updatedAt?: any;
+  updatedAt?: unknown;
 }
 
 const SETTINGS_DOC = doc(db, 'siteSettings', 'footer');
@@ -106,7 +106,7 @@ export interface Coupon {
 
 export interface CouponsSettings {
   coupons: Coupon[];
-  updatedAt?: any;
+  updatedAt?: unknown;
 }
 
 export const DEFAULT_COUPONS: CouponsSettings = { coupons: [] };
@@ -200,7 +200,7 @@ export interface DeliverySettings {
   codCharge: number;
   codMinOrder: number;
   codMaxOrder: number; // 0 = no cap
-  updatedAt?: any;
+  updatedAt?: unknown;
 }
 
 export const DEFAULT_DELIVERY: DeliverySettings = {
@@ -271,13 +271,13 @@ export interface GstSettings {
   inclusive: boolean; // true => price already includes GST, false => add on top
   displayInline: boolean; // show GST line in cart/checkout breakdown
   hsnCode?: string;
-  updatedAt?: any;
+  updatedAt?: unknown;
 }
 
 export const DEFAULT_GST: GstSettings = {
   enabled: false,
   rate: 3,
-  inclusive: true,
+  inclusive: false,
   displayInline: false,
 };
 
@@ -345,7 +345,7 @@ export interface CustomerSupportSettings {
   hours: string;
   responseTime: string;
   faqs: FaqEntry[];
-  updatedAt?: any;
+  updatedAt?: unknown;
 }
 
 export const DEFAULT_SUPPORT: CustomerSupportSettings = {
@@ -398,7 +398,7 @@ export interface SidebarPromoSettings {
   headline: string;    // e.g. "Flat Rs. 500 off"
   subline: string;     // e.g. "on your first order"
   ctaLabel: string;    // e.g. "LOGIN / SIGN UP"
-  updatedAt?: any;
+  updatedAt?: unknown;
 }
 
 export const DEFAULT_SIDEBAR_PROMO: SidebarPromoSettings = {

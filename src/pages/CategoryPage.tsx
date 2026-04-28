@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -56,6 +56,101 @@ const sortOptions = [
   { value: "price-high", label: "Price: High to Low" },
   { value: "name-asc", label: "Name: A-Z" },
 ];
+
+// ─── Stable product card ────────────────────────────────────────
+// IMPORTANT: this component is declared OUTSIDE `CategoryPage` so its
+// component identity is stable across re-renders. When it lived inline inside
+// `CategoryPage`, every filter toggle re-created the function (a brand-new
+// React component type), forcing React to unmount and remount every visible
+// card. That remount replayed the framer-motion enter animation, producing
+// the visible "flash"/loading effect users were complaining about. Lifting it
+// out + memoizing it keeps cards mounted across filter changes — the grid
+// just reorders/diffs by product id.
+type CategoryProductCardProps = {
+  product: UIProduct;
+  wishlisted: boolean;
+  onAddToCart: (product: UIProduct) => void;
+  onToggleWishlist: (product: UIProduct, wishlisted: boolean) => void;
+  onOpen: (productId: string) => void;
+};
+
+const CategoryProductCard = memo(function CategoryProductCard({
+  product,
+  wishlisted,
+  onAddToCart,
+  onToggleWishlist,
+  onOpen,
+}: CategoryProductCardProps) {
+  return (
+    <div className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300">
+      {/* Image */}
+      <div
+        className="relative aspect-square overflow-hidden cursor-pointer"
+        onClick={() => onOpen(product.id)}
+      >
+        <img
+          src={product.image}
+          alt={product.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+        {product.badge && (
+          <span className="absolute top-2 left-2 bg-primary/90 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
+            {product.badge}
+          </span>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleWishlist(product, wishlisted);
+          }}
+          className="absolute top-2 right-2 z-10 w-7 h-7 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
+        >
+          <Heart
+            className={`w-3.5 h-3.5 ${wishlisted ? "fill-red-500 text-red-500" : "text-foreground/70"}`}
+          />
+        </button>
+      </div>
+
+      {/* Info */}
+      <div className="p-3 space-y-1">
+        <h3
+          className="text-sm font-medium text-foreground line-clamp-1 cursor-pointer hover:text-primary"
+          onClick={() => onOpen(product.id)}
+        >
+          {product.title}
+        </h3>
+        <div className="flex items-center gap-1">
+          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+          <span className="text-xs text-muted-foreground">
+            {product.rating} ({product.reviews})
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="text-sm font-bold text-foreground">
+            ₹{product.price.toLocaleString("en-IN")}
+          </span>
+          {product.oldPrice && (
+            <span className="text-xs text-muted-foreground line-through">
+              ₹{product.oldPrice.toLocaleString("en-IN")}
+            </span>
+          )}
+          {product.discount && product.discount > 0 && (
+            <span className="text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73] whitespace-nowrap">
+              {product.discount}% Off
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => onAddToCart(product)}
+          className="w-full mt-2 py-2 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors"
+        >
+          Add to Cart
+        </button>
+      </div>
+    </div>
+  );
+});
 
 // ─── Component ────────────────────────────────────────
 const CategoryPage = () => {
@@ -376,108 +471,35 @@ const CategoryPage = () => {
     </div>
   );
 
-  // ── Product Card ──
-  const ProductCard = ({ product }: { product: UIProduct }) => {
-    const wishlisted = isInWishlist(product.id);
+  // ── Product Card handlers ──
+  // The card itself is a stable, memoized component declared at module scope
+  // (see `CategoryProductCard`). We only need to provide event handlers here.
+  const handleCardOpen = (productId: string) => {
+    navigate(`/product/${productId}`);
+  };
 
-    const handleAddToCart = async () => {
-      if (!user) {
-        navigate("/login", { state: { from: location } });
-        return;
-      }
+  const handleCardAddToCart = async (product: UIProduct) => {
+    if (!user) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+    await addToCart({
+      id: product.id,
+      name: product.title,
+      price: product.price,
+      image: product.image,
+    });
+    openCart();
+    toast({ title: "Added to cart" });
+  };
 
-      await addToCart({
-        id: product.id,
-        name: product.title,
-        price: product.price,
-        image: product.image,
-      });
-
-      openCart();
-      toast({ title: "Added to cart" });
-    };
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300"
-      >
-        {/* Image */}
-        <div
-          className="relative aspect-square overflow-hidden cursor-pointer"
-          onClick={() => navigate(`/product/${product.id}`)}
-        >
-          <img
-            src={product.image}
-            alt={product.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-          />
-          {product.badge && (
-            <span className="absolute top-2 left-2 bg-primary/90 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
-              {product.badge}
-            </span>
-          )}
-          {/* Wishlist heart - always visible top right */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (wishlisted) {
-                removeFromWishlist(product.id);
-              } else {
-                addToWishlist(product.id, product.title);
-                toast({ title: "Added to wishlist" });
-              }
-            }}
-            className="absolute top-2 right-2 z-10 w-7 h-7 bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm"
-          >
-            <Heart
-              className={`w-3.5 h-3.5 ${wishlisted ? "fill-red-500 text-red-500" : "text-foreground/70"}`}
-            />
-          </button>
-        </div>
-
-        {/* Info */}
-        <div className="p-3 space-y-1">
-          <h3
-            className="text-sm font-medium text-foreground line-clamp-1 cursor-pointer hover:text-primary"
-            onClick={() => navigate(`/product/${product.id}`)}
-          >
-            {product.title}
-          </h3>
-          <div className="flex items-center gap-1">
-            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-            <span className="text-xs text-muted-foreground">
-              {product.rating} ({product.reviews})
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="text-sm font-bold text-foreground">
-              ₹{product.price.toLocaleString("en-IN")}
-            </span>
-            {product.oldPrice && (
-              <span className="text-xs text-muted-foreground line-through">
-                ₹{product.oldPrice.toLocaleString("en-IN")}
-              </span>
-            )}
-            {product.discount && product.discount > 0 && (
-              <span className="text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73] whitespace-nowrap">
-                {product.discount}% Off
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => {
-              void handleAddToCart();
-            }}
-            className="w-full mt-2 py-2 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            Add to Cart
-          </button>
-        </div>
-      </motion.div>
-    );
+  const handleCardToggleWishlist = (product: UIProduct, wishlisted: boolean) => {
+    if (wishlisted) {
+      removeFromWishlist(product.id);
+    } else {
+      addToWishlist(product.id, product.title);
+      toast({ title: "Added to wishlist" });
+    }
   };
 
   if (!currentCategory && !tagMeta && !loading && categories.length > 0) {
@@ -700,7 +722,14 @@ const CategoryPage = () => {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                 {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <CategoryProductCard
+                    key={product.id}
+                    product={product}
+                    wishlisted={isInWishlist(product.id)}
+                    onOpen={handleCardOpen}
+                    onAddToCart={(p) => { void handleCardAddToCart(p); }}
+                    onToggleWishlist={handleCardToggleWishlist}
+                  />
                 ))}
               </div>
             )}

@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronLeft,
   Loader2,
   MapPin,
+  MessageSquare,
   Package,
   Phone,
+  Send,
   ShieldCheck,
   Truck,
   UserPlus,
@@ -35,11 +37,23 @@ import {
   subscribeToOrder,
   updateOrderStatus,
   setDeliveryWindow,
+  setReturnPickupWindow,
+  FULFILLMENT_WINDOW_TEMPLATES,
+  resolveFulfillmentWindowTemplate,
+  type FulfillmentWindowTemplateId,
 } from '@/services/orderService';
 import ImageUploader from '@/components/ImageUploader';
 import { storage, db } from '@/config/firebase';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL, type UploadTask } from 'firebase/storage';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/contexts/AuthContext';
+import { notifyOrder } from '@/services/pushNotificationService';
+import {
+  createOrderMessage,
+  OrderMessage,
+  subscribeToOrderMessages,
+} from '@/services/orderMessagingService';
 
 /**
  * Canonical, simplified status options for the admin dropdown. Legacy values
@@ -95,9 +109,26 @@ const NEXT_STEP_HINT: Record<string, string> = {
 const formatPrice = (price: number) =>
   `₹${(price ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
-const formatDateTime = (value: any) => {
+type TimestampLike = { seconds?: number; toDate?: () => Date } | Date | string | number | null | undefined;
+type OrderReturnMeta = Order & {
+  returnScheduledAt?: unknown;
+  return_otp?: string;
+  return_store_otp?: string;
+  returnStatus?: string;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
+const formatDateTime = (value: TimestampLike) => {
   if (!value) return 'N/A';
-  const date = value.toDate ? value.toDate() : new Date((value.seconds || 0) * 1000);
+  const date = value instanceof Date
+    ? value
+    : typeof value === 'object' && value.toDate
+      ? value.toDate()
+      : typeof value === 'object' && typeof value.seconds === 'number'
+        ? new Date(value.seconds * 1000)
+        : new Date(value);
   return date.toLocaleString('en-IN', {
     day: 'numeric',
     month: 'short',
@@ -110,6 +141,7 @@ const formatDateTime = (value: any) => {
 const AdminOrderDetails = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const { user, userProfile } = useAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,6 +156,21 @@ const AdminOrderDetails = () => {
   const [windowTo, setWindowTo]     = useState('');
   const [windowNote, setWindowNote] = useState('');
   const [savingWindow, setSavingWindow] = useState(false);
+
+  // Return pickup window state (separate from delivery window)
+  const [returnWindowDate, setReturnWindowDate] = useState('');
+  const [returnWindowFrom, setReturnWindowFrom] = useState('');
+  const [returnWindowTo, setReturnWindowTo]     = useState('');
+  const [returnWindowNote, setReturnWindowNote] = useState('');
+  const [savingReturnWindow, setSavingReturnWindow] = useState(false);
+
+  // Order conversation (admin <-> customer) state. Mirrors the customer-side
+  // chat in `OrderDetailsPage` so admins can reply inside the same thread
+  // without leaving this page.
+  const [chatMessages, setChatMessages] = useState<OrderMessage[]>([]);
+  const [chatDraft, setChatDraft] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Real-time subscription to the order document.
   useEffect(() => {
@@ -161,10 +208,79 @@ const AdminOrderDetails = () => {
     return () => unsub();
   }, []);
 
+  // Prefill window form fields from the saved order so editing shows existing values.
+  useEffect(() => {
+    if (!order) return;
+    setWindowDate(order.delivery_window_date || '');
+    setWindowFrom(order.delivery_window_from || '');
+    setWindowTo(order.delivery_window_to || '');
+    setWindowNote(order.delivery_window_note || '');
+    setReturnWindowDate(order.return_window_date || '');
+    setReturnWindowFrom(order.return_window_from || '');
+    setReturnWindowTo(order.return_window_to || '');
+    setReturnWindowNote(order.return_window_note || '');
+    // Only resync when the order document id changes — avoid clobbering edits-in-progress.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
+
+  // Subscribe to the order conversation thread (admin sees ALL messages,
+  // including internal/system entries) so admins can review and reply inside
+  // the same thread the customer uses.
+  useEffect(() => {
+    if (!orderId) return;
+    const unsub = subscribeToOrderMessages(
+      orderId,
+      (msgs) => {
+        setChatMessages(msgs);
+        // Pin scroll to the latest message after data changes.
+        window.requestAnimationFrame(() => {
+          const el = chatScrollRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      },
+      (err) => console.error('order messages subscription error', err),
+    );
+    return () => unsub();
+  }, [orderId]);
+
+  const sendAdminChatMessage = async () => {
+    if (!order || !user || !chatDraft.trim() || sendingChat) return;
+    const text = chatDraft.trim();
+    setSendingChat(true);
+    try {
+      await createOrderMessage(order.id, {
+        authorType: 'admin',
+        authorId: user.uid,
+        authorName: userProfile?.username || user.displayName || 'Support team',
+        channel: 'chat',
+        // visibility 'customer' makes the message appear on the customer
+        // order detail page; admins can see all visibility levels.
+        visibility: 'customer',
+        message: text,
+      });
+      // Fire-and-forget push to the customer so they see the reply even when
+      // the order detail page is closed. Failure is logged inside notifyOrder.
+      void notifyOrder({
+        orderId: order.id,
+        audience: 'customer',
+        title: 'New reply from Sreerasthu support',
+        body: text.length > 140 ? `${text.slice(0, 137)}…` : text,
+        url: `/account/orders/${order.id}`,
+        data: { kind: 'order-chat', orderId: order.id },
+      });
+      setChatDraft('');
+    } catch (err: unknown) {
+      console.error('admin chat send failed', err);
+      toast.error(getErrorMessage(err, 'Failed to send message'));
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
   const normalizedStatus = useMemo(() => {
     if (!order) return 'pending';
     // In return context, 'picked' means item collected from customer — do not normalize to outForDelivery
-    if (order.status === 'picked' && (order as any).returnScheduledAt) return 'picked';
+    if (order.status === 'picked' && (order as OrderReturnMeta).returnScheduledAt) return 'picked';
     return normalizeOrderStatus(order.status);
   }, [order]);
 
@@ -178,13 +294,17 @@ const AdminOrderDetails = () => {
       toast.error('Assign a delivery partner first — that will mark the order as Out for Delivery.');
       return;
     }
+    if (next === 'returnScheduled') {
+      toast.error('Use the “Assign pickup partner” panel below to schedule a return — direct status change is disabled.');
+      return;
+    }
     setSavingStatus(true);
     try {
       await updateOrderStatus(order.id, next);
       toast.success(`Status updated to ${STATUS_BADGE[next]?.label || next}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err?.message || 'Failed to update status');
+      toast.error(getErrorMessage(err, 'Failed to update status'));
     } finally {
       setSavingStatus(false);
     }
@@ -205,9 +325,9 @@ const AdminOrderDetails = () => {
       toast.success(`Return pickup assigned to ${partner.name}`, {
         description: `Pickup OTP ${pickupOtp} has been shared with the customer.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err?.message || 'Failed to assign return pickup partner');
+      toast.error(getErrorMessage(err, 'Failed to assign return pickup partner'));
     } finally {
       setAssigningReturn(false);
     }
@@ -228,9 +348,9 @@ const AdminOrderDetails = () => {
       toast.success(`Assigned to ${partner.name}`, {
         description: `OTP ${otp} shared with the customer.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err?.message || 'Failed to assign delivery partner');
+      toast.error(getErrorMessage(err, 'Failed to assign delivery partner'));
     } finally {
       setAssigning(false);
     }
@@ -245,11 +365,50 @@ const AdminOrderDetails = () => {
     try {
       await setDeliveryWindow(order.id, { date: windowDate, from: windowFrom, to: windowTo, note: windowNote || undefined });
       toast.success('Delivery window saved!');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save delivery window.');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to save delivery window.'));
     } finally {
       setSavingWindow(false);
     }
+  };
+
+  const handleSetReturnWindow = async () => {
+    if (!order || !returnWindowDate || !returnWindowFrom || !returnWindowTo) {
+      toast.error('Please fill in date and time range.');
+      return;
+    }
+    setSavingReturnWindow(true);
+    try {
+      await setReturnPickupWindow(order.id, {
+        date: returnWindowDate,
+        from: returnWindowFrom,
+        to: returnWindowTo,
+        note: returnWindowNote || undefined,
+      });
+      toast.success('Return pickup window saved!');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to save return pickup window.'));
+    } finally {
+      setSavingReturnWindow(false);
+    }
+  };
+
+  const applyDeliveryTemplate = (id: FulfillmentWindowTemplateId) => {
+    const tpl = FULFILLMENT_WINDOW_TEMPLATES.find((t) => t.id === id);
+    if (!tpl) return;
+    const r = resolveFulfillmentWindowTemplate(tpl);
+    setWindowDate(r.date);
+    setWindowFrom(r.from);
+    setWindowTo(r.to);
+  };
+
+  const applyReturnTemplate = (id: FulfillmentWindowTemplateId) => {
+    const tpl = FULFILLMENT_WINDOW_TEMPLATES.find((t) => t.id === id);
+    if (!tpl) return;
+    const r = resolveFulfillmentWindowTemplate(tpl);
+    setReturnWindowDate(r.date);
+    setReturnWindowFrom(r.from);
+    setReturnWindowTo(r.to);
   };
 
   if (loading) {
@@ -269,8 +428,9 @@ const AdminOrderDetails = () => {
   const partnerName = order.delivery_partner_name || order.delivery_boy_name;
   const partnerPhone = order.delivery_partner_phone;
   const otp = order.delivery_otp;
-  const returnOtp = (order as any).return_otp as string | undefined;
-  const returnStoreOtp = (order as any).return_store_otp as string | undefined;
+  const returnMeta = order as OrderReturnMeta;
+  const returnOtp = returnMeta.return_otp;
+  const returnStoreOtp = returnMeta.return_store_otp;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -363,6 +523,141 @@ const AdminOrderDetails = () => {
         </div>
       </div>
 
+      {/* Pricing breakdown — sourced from the saved order so admins see exactly
+           what the customer paid (subtotal, delivery, GST, COD, coupon, total). */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-zinc-100">
+          Pricing breakdown
+        </h2>
+        <div className="space-y-1.5 text-sm">
+          <div className="flex justify-between text-gray-700 dark:text-zinc-300">
+            <span>Subtotal</span>
+            <span>{formatPrice(order.subtotal || 0)}</span>
+          </div>
+          <div className="flex justify-between text-gray-700 dark:text-zinc-300">
+            <span>Delivery</span>
+            <span>{(order.deliveryCharge || 0) === 0 ? 'FREE' : formatPrice(order.deliveryCharge || 0)}</span>
+          </div>
+          {(order.taxAmount || 0) > 0 && (
+            <div className="flex justify-between text-gray-700 dark:text-zinc-300">
+              <span>
+                GST{order.gstRate ? ` (${order.gstRate}%${order.gstInclusive ? ' incl.' : ''})` : ''}
+              </span>
+              <span>{formatPrice(order.taxAmount || 0)}</span>
+            </div>
+          )}
+          {(order.codCharge || 0) > 0 && (
+            <div className="flex justify-between text-gray-700 dark:text-zinc-300">
+              <span>COD charge</span>
+              <span>{formatPrice(order.codCharge || 0)}</span>
+            </div>
+          )}
+          {(order.discount || order.couponDiscount || 0) > 0 && (
+            <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+              <span>
+                Discount{order.couponCode ? ` (${order.couponCode})` : ''}
+              </span>
+              <span>-{formatPrice(order.discount || order.couponDiscount || 0)}</span>
+            </div>
+          )}
+          <div className="mt-2 flex justify-between border-t border-gray-200 pt-2 text-base font-bold text-gray-900 dark:border-zinc-800 dark:text-zinc-100">
+            <span>Total</span>
+            <span className="text-amber-600">{formatPrice(order.total || 0)}</span>
+          </div>
+          {order.couponCode && (
+            <p className="pt-1 text-xs text-gray-500">
+              Coupon <span className="font-mono font-semibold">{order.couponCode}</span>
+              {order.couponDescription ? ` — ${order.couponDescription}` : ''}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Order conversation — admin can see everything (internal + customer
+           visible) and reply inside the same thread the customer uses. */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-zinc-100">
+          <MessageSquare className="h-4 w-4" /> Order conversation
+          {chatMessages.length > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+              {chatMessages.length}
+            </span>
+          )}
+        </h2>
+        <p className="mb-3 text-xs text-gray-500 dark:text-zinc-400">
+          Replies marked customer-visible appear on the customer order page in real time.
+        </p>
+
+        <div
+          ref={chatScrollRef}
+          className="max-h-[360px] space-y-2 overflow-y-auto rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40"
+        >
+          {chatMessages.length === 0 ? (
+            <p className="py-6 text-center text-xs text-gray-500 dark:text-zinc-400">
+              No messages yet. Send the first reply below.
+            </p>
+          ) : (
+            chatMessages.map((m) => {
+              const isAdmin = m.authorType === 'admin';
+              const isSystem = m.authorType === 'system';
+              const align = isAdmin ? 'justify-end' : 'justify-start';
+              const bubble = isAdmin
+                ? 'bg-amber-600 text-white'
+                : isSystem
+                  ? 'border border-dashed border-gray-300 bg-white text-gray-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'
+                  : 'border border-gray-200 bg-white text-gray-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100';
+              return (
+                <div key={m.id} className={`flex ${align}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${bubble}`}>
+                    <div className={`flex flex-wrap items-center gap-2 text-[10px] ${isAdmin ? 'text-white/80' : 'text-gray-500 dark:text-zinc-400'}`}>
+                      <span className="font-semibold">
+                        {m.authorName || (isAdmin ? 'Support team' : isSystem ? 'System' : 'Customer')}
+                      </span>
+                      <span>{formatDateTime(m.createdAt)}</span>
+                      {m.channel !== 'chat' && (
+                        <span className={`rounded-full px-1.5 py-0.5 ${isAdmin ? 'bg-white/15' : 'bg-gray-100 dark:bg-zinc-800'}`}>
+                          {m.channel}
+                        </span>
+                      )}
+                      {m.visibility === 'internal' && (
+                        <span className={`rounded-full px-1.5 py-0.5 ${isAdmin ? 'bg-white/15' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'}`}>
+                          internal
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap leading-snug">{m.message}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="mt-3 space-y-2">
+          <Textarea
+            value={chatDraft}
+            onChange={(e) => setChatDraft(e.target.value)}
+            placeholder="Reply to the customer about this order…"
+            className="min-h-[88px] resize-none"
+            disabled={sendingChat}
+          />
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-500 dark:text-zinc-400">
+              Sent as <span className="font-semibold">{userProfile?.username || user?.displayName || 'Support team'}</span> — visible to the customer.
+            </p>
+            <Button
+              size="sm"
+              onClick={sendAdminChatMessage}
+              disabled={sendingChat || !chatDraft.trim()}
+              className="gap-2"
+            >
+              {sendingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {sendingChat ? 'Sending…' : 'Send reply'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Status + Assign Partner */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Status control */}
@@ -422,7 +717,16 @@ const AdminOrderDetails = () => {
           {/* Return flow — assign pickup partner */}
           {normalizedStatus === 'returnRequested' ? (
             <div className="space-y-2">
-              <Select onValueChange={handleAssignReturnPartner} disabled={assigningReturn}>
+              {returnMeta.returnStatus !== 'approved' && (
+                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200">
+                  Approve the return request first (use the “Approve &amp; Assign Pickup”
+                  button in the orders list) before assigning a pickup partner.
+                </p>
+              )}
+              <Select
+                onValueChange={handleAssignReturnPartner}
+                disabled={assigningReturn || returnMeta.returnStatus !== 'approved'}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a pickup partner…" />
                 </SelectTrigger>
@@ -550,13 +854,34 @@ const AdminOrderDetails = () => {
         </div>
       </div>
 
-      {/* Delivery Window Setter — available when order is out for delivery */}
-      {(normalizedStatus === 'outForDelivery') && (
+      {/* Delivery Window Setter — available once the order is packed or out for delivery */}
+      {(normalizedStatus === 'packed' || normalizedStatus === 'outForDelivery') && (
         <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-5 shadow-sm dark:border-purple-800 dark:bg-purple-900/20">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-purple-900 dark:text-purple-100">
             <Calendar className="h-4 w-4" /> Set Delivery Window
           </h2>
+          {(order.delivery_window_date && order.delivery_window_from && order.delivery_window_to) && (
+            <p className="mb-3 rounded-lg border border-purple-200 bg-white px-3 py-2 text-xs text-purple-800 dark:bg-zinc-800 dark:border-purple-700 dark:text-purple-200">
+              Currently scheduled: <span className="font-semibold">{order.delivery_window_date}</span>
+              {' · '}{order.delivery_window_from}–{order.delivery_window_to}
+            </p>
+          )}
           <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-purple-700 mb-1 block">Quick templates</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {FULFILLMENT_WINDOW_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => applyDeliveryTemplate(tpl.id)}
+                    className="rounded-lg border border-purple-200 bg-white px-2 py-2 text-[11px] font-semibold text-purple-700 hover:border-purple-400 hover:bg-purple-100 transition-colors dark:bg-zinc-800 dark:border-purple-700 dark:text-purple-200"
+                  >
+                    {tpl.shortLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div>
               <label className="text-xs font-semibold text-purple-700 mb-1 block">Date</label>
               <input
@@ -609,6 +934,90 @@ const AdminOrderDetails = () => {
         </div>
       )}
 
+      {/* Return Pickup Window Setter — visible when a return is scheduled */}
+      {normalizedStatus === 'returnScheduled' && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm dark:border-amber-800 dark:bg-amber-900/20">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
+            <Calendar className="h-4 w-4" /> Set Return Pickup Window
+          </h2>
+          {(order.return_window_date && order.return_window_from && order.return_window_to) ? (
+            <p className="mb-3 rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-amber-800 dark:bg-zinc-800 dark:border-amber-700 dark:text-amber-200">
+              Currently scheduled: <span className="font-semibold">{order.return_window_date}</span>
+              {' · '}{order.return_window_from}–{order.return_window_to}
+            </p>
+          ) : (
+            <p className="mb-3 rounded-lg border border-amber-300 bg-amber-100/70 px-3 py-2 text-xs font-medium text-amber-900 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200">
+              The pickup partner cannot complete this return until a window is saved.
+            </p>
+          )}
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-amber-800 mb-1 block">Quick templates</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {FULFILLMENT_WINDOW_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => applyReturnTemplate(tpl.id)}
+                    className="rounded-lg border border-amber-200 bg-white px-2 py-2 text-[11px] font-semibold text-amber-800 hover:border-amber-400 hover:bg-amber-100 transition-colors dark:bg-zinc-800 dark:border-amber-700 dark:text-amber-200"
+                  >
+                    {tpl.shortLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-amber-800 mb-1 block">Date</label>
+              <input
+                type="date"
+                value={returnWindowDate}
+                onChange={(e) => setReturnWindowDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none dark:bg-zinc-800 dark:border-amber-600 dark:text-zinc-100"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-amber-800 mb-1 block">From</label>
+                <input
+                  type="time"
+                  value={returnWindowFrom}
+                  onChange={(e) => setReturnWindowFrom(e.target.value)}
+                  className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none dark:bg-zinc-800 dark:border-amber-600 dark:text-zinc-100"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-amber-800 mb-1 block">To</label>
+                <input
+                  type="time"
+                  value={returnWindowTo}
+                  onChange={(e) => setReturnWindowTo(e.target.value)}
+                  className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none dark:bg-zinc-800 dark:border-amber-600 dark:text-zinc-100"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-amber-800 mb-1 block">Note (optional)</label>
+              <textarea
+                value={returnWindowNote}
+                onChange={(e) => setReturnWindowNote(e.target.value)}
+                placeholder="e.g. Item should be packed in the original box"
+                rows={2}
+                className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none resize-none dark:bg-zinc-800 dark:border-amber-600 dark:text-zinc-100"
+              />
+            </div>
+            <Button
+              onClick={handleSetReturnWindow}
+              disabled={savingReturnWindow || !returnWindowDate || !returnWindowFrom || !returnWindowTo}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-sm font-bold"
+            >
+              {savingReturnWindow ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+              Save Return Pickup Window
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Refund receipt upload (visible only when order is refunded) */}
       {normalizedStatus === 'refunded' && (
         <RefundReceiptUploader order={order} />
@@ -640,16 +1049,46 @@ const AdminOrderDetails = () => {
 // ============================================================
 function RefundReceiptUploader({ order }: { order: Order }) {
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const uploadTaskRef = useRef<UploadTask | null>(null);
 
   const handleUpload = async (file: File) => {
+    // Hard cap at 15 MB even though ImageUploader also enforces it.
+    const MAX_BYTES = 15 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      toast.error('File too large. Refund receipts must be under 15 MB.');
+      return;
+    }
+
     setUploading(true);
+    setProgress(0);
     try {
       const isPdf = file.type === 'application/pdf';
       const ext = isPdf ? 'pdf' : (file.name.split('.').pop() || 'jpg');
       const path = `orders/${order.id}/refund-receipt.${ext}`;
       const ref = storageRef(storage, path);
-      await uploadBytes(ref, file, { contentType: file.type });
-      const url = await getDownloadURL(ref);
+
+      const url = await new Promise<string>((resolve, reject) => {
+        const task = uploadBytesResumable(ref, file, { contentType: file.type });
+        uploadTaskRef.current = task;
+        task.on(
+          'state_changed',
+          (snapshot) => {
+            const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setProgress(pct);
+          },
+          (err) => reject(err),
+          async () => {
+            try {
+              const downloadUrl = await getDownloadURL(task.snapshot.ref);
+              resolve(downloadUrl);
+            } catch (err) {
+              reject(err);
+            }
+          },
+        );
+      });
+
       await updateDoc(doc(db, 'orders', order.id), {
         refundReceiptUrl: url,
         refundReceiptUploadedAt: serverTimestamp(),
@@ -659,10 +1098,21 @@ function RefundReceiptUploader({ order }: { order: Order }) {
       toast.success('Refund receipt uploaded');
     } catch (err) {
       console.error('[refund-receipt] upload failed:', err);
-      toast.error('Upload failed');
+      const storageError = err as { code?: string; message?: string };
+      if (storageError.code === 'storage/canceled') {
+        toast.info('Upload stopped. Choose another receipt when ready.');
+      } else {
+        toast.error(storageError.message || 'Upload failed');
+      }
     } finally {
+      uploadTaskRef.current = null;
       setUploading(false);
+      setProgress(0);
     }
+  };
+
+  const cancelUpload = () => {
+    uploadTaskRef.current?.cancel();
   };
 
   return (
@@ -671,16 +1121,20 @@ function RefundReceiptUploader({ order }: { order: Order }) {
         <Receipt className="h-4 w-4" /> Refund Receipt
       </h2>
       <p className="mb-3 text-xs text-emerald-800/80 dark:text-emerald-300/80">
-        Upload the refund receipt (image or PDF). The customer will see a
-        “View Receipt” button on their order page.
+        Upload the refund receipt (image or PDF, max 15 MB). The customer will
+        see a “View Receipt” button on their order page once uploaded.
       </p>
       <ImageUploader
         acceptPdf
+        confirmBeforeUpload
+        maxSizeBytes={15 * 1024 * 1024}
         onImageSelected={handleUpload}
         existingImageUrl={order.refundReceiptUrl || undefined}
         existingFileName={order.refundReceiptName || undefined}
         existingFileType={order.refundReceiptType || undefined}
         isUploading={uploading}
+        uploadProgress={uploading ? progress : undefined}
+        onCancelUpload={uploading ? cancelUpload : undefined}
       />
       {order.refundReceiptUrl && (
         <a

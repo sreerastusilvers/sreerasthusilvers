@@ -178,10 +178,20 @@ const TrendProductSection = () => {
               <p className="text-sm text-muted-foreground mt-1 font-light">What's hot and trending in silver</p>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={prevPage} className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-all shadow-sm">
+              <button
+                onClick={prevPage}
+                disabled={totalPages <= 1}
+                aria-label="Previous trending products"
+                className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <ChevronLeft className="w-4 h-4 text-muted-foreground" />
               </button>
-              <button onClick={nextPage} className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-all shadow-sm">
+              <button
+                onClick={nextPage}
+                disabled={totalPages <= 1}
+                aria-label="Next trending products"
+                className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
               <button onClick={() => navigate('/products?tag=trending')} className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1 ml-2">

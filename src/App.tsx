@@ -83,6 +83,7 @@ import AdminHomeBanners from './pages/admin/AdminHomeBanners';
 import AdminHomeCollections from './pages/admin/AdminHomeCollections';
 import AdminVideos from './pages/admin/AdminVideos';
 import AdminNotifications from './pages/admin/AdminNotifications';
+import AdminWhatsApp from './pages/admin/AdminWhatsApp';
 import AdminDeliveryBoyDetails from './pages/admin/AdminDeliveryBoyDetails';
 import AdminOrderDetails from './pages/admin/AdminOrderDetails';
 import AdminVideoCalls from './pages/admin/AdminVideoCalls';
@@ -335,6 +336,7 @@ const App = () => {
                 <Route path="silver-rate" element={<AdminSilverRate />} />
                 <Route path="commerce-settings" element={<AdminCommerceSettings />} />
                 <Route path="marketing" element={<AdminNotifications />} />
+                <Route path="whatsapp" element={<AdminWhatsApp />} />
                 <Route path="notifications" element={<Navigate to="/admin/marketing" replace />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="customers" element={<AdminCustomers />} />

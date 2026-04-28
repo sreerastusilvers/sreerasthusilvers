@@ -124,20 +124,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const profile = await fetchUserProfile(updatedUser.uid);
             recordSessionLogin(updatedUser);
 
-            // Register for FCM push notifications (best-effort, non-blocking)
-            PushNotifications.requestPermissionAndRegisterToken(updatedUser.uid).catch(() => {});
-            PushNotifications.subscribeForegroundMessages(({ title, body }) => {
-              if (typeof window === 'undefined' || !title) return;
-              if (document.visibilityState === 'visible') {
-                // User is actively on the page — show in-app toast
-                toast(title, { description: body });
-              } else {
-                // Page is backgrounded — use native Notification API
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  try { new Notification(title, { body }); } catch { /* ignore */ }
+            if (profile?.role !== 'admin') {
+              // Register for FCM push notifications (best-effort, non-blocking)
+              PushNotifications.requestPermissionAndRegisterToken(updatedUser.uid).catch(() => {});
+              PushNotifications.subscribeForegroundMessages(({ title, body, data }) => {
+                if (typeof window === 'undefined' || !title) return;
+                if (data?.type === 'order-placed') return;
+                if (document.visibilityState === 'visible') {
+                  // User is actively on the page — show in-app toast
+                  toast(title, { description: body });
+                } else {
+                  // Page is backgrounded — use native Notification API
+                  if ('Notification' in window && Notification.permission === 'granted') {
+                    try { new Notification(title, { body }); } catch { /* ignore */ }
+                  }
                 }
-              }
-            }).catch(() => {});
+              }).catch(() => {});
+            }
             
             // Only sync Google photoURL if user doesn't have a custom avatar (Cloudinary URL)
             // This prevents overwriting custom uploaded avatars
@@ -288,10 +291,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUserProfile(profile);
       return profile;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Google Sign-In Error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
+      if (error && typeof error === 'object') {
+        const firebaseError = error as { code?: unknown; message?: unknown };
+        console.error('Error code:', firebaseError.code);
+        console.error('Error message:', firebaseError.message);
+      }
       throw error; // Re-throw to be handled by the UI
     }
   };

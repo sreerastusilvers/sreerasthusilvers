@@ -197,6 +197,21 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // --- COUPONS ---
+    // Customers need to read coupons to apply them at checkout, and need to
+    // bump `usedCount` by 1 after their order is created so admin limits stay
+    // accurate. They must NOT be able to mutate any other coupon field.
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['usedCount', 'updatedAt'])
+        && request.resource.data.usedCount == resource.data.usedCount + 1
+      );
+    }
     
     // --- HOMEPAGE SHOWCASES ---
     match /showcases/{showcaseId} {
@@ -346,6 +361,33 @@ service cloud.firestore {
     // these rules. Block all client access.
     match /whatsappOtps/{doc} {
       allow read, write: if false;
+    }
+
+    // --- MARKETING CAMPAIGNS (broadcasts: push + WhatsApp) ---
+    // Admin-only. The /api/broadcast endpoint uses the admin SDK (bypasses
+    // these rules) to write per-channel results back to the document.
+    match /broadcastCampaigns/{campaignId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- WHATSAPP TEMPLATE METADATA ---
+    // Admin-managed list of approved Cloud-API template names + parameter
+    // descriptions used by the Marketing Center composer. Templates themselves
+    // are approved in Meta dashboard; this collection only stores metadata
+    // for picker UX.
+    match /whatsappTemplates/{templateId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // --- WHATSAPP INBOX (admin reply console) ---
+    // Threaded conversation records populated by the /api/whatsapp-webhook
+    // function (admin SDK). Admin-only client access.
+    match /whatsappThreads/{threadId} {
+      allow read, write: if isAdmin();
+      match /messages/{msgId} {
+        allow read, write: if isAdmin();
+      }
     }
 
     // --- VIDEO CALL SIGNALLING ---

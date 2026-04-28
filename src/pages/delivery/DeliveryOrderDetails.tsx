@@ -32,7 +32,11 @@ import {
   verifyReturnPickupOTP,
   verifyReturnToStoreOTP,
   setDeliveryWindow,
+  setReturnPickupWindow,
   startFailedDeliveryReturn,
+  FULFILLMENT_WINDOW_TEMPLATES,
+  resolveFulfillmentWindowTemplate,
+  type FulfillmentWindowTemplateId,
 } from '@/services/orderService';
 import { toast } from 'sonner';
 
@@ -53,6 +57,17 @@ const formatCurrency = (amount: number) =>
     currency: 'INR',
     maximumFractionDigits: 0,
   }).format(amount || 0);
+
+type DeliveryWindowMeta = Order & {
+  returnScheduledAt?: unknown;
+  delivery_window_date?: string;
+  delivery_window_from?: string;
+  delivery_window_to?: string;
+  delivery_window_note?: string;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
 
 // ── SlideToDeliver ─────────────────────────────────────────────────────────────
 /**
@@ -162,6 +177,7 @@ const DeliveryOrderDetails = () => {
 
   // Delivery window states
   const [windowOpen, setWindowOpen]     = useState(false);
+  const [windowKind, setWindowKind]     = useState<'delivery' | 'return'>('delivery');
   const [windowDate, setWindowDate]     = useState('');
   const [windowFrom, setWindowFrom]     = useState('');
   const [windowTo, setWindowTo]         = useState('');
@@ -243,9 +259,9 @@ const DeliveryOrderDetails = () => {
       }
       toast.success('Delivery completed!', { description: 'Order marked as delivered.' });
       setOtpOpen(false);
-    } catch (err: any) {
-      setOtpError(err?.message || 'Failed to verify');
-      toast.error(err?.message || 'Failed to verify OTP');
+    } catch (err: unknown) {
+      setOtpError(getErrorMessage(err, 'Failed to verify'));
+      toast.error(getErrorMessage(err, 'Failed to verify OTP'));
     } finally {
       setVerifying(false);
     }
@@ -271,9 +287,9 @@ const DeliveryOrderDetails = () => {
       }
       toast.success('Return pickup confirmed!', { description: 'Item collected from customer.' });
       setReturnOtpOpen(false);
-    } catch (err: any) {
-      setReturnOtpError(err?.message || 'Failed to verify');
-      toast.error(err?.message || 'Failed to verify OTP');
+    } catch (err: unknown) {
+      setReturnOtpError(getErrorMessage(err, 'Failed to verify'));
+      toast.error(getErrorMessage(err, 'Failed to verify OTP'));
     } finally {
       setReturnVerifying(false);
     }
@@ -289,6 +305,48 @@ const DeliveryOrderDetails = () => {
     setChatOpen(false);
   };
 
+  const canDeliver = !!order && (order.status === 'outForDelivery' || order.status === 'picked');
+  const isDelivered = order?.status === 'delivered';
+  const canPickupReturn = order?.status === 'returnScheduled';
+  const orderWindowMeta = order as DeliveryWindowMeta | null;
+  const isReturnPickedUp = order?.status === 'picked' && !!orderWindowMeta?.returnScheduledAt;
+  const isReturnedToStore = order?.status === 'returned' && !!orderWindowMeta?.returnScheduledAt;
+  const isDeliveryFailed = order?.status === 'deliveryFailed';
+
+  // Window-gating: OTP verification cannot proceed until a fulfillment window is saved.
+  const hasDeliveryWindow = !!(order?.delivery_window_date && order?.delivery_window_from && order?.delivery_window_to);
+  const hasReturnWindow = !!(order?.return_window_date && order?.return_window_from && order?.return_window_to);
+
+  useEffect(() => {
+    if (!order || windowOpen) return;
+    if (canDeliver && !hasDeliveryWindow && !isReturnPickedUp && !isDeliveryFailed) {
+      setWindowKind('delivery');
+      setWindowDate(order.delivery_window_date || '');
+      setWindowFrom(order.delivery_window_from || '');
+      setWindowTo(order.delivery_window_to || '');
+      setWindowNote(order.delivery_window_note || '');
+      setWindowOpen(true);
+      return;
+    }
+    if (canPickupReturn && !hasReturnWindow) {
+      setWindowKind('return');
+      setWindowDate(order.return_window_date || '');
+      setWindowFrom(order.return_window_from || '');
+      setWindowTo(order.return_window_to || '');
+      setWindowNote(order.return_window_note || '');
+      setWindowOpen(true);
+    }
+  }, [
+    order,
+    windowOpen,
+    canDeliver,
+    hasDeliveryWindow,
+    isReturnPickedUp,
+    isDeliveryFailed,
+    canPickupReturn,
+    hasReturnWindow,
+  ]);
+
   // ── loading ──
   if (loading || !order) {
     return (
@@ -301,13 +359,6 @@ const DeliveryOrderDetails = () => {
   const isPaid = order.paymentStatus === 'paid' ||
     (order.paymentMethod || '').toLowerCase().includes('online') ||
     (order.paymentMethod || '').toLowerCase().includes('upi');
-
-  const canDeliver = order.status === 'outForDelivery' || order.status === 'picked';
-  const isDelivered = order.status === 'delivered';
-  const canPickupReturn = order.status === 'returnScheduled';
-  const isReturnPickedUp = order.status === 'picked' && !!(order as any).returnScheduledAt;
-  const isReturnedToStore = order.status === 'returned' && !!(order as any).returnScheduledAt;
-  const isDeliveryFailed = order.status === 'deliveryFailed';
 
   const handleMarkReturned = async () => {
     if (markingReturned) return;
@@ -345,20 +396,54 @@ const DeliveryOrderDetails = () => {
   };
 
   const handleSetWindow = async () => {
+    if (!order) return;
     if (!windowDate || !windowFrom || !windowTo) {
       toast.error('Please fill in date and time range.');
       return;
     }
     setSavingWindow(true);
     try {
-      await setDeliveryWindow(order.id, { date: windowDate, from: windowFrom, to: windowTo, note: windowNote || undefined });
-      toast.success('Delivery window saved!');
+      const payload = { date: windowDate, from: windowFrom, to: windowTo, note: windowNote || undefined };
+      if (windowKind === 'return') {
+        await setReturnPickupWindow(order.id, payload);
+        toast.success('Return pickup window saved!');
+      } else {
+        await setDeliveryWindow(order.id, payload);
+        toast.success('Delivery window saved!');
+      }
       setWindowOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save delivery window.');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to save window.'));
     } finally {
       setSavingWindow(false);
     }
+  };
+
+  const applyWindowTemplate = (id: FulfillmentWindowTemplateId) => {
+    const tpl = FULFILLMENT_WINDOW_TEMPLATES.find((t) => t.id === id);
+    if (!tpl) return;
+    const resolved = resolveFulfillmentWindowTemplate(tpl);
+    setWindowDate(resolved.date);
+    setWindowFrom(resolved.from);
+    setWindowTo(resolved.to);
+  };
+
+  const openDeliveryWindow = () => {
+    setWindowKind('delivery');
+    setWindowDate(order.delivery_window_date || '');
+    setWindowFrom(order.delivery_window_from || '');
+    setWindowTo(order.delivery_window_to || '');
+    setWindowNote(order.delivery_window_note || '');
+    setWindowOpen(true);
+  };
+
+  const openReturnWindow = () => {
+    setWindowKind('return');
+    setWindowDate(order.return_window_date || '');
+    setWindowFrom(order.return_window_from || '');
+    setWindowTo(order.return_window_to || '');
+    setWindowNote(order.return_window_note || '');
+    setWindowOpen(true);
   };
 
   const handleCustomerUnavailable = async () => {
@@ -368,8 +453,8 @@ const DeliveryOrderDetails = () => {
       await startFailedDeliveryReturn(order.id, user!.uid, unavailableReason || undefined);
       toast.success('Delivery marked as failed. Return process started.');
       setUnavailableOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to start return process.');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to start return process.'));
     } finally {
       setUnavailableConfirming(false);
     }
@@ -551,7 +636,7 @@ const DeliveryOrderDetails = () => {
         )}
 
         {/* ── Saved Delivery Window display ── */}
-        {(order as any).delivery_window_date && (
+        {orderWindowMeta?.delivery_window_date && (
           <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50 px-4 py-3">
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-semibold uppercase tracking-widest text-purple-700">Delivery Window</p>
@@ -559,14 +644,14 @@ const DeliveryOrderDetails = () => {
             </div>
             <p className="text-sm font-semibold text-purple-900">
               {(() => {
-                const d = new Date((order as any).delivery_window_date + 'T00:00:00');
+                const d = new Date(orderWindowMeta.delivery_window_date + 'T00:00:00');
                 const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
                 const fmt = (t: string) => { const [h, m] = t.split(':').map(Number); const p = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${p}`; };
-                return `${dateStr} · ${fmt((order as any).delivery_window_from)} – ${fmt((order as any).delivery_window_to)}`;
+                return `${dateStr} · ${fmt(orderWindowMeta.delivery_window_from || '')} – ${fmt(orderWindowMeta.delivery_window_to || '')}`;
               })()}
             </p>
-            {(order as any).delivery_window_note && (
-              <p className="mt-1 text-xs text-purple-600">{(order as any).delivery_window_note}</p>
+            {orderWindowMeta.delivery_window_note && (
+              <p className="mt-1 text-xs text-purple-600">{orderWindowMeta.delivery_window_note}</p>
             )}
           </div>
         )}
@@ -585,16 +670,32 @@ const DeliveryOrderDetails = () => {
       {canDeliver && !isReturnPickedUp && !isDeliveryFailed && (
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-white/95 px-4 pb-safe py-4 shadow-[0_-8px_30px_rgba(0,0,0,0.07)] backdrop-blur">
           <div className="mx-auto max-w-xl">
-            <SlideToDeliver onConfirm={openOtp} />
-            <p className="mt-2 text-center text-xs text-stone-400">
-              Slide to verify the customer’s 4-digit OTP and complete delivery.
-            </p>            <div className="mt-3 grid grid-cols-2 gap-2">
+            {hasDeliveryWindow ? (
+              <>
+                <SlideToDeliver onConfirm={openOtp} />
+                <p className="mt-2 text-center text-xs text-stone-400">
+                  Slide to verify the customer’s 4-digit OTP and complete delivery.
+                </p>
+                <p className="mt-1 text-center text-[11px] font-medium text-purple-700">
+                  Window: {order.delivery_window_date} · {order.delivery_window_from}–{order.delivery_window_to}
+                </p>
+              </>
+            ) : (
               <button
-                onClick={() => setWindowOpen(true)}
+                onClick={openDeliveryWindow}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-purple-300 bg-purple-50 py-4 text-base font-bold text-purple-700 hover:bg-purple-100 transition-all"
+              >
+                <Calendar className="h-5 w-5" />
+                Schedule a delivery window first
+              </button>
+            )}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                onClick={openDeliveryWindow}
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 py-2.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors"
               >
                 <Calendar className="h-4 w-4" />
-                Set Delivery Window
+                {hasDeliveryWindow ? 'Edit Delivery Window' : 'Set Delivery Window'}
               </button>
               <button
                 onClick={() => setUnavailableOpen(true)}
@@ -611,17 +712,41 @@ const DeliveryOrderDetails = () => {
       {canPickupReturn && (
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-amber-200 bg-white/95 px-4 pb-safe py-4 shadow-[0_-8px_30px_rgba(0,0,0,0.07)] backdrop-blur">
           <div className="mx-auto max-w-xl">
-            <SlideToDeliver
-              onConfirm={openReturnOtp}
-              label="Slide to Confirm Pickup →"
-              trackClassName="bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30"
-              fillClassName="bg-amber-700/35"
-              knobIconClassName="text-amber-600"
-              KnobIcon={Package}
-            />
-            <p className="mt-2 text-center text-xs text-stone-400">
-              Slide to verify the customer’s 4-digit Return OTP and confirm pickup.
-            </p>
+            {hasReturnWindow ? (
+              <>
+                <SlideToDeliver
+                  onConfirm={openReturnOtp}
+                  label="Slide to Confirm Pickup →"
+                  trackClassName="bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30"
+                  fillClassName="bg-amber-700/35"
+                  knobIconClassName="text-amber-600"
+                  KnobIcon={Package}
+                />
+                <p className="mt-2 text-center text-xs text-stone-400">
+                  Slide to verify the customer’s 4-digit Return OTP and confirm pickup.
+                </p>
+                <p className="mt-1 text-center text-[11px] font-medium text-amber-700">
+                  Window: {order.return_window_date} · {order.return_window_from}–{order.return_window_to}
+                </p>
+              </>
+            ) : (
+              <button
+                onClick={openReturnWindow}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 py-4 text-base font-bold text-amber-800 hover:bg-amber-100 transition-all"
+              >
+                <Calendar className="h-5 w-5" />
+                Schedule a return pickup window first
+              </button>
+            )}
+            <div className="mt-3">
+              <button
+                onClick={openReturnWindow}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 py-2.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+              >
+                <Calendar className="h-4 w-4" />
+                {hasReturnWindow ? 'Edit Return Pickup Window' : 'Set Return Pickup Window'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -832,17 +957,36 @@ const DeliveryOrderDetails = () => {
         </DialogContent>
       </Dialog>
 
-      {/* ── Delivery Window dialog ── */}
+      {/* ── Delivery / Return window dialog ── */}
       <Dialog open={windowOpen} onOpenChange={setWindowOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <Calendar className="h-5 w-5 text-purple-600" />
-              Set Delivery Window
+              <Calendar className={`h-5 w-5 ${windowKind === 'return' ? 'text-amber-600' : 'text-purple-600'}`} />
+              {windowKind === 'return' ? 'Set Return Pickup Window' : 'Set Delivery Window'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
-            <p className="text-sm text-stone-500">Let the customer know when to expect delivery.</p>
+            <p className="text-sm text-stone-500">
+              {windowKind === 'return'
+                ? 'Tell the customer when to expect the return pickup.'
+                : 'Let the customer know when to expect delivery.'}
+            </p>
+            <div>
+              <label className="text-xs font-semibold text-stone-600 mb-1 block">Quick templates</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {FULFILLMENT_WINDOW_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => applyWindowTemplate(tpl.id)}
+                    className="rounded-lg border border-stone-200 bg-stone-50 px-2 py-2 text-[11px] font-semibold text-stone-700 hover:border-purple-300 hover:bg-purple-50 transition-colors"
+                  >
+                    {tpl.shortLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div>
               <label className="text-xs font-semibold text-stone-600 mb-1 block">Date</label>
               <input
@@ -878,7 +1022,7 @@ const DeliveryOrderDetails = () => {
               <textarea
                 value={windowNote}
                 onChange={(e) => setWindowNote(e.target.value)}
-                placeholder="e.g. Please be available at the gate"
+                placeholder={windowKind === 'return' ? 'e.g. Item ready in original packaging' : 'e.g. Please be available at the gate'}
                 rows={2}
                 className="w-full rounded-xl border border-stone-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none resize-none"
               />
@@ -886,7 +1030,11 @@ const DeliveryOrderDetails = () => {
             <Button
               onClick={handleSetWindow}
               disabled={savingWindow || !windowDate || !windowFrom || !windowTo}
-              className="h-11 w-full bg-purple-600 text-sm font-bold hover:bg-purple-700"
+              className={`h-11 w-full text-sm font-bold ${
+                windowKind === 'return'
+                  ? 'bg-amber-600 hover:bg-amber-700'
+                  : 'bg-purple-600 hover:bg-purple-700'
+              }`}
             >
               {savingWindow ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
               Save Window

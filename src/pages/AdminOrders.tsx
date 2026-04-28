@@ -34,8 +34,9 @@ import {
   updateOrderTracking,
   TrackingUpdate,
   deleteOrder,
-  getOrderStats,
-  assignOrderToDeliveryBoy
+  assignOrderToDeliveryBoy,
+  approveReturn,
+  rejectReturn,
 } from '@/services/orderService';
 import { subscribeToDeliveryBoys, DeliveryBoy } from '@/services/deliveryBoyService';
 import { toast } from 'sonner';
@@ -56,23 +57,15 @@ const AdminOrders = () => {
     trackingUrl: '',
     note: '',
   });
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    processing: 0,
-    packed: 0,
-    outForDelivery: 0,
-    delivered: 0,
-    cancelled: 0,
-    totalRevenue: 0,
-  });
-
   // Delivery Partner Assignment States
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [showAssignDrawer, setShowAssignDrawer] = useState(false);
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback;
 
   useEffect(() => {
     // Check if user is admin
@@ -94,9 +87,6 @@ const AdminOrders = () => {
       }
     );
 
-    // Load stats
-    loadStats();
-
     return () => unsubscribe();
   }, [user, navigate]);
 
@@ -115,15 +105,6 @@ const AdminOrders = () => {
     return () => unsubscribe();
   }, []);
 
-  const loadStats = async () => {
-    try {
-      const orderStats = await getOrderStats();
-      setStats(orderStats);
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
-  };
-
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -140,7 +121,6 @@ const AdminOrders = () => {
     try {
       await updateOrderStatus(orderId, newStatus);
       toast.success(`Order status updated to ${newStatus}`);
-      await loadStats();
     } catch (error) {
       console.error('Error updating order status:', error);
       toast.error('Failed to update order status');
@@ -182,7 +162,6 @@ const AdminOrders = () => {
       );
       
       setShowTrackingDrawer(false);
-      await loadStats();
     } catch (error) {
       console.error('Error updating tracking:', error);
       toast.error('Failed to update tracking information');
@@ -197,7 +176,6 @@ const AdminOrders = () => {
     try {
       await deleteOrder(orderId);
       toast.success('Order deleted successfully');
-      await loadStats();
     } catch (error) {
       console.error('Error deleting order:', error);
       toast.error('Failed to delete order');
@@ -248,7 +226,6 @@ const AdminOrders = () => {
       );
       
       setShowAssignDrawer(false);
-      await loadStats();
     } catch (error) {
       console.error('Error assigning partner:', error);
       toast.error('Failed to assign delivery partner');
@@ -261,9 +238,11 @@ const AdminOrders = () => {
     return `₹${price.toFixed(2)}`;
   };
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: Order['createdAt'] | Date | string | number | null | undefined) => {
     if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = typeof timestamp === 'object' && 'toDate' in timestamp
+      ? timestamp.toDate()
+      : new Date(timestamp);
     const day = date.getDate();
     const month = date.toLocaleDateString('en-US', { month: 'short' });
     const year = date.getFullYear();
@@ -377,7 +356,7 @@ const AdminOrders = () => {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
-                <span className="text-3xl font-bold text-gray-900">{stats.total}</span>
+                <span className="text-3xl font-bold text-gray-900">{orders.length}</span>
               </div>
               <p className="text-gray-500 text-sm mt-1">Real-time order management with live updates</p>
             </div>
@@ -402,7 +381,7 @@ const AdminOrders = () => {
             <div className="relative">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
+                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
                 className="h-10 pl-4 pr-10 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
               >
                 <option value="all">All Orders</option>
@@ -430,7 +409,7 @@ const AdminOrders = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Order Management</h2>
             <p className="text-sm text-gray-500">
-              Viewing {filteredOrders.length} of {stats.total} total orders
+              Viewing {filteredOrders.length} of {orders.length} total orders
             </p>
           </div>
           <div className="flex border border-gray-200 rounded-md overflow-hidden">
@@ -721,18 +700,27 @@ const AdminOrders = () => {
                         {selectedOrder.status === 'returnRequested' && (
                           <div className="mt-3 flex gap-2">
                             <button
-                              onClick={() => {
-                                handleStatusChange(selectedOrder.id, 'returnScheduled');
-                                toast.success('Return request approved. Schedule pickup.');
+                              onClick={async () => {
+                                try {
+                                  await approveReturn(selectedOrder.id);
+                                  toast.success('Return approved. Now assign a pickup partner.');
+                                  navigate(`/admin/orders/${selectedOrder.id}`);
+                                } catch (err: unknown) {
+                                  toast.error(getErrorMessage(err, 'Failed to approve return'));
+                                }
                               }}
                               className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
                             >
-                              Approve Return
+                              Approve & Assign Pickup
                             </button>
                             <button
-                              onClick={() => {
-                                handleStatusChange(selectedOrder.id, 'delivered');
-                                toast.info('Return request rejected. Order reverted to delivered.');
+                              onClick={async () => {
+                                try {
+                                  await rejectReturn(selectedOrder.id);
+                                  toast.info('Return request rejected. Order reverted to delivered.');
+                                } catch (err: unknown) {
+                                  toast.error(getErrorMessage(err, 'Failed to reject return'));
+                                }
                               }}
                               className="px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg border border-red-200 hover:bg-red-100 transition-colors"
                             >

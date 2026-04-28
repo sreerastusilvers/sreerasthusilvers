@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft, Heart, ShoppingCart } from "lucide-react";
 import { subscribeToTopDeals } from "@/services/productService";
@@ -16,7 +16,6 @@ const TopDeals = () => {
   const { toast } = useToast();
   const [products, setProducts] = useState<UIProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(0);
   const {
     scrollerRef: mobileScrollRef,
     scrollByPage: mobileScrollByPage,
@@ -25,6 +24,52 @@ const TopDeals = () => {
 
   const mobileDealProducts =
     canMobileDealsScroll && products.length > 1 ? [...products, ...products] : products;
+
+  // Desktop: featured product on left, rest on right with pagination.
+  // Keep these derived values before early returns so the hook setup below is
+  // always executed in the same order while data loads and after products arrive.
+  const featuredProduct = products[0];
+  const restProducts = products.slice(1);
+  const desktopProducts = restProducts.length > 0 ? restProducts : products;
+  const desktopScrollRef = useRef<HTMLDivElement>(null);
+  const canDesktopDealsScroll = desktopProducts.length > 3;
+
+  const scrollDesktopByPage = (dir: 'prev' | 'next') => {
+    const node = desktopScrollRef.current;
+    if (!node) return;
+    const delta = Math.max(260, node.clientWidth * 0.82) * (dir === 'next' ? 1 : -1);
+    node.scrollBy({ left: delta, behavior: 'smooth' });
+  };
+
+  // Desktop auto-loop: rotate the right-hand product page automatically so the
+  // section feels alive (matching the smooth mobile auto-scroll). Pauses while
+  // the user hovers the desktop card grid and pauses after manual prev/next.
+  const desktopHoverRef = useRef(false);
+  const manualPauseUntilRef = useRef(0);
+  const ROTATE_INTERVAL_MS = 4500;
+  const RESUME_DELAY_MS = 6000;
+
+  useEffect(() => {
+    if (!canDesktopDealsScroll) return;
+    const interval = window.setInterval(() => {
+      if (desktopHoverRef.current) return;
+      if (Date.now() < manualPauseUntilRef.current) return;
+      const node = desktopScrollRef.current;
+      if (!node) return;
+      const maxLeft = node.scrollWidth - node.clientWidth;
+      if (node.scrollLeft >= maxLeft - 8) {
+        node.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        scrollDesktopByPage('next');
+      }
+    }, ROTATE_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [canDesktopDealsScroll]);
+
+  const handleManualPage = (dir: 'prev' | 'next') => {
+    manualPauseUntilRef.current = Date.now() + RESUME_DELAY_MS;
+    scrollDesktopByPage(dir);
+  };
 
   useEffect(() => {
     const unsubscribe = subscribeToTopDeals((fbProducts) => {
@@ -73,19 +118,6 @@ const TopDeals = () => {
   }
 
   if (products.length === 0) return null;
-
-  // Desktop: featured product on left, rest on right with pagination
-  const featuredProduct = products[0];
-  const restProducts = products.slice(1);
-  const productsPerPage = 4;
-  const totalPages = Math.max(1, Math.ceil(restProducts.length / productsPerPage));
-  const visibleProducts = restProducts.slice(
-    currentPage * productsPerPage,
-    (currentPage + 1) * productsPerPage
-  );
-
-  const nextPage = () => setCurrentPage((prev) => (prev + 1) % totalPages);
-  const prevPage = () => setCurrentPage((prev) => (prev - 1 + totalPages) % totalPages);
 
   return (
     <section className="py-6 md:py-14">
@@ -234,15 +266,21 @@ const TopDeals = () => {
             </div>
 
             {/* Right: Product Cards Grid */}
-            <div className="w-[62%] rounded-3xl border border-white/50 dark:border-border/70 bg-background/80 p-6 flex flex-col justify-between shadow-inner">
-              <div className="grid grid-cols-4 gap-4">
-                {visibleProducts.map((product) => (
+            <div
+              className="w-[62%] rounded-3xl border border-white/50 dark:border-border/70 bg-background/80 p-6 flex flex-col justify-between shadow-inner"
+              onMouseEnter={() => { desktopHoverRef.current = true; }}
+              onMouseLeave={() => { desktopHoverRef.current = false; }}
+            >
+              <div
+                ref={desktopScrollRef}
+                className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory pb-1"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+              >
+                {desktopProducts.map((product) => (
                   <motion.div 
                     key={product.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="bg-card rounded-2xl p-3 cursor-pointer hover:shadow-lg transition-all duration-300 flex flex-col group"
+                    initial={false}
+                    className="bg-card rounded-2xl p-3 cursor-pointer hover:shadow-lg transition-all duration-300 flex flex-col group flex-none w-[190px] lg:w-[205px] snap-start"
                     onClick={() => navigate(`/product/${product.id}`)}
                   >
                     <div className="aspect-square rounded-xl overflow-hidden bg-muted mb-2.5 relative">
@@ -279,14 +317,18 @@ const TopDeals = () => {
               <div className="flex items-center justify-between mt-5 pt-3">
                 <div className="flex gap-2">
                   <button 
-                    onClick={prevPage}
-                    className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted hover:border-border transition-all duration-200 shadow-sm"
+                    onClick={() => handleManualPage('prev')}
+                    disabled={!canDesktopDealsScroll}
+                    aria-label="Previous deals"
+                    className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted hover:border-border transition-all duration-200 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="w-4 h-4 text-muted-foreground" />
                   </button>
                   <button 
-                    onClick={nextPage}
-                    className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted hover:border-border transition-all duration-200 shadow-sm"
+                    onClick={() => handleManualPage('next')}
+                    disabled={!canDesktopDealsScroll}
+                    aria-label="Next deals"
+                    className="w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center hover:bg-muted hover:border-border transition-all duration-200 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </button>

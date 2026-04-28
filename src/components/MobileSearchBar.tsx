@@ -1,7 +1,6 @@
-import { Search, Gift, Mic } from "lucide-react";
+import { Search, Gift } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 const MobileSearchBar = () => {
@@ -21,81 +20,6 @@ const MobileSearchBar = () => {
   ];
   
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
-
-  const handleVoiceSearch = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast.error('Voice search is not supported in your browser');
-      return;
-    }
-
-    // If already listening, stop instead
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch (_) {}
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setIsListening(false);
-      recognitionRef.current = null;
-      navigate(`/search?q=${encodeURIComponent(transcript)}`);
-    };
-
-    recognition.onerror = (event: any) => {
-      setIsListening(false);
-      recognitionRef.current = null;
-      if (event.error === 'not-allowed') {
-        toast.error('Microphone access denied. Please allow mic permission and try again.');
-      } else if (event.error === 'no-speech') {
-        toast.info('No speech detected. Please try again.');
-      } else if (event.error !== 'aborted') {
-        toast.error('Voice search failed. Please try again.');
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    try {
-      recognition.start();
-    } catch (err) {
-      setIsListening(false);
-      recognitionRef.current = null;
-      toast.error('Could not start voice search. Please try again.');
-    }
-  };
-
-  const handleCancelVoice = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (error) {
-        console.error('Error stopping recognition:', error);
-      }
-      setIsListening(false);
-      recognitionRef.current = null;
-    }
-  };
   
   useEffect(() => {
     const interval = setInterval(() => {
@@ -108,22 +32,6 @@ const MobileSearchBar = () => {
   return (
     <div className="lg:hidden bg-background px-4 pt-1 pb-2 z-40">
       <div className="w-full relative flex items-center bg-muted rounded-full overflow-hidden h-[46px]">
-        {/* "Speak now..." overlay when listening */}
-        {isListening && (
-          <div 
-            onClick={handleCancelVoice}
-            className="absolute inset-0 bg-red-50 flex items-center justify-center z-10 cursor-pointer"
-          >
-            <div className="flex flex-col items-center gap-1">
-              <div className="flex items-center gap-2">
-                <Mic className="w-5 h-5 text-red-500 animate-pulse" strokeWidth={2} />
-                <span className="text-sm font-medium text-red-500">Speak now...</span>
-              </div>
-              <span className="text-xs text-red-400">Tap to stop</span>
-            </div>
-          </div>
-        )}
-        
         {/* Search Icon + Placeholder — takes remaining space, shrinks if needed */}
         <button 
           onClick={() => navigate("/search")}
@@ -151,7 +59,7 @@ const MobileSearchBar = () => {
           </div>
         </button>
         
-        {/* Right Icons: Gift + Mic — always visible, never shrink */}
+        {/* Voice search lives only on the mobile /search page. */}
         <div className="flex items-center gap-0 pr-2.5 flex-shrink-0">
           <button 
             onClick={(e) => { e.stopPropagation(); navigate('/category/articles?sub=gifting'); }}
@@ -159,16 +67,6 @@ const MobileSearchBar = () => {
             aria-label="Gift articles"
           >
             <Gift className="w-[20px] h-[20px] text-foreground/80" strokeWidth={1} />
-          </button>
-          <div className="w-px h-4 bg-border mx-0.5" />
-          <button 
-            onClick={handleVoiceSearch}
-            className={`p-1.5 hover:bg-background/60 rounded-full transition-colors ${
-              isListening ? 'bg-red-50 dark:bg-red-900/20' : ''
-            }`}
-            aria-label="Voice search"
-          >
-            <Mic className={`w-[20px] h-[20px] ${isListening ? 'text-red-500' : 'text-foreground/80'}`} strokeWidth={1} />
           </button>
         </div>
       </div>

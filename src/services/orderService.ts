@@ -17,6 +17,7 @@ import {
 import { db } from '@/config/firebase';
 import { sendOrderStatusAlert } from '@/services/whatsappService';
 import { notifyOrder } from '@/services/pushNotificationService';
+import { incrementCouponUsage } from '@/services/couponService';
 
 /**
  * Friendly phrasing for each canonical/legacy status — shared between
@@ -117,6 +118,20 @@ export interface Order {
   taxAmount: number;
   discount: number;
   total: number;
+  // Coupon snapshot — captured at order placement so admin views and
+  // invoice PDFs reflect what the customer actually paid even if the
+  // underlying coupon document changes or is deleted later.
+  couponCode?: string;
+  couponId?: string;
+  couponDescription?: string;
+  couponType?: 'percent' | 'flat';
+  couponValue?: number;
+  couponDiscount?: number;
+  // GST snapshot — same rationale as coupon snapshot above.
+  gstRate?: number;
+  gstInclusive?: boolean;
+  // COD surcharge applied to this order (0 when not COD).
+  codCharge?: number;
   shippingAddress: ShippingAddress;
   paymentMethod: string;
   // Canonical statuses. Legacy values 'shipped' | 'assigned' | 'picked' are kept in the
@@ -165,6 +180,11 @@ export interface Order {
   delivery_window_from?: string;   // 24h time string, e.g. '14:00'
   delivery_window_to?: string;     // 24h time string, e.g. '17:00'
   delivery_window_note?: string;
+  // Return pickup window fields (set by admin or pickup partner before pickup)
+  return_window_date?: string;
+  return_window_from?: string;
+  return_window_to?: string;
+  return_window_note?: string;
   // Failed delivery fields
   deliveryFailedAt?: Timestamp;
   deliveryFailureReason?: string;
@@ -259,6 +279,18 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
     };
 
     const docRef = await addDoc(collection(db, ORDERS_COLLECTION), orderWithTimestamps);
+
+    // Atomically bump coupon usage counter so admin limits (maxUses) and
+    // visibility ("used X / Y") stay in sync with reality. We do this AFTER
+    // the order doc is committed so a failed Firestore write never bumps the
+    // counter; we swallow errors so a counter glitch never breaks placement.
+    if (orderData.couponId) {
+      try {
+        await incrementCouponUsage(orderData.couponId);
+      } catch (err) {
+        console.warn('[orderService] couponUsage increment failed:', err);
+      }
+    }
 
     // Best-effort web push to the customer who just placed the order, plus a
     // heads-up to the admin team. Both are fire-and-forget.
@@ -884,6 +916,11 @@ export const verifyDeliveryOTP = async (
       return { success: false, message: 'Order is not out for delivery' };
     }
 
+    // Require a saved delivery window before allowing OTP verification
+    if (!orderData.delivery_window_date || !orderData.delivery_window_from || !orderData.delivery_window_to) {
+      return { success: false, message: 'Set a delivery window before completing this delivery.' };
+    }
+
     // Verify OTP
     if (orderData.delivery_otp !== inputOtp) {
       return { success: false, message: 'Invalid OTP. Please try again.' };
@@ -939,6 +976,12 @@ export const assignReturnPickupPartner = async (
     const orderSnap = await getDoc(docRef);
     if (!orderSnap.exists()) throw new Error('Order not found');
     const currentData = orderSnap.data() || {};
+    // Block assignment unless the return has been explicitly approved.
+    // This prevents admins from skipping the approval step and silently
+    // dispatching a pickup partner.
+    if (currentData.returnStatus !== 'approved') {
+      throw new Error('Approve the return request before assigning a pickup partner.');
+    }
     const existingHistory = currentData.statusHistory || [];
     const now = Timestamp.now();
     const otp = generateOTP();
@@ -987,9 +1030,9 @@ export const assignReturnPickupPartner = async (
     });
 
     return { otp };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error assigning return pickup partner:', error);
-    throw new Error('Failed to assign return pickup partner');
+    throw new Error(error?.message || 'Failed to assign return pickup partner');
   }
 };
 
@@ -1015,6 +1058,9 @@ export const verifyReturnPickupOTP = async (
     }
     if (orderData.status !== 'returnScheduled') {
       return { success: false, message: 'Order is not scheduled for return pickup' };
+    }
+    if (!orderData.return_window_date || !orderData.return_window_from || !orderData.return_window_to) {
+      return { success: false, message: 'Set a return pickup window before collecting this item.' };
     }
     if (orderData.return_otp !== inputOtp) {
       return { success: false, message: 'Invalid OTP. Please try again.' };
@@ -1345,13 +1391,19 @@ export const requestReturn = async (
 };
 
 /**
- * Approve return request (Admin only)
+ * Approve return request (Admin only).
+ *
+ * IMPORTANT: This only marks `returnStatus: 'approved'` — it does NOT advance
+ * the order status. The status only moves to `returnScheduled` once an admin
+ * actually assigns a pickup partner via `assignReturnPickupPartner`. This
+ * prevents a customer from being told "scheduled" when nobody has been
+ * dispatched yet.
  */
 export const approveReturn = async (orderId: string): Promise<void> => {
   try {
     const docRef = doc(db, ORDERS_COLLECTION, orderId);
     const orderDoc = await getDoc(docRef);
-    
+
     if (!orderDoc.exists()) {
       throw new Error('Order not found');
     }
@@ -1366,7 +1418,7 @@ export const approveReturn = async (orderId: string): Promise<void> => {
     const existingHistory = orderData.statusHistory || [];
 
     await updateDoc(docRef, {
-      status: 'returnScheduled',
+      // Keep status at 'returnRequested' so the partner-assignment UI stays visible.
       returnStatus: 'approved',
       returnApprovedAt: now,
       updatedAt: now,
@@ -1374,9 +1426,9 @@ export const approveReturn = async (orderId: string): Promise<void> => {
       statusHistory: [
         ...existingHistory,
         {
-          status: 'returnScheduled',
+          status: 'returnRequested',
           timestamp: now,
-          note: 'Return approved by admin',
+          note: 'Return approved by admin — awaiting pickup partner assignment',
         },
       ],
     });
@@ -1476,6 +1528,78 @@ export const setDeliveryWindow = async (
     updatedAt: now,
     lastUpdated: now,
   });
+};
+
+/**
+ * Set (or update) a return-pickup window for an order. Mirrors setDeliveryWindow
+ * but writes to the `return_window_*` fields used by the return pickup flow.
+ */
+export const setReturnPickupWindow = async (
+  orderId: string,
+  window: { date: string; from: string; to: string; note?: string },
+): Promise<void> => {
+  const docRef = doc(db, ORDERS_COLLECTION, orderId);
+  const now = Timestamp.now();
+  await updateDoc(docRef, {
+    return_window_date: window.date,
+    return_window_from: window.from,
+    return_window_to: window.to,
+    return_window_note: window.note ?? '',
+    updatedAt: now,
+    lastUpdated: now,
+  });
+};
+
+/**
+ * Predefined fulfillment-window templates shared by delivery and return-pickup
+ * flows. Each template returns a concrete `{date, from, to}` based on the
+ * current local time.
+ */
+export type FulfillmentWindowTemplateId =
+  | 'today-morning'
+  | 'today-afternoon'
+  | 'today-evening'
+  | 'tomorrow-morning'
+  | 'tomorrow-afternoon'
+  | 'tomorrow-evening';
+
+export interface FulfillmentWindowTemplate {
+  id: FulfillmentWindowTemplateId;
+  label: string;        // e.g. "Today · Morning"
+  shortLabel: string;   // e.g. "Today AM"
+  from: string;         // 'HH:mm'
+  to: string;           // 'HH:mm'
+  dayOffset: 0 | 1;
+}
+
+export const FULFILLMENT_WINDOW_TEMPLATES: FulfillmentWindowTemplate[] = [
+  { id: 'today-morning',     label: 'Today · Morning (9–12)',     shortLabel: 'Today AM',    from: '09:00', to: '12:00', dayOffset: 0 },
+  { id: 'today-afternoon',   label: 'Today · Afternoon (12–4)',   shortLabel: 'Today PM',    from: '12:00', to: '16:00', dayOffset: 0 },
+  { id: 'today-evening',     label: 'Today · Evening (4–8)',      shortLabel: 'Today Eve',   from: '16:00', to: '20:00', dayOffset: 0 },
+  { id: 'tomorrow-morning',  label: 'Tomorrow · Morning (9–12)',  shortLabel: 'Tom AM',      from: '09:00', to: '12:00', dayOffset: 1 },
+  { id: 'tomorrow-afternoon',label: 'Tomorrow · Afternoon (12–4)',shortLabel: 'Tom PM',      from: '12:00', to: '16:00', dayOffset: 1 },
+  { id: 'tomorrow-evening',  label: 'Tomorrow · Evening (4–8)',   shortLabel: 'Tom Eve',     from: '16:00', to: '20:00', dayOffset: 1 },
+];
+
+/**
+ * Resolve a template into a concrete window with an ISO date. Uses the local
+ * timezone — slot dates always render as the partner's wall-clock date.
+ */
+export const resolveFulfillmentWindowTemplate = (
+  template: FulfillmentWindowTemplate,
+  reference: Date = new Date(),
+): { date: string; from: string; to: string } => {
+  const target = new Date(reference);
+  target.setHours(0, 0, 0, 0);
+  target.setDate(target.getDate() + template.dayOffset);
+  const yyyy = target.getFullYear();
+  const mm = String(target.getMonth() + 1).padStart(2, '0');
+  const dd = String(target.getDate()).padStart(2, '0');
+  return {
+    date: `${yyyy}-${mm}-${dd}`,
+    from: template.from,
+    to: template.to,
+  };
 };
 
 /**

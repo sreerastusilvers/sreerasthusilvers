@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Search, Heart, ShoppingBag, User, Mic, Gift, Video } from "lucide-react";
+import { Menu, X, Search, Heart, ShoppingBag, User, Gift, Video } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAllProducts, Product } from "@/services/productService";
+import { getAllProducts } from "@/services/productService";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import MobileHeader from "./MobileHeader";
 import ThemeToggle from "./ThemeToggle";
@@ -25,9 +25,7 @@ const Header = () => {
   const [searchResults, setSearchResults] = useState<UIProduct[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [allProducts, setAllProducts] = useState<UIProduct[]>([]);
-  const [isListening, setIsListening] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   // Check if current page is an auth page
   const isAuthPage = location.pathname.startsWith('/signup') || 
@@ -39,7 +37,7 @@ const Header = () => {
     const loadProducts = async () => {
       try {
         const products = await getAllProducts();
-        const uiProducts = products.map(p => adaptFirebaseToUI(p as any));
+        const uiProducts = products.map((p) => adaptFirebaseToUI(p));
         setAllProducts(uiProducts);
       } catch (error) {
         console.error('Error loading products:', error);
@@ -88,59 +86,11 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Handle voice search
-  const handleVoiceSearch = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Voice search is not supported in your browser');
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setSearchQuery(transcript);
-      setIsListening(false);
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    recognition.start();
-  };
-
-  // Handle cancel voice search
-  const handleCancelVoice = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (error) {
-        console.error('Error stopping recognition:', error);
-      }
-      setIsListening(false);
-      recognitionRef.current = null;
-    }
+  const goToSearchResults = () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+    navigate(`/search-results?q=${encodeURIComponent(query)}`);
+    setShowSearchResults(false);
   };
 
   const navItems = [
@@ -180,26 +130,12 @@ const Header = () => {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => searchQuery && setShowSearchResults(true)}
-                    className="w-full pl-11 pr-24 py-2.5 bg-muted text-[13px] rounded-full border-none focus:outline-none focus:ring-1 focus:ring-border focus:bg-background transition-all placeholder:text-muted-foreground font-light"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') goToSearchResults();
+                    }}
+                    className="w-full pl-11 pr-14 py-2.5 bg-muted text-[13px] rounded-full border-none focus:outline-none focus:ring-1 focus:ring-border focus:bg-background transition-all placeholder:text-muted-foreground font-light"
                   />
-                  
-                  {/* "Speak now..." overlay when listening */}
-                  {isListening && (
-                    <div 
-                      onClick={handleCancelVoice}
-                      className="absolute inset-0 bg-red-50 rounded-full flex items-center justify-center cursor-pointer"
-                    >
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex items-center gap-2">
-                          <Mic className="w-5 h-5 text-red-500 animate-pulse" strokeWidth={2} />
-                          <span className="text-sm font-medium text-red-500">Speak now...</span>
-                        </div>
-                        <span className="text-xs text-red-400">Tap to stop</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Gift and Mic icons on right */}
+
                   <div className="absolute right-3 flex items-center gap-2">
                     <button 
                       onClick={() => navigate('/category/articles?sub=gifting')}
@@ -207,15 +143,6 @@ const Header = () => {
                       aria-label="Gift articles"
                     >
                       <Gift className="w-[19px] h-[19px] text-foreground/80" strokeWidth={1.5} />
-                    </button>
-                    <button 
-                      onClick={handleVoiceSearch}
-                      className={`p-1 hover:bg-muted rounded-full transition-colors ${
-                        isListening ? 'bg-red-50' : ''
-                      }`}
-                      aria-label="Voice search"
-                    >
-                      <Mic className={`w-[19px] h-[19px] ${isListening ? 'text-red-500' : 'text-foreground/80'}`} strokeWidth={1.5} />
                     </button>
                   </div>
                 </div>
@@ -270,10 +197,7 @@ const Header = () => {
                       {searchResults.length === 8 && (
                         <div className="border-t border-border p-3 text-center">
                           <button
-                            onClick={() => {
-                              // Navigate to search results page if you have one
-                              setShowSearchResults(false);
-                            }}
+                            onClick={goToSearchResults}
                             className="text-sm text-primary hover:text-primary/80 font-medium"
                           >
                             View all results for "{searchQuery}"

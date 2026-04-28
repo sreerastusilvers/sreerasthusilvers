@@ -73,17 +73,18 @@ export function useCheckoutPricing(
   }, [subtotal, appliedCoupon]);
 
   const isCod = paymentMethod?.toLowerCase().includes('cash') || paymentMethod?.toLowerCase().includes('cod');
+  const effectiveGst = useMemo<GstSettings>(() => ({ ...gst, inclusive: false }), [gst]);
 
   const pricing = useMemo(() => {
     if (isEmpty) {
       return { deliveryCharge: 0, freeDelivery: false, gstAmount: 0, gstAddOnTop: false, codCharge: 0, total: 0 };
     }
     const { charge: deliveryCharge, freeDelivery } = computeDeliveryCharge(subtotal, delivery);
-    const { gstAmount, addOnTop } = computeGst(subtotal, gst);
+    const { gstAmount, addOnTop } = computeGst(subtotal, effectiveGst);
     const codCharge = isCod && delivery.codEnabled ? (delivery.codCharge || 0) : 0;
     const total = subtotal + deliveryCharge + (addOnTop ? gstAmount : 0) + codCharge - appliedDiscount;
     return { deliveryCharge, freeDelivery, gstAmount, gstAddOnTop: addOnTop, codCharge, total: Math.max(0, total) };
-  }, [subtotal, isEmpty, delivery, gst, appliedDiscount, isCod]);
+  }, [subtotal, isEmpty, delivery, effectiveGst, appliedDiscount, isCod]);
 
   return {
     subtotal,
@@ -93,7 +94,7 @@ export function useCheckoutPricing(
     couponError,
     coupons,
     delivery,
-    gst,
+    gst: effectiveGst,
     applyCoupon: async (code: string) => {
       const r = await validateCoupon(code, subtotal);
       if (r.valid && r.coupon) {
