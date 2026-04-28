@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Truck, Shield, RotateCcw, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
@@ -328,10 +328,12 @@ const ProductDetail = () => {
     setShowShareMenu(false);
   };
 
-  // Swipe handlers for image popup
+  // Swipe handlers for main image and image popup
   const minSwipeDistance = 50;
+  const didSwipeRef = useRef(false);
 
   const onTouchStart = (e: React.TouchEvent) => {
+    didSwipeRef.current = false;
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
   };
@@ -347,9 +349,11 @@ const ProductDetail = () => {
     const isRightSwipe = distance < -minSwipeDistance;
     
     if (isLeftSwipe && selectedImage < allMedia.length - 1) {
+      didSwipeRef.current = true;
       setSelectedImage(selectedImage + 1);
     }
     if (isRightSwipe && selectedImage > 0) {
+      didSwipeRef.current = true;
       setSelectedImage(selectedImage - 1);
     }
   };
@@ -452,7 +456,13 @@ const ProductDetail = () => {
                 {/* Main Media */}
                 <div 
                   className="group relative bg-muted rounded-2xl overflow-hidden aspect-square max-w-lg mx-auto mb-4 cursor-pointer md:cursor-zoom-in"
-                  onClick={() => window.innerWidth < 768 && setShowImagePopup(true)}
+                  onClick={() => {
+                    if (didSwipeRef.current) { didSwipeRef.current = false; return; }
+                    if (window.innerWidth < 768) setShowImagePopup(true);
+                  }}
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
                   onMouseEnter={() => allMedia[selectedImage]?.type !== 'video' && setIsZooming(true)}
                   onMouseLeave={() => setIsZooming(false)}
                   onMouseMove={(e) => {
