@@ -66,6 +66,18 @@ export const sendWhatsAppTemplate = (opts: TemplateOpts) =>
     adminHeaders(),
   );
 
+/**
+ * Send one of the 4 approved order-notification templates without requiring
+ * an admin key — the server allows these specific template names from any
+ * authenticated user session.
+ */
+const sendOrderTemplate = (opts: TemplateOpts) =>
+  postJson<{ ok: boolean; messageId?: string }>(
+    '/api/whatsapp-send',
+    { kind: 'template', ...opts, to: normalizePhoneNumber(opts.to) },
+    // No admin header — the server allowlists these template names for public use
+  );
+
 /** Trigger an OTP send. Returns an opaque otpRef to be passed back to verify. */
 export const startWhatsAppOtp = (opts: OtpStartOpts) =>
   postJson<{ ok: boolean; otpRef: string }>('/api/whatsapp-send', {
@@ -129,20 +141,26 @@ const fmt = (orderId: string) => `#${orderId.slice(-6).toUpperCase()}`;
 
 /**
  * Notify a customer that their order was placed successfully.
- * Template: order_placed  ({{1}} firstName, {{2}} orderId, {{3}} total ₹)
+ * Template: order_placed  ({{1}} firstName, {{2}} orderId, {{3}} items, {{4}} total ₹)
  */
 export const sendOrderPlacedTemplate = (opts: {
   to?: string;
   customerName: string;
   orderId: string;
   total: number;
+  itemsSummary?: string;
 }): Promise<unknown> => {
   if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
-  return sendWhatsAppTemplate({
+  return sendOrderTemplate({
     to: opts.to,
     template: 'order_placed',
     language: 'en',
-    params: [opts.customerName.split(' ')[0] || 'there', fmt(opts.orderId), String(Math.round(opts.total))],
+    params: [
+      opts.customerName.split(' ')[0] || 'there',
+      fmt(opts.orderId),
+      opts.itemsSummary || 'your items',
+      String(Math.round(opts.total)),
+    ],
   }).catch((err) => {
     console.warn('[whatsapp] order_placed template failed:', err);
     return { ok: false, error: (err as Error).message };
@@ -151,20 +169,26 @@ export const sendOrderPlacedTemplate = (opts: {
 
 /**
  * Notify the store admin that a new order arrived.
- * Template: admin_new_order  ({{1}} orderId, {{2}} total ₹, {{3}} customerName)
+ * Template: admin_new_order  ({{1}} orderId, {{2}} items, {{3}} total ₹, {{4}} customerName)
  */
 export const sendAdminNewOrderTemplate = (opts: {
   to?: string;
   orderId: string;
   total: number;
   customerName: string;
+  itemsSummary?: string;
 }): Promise<unknown> => {
   if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
-  return sendWhatsAppTemplate({
+  return sendOrderTemplate({
     to: opts.to,
     template: 'admin_new_order',
     language: 'en',
-    params: [fmt(opts.orderId), String(Math.round(opts.total)), opts.customerName || 'a customer'],
+    params: [
+      fmt(opts.orderId),
+      opts.itemsSummary || 'items',
+      String(Math.round(opts.total)),
+      opts.customerName || 'a customer',
+    ],
   }).catch((err) => {
     console.warn('[whatsapp] admin_new_order template failed:', err);
     return { ok: false, error: (err as Error).message };
@@ -173,20 +197,26 @@ export const sendAdminNewOrderTemplate = (opts: {
 
 /**
  * Notify a delivery partner they have been assigned an order.
- * Template: delivery_assigned  ({{1}} partnerFirstName, {{2}} orderId, {{3}} deliveryAddress)
+ * Template: delivery_assigned  ({{1}} partnerFirstName, {{2}} orderId, {{3}} items, {{4}} deliveryAddress)
  */
 export const sendDeliveryAssignedTemplate = (opts: {
   to?: string;
   partnerName: string;
   orderId: string;
   deliveryAddress: string;
+  itemsSummary?: string;
 }): Promise<unknown> => {
   if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
-  return sendWhatsAppTemplate({
+  return sendOrderTemplate({
     to: opts.to,
     template: 'delivery_assigned',
     language: 'en',
-    params: [opts.partnerName.split(' ')[0] || 'there', fmt(opts.orderId), opts.deliveryAddress],
+    params: [
+      opts.partnerName.split(' ')[0] || 'there',
+      fmt(opts.orderId),
+      opts.itemsSummary || 'items',
+      opts.deliveryAddress,
+    ],
   }).catch((err) => {
     console.warn('[whatsapp] delivery_assigned template failed:', err);
     return { ok: false, error: (err as Error).message };
@@ -195,13 +225,14 @@ export const sendDeliveryAssignedTemplate = (opts: {
 
 /**
  * Send an order-status update to the customer using a pre-approved template.
- * Template: order_status_update  ({{1}} firstName, {{2}} orderId, {{3}} statusPhrase)
+ * Template: order_status_update  ({{1}} firstName, {{2}} orderId, {{3}} items, {{4}} statusPhrase)
  */
 export const sendOrderStatusTemplate = (opts: {
   to?: string;
   customerName: string;
   orderId: string;
   status: string;
+  itemsSummary?: string;
 }): Promise<unknown> => {
   if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
   const friendly: Record<string, string> = {
@@ -221,11 +252,16 @@ export const sendOrderStatusTemplate = (opts: {
     deliveryFailed: 'delivery attempt failed — we will retry shortly',
   };
   const phrase = friendly[opts.status] || `status changed to ${opts.status}`;
-  return sendWhatsAppTemplate({
+  return sendOrderTemplate({
     to: opts.to,
     template: 'order_status_update',
     language: 'en',
-    params: [opts.customerName.split(' ')[0] || 'there', fmt(opts.orderId), phrase],
+    params: [
+      opts.customerName.split(' ')[0] || 'there',
+      fmt(opts.orderId),
+      opts.itemsSummary || 'your order',
+      phrase,
+    ],
   }).catch((err) => {
     console.warn('[whatsapp] order_status_update template failed:', err);
     return { ok: false, error: (err as Error).message };

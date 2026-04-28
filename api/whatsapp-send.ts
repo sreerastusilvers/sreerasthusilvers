@@ -69,13 +69,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
 
-  // Auth: OTP requests are permitted from the public site (still rate-limit-aware below).
-  // Non-OTP requests must carry x-admin-key.
+  // Auth:
+  //  • OTP  — always public (customer needs to receive it before being authenticated).
+  //  • Order notification templates — public, but only the 4 fixed approved template names
+  //    are accepted. Any other template name still requires admin-key.
+  //  • text / all other templates — must carry x-admin-key.
+  const ORDER_TEMPLATES = new Set([
+    'order_placed',
+    'order_status_update',
+    'admin_new_order',
+    'delivery_assigned',
+  ]);
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const kind = body.kind as 'text' | 'template' | 'otp' | undefined;
   const adminKey = req.headers['x-admin-key'] as string | undefined;
   const expected = process.env.ADMIN_NOTIFICATION_KEY;
-  if (kind !== 'otp' && expected && adminKey !== expected) {
+  const isOrderTemplate =
+    kind === 'template' && ORDER_TEMPLATES.has(String(body.template || ''));
+  if (kind !== 'otp' && !isOrderTemplate && expected && adminKey !== expected) {
     return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
 
