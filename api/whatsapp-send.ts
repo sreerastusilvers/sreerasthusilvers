@@ -75,9 +75,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   //    are accepted. Any other template name still requires admin-key.
   //  • text / all other templates — must carry x-admin-key.
   const ORDER_TEMPLATES = new Set([
+    // customer
     'order_placed',
-    'order_status_update',
+    'order_out_for_delivery',
+    'order_delivered',
+    'order_cancelled',
+    'order_return_update',
+    'order_timeslot',
+    // admin
     'admin_new_order',
+    'admin_order_delivered',
+    'admin_return_requested',
+    'admin_return_picked',
+    'admin_returned',
+    // delivery partner
     'delivery_assigned',
   ]);
   const body = req.body && typeof req.body === 'object' ? req.body : {};

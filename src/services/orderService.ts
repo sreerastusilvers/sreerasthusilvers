@@ -19,7 +19,15 @@ import {
   sendOrderPlacedTemplate,
   sendAdminNewOrderTemplate,
   sendDeliveryAssignedTemplate,
-  sendOrderStatusTemplate,
+  sendOutForDeliveryTemplate,
+  sendOrderDeliveredTemplate,
+  sendOrderCancelledTemplate,
+  sendReturnUpdateTemplate,
+  sendTimeslotTemplate,
+  sendAdminOrderDeliveredTemplate,
+  sendAdminReturnRequestedTemplate,
+  sendAdminReturnPickedTemplate,
+  sendAdminReturnedTemplate,
   normalizePhoneNumber,
 } from '@/services/whatsappService';
 import { notifyOrder } from '@/services/pushNotificationService';
@@ -82,32 +90,55 @@ const makeItemsSummary = (items?: Array<{ name: string; quantity?: number }>): s
  * Best-effort delivery of WhatsApp + web-push notifications when an order's
  * status changes. Never throws — Firestore writes are the source of truth.
  *
- * Per product requirement: order status updates go out via BOTH WhatsApp and
- * web push. OTPs / security messages are intentionally excluded and routed
- * through dedicated endpoints instead.
+ * WhatsApp is only sent for status events that are meaningful to the recipient:
+ *   Customer  → outForDelivery, delivered, cancelled
+ *   Admin     → delivered, returnRequested, picked (return context), returned
+ * (Order placed and return approve/reject are handled at their own call sites.)
  */
 const dispatchStatusNotifications = async (
   orderId: string,
   status: Order['status'],
-  ctx?: { phone?: string; userPhone?: string; customerName?: string; items?: OrderItem[] },
+  ctx?: {
+    phone?: string;
+    userPhone?: string;
+    customerName?: string;
+    items?: OrderItem[];
+    /** set to true when the 'picked' event is a return pickup, not a forward delivery */
+    isReturnPick?: boolean;
+  },
 ): Promise<void> => {
   try {
-    // Prefer the customer's registered WhatsApp number over the shipping address mobile
     const notifyPhone = ctx?.userPhone || ctx?.phone;
+    const items = makeItemsSummary(ctx?.items);
+    const name = ctx?.customerName || 'Customer';
+
+    // ── Customer WhatsApp (targeted — only events that matter to the buyer) ──
     if (notifyPhone) {
-      // Use the pre-approved Meta template; fall back to free-form text if it
-      // fails (e.g. template not yet approved in WhatsApp Manager).
-      void sendOrderStatusTemplate({
-        to: notifyPhone,
-        customerName: ctx?.customerName || 'Customer',
-        orderId,
-        status,
-        itemsSummary: makeItemsSummary(ctx?.items),
-      });
+      if (status === 'outForDelivery') {
+        void sendOutForDeliveryTemplate({ to: notifyPhone, customerName: name, orderId, itemsSummary: items });
+      } else if (status === 'delivered') {
+        void sendOrderDeliveredTemplate({ to: notifyPhone, customerName: name, orderId, itemsSummary: items });
+      } else if (status === 'cancelled') {
+        void sendOrderCancelledTemplate({ to: notifyPhone, customerName: name, orderId, itemsSummary: items });
+      }
+      // All other status changes: web-push only (no WhatsApp)
     }
-    // Web push to the customer — fire-and-forget. Recipient tokens are
-    // resolved server-side from the order's userId so callers don't need
-    // to load tokens themselves.
+
+    // ── Admin WhatsApp ────────────────────────────────────────────────────────
+    const adminPhone = await getAdminNotificationPhone();
+    if (adminPhone) {
+      if (status === 'delivered') {
+        void sendAdminOrderDeliveredTemplate({ to: adminPhone, orderId, customerName: name });
+      } else if (status === 'returnRequested') {
+        void sendAdminReturnRequestedTemplate({ to: adminPhone, orderId, customerName: name, itemsSummary: items });
+      } else if (status === 'picked' && ctx?.isReturnPick) {
+        void sendAdminReturnPickedTemplate({ to: adminPhone, orderId, itemsSummary: items });
+      } else if (status === 'returned') {
+        void sendAdminReturnedTemplate({ to: adminPhone, orderId, customerName: name, itemsSummary: items });
+      }
+    }
+
+    // ── Web push to the customer (all statuses) ───────────────────────────────
     const phrase = STATUS_PHRASE[status] || `status changed to ${status}`;
     void notifyOrder({
       orderId,
@@ -1218,6 +1249,24 @@ export const assignReturnPickupPartner = async (
       data: { type: 'return-assigned' },
     });
 
+    // WhatsApp template to the delivery partner (if phone is known).
+    if (deliveryBoyPhone) {
+      const deliveryAddress = [
+        currentData.shippingAddress?.address,
+        currentData.shippingAddress?.locality,
+        currentData.shippingAddress?.city,
+      ]
+        .filter(Boolean)
+        .join(', ');
+      void sendDeliveryAssignedTemplate({
+        to: normalizePhoneNumber(deliveryBoyPhone),
+        partnerName: deliveryBoyName,
+        orderId,
+        deliveryAddress: deliveryAddress || 'address in app',
+        itemsSummary: makeItemsSummary(currentData.items as OrderItem[]),
+      });
+    }
+
     return { otp };
   } catch (error: unknown) {
     console.error('Error assigning return pickup partner:', error);
@@ -1639,11 +1688,11 @@ export const approveReturn = async (orderId: string): Promise<void> => {
     // Notify the customer that their return request was approved.
     const notifyPhone = orderData.userPhone || orderData.shippingAddress?.mobile;
     if (notifyPhone) {
-      void sendOrderStatusTemplate({
-        to: notifyPhone,
+      void sendReturnUpdateTemplate({
+        to: normalizePhoneNumber(notifyPhone),
         customerName: orderData.shippingAddress?.fullName || orderData.userName || 'Customer',
         orderId,
-        status: 'returnRequested',
+        result: 'approved',
         itemsSummary: makeItemsSummary(orderData.items as OrderItem[]),
       });
     }
@@ -1701,11 +1750,11 @@ export const rejectReturn = async (orderId: string): Promise<void> => {
     // Notify the customer that their return request was rejected.
     const notifyPhone = orderData.userPhone || orderData.shippingAddress?.mobile;
     if (notifyPhone) {
-      void sendOrderStatusTemplate({
-        to: notifyPhone,
+      void sendReturnUpdateTemplate({
+        to: normalizePhoneNumber(notifyPhone),
         customerName: orderData.shippingAddress?.fullName || orderData.userName || 'Customer',
         orderId,
-        status: 'delivered',
+        result: 'rejected',
         itemsSummary: makeItemsSummary(orderData.items as OrderItem[]),
       });
     }
@@ -1756,6 +1805,7 @@ export const cancelReturn = async (orderId: string): Promise<void> => {
 /**
  * Set (or update) a delivery window for an order.
  * Can be called by admin or delivery partner — no status change.
+ * Sends a WhatsApp time-slot notification to the customer.
  */
 export const setDeliveryWindow = async (
   orderId: string,
@@ -1763,6 +1813,8 @@ export const setDeliveryWindow = async (
 ): Promise<void> => {
   const docRef = doc(db, ORDERS_COLLECTION, orderId);
   const now = Timestamp.now();
+  const orderSnap = await getDoc(docRef);
+  const od = orderSnap.data() || {};
   await updateDoc(docRef, {
     delivery_window_date: window.date,
     delivery_window_from: window.from,
@@ -1771,11 +1823,23 @@ export const setDeliveryWindow = async (
     updatedAt: now,
     lastUpdated: now,
   });
+  // Notify customer of the scheduled time slot
+  const notifyPhone = od.userPhone || od.shippingAddress?.mobile;
+  if (notifyPhone) {
+    void sendTimeslotTemplate({
+      to: normalizePhoneNumber(notifyPhone),
+      customerName: od.customerName || od.shippingAddress?.fullName || 'Customer',
+      orderId,
+      date: window.date,
+      timeRange: `${window.from} – ${window.to}`,
+    });
+  }
 };
 
 /**
  * Set (or update) a return-pickup window for an order. Mirrors setDeliveryWindow
  * but writes to the `return_window_*` fields used by the return pickup flow.
+ * Sends a WhatsApp time-slot notification to the customer.
  */
 export const setReturnPickupWindow = async (
   orderId: string,
@@ -1783,6 +1847,8 @@ export const setReturnPickupWindow = async (
 ): Promise<void> => {
   const docRef = doc(db, ORDERS_COLLECTION, orderId);
   const now = Timestamp.now();
+  const orderSnap = await getDoc(docRef);
+  const od = orderSnap.data() || {};
   await updateDoc(docRef, {
     return_window_date: window.date,
     return_window_from: window.from,
@@ -1791,6 +1857,17 @@ export const setReturnPickupWindow = async (
     updatedAt: now,
     lastUpdated: now,
   });
+  // Notify customer of the scheduled return-pickup time slot
+  const notifyPhone = od.userPhone || od.shippingAddress?.mobile;
+  if (notifyPhone) {
+    void sendTimeslotTemplate({
+      to: normalizePhoneNumber(notifyPhone),
+      customerName: od.customerName || od.shippingAddress?.fullName || 'Customer',
+      orderId,
+      date: window.date,
+      timeRange: `${window.from} – ${window.to}`,
+    });
+  }
 };
 
 /**

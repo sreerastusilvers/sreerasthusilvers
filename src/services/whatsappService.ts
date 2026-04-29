@@ -135,14 +135,34 @@ export const sendOrderStatusAlert = async (params: {
 // ─────────────────────────────────────────────────────────────────────────────
 // Pre-approved Meta template helpers
 // All are fire-and-forget wrappers — they never throw, never block order flow.
+//
+// ACTIVE TEMPLATES (create all in Meta WhatsApp Manager):
+//
+//  CUSTOMER
+//    order_placed          {{1}}firstName {{2}}orderId {{3}}items {{4}}total
+//    order_out_for_delivery {{1}}firstName {{2}}orderId {{3}}items
+//    order_delivered        {{1}}firstName {{2}}orderId {{3}}items
+//    order_cancelled        {{1}}firstName {{2}}orderId {{3}}items
+//    order_return_update    {{1}}firstName {{2}}orderId {{3}}items {{4}}approved|rejected
+//    order_timeslot         {{1}}firstName {{2}}orderId {{3}}date {{4}}timeRange
+//
+//  ADMIN
+//    admin_new_order        {{1}}orderId {{2}}items {{3}}total {{4}}customerName
+//    admin_order_delivered  {{1}}orderId {{2}}customerName
+//    admin_return_requested {{1}}orderId {{2}}customerName {{3}}items
+//    admin_return_picked    {{1}}orderId {{2}}items
+//    admin_returned         {{1}}orderId {{2}}customerName {{3}}items
+//
+//  DELIVERY PARTNER
+//    delivery_assigned      {{1}}partnerFirstName {{2}}orderId {{3}}items {{4}}address
 // ─────────────────────────────────────────────────────────────────────────────
 
 const fmt = (orderId: string) => `#${orderId.slice(-6).toUpperCase()}`;
+const firstName = (name?: string) => (name || 'there').split(' ')[0];
 
-/**
- * Notify a customer that their order was placed successfully.
- * Template: order_placed  ({{1}} firstName, {{2}} orderId, {{3}} items, {{4}} total ₹)
- */
+// ── CUSTOMER templates ────────────────────────────────────────────────────────
+
+/** Order placed confirmation → customer */
 export const sendOrderPlacedTemplate = (opts: {
   to?: string;
   customerName: string;
@@ -155,22 +175,99 @@ export const sendOrderPlacedTemplate = (opts: {
     to: opts.to,
     template: 'order_placed',
     language: 'en',
-    params: [
-      opts.customerName.split(' ')[0] || 'there',
-      fmt(opts.orderId),
-      opts.itemsSummary || 'your items',
-      String(Math.round(opts.total)),
-    ],
-  }).catch((err) => {
-    console.warn('[whatsapp] order_placed template failed:', err);
-    return { ok: false, error: (err as Error).message };
-  });
+    params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items', String(Math.round(opts.total))],
+  }).catch((err) => { console.warn('[whatsapp] order_placed failed:', err); return { ok: false }; });
 };
 
-/**
- * Notify the store admin that a new order arrived.
- * Template: admin_new_order  ({{1}} orderId, {{2}} items, {{3}} total ₹, {{4}} customerName)
+/** Out for delivery → customer */
+export const sendOutForDeliveryTemplate = (opts: {
+  to?: string;
+  customerName: string;
+  orderId: string;
+  itemsSummary?: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'order_out_for_delivery',
+    language: 'en',
+    params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items'],
+  }).catch((err) => { console.warn('[whatsapp] order_out_for_delivery failed:', err); return { ok: false }; });
+};
+
+/** Order delivered → customer */
+export const sendOrderDeliveredTemplate = (opts: {
+  to?: string;
+  customerName: string;
+  orderId: string;
+  itemsSummary?: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'order_delivered',
+    language: 'en',
+    params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items'],
+  }).catch((err) => { console.warn('[whatsapp] order_delivered failed:', err); return { ok: false }; });
+};
+
+/** Order cancelled → customer */
+export const sendOrderCancelledTemplate = (opts: {
+  to?: string;
+  customerName: string;
+  orderId: string;
+  itemsSummary?: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'order_cancelled',
+    language: 'en',
+    params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items'],
+  }).catch((err) => { console.warn('[whatsapp] order_cancelled failed:', err); return { ok: false }; });
+};
+
+/** Return approved or rejected → customer
+ *  Template: order_return_update  {{1}}firstName {{2}}orderId {{3}}items {{4}}"approved"/"rejected"
  */
+export const sendReturnUpdateTemplate = (opts: {
+  to?: string;
+  customerName: string;
+  orderId: string;
+  result: 'approved' | 'rejected';
+  itemsSummary?: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'order_return_update',
+    language: 'en',
+    params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items', opts.result],
+  }).catch((err) => { console.warn('[whatsapp] order_return_update failed:', err); return { ok: false }; });
+};
+
+/** Delivery time slot set → customer
+ *  Template: order_timeslot  {{1}}firstName {{2}}orderId {{3}}date {{4}}timeRange (e.g. "9 AM – 12 PM")
+ */
+export const sendTimeslotTemplate = (opts: {
+  to?: string;
+  customerName: string;
+  orderId: string;
+  date: string;       // e.g. "30 Apr"
+  timeRange: string;  // e.g. "9 AM – 12 PM"
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'order_timeslot',
+    language: 'en',
+    params: [firstName(opts.customerName), fmt(opts.orderId), opts.date, opts.timeRange],
+  }).catch((err) => { console.warn('[whatsapp] order_timeslot failed:', err); return { ok: false }; });
+};
+
+// ── ADMIN templates ───────────────────────────────────────────────────────────
+
+/** New order → admin */
 export const sendAdminNewOrderTemplate = (opts: {
   to?: string;
   orderId: string;
@@ -183,21 +280,84 @@ export const sendAdminNewOrderTemplate = (opts: {
     to: opts.to,
     template: 'admin_new_order',
     language: 'en',
-    params: [
-      fmt(opts.orderId),
-      opts.itemsSummary || 'items',
-      String(Math.round(opts.total)),
-      opts.customerName || 'a customer',
-    ],
-  }).catch((err) => {
-    console.warn('[whatsapp] admin_new_order template failed:', err);
-    return { ok: false, error: (err as Error).message };
-  });
+    params: [fmt(opts.orderId), opts.itemsSummary || 'items', String(Math.round(opts.total)), opts.customerName || 'a customer'],
+  }).catch((err) => { console.warn('[whatsapp] admin_new_order failed:', err); return { ok: false }; });
 };
 
-/**
- * Notify a delivery partner they have been assigned an order.
- * Template: delivery_assigned  ({{1}} partnerFirstName, {{2}} orderId, {{3}} items, {{4}} deliveryAddress)
+/** Order delivered → admin
+ *  Template: admin_order_delivered  {{1}}orderId {{2}}customerName
+ */
+export const sendAdminOrderDeliveredTemplate = (opts: {
+  to?: string;
+  orderId: string;
+  customerName: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'admin_order_delivered',
+    language: 'en',
+    params: [fmt(opts.orderId), opts.customerName || 'a customer'],
+  }).catch((err) => { console.warn('[whatsapp] admin_order_delivered failed:', err); return { ok: false }; });
+};
+
+/** Return requested → admin
+ *  Template: admin_return_requested  {{1}}orderId {{2}}customerName {{3}}items
+ */
+export const sendAdminReturnRequestedTemplate = (opts: {
+  to?: string;
+  orderId: string;
+  customerName: string;
+  itemsSummary?: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'admin_return_requested',
+    language: 'en',
+    params: [fmt(opts.orderId), opts.customerName || 'a customer', opts.itemsSummary || 'items'],
+  }).catch((err) => { console.warn('[whatsapp] admin_return_requested failed:', err); return { ok: false }; });
+};
+
+/** Return picked up by partner → admin
+ *  Template: admin_return_picked  {{1}}orderId {{2}}items
+ */
+export const sendAdminReturnPickedTemplate = (opts: {
+  to?: string;
+  orderId: string;
+  itemsSummary?: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'admin_return_picked',
+    language: 'en',
+    params: [fmt(opts.orderId), opts.itemsSummary || 'items'],
+  }).catch((err) => { console.warn('[whatsapp] admin_return_picked failed:', err); return { ok: false }; });
+};
+
+/** Return completed (item back at store) → admin
+ *  Template: admin_returned  {{1}}orderId {{2}}customerName {{3}}items
+ */
+export const sendAdminReturnedTemplate = (opts: {
+  to?: string;
+  orderId: string;
+  customerName: string;
+  itemsSummary?: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'admin_returned',
+    language: 'en',
+    params: [fmt(opts.orderId), opts.customerName || 'a customer', opts.itemsSummary || 'items'],
+  }).catch((err) => { console.warn('[whatsapp] admin_returned failed:', err); return { ok: false }; });
+};
+
+// ── DELIVERY PARTNER template ─────────────────────────────────────────────────
+
+/** Delivery or return-pickup assigned → delivery partner
+ *  Template: delivery_assigned  {{1}}partnerFirstName {{2}}orderId {{3}}items {{4}}address
  */
 export const sendDeliveryAssignedTemplate = (opts: {
   to?: string;
@@ -211,62 +371,15 @@ export const sendDeliveryAssignedTemplate = (opts: {
     to: opts.to,
     template: 'delivery_assigned',
     language: 'en',
-    params: [
-      opts.partnerName.split(' ')[0] || 'there',
-      fmt(opts.orderId),
-      opts.itemsSummary || 'items',
-      opts.deliveryAddress,
-    ],
-  }).catch((err) => {
-    console.warn('[whatsapp] delivery_assigned template failed:', err);
-    return { ok: false, error: (err as Error).message };
-  });
+    params: [firstName(opts.partnerName), fmt(opts.orderId), opts.itemsSummary || 'items', opts.deliveryAddress],
+  }).catch((err) => { console.warn('[whatsapp] delivery_assigned failed:', err); return { ok: false }; });
 };
 
-/**
- * Send an order-status update to the customer using a pre-approved template.
- * Template: order_status_update  ({{1}} firstName, {{2}} orderId, {{3}} items, {{4}} statusPhrase)
- */
-export const sendOrderStatusTemplate = (opts: {
-  to?: string;
-  customerName: string;
-  orderId: string;
-  status: string;
-  itemsSummary?: string;
-}): Promise<unknown> => {
-  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
-  const friendly: Record<string, string> = {
-    pending: 'has been received and is awaiting confirmation',
-    processing: 'is being prepared',
-    packed: 'has been packed and is ready for dispatch',
-    shipped: 'has been shipped',
-    assigned: 'has been assigned to a delivery partner',
-    picked: 'has been picked up by our delivery partner',
-    outForDelivery: 'is out for delivery',
-    delivered: 'has been delivered successfully',
-    cancelled: 'has been cancelled',
-    returnRequested: 'return request has been received',
-    returnScheduled: 'return has been scheduled',
-    returned: 'return is complete',
-    refunded: 'has been refunded',
-    deliveryFailed: 'delivery attempt failed — we will retry shortly',
-  };
-  const phrase = friendly[opts.status] || `status changed to ${opts.status}`;
-  return sendOrderTemplate({
-    to: opts.to,
-    template: 'order_status_update',
-    language: 'en',
-    params: [
-      opts.customerName.split(' ')[0] || 'there',
-      fmt(opts.orderId),
-      opts.itemsSummary || 'your order',
-      phrase,
-    ],
-  }).catch((err) => {
-    console.warn('[whatsapp] order_status_update template failed:', err);
-    return { ok: false, error: (err as Error).message };
-  });
-};
+// ── Kept for backward-compat (deprecated) ────────────────────────────────────
+/** @deprecated */
+export const sendOrderStatusTemplate = sendOrderDeliveredTemplate as unknown as (opts: {
+  to?: string; customerName: string; orderId: string; status: string; itemsSummary?: string;
+}) => Promise<unknown>;
 
 export const WhatsApp = {
   sendText: sendWhatsAppText,
