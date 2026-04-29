@@ -281,10 +281,12 @@ const MobileProductsGrid = () => {
         {filteredProducts.map((product) => {
           const price = product.price;
           const sp = (product as any).silverPricing;
-          const oldPrice = sp?.enabled && ratePerGram > 0
-            ? computeSilverOriginalPrice(sp, ratePerGram)
-            : product.originalPrice;
           const discount = product.discount;
+          const oldPrice = discount && discount > 0
+            ? (sp?.enabled && ratePerGram > 0
+                ? computeSilverOriginalPrice(sp, ratePerGram)
+                : product.originalPrice)
+            : null;
           const isWishlisted = isInWishlist(product.id || "");
 
           return (

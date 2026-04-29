@@ -47,12 +47,12 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
 
   // Compute live MRP: use silver formula if enabled, otherwise fall back to stored oldPrice
   const sp = product.silverPricing;
-  const displayOldPrice =
-    sp?.enabled && ratePerGram > 0
-      ? computeSilverOriginalPrice(sp, ratePerGram)
-      : (product.oldPrice ?? null);
-
   const displayDiscount = (product.discount ?? 0) > 0 ? (product.discount ?? 0) : null;
+  const displayOldPrice = displayDiscount
+    ? (sp?.enabled && ratePerGram > 0
+        ? computeSilverOriginalPrice(sp, ratePerGram)
+        : (product.oldPrice ?? null))
+    : null;
 
   const handleCardClick = () => {
     // Navigate to product detail page

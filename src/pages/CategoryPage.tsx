@@ -84,10 +84,12 @@ const CategoryProductCard = memo(function CategoryProductCard({
 }: CategoryProductCardProps) {
   const { ratePerGram } = useSilverRate();
   const sp = product.silverPricing;
-  const displayOldPrice = sp?.enabled && ratePerGram > 0
-    ? computeSilverOriginalPrice(sp, ratePerGram)
-    : (product.oldPrice ?? null);
   const displayDiscount = (product.discount ?? 0) > 0 ? (product.discount ?? 0) : null;
+  const displayOldPrice = displayDiscount
+    ? (sp?.enabled && ratePerGram > 0
+        ? computeSilverOriginalPrice(sp, ratePerGram)
+        : (product.oldPrice ?? null))
+    : null;
   return (
     <div className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300">
       {/* Image */}

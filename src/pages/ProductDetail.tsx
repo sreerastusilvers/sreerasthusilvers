@@ -709,14 +709,13 @@ const ProductDetail = () => {
                   {(() => {
                     // Compute live MRP for silver-priced products
                     const sp = product.silverPricing;
-                    const liveMRP =
-                      sp?.enabled && ratePerGram > 0
-                        ? computeSilverOriginalPrice(sp, ratePerGram)
-                        : product.oldPrice ?? null;
-                    const liveDiscount =
-                      liveMRP && liveMRP > product.price
-                        ? Math.round(((liveMRP - product.price) / liveMRP) * 100)
-                        : product.discount;
+                    const hasDiscount = (product.discount ?? 0) > 0;
+                    const liveMRP = hasDiscount
+                      ? (sp?.enabled && ratePerGram > 0
+                          ? computeSilverOriginalPrice(sp, ratePerGram)
+                          : product.oldPrice ?? null)
+                      : null;
+                    const liveDiscount = hasDiscount ? product.discount : null;
                     return (
                       <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
