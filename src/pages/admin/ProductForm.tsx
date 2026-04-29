@@ -9,6 +9,8 @@ import {
   Video,
   Plus,
   Trash2,
+  Calculator,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +46,8 @@ import {
   addSubSubcategory,
   Category,
 } from '@/services/categoryService';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 // YouTube helpers
 function extractYouTubeId(url: string): string | null {
@@ -100,6 +104,17 @@ const ProductForm = () => {
   const [addingSub, setAddingSub] = useState(false);
   const [addingSubSub, setAddingSubSub] = useState(false);
 
+  // Silver rate (live from Firestore)
+  const [silverRate, setSilverRate] = useState<number>(0);
+
+  // Silver-rate-based pricing calculator (optional)
+  const [silverPricing, setSilverPricing] = useState({
+    enabled: false,
+    weightGrams: '',
+    wastagePercent: '',
+    makingCharges: '',
+  });
+
   // Categories from Firestore
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -108,6 +123,41 @@ const ProductForm = () => {
     const unsub = subscribeToCategories(setCategories);
     return unsub;
   }, []);
+
+  // Fetch live silver rate from Firestore
+  useEffect(() => {
+    const ref = doc(db, 'siteSettings', 'silverRate');
+    const unsub = onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        const d = snap.data() || {};
+        if (typeof d.manualPricePerGramInr === 'number' && d.manualPricePerGramInr > 0) {
+          setSilverRate(d.manualPricePerGramInr);
+        }
+      }
+    });
+    return unsub;
+  }, []);
+
+  // Auto-calculate originalPrice whenever silver pricing inputs change
+  useEffect(() => {
+    if (!silverPricing.enabled) return;
+    const grams = parseFloat(silverPricing.weightGrams) || 0;
+    const wastage = parseFloat(silverPricing.wastagePercent) || 0;
+    const making = parseFloat(silverPricing.makingCharges) || 0;
+    if (grams <= 0 || silverRate <= 0) return;
+    const x = grams * silverRate;          // silver cost
+    const y = x * (wastage / 100);         // wastage on silver cost
+    const z = making;                       // making charges
+    const computed = Math.ceil(x + y + z); // originalPrice
+    setFormData((prev) => {
+      const price = parseFloat(prev.price) || 0;
+      let disc = '0';
+      if (price > 0 && computed > price) {
+        disc = (((computed - price) / computed) * 100).toFixed(1);
+      }
+      return { ...prev, originalPrice: computed.toString(), discount: disc, discountType: 'percent' };
+    });
+  }, [silverPricing.enabled, silverPricing.weightGrams, silverPricing.wastagePercent, silverPricing.makingCharges, silverRate]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -204,6 +254,17 @@ const ProductForm = () => {
           }
         });
         if (specEntries.length > 0) setSpecifications(specEntries);
+
+        // Restore silver pricing if saved
+        const sp = (product as any).silverPricing;
+        if (sp && sp.enabled) {
+          setSilverPricing({
+            enabled: true,
+            weightGrams: sp.weightGrams?.toString() || '',
+            wastagePercent: sp.wastagePercent?.toString() || '',
+            makingCharges: sp.makingCharges?.toString() || '',
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -405,6 +466,14 @@ const ProductForm = () => {
         inventory: { stock: parseInt(formData.stock) || 0, sku: '', weight: formData.weight, weightUnit: formData.weightUnit },
         specifications: specsObj as any,
         flags: { isActive: formData.isActive, isFeatured: formData.isFeatured, isNewArrival: formData.isNewArrival, isBestSeller: formData.isBestSeller, isTopDeal: formData.isTopDeal, isTrendProduct: formData.isTrendProduct },
+        // Silver rate-based pricing snapshot
+        silverPricing: silverPricing.enabled ? {
+          enabled: true,
+          weightGrams: parseFloat(silverPricing.weightGrams) || 0,
+          wastagePercent: parseFloat(silverPricing.wastagePercent) || 0,
+          makingCharges: parseFloat(silverPricing.makingCharges) || 0,
+          silverRateUsed: silverRate,
+        } : { enabled: false },
       } as any;
 
       if (isEditing) {
@@ -668,10 +737,174 @@ const ProductForm = () => {
               <CardTitle className="text-gray-900">Pricing & Inventory</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+
+              {/* ── Silver Rate Calculator (optional) ── */}
+              <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-4 space-y-3">
+                {/* Entire header row is clickable to toggle */}
+                <div
+                  className="flex items-center justify-between gap-3 cursor-pointer select-none flex-wrap"
+                  onClick={() => {
+                    const next = !silverPricing.enabled;
+                    setSilverPricing((prev) => ({ ...prev, enabled: next }));
+                    if (!next) {
+                      setFormData((prev) => ({ ...prev, originalPrice: '', discount: '0' }));
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Calculator className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-sm font-semibold text-gray-800 truncate">Silver Rate Calculator</span>
+                    <span className={`text-xs rounded-full px-2 py-0.5 border transition-colors shrink-0 ${
+                      silverPricing.enabled
+                        ? 'text-amber-700 bg-amber-100 border-amber-300 font-medium'
+                        : 'text-gray-500 bg-white border-gray-200'
+                    }`}>
+                      {silverPricing.enabled ? 'Enabled' : 'Optional'}
+                    </span>
+                  </div>
+                  {/* Stop propagation so clicking the Switch itself doesn't fire onClick twice */}
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <Switch
+                      checked={silverPricing.enabled}
+                      onCheckedChange={(checked) => {
+                        setSilverPricing((prev) => ({ ...prev, enabled: checked }));
+                        if (!checked) {
+                          setFormData((prev) => ({ ...prev, originalPrice: '', discount: '0' }));
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Enable for silver jewellery. Original Price = (grams × silver rate) + wastage + making charges.
+                  For fixed-price articles, leave this off.
+                </p>
+
+                {silverPricing.enabled && (
+                  <div className="space-y-4 pt-1">
+                    {/* Silver rate display — live Firestore listener */}
+                    <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2">
+                      <Info className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <span className="text-xs text-gray-600 flex-1">
+                        Current silver rate:{' '}
+                        {silverRate > 0 ? (
+                          <strong className="text-amber-700">₹{silverRate.toFixed(2)} / gram</strong>
+                        ) : (
+                          <span className="text-red-500">Not set — go to Silver Rate page first</span>
+                        )}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5 shrink-0">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                        LIVE
+                      </span>
+                    </div>
+
+                    {/* Inputs row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-gray-700 text-xs font-medium">Weight (grams) — x</Label>
+                        <Input
+                          type="number"
+                          value={silverPricing.weightGrams}
+                          onChange={(e) => setSilverPricing((prev) => ({ ...prev, weightGrams: e.target.value }))}
+                          placeholder="e.g., 12"
+                          min="0"
+                          step="0.01"
+                          className="mt-1.5 bg-white border-amber-200 text-gray-900 text-sm"
+                        />
+                        {silverRate > 0 && silverPricing.weightGrams && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Silver cost: ₹{(parseFloat(silverPricing.weightGrams || '0') * silverRate).toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label className="text-gray-700 text-xs font-medium">Wastage % — y</Label>
+                        <Input
+                          type="number"
+                          value={silverPricing.wastagePercent}
+                          onChange={(e) => setSilverPricing((prev) => ({ ...prev, wastagePercent: e.target.value }))}
+                          placeholder="e.g., 10"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          className="mt-1.5 bg-white border-amber-200 text-gray-900 text-sm"
+                        />
+                        {silverRate > 0 && silverPricing.weightGrams && silverPricing.wastagePercent && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Wastage: ₹{(parseFloat(silverPricing.weightGrams || '0') * silverRate * (parseFloat(silverPricing.wastagePercent || '0') / 100)).toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label className="text-gray-700 text-xs font-medium">Making Charges (₹) — z</Label>
+                        <Input
+                          type="number"
+                          value={silverPricing.makingCharges}
+                          onChange={(e) => setSilverPricing((prev) => ({ ...prev, makingCharges: e.target.value }))}
+                          placeholder="e.g., 50"
+                          min="0"
+                          step="1"
+                          className="mt-1.5 bg-white border-amber-200 text-gray-900 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Breakdown summary */}
+                    {silverRate > 0 && silverPricing.weightGrams && (() => {
+                      const grams = parseFloat(silverPricing.weightGrams) || 0;
+                      const wastage = parseFloat(silverPricing.wastagePercent) || 0;
+                      const making = parseFloat(silverPricing.makingCharges) || 0;
+                      const x = grams * silverRate;
+                      const y = x * (wastage / 100);
+                      const z = making;
+                      const total = Math.ceil(x + y + z);
+                      return (
+                        <div className="bg-white border border-amber-200 rounded-lg p-3 text-xs space-y-1.5">
+                          <div className="flex justify-between text-gray-600">
+                            <span>Silver cost ({grams}g × ₹{silverRate}/g)</span>
+                            <span className="font-medium text-gray-800">₹{x.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-600">
+                            <span>Wastage ({wastage}%)</span>
+                            <span className="font-medium text-gray-800">₹{y.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-600">
+                            <span>Making charges</span>
+                            <span className="font-medium text-gray-800">₹{z.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-amber-200 pt-1.5 font-semibold text-amber-700">
+                            <span>Original Price (x + y + z)</span>
+                            <span>₹{total.toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Standard pricing fields ── */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <Label className="text-gray-700">Original Price (&#8377;)</Label>
-                  <Input name="originalPrice" type="number" value={formData.originalPrice} onChange={handleInputChange} placeholder="0.00" min="0" step="0.01" className="mt-2 bg-gray-100 border-gray-300 text-gray-900" />
+                  <Input
+                    name="originalPrice"
+                    type="number"
+                    value={formData.originalPrice}
+                    onChange={silverPricing.enabled ? undefined : handleInputChange}
+                    readOnly={silverPricing.enabled}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    className={'mt-2 border-gray-300 text-gray-900 ' + (silverPricing.enabled ? 'bg-amber-50 cursor-not-allowed' : 'bg-gray-100')}
+                  />
+                  {silverPricing.enabled && (
+                    <p className="text-xs text-amber-600 mt-1">Auto-calculated above</p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-gray-700">Price (&#8377;) *</Label>

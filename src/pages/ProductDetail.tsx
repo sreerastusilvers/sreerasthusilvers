@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Truck, Shield, RotateCcw, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
 import { getProduct, getActiveProducts } from "@/services/productService";
 import { UIProductDetail, adaptFirebaseToUIDetail, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
+import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ const ProductDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { ratePerGram } = useSilverRate();
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const [showVideoCallModal, setShowVideoCallModal] = useState(false);
@@ -704,23 +706,37 @@ const ProductDetail = () => {
 
                 {/* Price */}
                 <div className="mb-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
-                      ₹{product.price.toLocaleString("en-IN")}
-                    </span>
-                    {product.oldPrice && (
-                      <>
-                        <span className="text-lg md:text-xl text-muted-foreground line-through">
-                          ₹{product.oldPrice.toLocaleString("en-IN")}
+                  {(() => {
+                    // Compute live MRP for silver-priced products
+                    const sp = product.silverPricing;
+                    const liveMRP =
+                      sp?.enabled && ratePerGram > 0
+                        ? computeSilverOriginalPrice(sp, ratePerGram)
+                        : product.oldPrice ?? null;
+                    const liveDiscount =
+                      liveMRP && liveMRP > product.price
+                        ? Math.round(((liveMRP - product.price) / liveMRP) * 100)
+                        : product.discount;
+                    return (
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                          ₹{product.price.toLocaleString("en-IN")}
                         </span>
-                        {product.discount && (
-                          <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs md:text-sm font-semibold rounded">
-                            ({product.discount}% off)
-                          </span>
+                        {liveMRP && liveMRP > product.price && (
+                          <>
+                            <span className="text-lg md:text-xl text-muted-foreground line-through">
+                              ₹{liveMRP.toLocaleString("en-IN")}
+                            </span>
+                            {liveDiscount && liveDiscount > 0 && (
+                              <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs md:text-sm font-semibold rounded">
+                                ({liveDiscount}% off)
+                              </span>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    );
+                  })()}
                   <p className="text-xs md:text-sm text-muted-foreground mt-1">
                     (MRP Inclusive of all taxes)
                   </p>

@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 
 interface Product {
   id: string;
@@ -18,6 +19,12 @@ interface Product {
   alt?: string;
   badge?: string;
   discount?: number;
+  silverPricing?: {
+    enabled: boolean;
+    weightGrams: number;
+    wastagePercent: number;
+    makingCharges: number;
+  };
 }
 
 interface ProductCardProps {
@@ -33,12 +40,21 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { ratePerGram } = useSilverRate();
 
   const cartItem = items.find((i) => i.id === product.id);
   const inCartQty = cartItem?.quantity ?? 0;
-  const computedDiscount = product.discount ?? (product.oldPrice && product.oldPrice > product.price
-    ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
-    : 0);
+
+  // Compute live MRP: use silver formula if enabled, otherwise fall back to stored oldPrice
+  const sp = product.silverPricing;
+  const displayOldPrice =
+    sp?.enabled && ratePerGram > 0
+      ? computeSilverOriginalPrice(sp, ratePerGram)
+      : (product.oldPrice ?? null);
+
+  const computedDiscount = displayOldPrice && displayOldPrice > product.price
+    ? Math.round(((displayOldPrice - product.price) / displayOldPrice) * 100)
+    : (product.discount ?? 0);
 
   const handleCardClick = () => {
     // Navigate to product detail page
@@ -157,9 +173,9 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
         {/* Price */}
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 lg:gap-2 pt-0.5 lg:pt-1">
           <span className="text-sm lg:text-xl font-bold text-foreground">₹{product.price.toLocaleString('en-IN')}</span>
-          {product.oldPrice && (
+          {displayOldPrice && displayOldPrice > product.price && (
             <span className="text-[10px] lg:text-sm text-muted-foreground line-through">
-              ₹{product.oldPrice.toLocaleString('en-IN')}
+              ₹{displayOldPrice.toLocaleString('en-IN')}
             </span>
           )}
           {computedDiscount > 0 && (

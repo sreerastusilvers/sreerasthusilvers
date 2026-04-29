@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-
 // Auth Provider
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { SilverRateProvider } from "@/contexts/SilverRateContext";
 import ShoppingCart from "@/components/ShoppingCart";
 
 // Route Guards
@@ -145,7 +146,8 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
-          <TooltipProvider>
+          <SilverRateProvider>
+            <TooltipProvider>
             <Toaster />
             <Sonner />
             {!isLoaded && <LoadingScreen onComplete={handleLoadingComplete} />}
@@ -389,8 +391,9 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </TooltipProvider>
-      </CartProvider>
+            </TooltipProvider>
+          </SilverRateProvider>
+        </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

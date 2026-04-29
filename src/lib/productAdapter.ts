@@ -16,6 +16,13 @@ export interface UIProduct {
   alt?: string;
   badge?: string;
   discount?: number;
+  /** Silver-pricing metadata — present when admin enabled the calculator for this product */
+  silverPricing?: {
+    enabled: boolean;
+    weightGrams: number;
+    wastagePercent: number;
+    makingCharges: number;
+  };
 }
 
 /**
@@ -59,6 +66,14 @@ export const adaptFirebaseToUI = (fbProduct: FirebaseProduct): UIProduct => {
     alt: fbProduct.name,
     badge,
     discount,
+    silverPricing: (fbProduct as any).silverPricing?.enabled
+      ? {
+          enabled: true,
+          weightGrams: (fbProduct as any).silverPricing.weightGrams,
+          wastagePercent: (fbProduct as any).silverPricing.wastagePercent,
+          makingCharges: (fbProduct as any).silverPricing.makingCharges,
+        }
+      : undefined,
   };
 };
 
