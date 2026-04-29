@@ -45,13 +45,14 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
   const cartItem = items.find((i) => i.id === product.id);
   const inCartQty = cartItem?.quantity ?? 0;
 
-  // Compute live MRP: use silver formula if enabled, otherwise fall back to stored oldPrice
+  // Silver-enabled: price IS the live computed value, no MRP/discount concept
   const sp = product.silverPricing;
-  const displayDiscount = (product.discount ?? 0) > 0 ? (product.discount ?? 0) : null;
-  const displayOldPrice = displayDiscount
-    ? (sp?.enabled && ratePerGram > 0
-        ? computeSilverOriginalPrice(sp, ratePerGram)
-        : (product.oldPrice ?? null))
+  const displayPrice = sp?.enabled && ratePerGram > 0
+    ? computeSilverOriginalPrice(sp, ratePerGram)
+    : product.price;
+  const displayDiscount = !sp?.enabled && (product.discount ?? 0) > 0 ? (product.discount ?? 0) : null;
+  const displayOldPrice = !sp?.enabled && displayDiscount
+    ? (product.oldPrice ?? null)
     : null;
 
   const handleCardClick = () => {
@@ -170,8 +171,8 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
 
         {/* Price */}
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 lg:gap-2 pt-0.5 lg:pt-1">
-          <span className="text-sm lg:text-xl font-bold text-foreground">₹{product.price.toLocaleString('en-IN')}</span>
-          {displayOldPrice && displayOldPrice > product.price && (
+          <span className="text-sm lg:text-xl font-bold text-foreground">₹{displayPrice.toLocaleString('en-IN')}</span>
+          {displayOldPrice && displayOldPrice > displayPrice && (
             <span className="text-[10px] lg:text-sm text-muted-foreground line-through">
               ₹{displayOldPrice.toLocaleString('en-IN')}
             </span>

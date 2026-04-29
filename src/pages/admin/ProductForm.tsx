@@ -138,7 +138,7 @@ const ProductForm = () => {
     return unsub;
   }, []);
 
-  // Auto-calculate originalPrice whenever silver pricing inputs change
+  // Auto-calculate price whenever silver pricing inputs change
   useEffect(() => {
     if (!silverPricing.enabled) return;
     const grams = parseFloat(silverPricing.weightGrams) || 0;
@@ -148,10 +148,8 @@ const ProductForm = () => {
     const x = grams * silverRate;          // silver cost
     const y = x * (wastage / 100);         // wastage on silver cost
     const z = making;                       // making charges
-    const computed = Math.ceil(x + y + z); // originalPrice
-    setFormData((prev) => {
-      return { ...prev, originalPrice: computed.toString() };
-    });
+    const computed = Math.ceil(x + y + z); // live price
+    setFormData((prev) => ({ ...prev, price: computed.toString() }));
   }, [silverPricing.enabled, silverPricing.weightGrams, silverPricing.wastagePercent, silverPricing.makingCharges, silverRate]);
 
   // Auto-sync inventory weight from silver calculator when silver pricing is enabled
@@ -462,8 +460,8 @@ const ProductForm = () => {
         subSubcategory: formData.subSubcategory || undefined,
         description: formData.description,
         price: parseFloat(formData.price),
-        ...(formData.originalPrice && { originalPrice: parseFloat(formData.originalPrice) }),
-        ...(formData.discount && { discount: parseFloat(formData.discount) }),
+        ...(!silverPricing.enabled && formData.originalPrice && { originalPrice: parseFloat(formData.originalPrice) }),
+        ...(!silverPricing.enabled && formData.discount && { discount: parseFloat(formData.discount) }),
         currency: 'INR',
         media: { images, videos, thumbnail: thumbnail || images[0] },
         inventory: { stock: parseInt(formData.stock) || 0, sku: '', weight: formData.weight, weightUnit: formData.weightUnit },
@@ -891,45 +889,58 @@ const ProductForm = () => {
               </div>
 
               {/* ── Standard pricing fields ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-gray-700">Original Price (&#8377;)</Label>
-                  <Input
-                    name="originalPrice"
-                    type="number"
-                    value={formData.originalPrice}
-                    onChange={silverPricing.enabled ? undefined : handleInputChange}
-                    readOnly={silverPricing.enabled}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    className={'mt-2 border-gray-300 text-gray-900 ' + (silverPricing.enabled ? 'bg-amber-50 cursor-not-allowed' : 'bg-gray-100')}
-                  />
-                  {silverPricing.enabled && (
-                    <p className="text-xs text-amber-600 mt-1">Auto-calculated above</p>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-gray-700">Price (&#8377;) *</Label>
-                  <Input name="price" type="number" value={formData.price} onChange={handleInputChange} placeholder="0.00" min="0" step="0.01" className="mt-2 bg-gray-100 border-gray-300 text-gray-900" required />
-                </div>
-                <div>
-                  <Label className="text-gray-700">Discount</Label>
-                  <div className="flex gap-2 mt-2">
-                    <Input name="discount" type="number" value={formData.discount} onChange={handleInputChange} placeholder="0" min="0" step="0.1" className="flex-1 bg-gray-100 border-gray-300 text-gray-900" />
-                    <Select value={formData.discountType} onValueChange={(val) => setFormData((prev) => ({ ...prev, discountType: val as any }))}>
-                      <SelectTrigger className="w-20 bg-gray-100 border-gray-300">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="percent">%</SelectItem>
-                        <SelectItem value="amount">&#8377;</SelectItem>
-                      </SelectContent>
-                    </Select>
+              {silverPricing.enabled ? (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-amber-800">Price (live)</span>
+                    {formData.price ? (
+                      <span className="text-lg font-bold text-amber-900">
+                        ₹{parseFloat(formData.price).toLocaleString('en-IN')}
+                        <span className="ml-2 text-xs font-normal text-amber-600">at ₹{silverRate}/g</span>
+                      </span>
+                    ) : (
+                      <span className="text-sm text-amber-600">Fill calculator inputs above</span>
+                    )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Auto-calculated from prices</p>
+                  <p className="text-xs text-amber-600 mt-1">Customers always see the price recomputed at the current live silver rate.</p>
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-gray-700">Original Price (&#8377;)</Label>
+                    <Input
+                      name="originalPrice"
+                      type="number"
+                      value={formData.originalPrice}
+                      onChange={handleInputChange}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className="mt-2 bg-gray-100 border-gray-300 text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-700">Price (&#8377;) *</Label>
+                    <Input name="price" type="number" value={formData.price} onChange={handleInputChange} placeholder="0.00" min="0" step="0.01" className="mt-2 bg-gray-100 border-gray-300 text-gray-900" required />
+                  </div>
+                  <div>
+                    <Label className="text-gray-700">Discount</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input name="discount" type="number" value={formData.discount} onChange={handleInputChange} placeholder="0" min="0" step="0.1" className="flex-1 bg-gray-100 border-gray-300 text-gray-900" />
+                      <Select value={formData.discountType} onValueChange={(val) => setFormData((prev) => ({ ...prev, discountType: val as any }))}>
+                        <SelectTrigger className="w-20 bg-gray-100 border-gray-300">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="percent">%</SelectItem>
+                          <SelectItem value="amount">&#8377;</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Auto-calculated from prices</p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>

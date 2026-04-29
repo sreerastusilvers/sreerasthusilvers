@@ -84,11 +84,12 @@ const CategoryProductCard = memo(function CategoryProductCard({
 }: CategoryProductCardProps) {
   const { ratePerGram } = useSilverRate();
   const sp = product.silverPricing;
-  const displayDiscount = (product.discount ?? 0) > 0 ? (product.discount ?? 0) : null;
-  const displayOldPrice = displayDiscount
-    ? (sp?.enabled && ratePerGram > 0
-        ? computeSilverOriginalPrice(sp, ratePerGram)
-        : (product.oldPrice ?? null))
+  const displayPrice = sp?.enabled && ratePerGram > 0
+    ? computeSilverOriginalPrice(sp, ratePerGram)
+    : product.price;
+  const displayDiscount = !sp?.enabled && (product.discount ?? 0) > 0 ? (product.discount ?? 0) : null;
+  const displayOldPrice = !sp?.enabled && displayDiscount
+    ? (product.oldPrice ?? null)
     : null;
   return (
     <div className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300">
@@ -152,7 +153,7 @@ const CategoryProductCard = memo(function CategoryProductCard({
         </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <span className="text-sm font-bold text-foreground">
-            ₹{product.price.toLocaleString("en-IN")}
+            ₹{displayPrice.toLocaleString("en-IN")}
           </span>
           {displayOldPrice && displayOldPrice > product.price && (
             <span className="text-xs text-muted-foreground line-through">

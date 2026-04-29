@@ -282,10 +282,11 @@ const MobileProductsGrid = () => {
           const price = product.price;
           const sp = (product as any).silverPricing;
           const discount = product.discount;
-          const oldPrice = discount && discount > 0
-            ? (sp?.enabled && ratePerGram > 0
-                ? computeSilverOriginalPrice(sp, ratePerGram)
-                : product.originalPrice)
+          const displayPrice = sp?.enabled && ratePerGram > 0
+            ? computeSilverOriginalPrice(sp, ratePerGram)
+            : product.price;
+          const oldPrice = !sp?.enabled && discount && discount > 0
+            ? product.originalPrice
             : null;
           const isWishlisted = isInWishlist(product.id || "");
 
@@ -369,7 +370,7 @@ const MobileProductsGrid = () => {
                 {/* Price */}
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="text-sm font-bold text-foreground">
-                    {formatPrice(price)}
+                    {formatPrice(displayPrice)}
                   </span>
                   {oldPrice && (
                     <span className="text-[10px] text-muted-foreground line-through">
