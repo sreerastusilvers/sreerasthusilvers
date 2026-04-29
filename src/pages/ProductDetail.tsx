@@ -8,7 +8,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/useWishlist";
-import { getProductReviews, getProductReviewStats, hasUserPurchasedProduct, hasUserReviewedProduct, Review } from "@/services/reviewService";
+import { getProductReviews, getProductReviewStats, hasUserPurchasedProduct, getUserProductReview, voteReviewHelpful, Review } from "@/services/reviewService";
 import logo from "@/assets/dark.png";
 import Header from "@/components/Header";
 import MobileHeader from "@/components/MobileHeader";
@@ -53,15 +53,21 @@ const ProductDetail = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewStats, setReviewStats] = useState<{ averageRating: number; totalReviews: number; ratingDistribution: Record<number, number> }>({ averageRating: 0, totalReviews: 0, ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } });
   const [canWriteReview, setCanWriteReview] = useState(false);
-  const [hasReviewed, setHasReviewed] = useState(false);
+  const [userReview, setUserReview] = useState<Review | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
   const [helpfulVotes, setHelpfulVotes] = useState<Record<string, { up: number; down: number; voted: 'up' | 'down' | null }>>({});
+  // Review image lightbox
+  const [reviewLightbox, setReviewLightbox] = useState<{ images: string[]; index: number } | null>(null);
 
-  const handleHelpfulVote = (reviewId: string, type: 'up' | 'down') => {
+  const handleHelpfulVote = async (reviewId: string, type: 'up' | 'down') => {
+    // Check localStorage to prevent re-voting after page refresh
+    const storageKey = `helpful_voted_${user?.uid ?? 'anon'}_${reviewId}`;
+    if (localStorage.getItem(storageKey)) return;
+
     setHelpfulVotes(prev => {
       const current = prev[reviewId] || { up: 0, down: 0, voted: null };
-      if (current.voted) return prev; // already voted
+      if (current.voted) return prev;
       return {
         ...prev,
         [reviewId]: {
@@ -71,6 +77,26 @@ const ProductDetail = () => {
         },
       };
     });
+    localStorage.setItem(storageKey, type);
+    try {
+      await voteReviewHelpful(reviewId, type);
+    } catch {
+      // revert on failure
+      const storageKey2 = `helpful_voted_${user?.uid ?? 'anon'}_${reviewId}`;
+      localStorage.removeItem(storageKey2);
+      setHelpfulVotes(prev => {
+        const current = prev[reviewId];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [reviewId]: {
+            up: type === 'up' ? current.up - 1 : current.up,
+            down: type === 'down' ? current.down - 1 : current.down,
+            voted: null,
+          },
+        };
+      });
+    }
   };
 
   // Fetch product and related products
@@ -131,14 +157,24 @@ const ProductDetail = () => {
         setReviews(fetchedReviews);
         setReviewStats(stats);
         
-        // Check if logged-in user can write a review (must have purchased AND not yet reviewed)
+        // Initialize helpful votes from stored counts + localStorage voted state
+        const initialVotes: Record<string, { up: number; down: number; voted: 'up' | 'down' | null }> = {};
+        fetchedReviews.forEach(r => {
+          const storageKey = `helpful_voted_${user?.uid ?? 'anon'}_${r.id}`;
+          const voted = localStorage.getItem(storageKey) as 'up' | 'down' | null;
+          initialVotes[r.id] = { up: r.helpfulUp ?? 0, down: r.helpfulDown ?? 0, voted };
+        });
+        setHelpfulVotes(initialVotes);
+        
+        // Check if logged-in user can write a review (must have purchased AND not yet reviewed or review was rejected)
         if (user?.uid) {
-          const [purchased, alreadyReviewed] = await Promise.all([
+          const [purchased, existingReview] = await Promise.all([
             hasUserPurchasedProduct(user.uid, productId),
-            hasUserReviewedProduct(user.uid, productId),
+            getUserProductReview(user.uid, productId),
           ]);
-          setHasReviewed(alreadyReviewed);
-          setCanWriteReview(purchased && !alreadyReviewed);
+          setUserReview(existingReview);
+          // Can write review if: purchased + (no review OR review was rejected)
+          setCanWriteReview(purchased && (!existingReview || existingReview.status === 'rejected'));
         }
       } catch (error) {
         console.error('Error fetching reviews:', error);
@@ -951,10 +987,15 @@ const ProductDetail = () => {
                       Write a Review
                     </button>
                   )}
-                  {hasReviewed && (
+                  {userReview?.status === 'pending' && (
                     <div className="w-full py-2 border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-700/40 rounded-full flex items-center justify-center gap-2 mb-4 text-sm text-emerald-700 dark:text-emerald-300 font-medium">
                       <CheckCircle size={16} />
                       You've reviewed this product — pending admin approval
+                    </div>
+                  )}
+                  {userReview?.status === 'rejected' && (
+                    <div className="w-full py-2 border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-700/40 rounded-full flex items-center justify-center gap-2 mb-4 text-sm text-red-600 dark:text-red-400 font-medium">
+                      Your previous review was not approved — you may submit a new one
                     </div>
                   )}
 
@@ -999,7 +1040,14 @@ const ProductDetail = () => {
                             {review.images?.length > 0 && (
                               <div className="flex gap-2 mb-3">
                                 {review.images.map((img, i) => (
-                                  <img key={i} src={img} alt={`Review ${i + 1}`} className="w-14 h-14 object-cover rounded-lg" />
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => setReviewLightbox({ images: review.images, index: i })}
+                                    className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-primary"
+                                  >
+                                    <img src={img} alt={`Review ${i + 1}`} className="w-full h-full object-cover" />
+                                  </button>
                                 ))}
                               </div>
                             )}
@@ -1212,6 +1260,53 @@ const ProductDetail = () => {
       {/* Bottom padding for mobile to account for fixed bar */}
       <div className="md:hidden h-20"></div>
       <MobileBottomNav />
+
+      {/* Review Image Lightbox */}
+      {reviewLightbox && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center"
+          onClick={() => setReviewLightbox(null)}
+        >
+          {/* Close */}
+          <button
+            className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-full"
+            onClick={() => setReviewLightbox(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          {/* Prev */}
+          {reviewLightbox.index > 0 && (
+            <button
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-2 hover:bg-white/10 rounded-full"
+              onClick={(e) => { e.stopPropagation(); setReviewLightbox(prev => prev && prev.index > 0 ? { ...prev, index: prev.index - 1 } : prev); }}
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+          {/* Image */}
+          <img
+            src={reviewLightbox.images[reviewLightbox.index]}
+            alt="Review image"
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {/* Next */}
+          {reviewLightbox.index < reviewLightbox.images.length - 1 && (
+            <button
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-2 hover:bg-white/10 rounded-full"
+              onClick={(e) => { e.stopPropagation(); setReviewLightbox(prev => prev && prev.index < prev.images.length - 1 ? { ...prev, index: prev.index + 1 } : prev); }}
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          )}
+          {/* Counter */}
+          {reviewLightbox.images.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+              {reviewLightbox.index + 1} / {reviewLightbox.images.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

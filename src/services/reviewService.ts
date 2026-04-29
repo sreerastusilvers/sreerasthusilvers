@@ -12,7 +12,8 @@ import {
   Timestamp,
   onSnapshot,
   QuerySnapshot,
-  limit
+  limit,
+  increment,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig } from '@/config/cloudinary';
@@ -30,6 +31,8 @@ export interface Review {
   videoUrl?: string; // URL of uploaded video
   isVerifiedPurchase: boolean; // True if user has ordered this product
   status: 'pending' | 'approved' | 'rejected'; // For admin moderation
+  helpfulUp?: number;   // Count of helpful upvotes
+  helpfulDown?: number; // Count of helpful downvotes
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -93,6 +96,44 @@ export const hasUserReviewedProduct = async (
     console.error('Error checking user review:', error);
     return false;
   }
+};
+
+/**
+ * Get the user's own review for a product (returns the review object including status)
+ */
+export const getUserProductReview = async (
+  userId: string,
+  productId: string
+): Promise<Review | null> => {
+  try {
+    const reviewsRef = collection(db, REVIEWS_COLLECTION);
+    const q = query(
+      reviewsRef,
+      where('userId', '==', userId),
+      where('productId', '==', productId),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    const d = snapshot.docs[0];
+    return { id: d.id, ...d.data() } as Review;
+  } catch (error) {
+    console.error('Error getting user review:', error);
+    return null;
+  }
+};
+
+/**
+ * Increment the helpful up/down count for a review (called once per user per review)
+ */
+export const voteReviewHelpful = async (
+  reviewId: string,
+  type: 'up' | 'down'
+): Promise<void> => {
+  const reviewRef = doc(db, REVIEWS_COLLECTION, reviewId);
+  await updateDoc(reviewRef, {
+    [type === 'up' ? 'helpfulUp' : 'helpfulDown']: increment(1),
+  });
 };
 
 /**
@@ -229,25 +270,60 @@ export const subscribeToReviews = (
 };
 
 /**
- * Update review status (for admin)
+ * Update review status (for admin) and recalculate product rating/reviewCount
  */
 export const updateReviewStatus = async (
   reviewId: string,
   status: 'approved' | 'rejected'
 ): Promise<void> => {
   const reviewRef = doc(db, REVIEWS_COLLECTION, reviewId);
+  
+  // Get the review to know the productId for recalculation
+  const reviewSnap = await getDoc(reviewRef);
+  const reviewData = reviewSnap.data();
+  
   await updateDoc(reviewRef, {
     status,
     updatedAt: Timestamp.now(),
   });
+  
+  // Recalculate product rating and reviewCount from all approved reviews
+  if (reviewData?.productId) {
+    try {
+      const stats = await getProductReviewStats(reviewData.productId);
+      const productRef = doc(db, 'products', reviewData.productId);
+      await updateDoc(productRef, {
+        rating: stats.averageRating,
+        reviewCount: stats.totalReviews,
+        reviews: stats.totalReviews,
+      });
+    } catch (e) {
+      console.error('Error updating product rating after review status change:', e);
+    }
+  }
 };
 
 /**
- * Delete a review (for admin)
+ * Delete a review (for admin) and recalculate product rating/reviewCount
  */
 export const deleteReview = async (reviewId: string): Promise<void> => {
   const reviewRef = doc(db, REVIEWS_COLLECTION, reviewId);
+  const reviewSnap = await getDoc(reviewRef);
+  const reviewData = reviewSnap.data();
   await deleteDoc(reviewRef);
+  if (reviewData?.productId) {
+    try {
+      const stats = await getProductReviewStats(reviewData.productId);
+      const productRef = doc(db, 'products', reviewData.productId);
+      await updateDoc(productRef, {
+        rating: stats.averageRating,
+        reviewCount: stats.totalReviews,
+        reviews: stats.totalReviews,
+      });
+    } catch (e) {
+      console.error('Error updating product rating after review deletion:', e);
+    }
+  }
 };
 
 /**

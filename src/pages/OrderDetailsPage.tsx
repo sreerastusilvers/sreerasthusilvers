@@ -1198,13 +1198,6 @@ const OrderDetailsPage = () => {
           </button>
         </div>
 
-        {/* Feedback */}
-        <div className="bg-white dark:bg-zinc-900 mt-2 px-4 py-4 border-t border-b border-gray-100 dark:border-zinc-800">
-          <button className="w-full flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-zinc-500 dark:text-zinc-400">
-            Did you find this page helpful?
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
       {/* Hidden Receipt Component for Image Generation */}

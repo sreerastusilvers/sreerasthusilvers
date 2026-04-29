@@ -132,22 +132,30 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
           {product.title}
         </h4>
 
-        {/* Rating - Without Review Count */}
-        <div className="flex items-center gap-0.5">
+        {/* Rating with review count */}
+        <div className="flex items-center gap-1">
+          {(product.reviews ?? 0) > 0 && (
+            <span className="text-[10px] lg:text-xs font-semibold text-amber-500">{product.rating.toFixed(1)}</span>
+          )}
           {[...Array(5)].map((_, i) => (
             <Star
               key={i}
-              className={`w-3 h-3 lg:w-4 lg:h-4 ${
+              className={`w-3 h-3 lg:w-3.5 lg:h-3.5 ${
                 i < Math.floor(product.rating)
                   ? "fill-yellow-400 text-yellow-400"
-                  : "fill-muted text-muted"
+                  : i < product.rating
+                  ? "fill-yellow-200 text-yellow-400"
+                  : "fill-gray-200 text-gray-400"
               }`}
             />
           ))}
+          {(product.reviews ?? 0) > 0 && (
+            <span className="text-[10px] lg:text-xs text-muted-foreground ml-0.5">({product.reviews})</span>
+          )}
         </div>
 
         {/* Price */}
-        <div className="flex items-center gap-1.5 lg:gap-2 pt-0.5 lg:pt-1">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 lg:gap-2 pt-0.5 lg:pt-1">
           <span className="text-sm lg:text-xl font-bold text-foreground">₹{product.price.toLocaleString('en-IN')}</span>
           {product.oldPrice && (
             <span className="text-[10px] lg:text-sm text-muted-foreground line-through">
@@ -155,7 +163,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
             </span>
           )}
           {computedDiscount > 0 && (
-            <span className="text-[10px] lg:text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{computedDiscount}% Off</span>
+            <span className="basis-full lg:basis-auto text-[10px] lg:text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{computedDiscount}% Off</span>
           )}
         </div>
 

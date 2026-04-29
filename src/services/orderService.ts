@@ -12,7 +12,8 @@ import {
   Timestamp,
   onSnapshot,
   QuerySnapshot,
-  DocumentData
+  DocumentData,
+  increment,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import {
@@ -386,6 +387,21 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
 
     const docRef = await addDoc(collection(db, ORDERS_COLLECTION), orderWithTimestamps);
 
+    // Atomically decrement stock for each item — best-effort so a product
+    // doc failure never blocks order placement.
+    try {
+      await Promise.all(
+        (orderData.items || []).map(item =>
+          updateDoc(doc(db, 'products', item.productId), {
+            'inventory.stock': increment(-item.quantity),
+          })
+        )
+      );
+      await updateDoc(docRef, { stockDecremented: true });
+    } catch (err) {
+      console.warn('[orderService] stock decrement failed:', err);
+    }
+
     // Atomically bump coupon usage counter so admin limits (maxUses) and
     // visibility ("used X / Y") stay in sync with reality. We do this AFTER
     // the order doc is committed so a failed Firestore write never bumps the
@@ -662,6 +678,27 @@ export const updateOrderStatus = async (
     }
 
     await updateDoc(docRef, updateData);
+
+    // Restore stock when order is cancelled or returned — only if it was
+    // previously decremented (flag prevents double-restore for old orders).
+    if (
+      (status === 'cancelled' || status === 'returned') &&
+      currentData?.stockDecremented === true
+    ) {
+      try {
+        const items = (currentData.items as OrderItem[]) || [];
+        await Promise.all(
+          items.map(item =>
+            updateDoc(doc(db, 'products', item.productId), {
+              'inventory.stock': increment(item.quantity),
+            })
+          )
+        );
+        await updateDoc(docRef, { stockDecremented: false });
+      } catch (err) {
+        console.warn('[orderService] stock restore failed:', err);
+      }
+    }
 
     // Notify customer (WhatsApp + push). Best effort — never blocks the write.
     void dispatchStatusNotifications(orderId, status, {

@@ -84,7 +84,7 @@ const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.22 }}
             className="fixed top-0 left-0 bottom-0 w-full bg-background z-50 lg:hidden shadow-2xl overflow-y-auto"
             style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif" }}
           >

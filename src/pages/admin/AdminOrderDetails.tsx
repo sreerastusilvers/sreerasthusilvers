@@ -47,8 +47,8 @@ import {
   type FulfillmentWindowTemplateId,
 } from '@/services/orderService';
 import ImageUploader from '@/components/ImageUploader';
-import { storage, db } from '@/config/firebase';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL, type UploadTask } from 'firebase/storage';
+import { db } from '@/config/firebase';
+import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig } from '@/config/cloudinary';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1116,10 +1116,9 @@ const AdminOrderDetails = () => {
 function RefundReceiptUploader({ order }: { order: Order }) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const uploadTaskRef = useRef<UploadTask | null>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
 
   const handleUpload = async (file: File) => {
-    // Hard cap at 15 MB even though ImageUploader also enforces it.
     const MAX_BYTES = 15 * 1024 * 1024;
     if (file.size > MAX_BYTES) {
       toast.error('File too large. Refund receipts must be under 15 MB.');
@@ -1130,29 +1129,40 @@ function RefundReceiptUploader({ order }: { order: Order }) {
     setProgress(0);
     try {
       const isPdf = file.type === 'application/pdf';
-      const ext = isPdf ? 'pdf' : (file.name.split('.').pop() || 'jpg');
-      const path = `orders/${order.id}/refund-receipt.${ext}`;
-      const ref = storageRef(storage, path);
 
       const url = await new Promise<string>((resolve, reject) => {
-        const task = uploadBytesResumable(ref, file, { contentType: file.type });
-        uploadTaskRef.current = task;
-        task.on(
-          'state_changed',
-          (snapshot) => {
-            const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setProgress(pct);
-          },
-          (err) => reject(err),
-          async () => {
-            try {
-              const downloadUrl = await getDownloadURL(task.snapshot.ref);
-              resolve(downloadUrl);
-            } catch (err) {
-              reject(err);
-            }
-          },
-        );
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+        formData.append('folder', `orders/${order.id}/refund-receipts`);
+        // Let Cloudinary auto-detect resource type so PDFs and images both work
+        formData.append('resource_type', 'auto');
+
+        const xhr = new XMLHttpRequest();
+        xhrRef.current = xhr;
+        // For PDFs Cloudinary expects /raw/upload, for images /upload — use auto path
+        const uploadUrl = CLOUDINARY_UPLOAD_URL.replace('/upload', '/upload');
+        xhr.open('POST', uploadUrl);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            setProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const res = JSON.parse(xhr.responseText);
+            resolve(res.secure_url as string);
+          } else {
+            const errRes = JSON.parse(xhr.responseText || '{}');
+            reject(new Error(errRes?.error?.message || `Upload failed (${xhr.status})`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.onabort = () => reject(new Error('aborted'));
+        xhr.send(formData);
       });
 
       await updateDoc(doc(db, 'orders', order.id), {
@@ -1164,21 +1174,21 @@ function RefundReceiptUploader({ order }: { order: Order }) {
       toast.success('Refund receipt uploaded');
     } catch (err) {
       console.error('[refund-receipt] upload failed:', err);
-      const storageError = err as { code?: string; message?: string };
-      if (storageError.code === 'storage/canceled') {
+      const e = err as { message?: string };
+      if (e.message === 'aborted') {
         toast.info('Upload stopped. Choose another receipt when ready.');
       } else {
-        toast.error(storageError.message || 'Upload failed');
+        toast.error(e.message || 'Upload failed');
       }
     } finally {
-      uploadTaskRef.current = null;
+      xhrRef.current = null;
       setUploading(false);
       setProgress(0);
     }
   };
 
   const cancelUpload = () => {
-    uploadTaskRef.current?.cancel();
+    xhrRef.current?.abort();
   };
 
   return (
