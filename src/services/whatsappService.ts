@@ -14,6 +14,8 @@ interface TemplateOpts {
   template: string;
   language?: string;
   params?: string[];
+  /** Appended to the template's Dynamic button base URL (e.g. full Firestore orderId) */
+  urlSuffix?: string;
 }
 interface OtpStartOpts {
   to: string;
@@ -77,6 +79,8 @@ const sendOrderTemplate = (opts: TemplateOpts) =>
     { kind: 'template', ...opts, to: normalizePhoneNumber(opts.to) },
     // No admin header — the server allowlists these template names for public use
   );
+// Note: urlSuffix is forwarded via spread (...opts) and consumed by the API to
+// add a button component for Dynamic URL type Meta templates.
 
 /** Trigger an OTP send. Returns an opaque otpRef to be passed back to verify. */
 export const startWhatsAppOtp = (opts: OtpStartOpts) =>
@@ -192,6 +196,7 @@ export const sendOutForDeliveryTemplate = (opts: {
     template: 'order_out_for_delivery',
     language: 'en',
     params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] order_out_for_delivery failed:', err); return { ok: false }; });
 };
 
@@ -208,6 +213,7 @@ export const sendOrderDeliveredTemplate = (opts: {
     template: 'order_delivered',
     language: 'en',
     params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] order_delivered failed:', err); return { ok: false }; });
 };
 
@@ -224,6 +230,7 @@ export const sendOrderCancelledTemplate = (opts: {
     template: 'order_cancelled',
     language: 'en',
     params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] order_cancelled failed:', err); return { ok: false }; });
 };
 
@@ -242,6 +249,7 @@ export const sendOrderRefundedTemplate = (opts: {
     template: 'order_refunded',
     language: 'en',
     params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] order_refunded failed:', err); return { ok: false }; });
 };
 
@@ -261,6 +269,7 @@ export const sendReturnUpdateTemplate = (opts: {
     template: 'order_return_update',
     language: 'en',
     params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items', opts.result],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] order_return_update failed:', err); return { ok: false }; });
 };
 
@@ -280,6 +289,7 @@ export const sendTimeslotTemplate = (opts: {
     template: 'order_timeslot',
     language: 'en',
     params: [firstName(opts.customerName), fmt(opts.orderId), opts.date, opts.timeRange],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] order_timeslot failed:', err); return { ok: false }; });
 };
 
@@ -316,6 +326,7 @@ export const sendAdminOrderDeliveredTemplate = (opts: {
     template: 'admin_order_delivered',
     language: 'en',
     params: [fmt(opts.orderId), opts.customerName || 'a customer'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] admin_order_delivered failed:', err); return { ok: false }; });
 };
 
@@ -334,6 +345,7 @@ export const sendAdminReturnRequestedTemplate = (opts: {
     template: 'admin_return_requested',
     language: 'en',
     params: [fmt(opts.orderId), opts.customerName || 'a customer', opts.itemsSummary || 'items'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] admin_return_requested failed:', err); return { ok: false }; });
 };
 
@@ -351,6 +363,7 @@ export const sendAdminReturnPickedTemplate = (opts: {
     template: 'admin_return_picked',
     language: 'en',
     params: [fmt(opts.orderId), opts.itemsSummary || 'items'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] admin_return_picked failed:', err); return { ok: false }; });
 };
 
@@ -369,6 +382,7 @@ export const sendAdminReturnedTemplate = (opts: {
     template: 'admin_returned',
     language: 'en',
     params: [fmt(opts.orderId), opts.customerName || 'a customer', opts.itemsSummary || 'items'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] admin_returned failed:', err); return { ok: false }; });
 };
 

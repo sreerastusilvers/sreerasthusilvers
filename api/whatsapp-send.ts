@@ -117,10 +117,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const name = String(body.template || '');
       const lang = String(body.language || 'en_US');
       const params: string[] = Array.isArray(body.params) ? body.params : [];
+      // urlSuffix: appended to the template's Dynamic button base URL (e.g. orderId)
+      const urlSuffix: string | undefined = body.urlSuffix ? String(body.urlSuffix) : undefined;
       if (!name) return res.status(400).json({ ok: false, error: 'Missing template name' });
-      const components = params.length
-        ? [{ type: 'body', parameters: params.map((p) => ({ type: 'text', text: String(p) })) }]
-        : [];
+      const components: Record<string, unknown>[] = [];
+      if (params.length) {
+        components.push({ type: 'body', parameters: params.map((p) => ({ type: 'text', text: String(p) })) });
+      }
+      // If a URL suffix is provided, attach it as button index 0 (Dynamic URL type in Meta)
+      if (urlSuffix) {
+        components.push({ type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: urlSuffix }] });
+      }
       const data = await sendToMeta({
         to,
         type: 'template',
