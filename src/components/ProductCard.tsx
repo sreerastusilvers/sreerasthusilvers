@@ -52,9 +52,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
       ? computeSilverOriginalPrice(sp, ratePerGram)
       : (product.oldPrice ?? null);
 
-  const computedDiscount = displayOldPrice && displayOldPrice > product.price
-    ? Math.round(((displayOldPrice - product.price) / displayOldPrice) * 100)
-    : (product.discount ?? 0);
+  const displayDiscount = (product.discount ?? 0) > 0 ? (product.discount ?? 0) : null;
 
   const handleCardClick = () => {
     // Navigate to product detail page
@@ -178,8 +176,8 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
               ₹{displayOldPrice.toLocaleString('en-IN')}
             </span>
           )}
-          {computedDiscount > 0 && (
-            <span className="basis-full lg:basis-auto text-[10px] lg:text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{computedDiscount}% Off</span>
+          {displayDiscount && (
+            <span className="basis-full lg:basis-auto text-[10px] lg:text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{displayDiscount}% Off</span>
           )}
         </div>
 

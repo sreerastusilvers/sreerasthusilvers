@@ -150,12 +150,7 @@ const ProductForm = () => {
     const z = making;                       // making charges
     const computed = Math.ceil(x + y + z); // originalPrice
     setFormData((prev) => {
-      const price = parseFloat(prev.price) || 0;
-      let disc = '0';
-      if (price > 0 && computed > price) {
-        disc = (((computed - price) / computed) * 100).toFixed(1);
-      }
-      return { ...prev, originalPrice: computed.toString(), discount: disc, discountType: 'percent' };
+      return { ...prev, originalPrice: computed.toString() };
     });
   }, [silverPricing.enabled, silverPricing.weightGrams, silverPricing.wastagePercent, silverPricing.makingCharges, silverRate]);
 
