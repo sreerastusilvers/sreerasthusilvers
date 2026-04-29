@@ -409,6 +409,46 @@ export const sendDeliveryAssignedTemplate = (opts: {
   }).catch((err) => { console.warn('[whatsapp] delivery_assigned failed:', err); return { ok: false }; });
 };
 
+// ── VIDEO CALL templates ──────────────────────────────────────────────────────
+
+/** In-App video call started → customer gets deep link to join
+ *  Template: video_call_inapp  {{1}}customerName {{2}}productTitle
+ *  Button: Dynamic URL → base https://sreerasthusilvers-kkd.vercel.app/ + suffix
+ */
+export const sendVideoCallInAppTemplate = (opts: {
+  to?: string;
+  customerName: string;
+  productTitle?: string;
+  requestId: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'video_call_inapp',
+    language: 'en',
+    params: [opts.customerName || 'there', opts.productTitle || 'your product'],
+    urlSuffix: `call?requestId=${opts.requestId}`,
+  }).catch((err) => { console.warn('[whatsapp] video_call_inapp failed:', err); return { ok: false }; });
+};
+
+/** Google Meet confirmed → customer gets Meet link
+ *  Template: video_call_meet  {{1}}customerName {{2}}productTitle {{3}}meetUrl
+ */
+export const sendVideoCallMeetTemplate = (opts: {
+  to?: string;
+  customerName: string;
+  productTitle?: string;
+  meetUrl: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'video_call_meet',
+    language: 'en',
+    params: [opts.customerName || 'there', opts.productTitle || 'your product', opts.meetUrl],
+  }).catch((err) => { console.warn('[whatsapp] video_call_meet failed:', err); return { ok: false }; });
+};
+
 // ── Kept for backward-compat (deprecated) ────────────────────────────────────
 /** @deprecated */
 export const sendOrderStatusTemplate = sendOrderDeliveredTemplate as unknown as (opts: {

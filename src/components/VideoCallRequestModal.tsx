@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Video, Calendar, Phone, User, X, Loader2, ArrowRight } from 'lucide-react';
+import { Video, Calendar, Phone, User, X, Loader2, ArrowRight, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { createVideoCallRequest } from '@/services/videoCallRequestService';
+import { getCustomerSupportSettings } from '@/services/siteSettingsService';
 
 interface VideoCallRequestModalProps {
   open: boolean;
@@ -17,7 +18,7 @@ interface VideoCallRequestModalProps {
   productImage?: string;
 }
 
-type Tab = 'instant' | 'scheduled';
+type Tab = 'instant' | 'scheduled' | 'whatsapp';
 
 const VideoCallRequestModal = ({
   open,
@@ -35,6 +36,29 @@ const VideoCallRequestModal = ({
   const [scheduledTime, setScheduledTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [adminWhatsapp, setAdminWhatsapp] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      getCustomerSupportSettings().then((s) => setAdminWhatsapp(s.whatsapp || ''));
+    }
+  }, [open]);
+
+  const handleWhatsApp = () => {
+    const digits = adminWhatsapp.replace(/\D/g, '');
+    if (!digits) {
+      toast.error('Admin WhatsApp number not configured');
+      return;
+    }
+    const productLine = productTitle ? `Product: *${productTitle}*` : '';
+    const productLink =
+      productId
+        ? `\nhttps://sreerasthusilvers-kkd.vercel.app/product/${productId}`
+        : '';
+    const customerLine = name.trim() ? `\nRequested by: ${name.trim()}` : '';
+    const message = `Hi Sreerasthu Silvers! I'd like a WhatsApp video call demo.${productLine ? '\n' + productLine : ''}${productLink}${customerLine}`;
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');
+  };
 
   const handleSubmit = async () => {
     if (!user) {
@@ -161,6 +185,7 @@ const VideoCallRequestModal = ({
                   {([
                     { id: 'instant' as Tab, label: 'Call Now', icon: Phone },
                     { id: 'scheduled' as Tab, label: 'Schedule', icon: Calendar },
+                    { id: 'whatsapp' as Tab, label: 'WhatsApp', icon: MessageCircle },
                   ] as const).map(({ id, label, icon: Icon }) => (
                     <button
                       key={id}
@@ -177,76 +202,124 @@ const VideoCallRequestModal = ({
                   ))}
                 </div>
 
-                {/* Fields */}
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
-                      <User className="w-3 h-3" /> Your Name
-                    </Label>
-                    <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Full name"
-                      className="bg-muted/40"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
-                      <Phone className="w-3 h-3" /> Phone Number
-                    </Label>
-                    <Input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91 XXXXX XXXXX"
-                      type="tel"
-                      className="bg-muted/40"
-                    />
-                  </div>
-
-                  {tab === 'scheduled' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1.5 block">Date</Label>
-                        <Input
-                          type="date"
-                          value={scheduledDate}
-                          min={new Date().toISOString().split('T')[0]}
-                          onChange={(e) => setScheduledDate(e.target.value)}
-                          className="bg-muted/40"
+                {tab === 'whatsapp' ? (
+                  /* ── WhatsApp video call panel ── */
+                  <div className="space-y-4">
+                    {productImage && (
+                      <div className="flex items-center gap-3 bg-muted/40 rounded-xl p-3">
+                        <img
+                          src={productImage}
+                          alt={productTitle}
+                          className="w-14 h-14 rounded-lg object-cover shrink-0"
                         />
+                        <p className="text-sm font-medium line-clamp-2">{productTitle}</p>
                       </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground mb-1.5 block">Time</Label>
-                        <Input
-                          type="time"
-                          value={scheduledTime}
-                          onChange={(e) => setScheduledTime(e.target.value)}
-                          className="bg-muted/40"
-                        />
+                    )}
+                    <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-semibold text-green-800 dark:text-green-300">WhatsApp Video Call</span>
                       </div>
+                      <p className="text-xs text-green-700 dark:text-green-400">
+                        Our expert will connect with you directly on WhatsApp for a high-quality video demo.
+                      </p>
+                      {adminWhatsapp && (
+                        <p className="text-xs font-medium text-green-800 dark:text-green-300">
+                          Call number: <span className="font-bold">{adminWhatsapp}</span>
+                        </p>
+                      )}
                     </div>
-                  )}
-                </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                        <User className="w-3 h-3" /> Your Name (optional)
+                      </Label>
+                      <Input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Full name"
+                        className="bg-muted/40"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleWhatsApp}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white rounded-full gap-2"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Connect on WhatsApp
+                    </Button>
+                  </div>
+                ) : (
+                  /* ── In-app / Scheduled panel ── */
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                        <User className="w-3 h-3" /> Your Name
+                      </Label>
+                      <Input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Full name"
+                        className="bg-muted/40"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+                        <Phone className="w-3 h-3" /> Phone Number
+                      </Label>
+                      <Input
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+91 XXXXX XXXXX"
+                        type="tel"
+                        className="bg-muted/40"
+                      />
+                    </div>
 
-                {tab === 'instant' && (
-                  <p className="mt-3 text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-lg px-3 py-2">
-                    Our jewellery expert will call you as soon as possible during business hours (10am–7pm).
-                  </p>
+                    {tab === 'scheduled' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1.5 block">Date</Label>
+                          <Input
+                            type="date"
+                            value={scheduledDate}
+                            min={new Date().toISOString().split('T')[0]}
+                            onChange={(e) => setScheduledDate(e.target.value)}
+                            className="bg-muted/40"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground mb-1.5 block">Time</Label>
+                          <Input
+                            type="time"
+                            value={scheduledTime}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            className="bg-muted/40"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {tab === 'instant' && (
+                      <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-lg px-3 py-2">
+                        Our jewellery expert will call you as soon as possible during business hours (10am–7pm).
+                      </p>
+                    )}
+
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={submitting}
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white rounded-full"
+                    >
+                      {submitting ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</>
+                      ) : tab === 'instant' ? (
+                        'Request Immediate Call'
+                      ) : (
+                        'Book Appointment'
+                      )}
+                    </Button>
+                  </div>
                 )}
-
-                <Button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="w-full mt-5 bg-amber-600 hover:bg-amber-700 text-white rounded-full"
-                >
-                  {submitting ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</>
-                  ) : tab === 'instant' ? (
-                    'Request Immediate Call'
-                  ) : (
-                    'Book Appointment'
-                  )}
-                </Button>
               </>
             )}
           </motion.div>

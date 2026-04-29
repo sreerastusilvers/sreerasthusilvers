@@ -91,6 +91,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'admin_returned',
     // delivery partner
     'delivery_new_task',        // was delivery_assigned (recreated with button)
+    // video calls
+    'video_call_inapp',
+    'video_call_meet',
   ]);
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const kind = body.kind as 'text' | 'template' | 'otp' | undefined;

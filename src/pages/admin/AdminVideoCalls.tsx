@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Video, Phone, Calendar, Clock, CheckCircle, X, ExternalLink,
-  Loader2, User, Check,
+  Loader2, User, Check, MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import {
   type VideoCallRequest,
   type VideoCallStatus,
 } from '@/services/videoCallRequestService';
+import { sendVideoCallInAppTemplate, sendVideoCallMeetTemplate } from '@/services/whatsappService';
 import type { Timestamp } from 'firebase/firestore';
 
 const STATUS_LABELS: Record<VideoCallStatus, { label: string; color: string }> = {
@@ -76,6 +77,13 @@ const AdminVideoCalls = () => {
       await confirmWithMeet(req.id, url, user.uid);
       toast.success('Meet link sent to customer');
       setMeetUrls((p) => ({ ...p, [req.id]: '' }));
+      // Notify customer on WhatsApp
+      sendVideoCallMeetTemplate({
+        to: req.customerPhone,
+        customerName: req.customerName,
+        productTitle: req.productTitle,
+        meetUrl: url,
+      });
     } catch {
       toast.error('Failed');
     } finally {
@@ -90,6 +98,13 @@ const AdminVideoCalls = () => {
       // Commit callId = req.id to Firestore immediately so the customer sees the
       // "Join Call" button before the admin's camera/WebRTC setup finishes.
       await confirmInApp(req.id, req.id, user.uid);
+      // Notify customer on WhatsApp with deep link
+      sendVideoCallInAppTemplate({
+        to: req.customerPhone,
+        customerName: req.customerName,
+        productTitle: req.productTitle,
+        requestId: req.id,
+      });
       navigate(`/call?to=${req.customerUid}&requestId=${req.id}&callIdOverride=${req.id}`);
     } catch {
       toast.error('Failed to start call');
@@ -161,9 +176,19 @@ const AdminVideoCalls = () => {
         </div>
 
         {req.productTitle && (
-          <p className="text-xs text-muted-foreground mb-3 bg-muted/50 rounded-lg px-3 py-1.5 truncate">
-            Product: {req.productTitle}
-          </p>
+          <div className="flex items-center gap-3 mb-3 bg-muted/40 rounded-xl p-2.5">
+            {req.productImage && (
+              <img
+                src={req.productImage}
+                alt={req.productTitle}
+                className="w-12 h-12 rounded-lg object-cover shrink-0 border border-border"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">Product</p>
+              <p className="text-sm font-medium leading-tight line-clamp-2">{req.productTitle}</p>
+            </div>
+          </div>
         )}
 
         {/* Existing meeting info */}
@@ -198,7 +223,7 @@ const AdminVideoCalls = () => {
                 disabled={busy}
                 onClick={() => handleSendMeet(req)}
               >
-                {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ExternalLink className="w-3 h-3" /> Send Meet</>}
+                {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ExternalLink className="w-3 h-3" /> Send Meet + WhatsApp</>}
               </Button>
             </div>
             {/* Start in-app call */}
@@ -210,6 +235,7 @@ const AdminVideoCalls = () => {
                 onClick={() => handleStartInApp(req)}
               >
                 <Video className="w-3.5 h-3.5" /> Start In-App Call
+                <MessageCircle className="w-3 h-3 opacity-70" />
               </Button>
               <Button
                 size="sm"

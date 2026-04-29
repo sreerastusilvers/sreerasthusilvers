@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Search, Heart, ShoppingBag, User, Gift, Video } from "lucide-react";
+import { Menu, X, Search, Heart, ShoppingBag, User, Gift } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useCart } from "@/contexts/CartContext";
@@ -243,18 +243,6 @@ const Header = () => {
               >
                 <Heart className="w-[20px] h-[20px] text-foreground/80 group-hover:text-primary transition-colors" strokeWidth={1.5} />
               </button>
-
-              {/* My Video Calls - only for logged-in users */}
-              {user && (
-                <button
-                  onClick={() => navigate("/my-video-calls")}
-                  className="p-2 hover:bg-muted rounded-full transition-all duration-200 group relative"
-                  aria-label="My Video Calls"
-                  title="My Video Calls"
-                >
-                  <Video className="w-[20px] h-[20px] text-foreground/80 group-hover:text-primary transition-colors" strokeWidth={1.5} />
-                </button>
-              )}
 
               {/* User Profile */}
               <button 
