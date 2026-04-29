@@ -76,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   //  • text / all other templates — must carry x-admin-key.
   const ORDER_TEMPLATES = new Set([
     // customer
-    'order_placed',
+    'order_confirmed',          // was order_placed (recreated with button)
     'order_out_for_delivery',
     'order_delivered',
     'order_cancelled',
@@ -84,13 +84,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'order_return_update',
     'order_timeslot',
     // admin
-    'admin_new_order',
+    'admin_order_alert',        // was admin_new_order (recreated with button)
     'admin_order_delivered',
     'admin_return_requested',
     'admin_return_picked',
     'admin_returned',
     // delivery partner
-    'delivery_assigned',
+    'delivery_new_task',        // was delivery_assigned (recreated with button)
   ]);
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const kind = body.kind as 'text' | 'template' | 'otp' | undefined;

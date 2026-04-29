@@ -177,7 +177,7 @@ export const sendOrderPlacedTemplate = (opts: {
   if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
   return sendOrderTemplate({
     to: opts.to,
-    template: 'order_placed',
+    template: 'order_confirmed',  // renamed due to Meta 4-week cooldown on deleted name
     language: 'en',
     params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items', String(Math.round(opts.total))],
   }).catch((err) => { console.warn('[whatsapp] order_placed failed:', err); return { ok: false }; });
@@ -306,7 +306,7 @@ export const sendAdminNewOrderTemplate = (opts: {
   if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
   return sendOrderTemplate({
     to: opts.to,
-    template: 'admin_new_order',
+    template: 'admin_order_alert',  // renamed due to Meta 4-week cooldown on deleted name
     language: 'en',
     params: [fmt(opts.orderId), opts.itemsSummary || 'items', String(Math.round(opts.total)), opts.customerName || 'a customer'],
   }).catch((err) => { console.warn('[whatsapp] admin_new_order failed:', err); return { ok: false }; });
@@ -401,7 +401,7 @@ export const sendDeliveryAssignedTemplate = (opts: {
   if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
   return sendOrderTemplate({
     to: opts.to,
-    template: 'delivery_assigned',
+    template: 'delivery_new_task',  // renamed due to Meta 4-week cooldown on deleted name
     language: 'en',
     params: [firstName(opts.partnerName), fmt(opts.orderId), opts.itemsSummary || 'items', opts.deliveryAddress],
   }).catch((err) => { console.warn('[whatsapp] delivery_assigned failed:', err); return { ok: false }; });
