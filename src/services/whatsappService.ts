@@ -227,6 +227,24 @@ export const sendOrderCancelledTemplate = (opts: {
   }).catch((err) => { console.warn('[whatsapp] order_cancelled failed:', err); return { ok: false }; });
 };
 
+/** Refund processed → customer
+ *  Template: order_refunded  {{1}}firstName {{2}}orderId {{3}}items
+ */
+export const sendOrderRefundedTemplate = (opts: {
+  to?: string;
+  customerName: string;
+  orderId: string;
+  itemsSummary?: string;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'order_refunded',
+    language: 'en',
+    params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items'],
+  }).catch((err) => { console.warn('[whatsapp] order_refunded failed:', err); return { ok: false }; });
+};
+
 /** Return approved or rejected → customer
  *  Template: order_return_update  {{1}}firstName {{2}}orderId {{3}}items {{4}}"approved"/"rejected"
  */

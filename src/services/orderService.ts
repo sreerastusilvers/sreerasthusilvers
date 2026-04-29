@@ -22,6 +22,7 @@ import {
   sendOutForDeliveryTemplate,
   sendOrderDeliveredTemplate,
   sendOrderCancelledTemplate,
+  sendOrderRefundedTemplate,
   sendReturnUpdateTemplate,
   sendTimeslotTemplate,
   sendAdminOrderDeliveredTemplate,
@@ -120,6 +121,8 @@ const dispatchStatusNotifications = async (
         void sendOrderDeliveredTemplate({ to: notifyPhone, customerName: name, orderId, itemsSummary: items });
       } else if (status === 'cancelled') {
         void sendOrderCancelledTemplate({ to: notifyPhone, customerName: name, orderId, itemsSummary: items });
+      } else if (status === 'refunded') {
+        void sendOrderRefundedTemplate({ to: notifyPhone, customerName: name, orderId, itemsSummary: items });
       }
       // All other status changes: web-push only (no WhatsApp)
     }

@@ -80,6 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'order_out_for_delivery',
     'order_delivered',
     'order_cancelled',
+    'order_refunded',
     'order_return_update',
     'order_timeslot',
     // admin
