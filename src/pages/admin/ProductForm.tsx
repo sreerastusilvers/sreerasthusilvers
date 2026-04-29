@@ -159,6 +159,14 @@ const ProductForm = () => {
     });
   }, [silverPricing.enabled, silverPricing.weightGrams, silverPricing.wastagePercent, silverPricing.makingCharges, silverRate]);
 
+  // Auto-sync inventory weight from silver calculator when silver pricing is enabled
+  useEffect(() => {
+    if (!silverPricing.enabled) return;
+    const w = silverPricing.weightGrams;
+    if (w === '') return;
+    setFormData((prev) => ({ ...prev, weight: w, weightUnit: 'grams' }));
+  }, [silverPricing.enabled, silverPricing.weightGrams]);
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -936,9 +944,12 @@ const ProductForm = () => {
                 <div className="sm:col-span-2">
                   <Label className="text-gray-700">Weight</Label>
                   <div className="flex gap-2 mt-2">
-                    <Input name="weight" type="number" value={formData.weight} onChange={handleInputChange} placeholder="e.g., 100" min="0" step="0.01" className="flex-1 bg-gray-100 border-gray-300 text-gray-900" />
-                    <Select value={formData.weightUnit} onValueChange={(val) => setFormData((prev) => ({ ...prev, weightUnit: val as 'grams' | 'kgs' }))}>
-                      <SelectTrigger className="w-28 bg-gray-100 border-gray-300">
+                    <Input name="weight" type="number" value={formData.weight} onChange={handleInputChange} placeholder="e.g., 100" min="0" step="0.01"
+                      readOnly={silverPricing.enabled}
+                      className={`flex-1 border-gray-300 text-gray-900 ${silverPricing.enabled ? 'bg-gray-200 cursor-not-allowed text-gray-500' : 'bg-gray-100'}`}
+                    />
+                    <Select value={formData.weightUnit} onValueChange={(val) => setFormData((prev) => ({ ...prev, weightUnit: val as 'grams' | 'kgs' }))} disabled={silverPricing.enabled}>
+                      <SelectTrigger className={`w-28 border-gray-300 ${silverPricing.enabled ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-100'}`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
@@ -947,6 +958,9 @@ const ProductForm = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  {silverPricing.enabled && (
+                    <p className="text-xs text-amber-600 mt-1">Auto-synced from Silver Rate Calculator</p>
+                  )}
                 </div>
               </div>
             </CardContent>

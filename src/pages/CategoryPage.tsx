@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 
 // ─── helpers ──────────────────────────────────────────
 const priceRanges = [
@@ -81,6 +82,14 @@ const CategoryProductCard = memo(function CategoryProductCard({
   onToggleWishlist,
   onOpen,
 }: CategoryProductCardProps) {
+  const { ratePerGram } = useSilverRate();
+  const sp = product.silverPricing;
+  const displayOldPrice = sp?.enabled && ratePerGram > 0
+    ? computeSilverOriginalPrice(sp, ratePerGram)
+    : (product.oldPrice ?? null);
+  const computedDiscount = displayOldPrice && displayOldPrice > product.price
+    ? Math.round(((displayOldPrice - product.price) / displayOldPrice) * 100)
+    : (product.discount ?? 0);
   return (
     <div className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300">
       {/* Image */}
@@ -145,14 +154,14 @@ const CategoryProductCard = memo(function CategoryProductCard({
           <span className="text-sm font-bold text-foreground">
             ₹{product.price.toLocaleString("en-IN")}
           </span>
-          {product.oldPrice && (
+          {displayOldPrice && displayOldPrice > product.price && (
             <span className="text-xs text-muted-foreground line-through">
-              ₹{product.oldPrice.toLocaleString("en-IN")}
+              ₹{displayOldPrice.toLocaleString("en-IN")}
             </span>
           )}
-          {product.discount && product.discount > 0 && (
+          {computedDiscount > 0 && (
             <span className="basis-full text-xs font-semibold text-[#b88a2a] dark:text-[#f4cf73]">
-              {product.discount}% Off
+              {computedDiscount}% Off
             </span>
           )}
         </div>

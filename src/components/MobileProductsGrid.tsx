@@ -5,6 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useNavigate } from "react-router-dom";
+import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 
 type SortOption = "newest" | "price-low" | "price-high" | "popularity" | "discount" | "rating";
 type PriceRange = "all" | "under500" | "500-999" | "1000-above";
@@ -33,6 +34,7 @@ const MobileProductsGrid = () => {
   const [loading, setLoading] = useState(true);
   const [activeSort, setActiveSort] = useState<SortOption>("newest");
   const [activePriceRange, setActivePriceRange] = useState<PriceRange>("all");
+  const { ratePerGram } = useSilverRate();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showSortModal, setShowSortModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -278,7 +280,10 @@ const MobileProductsGrid = () => {
       <div className="grid grid-cols-2 gap-3 px-4">
         {filteredProducts.map((product) => {
           const price = product.price;
-          const oldPrice = product.originalPrice;
+          const sp = (product as any).silverPricing;
+          const oldPrice = sp?.enabled && ratePerGram > 0
+            ? computeSilverOriginalPrice(sp, ratePerGram)
+            : product.originalPrice;
           const discount = product.discount;
           const isWishlisted = isInWishlist(product.id || "");
 
