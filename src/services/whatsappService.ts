@@ -180,6 +180,7 @@ export const sendOrderPlacedTemplate = (opts: {
     template: 'order_confirmed',  // renamed due to Meta 4-week cooldown on deleted name
     language: 'en',
     params: [firstName(opts.customerName), fmt(opts.orderId), opts.itemsSummary || 'your items', String(Math.round(opts.total))],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] order_placed failed:', err); return { ok: false }; });
 };
 
@@ -309,6 +310,7 @@ export const sendAdminNewOrderTemplate = (opts: {
     template: 'admin_order_alert',  // renamed due to Meta 4-week cooldown on deleted name
     language: 'en',
     params: [fmt(opts.orderId), opts.itemsSummary || 'items', String(Math.round(opts.total)), opts.customerName || 'a customer'],
+    urlSuffix: opts.orderId,
   }).catch((err) => { console.warn('[whatsapp] admin_new_order failed:', err); return { ok: false }; });
 };
 
