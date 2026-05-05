@@ -8,21 +8,19 @@ import { useToast } from "@/hooks/use-toast";
 const ProductDetailSection = () => {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const { addToCart, openCart } = useCart();
+  const { addToCart } = useCart();
   const { toast } = useToast();
 
   const handleAddToCart = async () => {
     try {
-      for (let i = 0; i < quantity; i++) {
-        await addToCart({
-          id: 'royal-silver-sofa',
-          name: 'Royal Silver Sofa',
-          price: 99500,
-          image: silverSofa,
-          category: 'Chair Collection',
-        });
-      }
-      openCart();
+      const added = addToCart({
+        id: 'royal-silver-sofa',
+        name: 'Royal Silver Sofa',
+        price: 99500,
+        image: silverSofa,
+        category: 'Chair Collection',
+      }, quantity);
+      if (!added) return;
       toast({
         title: "Added to cart",
         description: `Royal Silver Sofa${quantity > 1 ? ` (×${quantity})` : ''} has been added to your cart.`,
@@ -30,7 +28,7 @@ const ProductDetailSection = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add item to cart.",
+        description: error instanceof Error ? error.message : "Failed to add item to cart.",
         variant: "destructive",
       });
     }

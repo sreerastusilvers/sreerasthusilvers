@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { doc, setDoc, getDoc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore';
 import { db, auth } from '@/config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
+import { getProduct } from '@/services/productService';
 
 // Cart Item Interface
 export interface CartItem {
@@ -10,6 +12,7 @@ export interface CartItem {
   price: number;
   image: string;
   quantity: number;
+  stock?: number;
   category?: string;
   weight?: string;
   purity?: string;
@@ -19,9 +22,9 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   isCartOpen: boolean;
-  addToCart: (item: Omit<CartItem, 'quantity'>) => Promise<void>;
+  addToCart: (item: Omit<CartItem, 'quantity'>, quantity?: number) => boolean;
   removeFromCart: (id: string) => Promise<void>;
-  updateQuantity: (id: string, quantity: number) => Promise<void>;
+  updateQuantity: (id: string, quantity: number) => boolean;
   clearCart: () => Promise<void>;
   openCart: () => void;
   closeCart: () => void;
@@ -35,6 +38,18 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 // Local storage key for guest users
 const CART_STORAGE_KEY = 'sree_rasthu_cart';
+
+const buildStockMessage = (productName: string, availableStock: number) => {
+  if (availableStock <= 0) {
+    return `${productName} is currently out of stock.`;
+  }
+
+  if (availableStock === 1) {
+    return `Only 1 left in stock for ${productName}.`;
+  }
+
+  return `Only ${availableStock} left in stock for ${productName}.`;
+};
 
 // Helper: save items to localStorage
 const saveToLocalStorage = (cartItems: CartItem[]) => {
@@ -55,6 +70,45 @@ const loadFromLocalStorage = (): CartItem[] => {
   }
 };
 
+const hydrateCartItemsWithStock = async (cartItems: CartItem[]): Promise<CartItem[]> => {
+  const missingStockIds = Array.from(
+    new Set(
+      cartItems
+        .filter((item) => typeof item.stock !== 'number')
+        .map((item) => item.id)
+    )
+  );
+
+  if (!missingStockIds.length) {
+    return cartItems;
+  }
+
+  const stockById = new Map<string, number>();
+
+  await Promise.all(
+    missingStockIds.map(async (productId) => {
+      try {
+        const product = await getProduct(productId);
+        if (typeof product?.inventory?.stock === 'number') {
+          stockById.set(productId, product.inventory.stock);
+        }
+      } catch (error) {
+        console.warn('Failed to hydrate cart stock for product:', productId, error);
+      }
+    })
+  );
+
+  if (!stockById.size) {
+    return cartItems;
+  }
+
+  return cartItems.map((item) => (
+    typeof item.stock === 'number' || !stockById.has(item.id)
+      ? item
+      : { ...item, stock: stockById.get(item.id) }
+  ));
+};
+
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>(() => loadFromLocalStorage());
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -63,6 +117,49 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [authResolved, setAuthResolved] = useState(false);
   const firebaseSyncRef = useRef(false);
   const pendingOpRef = useRef(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!items.some((item) => typeof item.stock !== 'number')) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const hydratedItems = await hydrateCartItemsWithStock(items);
+
+      if (cancelled) {
+        return;
+      }
+
+      const changed = hydratedItems.some((item, index) => item.stock !== items[index]?.stock);
+      if (!changed) {
+        return;
+      }
+
+      setItems(hydratedItems);
+
+      if (currentUserId) {
+        try {
+          const cartRef = doc(db, 'carts', currentUserId);
+          const itemsRecord = Object.fromEntries(hydratedItems.map((item) => [item.id, item]));
+          await setDoc(cartRef, {
+            items: itemsRecord,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        } catch (error) {
+          console.error('Failed to persist hydrated cart stock:', error);
+        }
+      } else {
+        saveToLocalStorage(hydratedItems);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items, currentUserId]);
 
   // Listen to auth state changes
   useEffect(() => {
@@ -121,45 +218,69 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // ─── ADD TO CART ───
   // Always update local state immediately (optimistic), then sync to Firebase
-  const addToCart = async (item: Omit<CartItem, 'quantity'>) => {
-    // 1. Optimistic local state update
+  const addToCart = (item: Omit<CartItem, 'quantity'>, quantity = 1) => {
+    const existing = items.find((cartItem) => cartItem.id === item.id);
+    const availableStock = typeof item.stock === 'number' ? item.stock : existing?.stock;
+    const requestedQuantity = (existing?.quantity || 0) + quantity;
+
+    if (typeof availableStock === 'number' && requestedQuantity > availableStock) {
+      toast({
+        title: 'Stock limit reached',
+        description: buildStockMessage(item.name, availableStock),
+        variant: 'destructive',
+      });
+      return false;
+    }
+
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
-      if (existing) {
-        return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+      const current = prev.find((cartItem) => cartItem.id === item.id);
+      if (current) {
+        return prev.map((cartItem) =>
+          cartItem.id === item.id
+            ? {
+                ...cartItem,
+                quantity: cartItem.quantity + quantity,
+                stock: typeof item.stock === 'number' ? item.stock : cartItem.stock,
+              }
+            : cartItem
         );
       }
-      return [...prev, { ...item, quantity: 1 }];
+
+      return [...prev, { ...item, quantity, stock: item.stock }];
     });
 
-    // 2. Sync to Firebase in the background (non-blocking)
     if (currentUserId) {
-      try {
-        const cartRef = doc(db, 'carts', currentUserId);
-        const cartSnap = await getDoc(cartRef);
+      void (async () => {
+        try {
+          const cartRef = doc(db, 'carts', currentUserId);
+          const cartSnap = await getDoc(cartRef);
 
-        let updatedItems: Record<string, CartItem> = {};
-        if (cartSnap.exists()) {
-          updatedItems = cartSnap.data().items || {};
+          let updatedItems: Record<string, CartItem> = {};
+          if (cartSnap.exists()) {
+            updatedItems = cartSnap.data().items || {};
+          }
+
+          if (updatedItems[item.id]) {
+            updatedItems[item.id].quantity += quantity;
+            if (typeof item.stock === 'number') {
+              updatedItems[item.id].stock = item.stock;
+            }
+          } else {
+            updatedItems[item.id] = { ...item, quantity, stock: item.stock };
+          }
+
+          await setDoc(cartRef, {
+            items: updatedItems,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        } catch (error: any) {
+          console.error('Firebase sync failed for addToCart:', error?.code);
+          saveToLocalStorage(items);
         }
-
-        if (updatedItems[item.id]) {
-          updatedItems[item.id].quantity += 1;
-        } else {
-          updatedItems[item.id] = { ...item, quantity: 1 };
-        }
-
-        await setDoc(cartRef, {
-          items: updatedItems,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-      } catch (error: any) {
-        console.error('Firebase sync failed for addToCart:', error?.code);
-        // Local state already updated — cart still works
-        saveToLocalStorage(items);
-      }
+      })();
     }
+
+    return true;
   };
 
   // ─── REMOVE FROM CART ───
@@ -188,9 +309,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // ─── UPDATE QUANTITY ───
-  const updateQuantity = async (id: string, quantity: number) => {
+  const updateQuantity = (id: string, quantity: number) => {
     if (quantity <= 0) {
-      return removeFromCart(id);
+      void removeFromCart(id);
+      return true;
+    }
+
+    const existing = items.find((item) => item.id === id);
+    if (existing && typeof existing.stock === 'number' && quantity > existing.stock) {
+      toast({
+        title: 'Stock limit reached',
+        description: buildStockMessage(existing.name, existing.stock),
+        variant: 'destructive',
+      });
+      return false;
     }
 
     // Block onSnapshot from overwriting during this operation
@@ -202,27 +334,31 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
 
     if (currentUserId) {
-      try {
-        const cartRef = doc(db, 'carts', currentUserId);
-        const cartSnap = await getDoc(cartRef);
-        if (cartSnap.exists()) {
-          const updatedItems = { ...cartSnap.data().items };
-          if (updatedItems[id]) {
-            updatedItems[id].quantity = quantity;
-            await setDoc(cartRef, {
-              items: updatedItems,
-              updatedAt: new Date().toISOString(),
-            }, { merge: true });
+      void (async () => {
+        try {
+          const cartRef = doc(db, 'carts', currentUserId);
+          const cartSnap = await getDoc(cartRef);
+          if (cartSnap.exists()) {
+            const updatedItems = { ...cartSnap.data().items };
+            if (updatedItems[id]) {
+              updatedItems[id].quantity = quantity;
+              await setDoc(cartRef, {
+                items: updatedItems,
+                updatedAt: new Date().toISOString(),
+              }, { merge: true });
+            }
           }
+        } catch (error) {
+          console.error('Firebase sync failed for updateQuantity:', error);
+        } finally {
+          pendingOpRef.current = false;
         }
-      } catch (error) {
-        console.error('Firebase sync failed for updateQuantity:', error);
-      } finally {
-        pendingOpRef.current = false;
-      }
+      })();
     } else {
       pendingOpRef.current = false;
     }
+
+    return true;
   };
 
   // ─── CLEAR CART ───

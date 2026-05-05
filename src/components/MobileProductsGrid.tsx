@@ -39,7 +39,7 @@ const MobileProductsGrid = () => {
   const [showSortModal, setShowSortModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
-  const { addToCart, openCart } = useCart();
+  const { addToCart } = useCart();
   const { toast } = useToast();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
@@ -72,14 +72,15 @@ const MobileProductsGrid = () => {
 
   const handleAddToCart = async (product: Product) => {
     try {
-      await addToCart({
+      const added = addToCart({
         id: product.id || "",
         name: product.name,
         price: product.price,
         image: product.media.images[0] || "",
         category: product.category,
+        stock: product.inventory?.stock,
       });
-      openCart();
+      if (!added) return;
       
       toast({
         title: "Added to cart",

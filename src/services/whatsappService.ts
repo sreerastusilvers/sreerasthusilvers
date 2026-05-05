@@ -351,6 +351,25 @@ export const sendAdminReturnRequestedTemplate = (opts: {
   }).catch((err) => { console.warn('[whatsapp] admin_return_requested failed:', err); return { ok: false }; });
 };
 
+/** Low stock alert → admin
+ *  Template: admin_low_stock_alert  {{1}}orderId {{2}}productName {{3}}stockLeft
+ */
+export const sendAdminLowStockTemplate = (opts: {
+  to?: string;
+  orderId: string;
+  productName: string;
+  stockLeft: number;
+}): Promise<unknown> => {
+  if (!opts.to) return Promise.resolve({ ok: false, skipped: true });
+  return sendOrderTemplate({
+    to: opts.to,
+    template: 'admin_low_stock_alert',
+    language: 'en',
+    params: [fmt(opts.orderId), opts.productName, String(opts.stockLeft)],
+    urlSuffix: opts.orderId,
+  }).catch((err) => { console.warn('[whatsapp] admin_low_stock_alert failed:', err); return { ok: false }; });
+};
+
 /** Return picked up by partner → admin
  *  Template: admin_return_picked  {{1}}orderId {{2}}items
  */

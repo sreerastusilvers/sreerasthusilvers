@@ -184,7 +184,7 @@ const CategoryPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { addToCart, openCart } = useCart();
+  const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
 
@@ -508,13 +508,14 @@ const CategoryPage = () => {
       navigate("/login", { state: { from: location } });
       return;
     }
-    await addToCart({
+    const added = addToCart({
       id: product.id,
       name: product.title,
       price: product.price,
       image: product.image,
+      stock: product.stock,
     });
-    openCart();
+    if (!added) return;
     toast({ title: "Added to cart" });
   };
 

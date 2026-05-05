@@ -9,6 +9,7 @@ interface Product {
   title: string;
   category: string;
   price: number;
+  stock?: number;
   oldPrice?: number | null;
   rating: number;
   reviews: number;
@@ -28,32 +29,31 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const { addToCart, openCart } = useCart();
+  const { addToCart } = useCart();
   const { toast } = useToast();
 
   const handleAddToCart = async () => {
     if (!product) return;
     setIsAdding(true);
     try {
-      for (let i = 0; i < quantity; i++) {
-        await addToCart({
-          id: product.id,
-          name: product.title,
-          price: product.price,
-          image: product.image,
-          category: product.category,
-        });
-      }
+      const added = addToCart({
+        id: product.id,
+        name: product.title,
+        price: product.price,
+        image: product.image,
+        category: product.category,
+        stock: product.stock,
+      }, quantity);
+      if (!added) return;
       toast({
         title: "Added to cart",
         description: `${product.title}${quantity > 1 ? ` (×${quantity})` : ''} has been added to your cart.`,
       });
       onClose();
-      openCart();
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add item to cart. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to add item to cart. Please try again.",
         variant: "destructive",
       });
     } finally {

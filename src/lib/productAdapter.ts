@@ -9,6 +9,7 @@ export interface UIProduct {
   title: string;
   category: string;
   price: number;
+  stock?: number;
   oldPrice?: number | null;
   rating: number;
   reviews: number;
@@ -59,6 +60,7 @@ export const adaptFirebaseToUI = (fbProduct: FirebaseProduct): UIProduct => {
     title: fbProduct.name,
     category: fbProduct.category,
     price: fbProduct.price,
+    stock: fbProduct.inventory?.stock,
     oldPrice: fbProduct.originalPrice || null,
     rating: fbProduct.rating ?? 0,
     reviews: fbProduct.reviewCount ?? 0,

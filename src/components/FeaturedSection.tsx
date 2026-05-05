@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const FeaturedSection = () => {
   const navigate = useNavigate();
-  const { addToCart, openCart } = useCart();
+  const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
   const [products, setProducts] = useState<UIProduct[]>([]);
@@ -30,14 +30,15 @@ const FeaturedSection = () => {
   const handleAddToCart = async (e: React.MouseEvent, product: UIProduct) => {
     e.stopPropagation();
     try {
-      await addToCart({
+      const added = addToCart({
         id: product.id,
         name: product.title,
         price: product.price,
         image: product.image,
         category: product.category,
+        stock: product.stock,
       });
-      openCart();
+      if (!added) return;
       toast({
         title: "Added to cart",
         description: `${product.title} has been added to your cart.`,

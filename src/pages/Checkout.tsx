@@ -436,7 +436,7 @@ const MobileCheckout = () => {
       setSlideResetKey(k => k + 1);
       toast({
         title: 'Error',
-        description: 'Failed to place order. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to place order. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -1215,12 +1215,13 @@ const MobileCheckout = () => {
                     {/* Add button */}
                     <button
                       onClick={async () => {
-                        await addToCart({
+                        addToCart({
                           id: product.id,
                           name: product.title,
                           price: product.price,
                           image: product.image,
                           category: product.category,
+                          stock: product.stock,
                         });
                       }}
                       className="absolute top-2 right-2 w-7 h-7 bg-white dark:bg-zinc-900 rounded-full shadow-md flex items-center justify-center border border-gray-100 dark:border-zinc-800 hover:bg-green-50 transition-colors"
@@ -2087,7 +2088,7 @@ const Checkout = () => {
       console.error('Error placing order:', error);
       toast({
         title: 'Error',
-        description: 'Failed to place order. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to place order. Please try again.',
         variant: 'destructive',
       });
     } finally {

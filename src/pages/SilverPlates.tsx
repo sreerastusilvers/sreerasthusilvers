@@ -282,7 +282,7 @@ const SilverPlates = () => {
                     </div>
                     <div className="p-2">
                       <div className="flex items-center justify-between mb-1.5">
-                        <button onClick={(e) => { e.stopPropagation(); addToCart({ id: product.id, name: product.title, price: product.price, image: product.image, category: product.category }); toast({ title: "Added to cart", description: `${product.title} has been added to your cart.` }); }} className="p-1 bg-orange-50 text-orange-600 rounded hover:bg-orange-100 transition-colors"><ShoppingCart className="w-3.5 h-3.5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); const added = addToCart({ id: product.id, name: product.title, price: product.price, image: product.image, category: product.category, stock: product.stock }); if (added) toast({ title: "Added to cart", description: `${product.title} has been added to your cart.` }); }} className="p-1 bg-orange-50 text-orange-600 rounded hover:bg-orange-100 transition-colors"><ShoppingCart className="w-3.5 h-3.5" /></button>
                         <div className="flex items-center gap-0.5 bg-green-600 text-white px-1.5 py-0.5 rounded text-[10px] font-semibold">{product.rating || 4.5}<Star className="w-2.5 h-2.5 fill-white" />{product.reviews ? ` (${product.reviews})` : ''}</div>
                       </div>
                       <h3 className="text-xs font-medium text-gray-900 dark:text-zinc-100 truncate mb-1">{product.title}</h3>
@@ -291,7 +291,7 @@ const SilverPlates = () => {
                         {product.oldPrice && <p className="text-[10px] text-gray-400 dark:text-zinc-500 line-through">₹{product.oldPrice.toLocaleString('en-IN')}</p>}
                         {Number(product.discount) > 0 && <span className="text-[10px] font-semibold text-green-600">{product.discount}% off</span>}
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); addToCart({ id: product.id, name: product.title, price: product.price, image: product.image, category: product.category }); toast({ title: "Added to cart", description: `${product.title} has been added to your cart.` }); }} className="w-full py-2 bg-gray-900 hover:bg-gray-800 text-white rounded text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5"><ShoppingCart className="w-3.5 h-3.5" />ADD TO CART</button>
+                      <button onClick={(e) => { e.stopPropagation(); const added = addToCart({ id: product.id, name: product.title, price: product.price, image: product.image, category: product.category, stock: product.stock }); if (added) toast({ title: "Added to cart", description: `${product.title} has been added to your cart.` }); }} className="w-full py-2 bg-gray-900 hover:bg-gray-800 text-white rounded text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5"><ShoppingCart className="w-3.5 h-3.5" />ADD TO CART</button>
                     </div>
                   </motion.div>
                 ))}

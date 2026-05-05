@@ -11,7 +11,7 @@ import useAutoScroll from "@/hooks/useAutoScroll";
 
 const TopDeals = () => {
   const navigate = useNavigate();
-  const { addToCart, openCart } = useCart();
+  const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
   const [products, setProducts] = useState<UIProduct[]>([]);
@@ -85,14 +85,15 @@ const TopDeals = () => {
     e.stopPropagation();
     
     try {
-      await addToCart({
+      const added = addToCart({
         id: product.id,
         name: product.title,
         price: product.price,
         image: product.image,
         category: product.category,
+        stock: product.stock,
       });
-      openCart();
+      if (!added) return;
       
       toast({
         title: "Added to cart",

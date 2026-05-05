@@ -205,16 +205,15 @@ const ProductDetail = () => {
     }
 
     try {
-      // Add items based on quantity
-      for (let i = 0; i < quantity; i++) {
-        await addToCart({
-          id: product.id,
-          name: product.title,
-          price: product.price,
-          image: product.image,
-          category: product.category || 'Products',
-        });
-      }
+      const added = addToCart({
+        id: product.id,
+        name: product.title,
+        price: product.price,
+        image: product.image,
+        category: product.category || 'Products',
+        stock: product.stock,
+      }, quantity);
+      if (!added) return;
       
       // Show success state
       setAddedToCart(true);
@@ -225,14 +224,11 @@ const ProductDetail = () => {
         title: "Added to cart",
         description: `${product.title} (${quantity}) has been added to your cart.`,
       });
-
-      // Open cart drawer/sidebar (right-side popup)
-      openCart();
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({
         title: "Error",
-        description: "Failed to add item to cart. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to add item to cart. Please try again.",
         variant: "destructive",
       });
     }
@@ -247,16 +243,15 @@ const ProductDetail = () => {
     }
 
     try {
-      // Add items based on quantity
-      for (let i = 0; i < quantity; i++) {
-        await addToCart({
-          id: product.id,
-          name: product.title,
-          price: product.price,
-          image: product.image,
-          category: product.category || 'Products',
-        });
-      }
+      const added = addToCart({
+        id: product.id,
+        name: product.title,
+        price: product.price,
+        image: product.image,
+        category: product.category || 'Products',
+        stock: product.stock,
+      }, quantity);
+      if (!added) return;
       // Close cart drawer and navigate to checkout
       closeCart();
       navigate('/checkout', { state: { from: 'product' } });

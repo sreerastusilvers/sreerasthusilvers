@@ -12,6 +12,7 @@ interface Product {
   title: string;
   category: string;
   price: number;
+  stock?: number;
   oldPrice?: number | null;
   rating: number;
   reviews: number;
@@ -34,7 +35,7 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
-  const { addToCart, items, updateQuantity, removeFromCart, openCart } = useCart();
+  const { addToCart, items, updateQuantity, removeFromCart } = useCart();
   const { toast } = useToast();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
@@ -79,14 +80,15 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
     }
 
     try {
-      await addToCart({
+      const added = addToCart({
         id: product.id,
         name: product.title,
         price: product.price,
         image: product.image,
         category: product.category,
+        stock: product.stock,
       });
-      openCart();
+      if (!added) return;
       
       toast({
         title: "Added to cart",

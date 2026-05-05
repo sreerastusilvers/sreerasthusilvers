@@ -1,6 +1,5 @@
 import { 
   collection, 
-  addDoc, 
   doc, 
   getDoc, 
   getDocs, 
@@ -14,11 +13,13 @@ import {
   QuerySnapshot,
   DocumentData,
   increment,
+  runTransaction,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import {
   sendOrderPlacedTemplate,
   sendAdminNewOrderTemplate,
+  sendAdminLowStockTemplate,
   sendDeliveryAssignedTemplate,
   sendOutForDeliveryTemplate,
   sendOrderDeliveredTemplate,
@@ -79,6 +80,19 @@ const STATUS_PHRASE: Record<string, string> = {
 };
 
 const shortOrderRef = (orderId: string) => `#${orderId.slice(-6).toUpperCase()}`;
+const LOW_STOCK_THRESHOLD = 5;
+
+const buildStockValidationMessage = (itemName: string, availableStock: number) => {
+  if (availableStock <= 0) {
+    return `${itemName} is currently out of stock.`;
+  }
+
+  if (availableStock === 1) {
+    return `Only 1 left in stock for ${itemName}.`;
+  }
+
+  return `Only ${availableStock} left in stock for ${itemName}.`;
+};
 
 /** Summarise order items into a short human-readable string for notifications. */
 const makeItemsSummary = (items?: Array<{ name: string; quantity?: number }>): string => {
@@ -378,29 +392,65 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
   try {
     const now = Timestamp.now();
     const paymentStatus = isPrepaidPaymentMethod(orderData.paymentMethod) ? 'paid' : 'pending';
-    const orderWithTimestamps = {
-      ...orderData,
-      paymentStatus,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const docRef = await addDoc(collection(db, ORDERS_COLLECTION), orderWithTimestamps);
-
-    // Atomically decrement stock for each item — best-effort so a product
-    // doc failure never blocks order placement.
-    try {
-      await Promise.all(
-        (orderData.items || []).map(item =>
-          updateDoc(doc(db, 'products', item.productId), {
-            'inventory.stock': increment(-item.quantity),
-          })
-        )
-      );
-      await updateDoc(docRef, { stockDecremented: true });
-    } catch (err) {
-      console.warn('[orderService] stock decrement failed:', err);
+    const docRef = doc(collection(db, ORDERS_COLLECTION));
+    const groupedItems = new Map<string, { productId: string; name: string; quantity: number }>();
+    for (const item of orderData.items || []) {
+      const existing = groupedItems.get(item.productId);
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        groupedItems.set(item.productId, {
+          productId: item.productId,
+          name: item.name,
+          quantity: item.quantity,
+        });
+      }
     }
+
+    let lowStockTransitions: Array<{ productId: string; productName: string; stockLeft: number }> = [];
+
+    await runTransaction(db, async (transaction) => {
+      const transitions: Array<{ productId: string; productName: string; stockLeft: number }> = [];
+
+      for (const item of groupedItems.values()) {
+        const productRef = doc(db, 'products', item.productId);
+        const productSnap = await transaction.get(productRef);
+
+        if (!productSnap.exists()) {
+          throw new Error(`${item.name} is currently unavailable.`);
+        }
+
+        const productData = productSnap.data();
+        const availableStock = Number(productData?.inventory?.stock ?? 0);
+        if (availableStock < item.quantity) {
+          throw new Error(buildStockValidationMessage(item.name, availableStock));
+        }
+
+        const nextStock = availableStock - item.quantity;
+        transaction.update(productRef, {
+          'inventory.stock': nextStock,
+          updatedAt: now,
+        });
+
+        if (availableStock >= LOW_STOCK_THRESHOLD && nextStock < LOW_STOCK_THRESHOLD) {
+          transitions.push({
+            productId: item.productId,
+            productName: item.name,
+            stockLeft: nextStock,
+          });
+        }
+      }
+
+      transaction.set(docRef, {
+        ...orderData,
+        paymentStatus,
+        createdAt: now,
+        updatedAt: now,
+        stockDecremented: true,
+      });
+
+      lowStockTransitions = transitions;
+    });
 
     // Atomically bump coupon usage counter so admin limits (maxUses) and
     // visibility ("used X / Y") stay in sync with reality. We do this AFTER
@@ -456,11 +506,38 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
         customerName: orderData.userName || 'a customer',
         itemsSummary: makeItemsSummary(orderData.items),
       });
+
+      for (const transition of lowStockTransitions) {
+        void sendAdminLowStockTemplate({
+          to: normalizePhoneNumber(adminPhone),
+          orderId: docRef.id,
+          productName: transition.productName,
+          stockLeft: transition.stockLeft,
+        });
+      }
     })();
+
+    for (const transition of lowStockTransitions) {
+      void notifyOrder({
+        orderId: docRef.id,
+        audience: 'admins',
+        title: 'Low stock alert',
+        body: `${transition.productName} is low in stock. ${Math.max(transition.stockLeft, 0)} left after order ${shortOrderRef(docRef.id)}.`,
+        url: `/admin/products/${transition.productId}`,
+        data: {
+          type: 'low-stock',
+          productId: transition.productId,
+          stockLeft: String(Math.max(transition.stockLeft, 0)),
+        },
+      });
+    }
 
     return docRef.id;
   } catch (error) {
     console.error('Error creating order:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
     throw new Error('Failed to create order');
   }
 };
