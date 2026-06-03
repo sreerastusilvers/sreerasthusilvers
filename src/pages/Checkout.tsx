@@ -1408,55 +1408,22 @@ const MobileCheckout = () => {
                     />
                   </label>
 
-                  {/* Debit/Credit Card */}
+                  {/* Razorpay — Cards, UPI, Wallets & Net Banking */}
                   <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
                         <CreditCard className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
                       </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Debit/Credit Card</span>
-                    </div>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="Debit/Credit Card"
-                      checked={selectedPaymentMethod === 'Debit/Credit Card'}
-                      onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
-                    />
-                  </label>
-
-                  {/* Wallets */}
-                  <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                        <ShoppingBag className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
+                      <div>
+                        <span className="block text-sm font-medium text-gray-900 dark:text-zinc-100">Pay Online (Razorpay)</span>
+                        <span className="text-xs text-gray-500 dark:text-zinc-400">Cards, UPI, Wallets & Net Banking</span>
                       </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Wallets</span>
                     </div>
                     <input
                       type="radio"
                       name="paymentMethod"
-                      value="Wallets"
-                      checked={selectedPaymentMethod === 'Wallets'}
-                      onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
-                    />
-                  </label>
-
-                  {/* Net Banking */}
-                  <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                        <Shield className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
-                      </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Net Banking</span>
-                    </div>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="Net Banking"
-                      checked={selectedPaymentMethod === 'Net Banking'}
+                      value="Razorpay"
+                      checked={selectedPaymentMethod === 'Razorpay'}
                       onChange={(e) => setSelectedPaymentMethod(e.target.value)}
                       className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                     />
@@ -2919,55 +2886,22 @@ const Checkout = () => {
                         />
                       </label>
 
-                      {/* Debit/Credit Card */}
+                      {/* Razorpay — Cards, UPI, Wallets & Net Banking */}
                       <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
                             <CreditCard className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Debit/Credit Card</span>
-                        </div>
-                        <input
-                          type="radio"
-                          name="desktopPaymentMethod"
-                          value="Debit/Credit Card"
-                          checked={selectedPaymentMethod === 'Debit/Credit Card'}
-                          onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
-                        />
-                      </label>
-
-                      {/* Wallets */}
-                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                            <ShoppingBag className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
+                          <div>
+                            <span className="block text-sm font-medium text-gray-900 dark:text-zinc-100">Pay Online (Razorpay)</span>
+                            <span className="text-xs text-gray-500 dark:text-zinc-400">Cards, UPI, Wallets & Net Banking</span>
                           </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Wallets</span>
                         </div>
                         <input
                           type="radio"
                           name="desktopPaymentMethod"
-                          value="Wallets"
-                          checked={selectedPaymentMethod === 'Wallets'}
-                          onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
-                        />
-                      </label>
-
-                      {/* Net Banking */}
-                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                            <Shield className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
-                          </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Net Banking</span>
-                        </div>
-                        <input
-                          type="radio"
-                          name="desktopPaymentMethod"
-                          value="Net Banking"
-                          checked={selectedPaymentMethod === 'Net Banking'}
+                          value="Razorpay"
+                          checked={selectedPaymentMethod === 'Razorpay'}
                           onChange={(e) => setSelectedPaymentMethod(e.target.value)}
                           className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
                         />
