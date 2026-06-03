@@ -16,6 +16,7 @@ import { getActiveProducts } from '@/services/productService';
 import { adaptFirebaseToUI, UIProduct } from '@/lib/productAdapter';
 import { getUserAddresses, getDefaultAddress, Address, addAddress, AddressFormData } from '@/services/addressService';
 import { createOrder, generateOrderNumber, OrderFormData, OrderItem } from '@/services/orderService';
+import { payWithRazorpay, PaymentCancelledError, type VerifiedPayment } from '@/services/razorpayService';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -334,6 +335,31 @@ const MobileCheckout = () => {
         quantity: item.quantity,
       }));
 
+      // ── Collect online payment up-front (everything except Cash On Delivery) ──
+      // Opens Razorpay Standard Checkout and waits for a server-verified payment.
+      // The order is only written to Firestore AFTER the signature is verified,
+      // so cancelled/failed payments never create an order. Throws
+      // PaymentCancelledError on dismiss (handled in catch below).
+      let verifiedPayment: VerifiedPayment | null = null;
+      if (selectedPaymentMethod !== 'Cash On Delivery') {
+        verifiedPayment = await payWithRazorpay({
+          amount: total,
+          receipt: orderId,
+          name: 'Sreerasthu Silvers',
+          description: `Order ${orderId}`,
+          prefill: {
+            name: userProfile?.username || user.displayName || selectedAddress.fullName,
+            email: user.email || '',
+            contact:
+              userProfile?.whatsappNumber ||
+              userProfile?.phone ||
+              selectedAddress.phoneNumber ||
+              '',
+          },
+          notes: { orderNumber: orderId, userId: user.uid },
+        });
+      }
+
       // Geocode address to get coordinates for delivery map
       let addressLat: number | undefined;
       let addressLon: number | undefined;
@@ -408,6 +434,11 @@ const MobileCheckout = () => {
           ...(addressLat && addressLon ? { latitude: addressLat, longitude: addressLon } : {}),
         },
         paymentMethod: selectedPaymentMethod,
+        ...(verifiedPayment ? {
+          razorpayPaymentId: verifiedPayment.razorpayPaymentId,
+          razorpayOrderId: verifiedPayment.razorpayOrderId,
+          razorpaySignature: verifiedPayment.razorpaySignature,
+        } : {}),
         status: 'pending',
       };
 
@@ -434,11 +465,18 @@ const MobileCheckout = () => {
     } catch (error) {
       console.error('Error placing order:', error);
       setSlideResetKey(k => k + 1);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to place order. Please try again.',
-        variant: 'destructive',
-      });
+      if (error instanceof PaymentCancelledError) {
+        toast({
+          title: 'Payment cancelled',
+          description: 'You closed the payment window. Your order was not placed.',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to place order. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsPlacingOrder(false);
     }
@@ -1992,6 +2030,31 @@ const Checkout = () => {
         quantity: item.quantity,
       }));
 
+      // ── Collect online payment up-front (everything except Cash On Delivery) ──
+      // Opens Razorpay Standard Checkout and waits for a server-verified payment.
+      // The order is only written to Firestore AFTER the signature is verified,
+      // so cancelled/failed payments never create an order. Throws
+      // PaymentCancelledError on dismiss (handled in catch below).
+      let verifiedPayment: VerifiedPayment | null = null;
+      if (selectedPaymentMethod !== 'Cash On Delivery') {
+        verifiedPayment = await payWithRazorpay({
+          amount: total,
+          receipt: orderId,
+          name: 'Sreerasthu Silvers',
+          description: `Order ${orderId}`,
+          prefill: {
+            name: userProfile?.username || user.displayName || selectedAddress.fullName,
+            email: user.email || '',
+            contact:
+              userProfile?.whatsappNumber ||
+              userProfile?.phone ||
+              selectedAddress.phoneNumber ||
+              '',
+          },
+          notes: { orderNumber: orderId, userId: user.uid },
+        });
+      }
+
       // Geocode address to get coordinates for delivery map
       let addressLat: number | undefined;
       let addressLon: number | undefined;
@@ -2066,6 +2129,11 @@ const Checkout = () => {
           ...(addressLat && addressLon ? { latitude: addressLat, longitude: addressLon } : {}),
         },
         paymentMethod: selectedPaymentMethod,
+        ...(verifiedPayment ? {
+          razorpayPaymentId: verifiedPayment.razorpayPaymentId,
+          razorpayOrderId: verifiedPayment.razorpayOrderId,
+          razorpaySignature: verifiedPayment.razorpaySignature,
+        } : {}),
         status: 'pending',
       };
 
@@ -2086,11 +2154,18 @@ const Checkout = () => {
       setTimeout(() => setShowOrderAnimation(false), 2800);
     } catch (error) {
       console.error('Error placing order:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to place order. Please try again.',
-        variant: 'destructive',
-      });
+      if (error instanceof PaymentCancelledError) {
+        toast({
+          title: 'Payment cancelled',
+          description: 'You closed the payment window. Your order was not placed.',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to place order. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsPlacingOrder(false);
     }

@@ -227,6 +227,11 @@ export interface Order {
   paymentCollectedAt?: Timestamp;
   paymentCollectedBy?: string;
   paymentCollectedByName?: string;
+  // Razorpay payment proof — captured at checkout once the signature is
+  // verified server-side. Present only on prepaid (online) orders.
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+  razorpaySignature?: string;
   shippingAddress: ShippingAddress;
   paymentMethod: string;
   // Canonical statuses. Legacy values 'shipped' | 'assigned' | 'picked' are kept in the

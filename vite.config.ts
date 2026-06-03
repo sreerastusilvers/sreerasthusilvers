@@ -57,6 +57,33 @@ function geminiApiDevMiddleware() {
   };
 }
 
+// Serve the Razorpay serverless endpoints during `vite dev`. In production
+// these run as Vercel functions; this middleware mirrors that contract locally.
+function razorpayApiDevMiddleware() {
+  const routes: Record<string, () => Promise<{ default: Function }>> = {
+    "/api/create-order": () => import("./api/create-order.ts"),
+    "/api/verify-payment": () => import("./api/verify-payment.ts"),
+  };
+
+  return {
+    name: "razorpay-api-dev-middleware",
+    configureServer(server: ViteDevServer) {
+      for (const [route, load] of Object.entries(routes)) {
+        server.middlewares.use(route, async (req, res, next) => {
+          try {
+            const { default: handler } = await load();
+            const request = req as any;
+            request.body = await readJsonBody(req);
+            await handler(request, attachJsonHelpers(res));
+          } catch (error) {
+            next(error);
+          }
+        });
+      }
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -72,7 +99,7 @@ export default defineConfig(({ mode }) => {
       host: "localhost",
       port: 5173,
     },
-    plugins: [react(), geminiApiDevMiddleware()].filter(Boolean),
+    plugins: [react(), geminiApiDevMiddleware(), razorpayApiDevMiddleware()].filter(Boolean),
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
