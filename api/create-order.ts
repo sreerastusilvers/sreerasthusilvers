@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createRazorpayClient, getRazorpayCredentials, setCors } from './razorpay-utils';
+import { createRazorpayOrder, getRazorpayCredentials, setCors } from './razorpay-utils';
 
 /**
  * POST /api/create-order
@@ -49,12 +49,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ── Create the order via the Razorpay API ──
   try {
-    const client = createRazorpayClient();
-    const order = await client.orders.create({
+    const order = await createRazorpayOrder({
       amount,
       currency,
       receipt,
-      ...(body.notes ? { notes: body.notes } : {}),
+      notes: body.notes,
     });
 
     return res.status(200).json({
@@ -67,9 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Razorpay auth failures surface as statusCode 401 — relay that so callers
     // can distinguish bad keys from generic gateway errors.
     const statusCode = (error as { statusCode?: number })?.statusCode;
-    const detail =
-      (error as { error?: { description?: string } })?.error?.description ||
-      (error instanceof Error ? error.message : 'Unknown Razorpay error');
+    const detail = error instanceof Error ? error.message : 'Unknown Razorpay error';
 
     if (statusCode === 401) {
       return res.status(401).json({ error: 'Razorpay authentication failed', detail });

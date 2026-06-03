@@ -107,20 +107,37 @@ interface CreateOrderResponse {
 async function createOrder(options: RazorpayCheckoutOptions): Promise<CreateOrderResponse> {
   const amountInPaise = Math.round(options.amount * 100);
 
-  const res = await fetch('/api/create-order', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      amount: amountInPaise,
-      currency: options.currency || 'INR',
-      receipt: options.receipt,
-      notes: options.notes,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch('/api/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: options.currency || 'INR',
+        receipt: options.receipt,
+        notes: options.notes,
+      }),
+    });
+  } catch {
+    throw new Error('Could not reach the payment server. Check your connection and try again.');
+  }
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data?.error || data?.detail || 'Could not start the payment. Please try again.');
+  // Parse defensively: a misconfigured/missing endpoint returns HTML, not JSON.
+  const raw = await res.text();
+  let data: Partial<CreateOrderResponse> & { error?: string; detail?: string } = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    data = {};
+  }
+
+  if (!res.ok || !data.order_id) {
+    const detail =
+      data.error ||
+      data.detail ||
+      (raw && !raw.trim().startsWith('<') ? raw.slice(0, 200) : `HTTP ${res.status}`);
+    throw new Error(`Could not start the payment: ${detail}`);
   }
   return data as CreateOrderResponse;
 }
