@@ -84,6 +84,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
         id: product.id,
         name: product.title,
         price: product.price,
+        originalPrice: product.oldPrice ?? undefined,
         image: product.image,
         category: product.category,
         stock: product.stock,

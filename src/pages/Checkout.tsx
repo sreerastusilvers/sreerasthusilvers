@@ -292,8 +292,9 @@ const MobileCheckout = () => {
   const taxAmount = pricing.gstAmount;
   const gstLabel = `GST (${pricing.gst.rate}%${pricing.gst.inclusive ? ' included' : ''})`;
   const savings = items.reduce((acc, item) => {
-    const originalPrice = Math.round(item.price * 1.3);
-    return acc + (originalPrice - item.price) * item.quantity;
+    // Only count a saving when the product genuinely has a higher MRP.
+    const originalPrice = item.originalPrice && item.originalPrice > item.price ? item.originalPrice : 0;
+    return originalPrice ? acc + (originalPrice - item.price) * item.quantity : acc;
   }, 0);
   const discount = pricing.discount;
   const total = pricing.total;
@@ -907,7 +908,8 @@ const MobileCheckout = () => {
               <div className="divide-y divide-gray-50 dark:divide-zinc-800">
                 <AnimatePresence>
                   {items.map((item) => {
-                    const origPrice = Math.round(item.price * 1.3);
+                    // Show the strike-through MRP only when the product genuinely has one.
+                    const origPrice = item.originalPrice && item.originalPrice > item.price ? item.originalPrice : null;
                     return (
                       <motion.div
                         key={item.id}
@@ -924,10 +926,12 @@ const MobileCheckout = () => {
                           <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
                           <div className="mt-1.5">
                             <span className="text-base font-bold text-gray-900 dark:text-zinc-100 whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price)}</span>
-                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <span className="text-xs text-gray-400 dark:text-zinc-500 line-through whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(origPrice)}</span>
-                              <span className="text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded-full whitespace-nowrap">{Math.round((1 - item.price / origPrice) * 100)}% OFF</span>
-                            </div>
+                            {origPrice && (
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className="text-xs text-gray-400 dark:text-zinc-500 line-through whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(origPrice)}</span>
+                                <span className="text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded-full whitespace-nowrap">{Math.round((1 - item.price / origPrice) * 100)}% OFF</span>
+                              </div>
+                            )}
                           </div>
                           <div className="mt-2 flex items-center gap-1.5">
                             <button
@@ -981,13 +985,7 @@ const MobileCheckout = () => {
 
             {/* Available Offers */}
             {pricing.coupons.filter((c) => c.active).length > 0 && (() => {
-              const activeOffers = pricing.coupons
-                .filter((c) => c.active)
-                .map((c) => {
-                  const value = c.type === 'percent' ? `${c.value}%` : `₹${c.value}`;
-                  const min = c.minOrderValue ? ` on min spend of ₹${c.minOrderValue}` : '';
-                  return `${value} OFF with code ${c.code}${min}${c.description ? `—${c.description}` : ''}`;
-                });
+              const activeOffers = pricing.coupons.filter((c) => c.active);
               const visibleMobileOffers = showAllOffers ? activeOffers : activeOffers.slice(0, 2);
               return (
                 <div className="mx-4 mb-4">
@@ -1012,14 +1010,36 @@ const MobileCheckout = () => {
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
-                        className="mt-3 space-y-2"
+                        className="mt-3 space-y-2.5"
                       >
-                        {visibleMobileOffers.map((offer, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-xs">
-                            <span className="text-green-600 font-bold mt-0.5">•</span>
-                            <p className="text-gray-600 dark:text-zinc-400 leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>{offer}</p>
-                          </div>
-                        ))}
+                        {visibleMobileOffers.map((c) => {
+                          const value = c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`;
+                          const min = c.minOrderValue ? ` on orders above ₹${c.minOrderValue.toLocaleString('en-IN')}` : '';
+                          const isApplied = pricing.appliedCoupon?.code === c.code;
+                          return (
+                            <div key={c.id} className="rounded-xl border border-dashed border-green-300 dark:border-green-800 bg-green-50/60 dark:bg-green-900/15 p-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-bold text-green-700 dark:text-green-400 tracking-wide" style={{ fontFamily: "'Poppins', sans-serif" }}>{c.code}</span>
+                                    <span className="text-[10px] font-bold text-green-600 bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 rounded-full">{value}</span>
+                                  </div>
+                                  <p className="text-[11px] text-gray-600 dark:text-zinc-400 mt-0.5 leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                                    {c.description || `Save ${value.toLowerCase()}`}{min}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => { if (!isApplied) pricing.applyCoupon(c.code); }}
+                                  disabled={isApplied || couponLoading}
+                                  className={`flex-shrink-0 h-8 px-3 rounded-lg text-xs font-bold transition-colors ${isApplied ? 'bg-green-600 text-white' : 'bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-gray-800 dark:hover:bg-white'}`}
+                                  style={{ fontFamily: "'Poppins', sans-serif" }}
+                                >
+                                  {isApplied ? '✓ Applied' : 'APPLY'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                         {activeOffers.length > 2 && (
                           <button
                             onClick={() => setShowAllOffers((prev) => !prev)}
@@ -2139,13 +2159,7 @@ const Checkout = () => {
   };
   const total = pricing.total;
 
-  const offers = pricing.coupons
-    .filter((c) => c.active)
-    .map((c) => {
-      const value = c.type === 'percent' ? `${c.value}%` : `₹${c.value}`;
-      const min = c.minOrderValue ? ` on min spend of ₹${c.minOrderValue}` : '';
-      return `${value} OFF with code ${c.code}${min}—${c.description}`;
-    });
+  const offers = pricing.coupons.filter((c) => c.active);
   const visibleOffers = showAllOffers ? offers : offers.slice(0, 2);
 
   const donationAmounts: number[] = [];
@@ -2165,29 +2179,9 @@ const Checkout = () => {
           <span>Back to Cart</span>
         </button>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center mb-8 gap-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
-              1
-            </div>
-            <span className="ml-2 font-medium text-primary">BAG</span>
-          </div>
-          <div className="w-16 h-0.5 bg-border mx-2"></div>
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full border-2 border-border flex items-center justify-center text-sm">
-              2
-            </div>
-            <span className="ml-2 text-muted-foreground">ADDRESS</span>
-          </div>
-          <div className="w-16 h-0.5 bg-border mx-2"></div>
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full border-2 border-border flex items-center justify-center text-sm">
-              3
-            </div>
-            <span className="ml-2 text-muted-foreground">PAYMENT</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2 text-sm">
+        {/* Secure badge */}
+        <div className="flex items-center justify-end mb-8" style={{ fontFamily: "'Poppins', sans-serif" }}>
+          <div className="flex items-center gap-2 text-sm">
             <Shield className="w-4 h-4 text-green-600" />
             <span className="font-medium text-green-600">100% SECURE</span>
           </div>
@@ -2546,12 +2540,29 @@ const Checkout = () => {
                   animate={{ opacity: 1, height: 'auto' }}
                   className="space-y-3"
                 >
-                  {visibleOffers.map((offer, index) => (
-                    <div key={index} className="flex items-start gap-2 text-sm">
-                      <span className="text-green-600 font-semibold">•</span>
-                      <p className="text-muted-foreground">{offer}</p>
-                    </div>
-                  ))}
+                  {visibleOffers.map((c) => {
+                    const value = c.type === 'percent' ? `${c.value}% OFF` : `₹${c.value} OFF`;
+                    const min = c.minOrderValue ? ` on orders above ₹${c.minOrderValue.toLocaleString('en-IN')}` : '';
+                    const isApplied = pricing.appliedCoupon?.code === c.code;
+                    return (
+                      <div key={c.id} className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-green-300 dark:border-green-800 bg-green-50/60 dark:bg-green-900/15 p-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-green-700 dark:text-green-400 tracking-wide">{c.code}</span>
+                            <span className="text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/40 px-2 py-0.5 rounded-full">{value}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{c.description || `Save ${value.toLowerCase()}`}{min}</p>
+                        </div>
+                        <button
+                          onClick={() => { if (!isApplied) pricing.applyCoupon(c.code); }}
+                          disabled={isApplied}
+                          className={`flex-shrink-0 h-9 px-4 rounded-lg text-sm font-bold transition-colors ${isApplied ? 'bg-green-600 text-white' : 'bg-foreground text-background hover:opacity-90'}`}
+                        >
+                          {isApplied ? '✓ Applied' : 'APPLY'}
+                        </button>
+                      </div>
+                    );
+                  })}
                   {offers.length > 2 && (
                     <Button
                       variant="link"
@@ -2613,12 +2624,16 @@ const Checkout = () => {
                       )}
                       <div className="flex items-center gap-3">
                         <span className="font-semibold">{formatPrice(item.price)}</span>
-                        <span className="text-sm text-muted-foreground line-through">
-                          {formatPrice(item.price * 1.3)}
-                        </span>
-                        <span className="text-sm text-green-600 font-medium">
-                          23% OFF
-                        </span>
+                        {item.originalPrice && item.originalPrice > item.price && (
+                          <>
+                            <span className="text-sm text-muted-foreground line-through">
+                              {formatPrice(item.originalPrice)}
+                            </span>
+                            <span className="text-sm text-green-600 font-medium">
+                              {Math.round((1 - item.price / item.originalPrice) * 100)}% OFF
+                            </span>
+                          </>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
                         <select className="border border-border rounded px-2 py-1 text-sm">
@@ -2805,76 +2820,64 @@ const Checkout = () => {
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="fixed inset-0 z-[90] flex items-center justify-center p-8"
             >
-              <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[28px] border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,1)_18%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,1)_52%)] dark:bg-zinc-950 shadow-[0_40px_120px_-60px_rgba(0,0,0,0.75)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-3xl bg-white dark:bg-zinc-950 shadow-[0_40px_120px_-50px_rgba(0,0,0,0.8)] ring-1 ring-black/5 dark:ring-white/10" style={{ fontFamily: "'Poppins', sans-serif" }}>
                 {/* Header */}
-                <div className="sticky top-0 bg-white/88 dark:bg-zinc-900/88 backdrop-blur border-b border-[#d4af37]/15 px-6 py-4 rounded-t-[28px]">
+                <div className="sticky top-0 z-10 bg-white/95 dark:bg-zinc-950/95 backdrop-blur border-b border-gray-100 dark:border-zinc-800 px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">Payment Details</h2>
+                      <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Complete your order</h2>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400 flex items-center gap-1 mt-0.5">
+                        <Shield className="w-3 h-3 text-green-600" /> 100% secure & encrypted
+                      </p>
                     </div>
                     <button
                       onClick={() => setShowPaymentDetails(false)}
-                      className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
                     >
-                      <X className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
+                      <X className="w-5 h-5 text-gray-500 dark:text-zinc-400" />
                     </button>
                   </div>
                 </div>
 
-                <div className="px-6 py-6 space-y-6">
-                  {/* Stepper - scrolls with content */}
-                  <div className="rounded-2xl border border-[#d4af37]/15 bg-white/80 dark:bg-zinc-900/80 px-4 py-4 shadow-[0_20px_50px_-40px_rgba(0,0,0,0.45)]">
-                    <div className="relative flex justify-between">
-                      {/* Gray background rail */}
-                      <div className="absolute top-4 h-0.5 bg-gray-200 dark:bg-zinc-700" style={{ left: '12.5%', right: '12.5%' }} />
-                      {/* Green active rail (steps 1-3 done) */}
-                      <div className="absolute top-4 h-0.5 bg-green-500" style={{ left: '12.5%', width: '50%' }} />
-
-                      {/* Step 1: Cart */}
-                      <div className="relative z-10 flex flex-col items-center w-1/4">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
-                          <Check className="w-4 h-4 text-white" />
+                <div className="px-6 py-5 space-y-5">
+                  {/* Items */}
+                  <div className="space-y-2.5">
+                    {items.slice(0, showAllItems ? items.length : 2).map((item) => (
+                      <div key={item.id} className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900 ring-1 ring-gray-100 dark:ring-zinc-800">
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
-                        <span className="text-xs mt-1 text-green-600 font-semibold">Cart</span>
-                      </div>
-
-                      {/* Step 2: Checkout */}
-                      <div className="relative z-10 flex flex-col items-center w-1/4">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
-                          <Check className="w-4 h-4 text-white" />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-zinc-100 truncate">{item.name}</h4>
+                          <p className="text-xs text-gray-500 dark:text-zinc-400">Qty: {item.quantity}</p>
                         </div>
-                        <span className="text-xs mt-1 text-green-600 font-semibold">Checkout</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 whitespace-nowrap">{formatPrice(item.price * item.quantity)}</span>
                       </div>
-
-                      {/* Step 3: Payment */}
-                      <div className="relative z-10 flex flex-col items-center w-1/4">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
-                          <span className="text-xs font-bold text-white">3</span>
-                        </div>
-                        <span className="text-xs mt-1 text-green-600 font-semibold">Payment</span>
-                      </div>
-
-                      {/* Step 4: Confirm */}
-                      <div className="relative z-10 flex flex-col items-center w-1/4">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-zinc-800">
-                          <span className="text-xs font-bold text-gray-500 dark:text-zinc-500">4</span>
-                        </div>
-                        <span className="text-xs mt-1 text-gray-400 dark:text-zinc-500">Confirm</span>
-                      </div>
-                    </div>
+                    ))}
+                    {items.length > 2 && (
+                      <button
+                        onClick={() => setShowAllItems((v) => !v)}
+                        className="text-xs font-semibold text-[#832729] dark:text-amber-400 hover:underline"
+                      >
+                        {showAllItems ? 'Show less' : `+ ${items.length - 2} more item${items.length > 3 ? 's' : ''}`}
+                      </button>
+                    )}
                   </div>
 
+                  <Separator />
+
                   {/* Payment Method */}
-                  <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/85 dark:bg-zinc-900/85 p-5 shadow-[0_24px_60px_-48px_rgba(0,0,0,0.5)]">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-4">Payment Method</h3>
-                    <div className="space-y-3">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-zinc-400 mb-2.5">Payment Method</h3>
+                    <div className="space-y-2.5">
                       {/* Cash on Delivery */}
-                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                            <CreditCard className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
-                          </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Cash On Delivery</span>
+                      <label className={`flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all ${selectedPaymentMethod === 'Cash On Delivery' ? 'border-2 border-[#832729] bg-[#832729]/5 dark:bg-amber-400/5 dark:border-amber-400' : 'border border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700'}`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedPaymentMethod === 'Cash On Delivery' ? 'bg-[#832729] dark:bg-amber-400' : 'bg-gray-100 dark:bg-zinc-800'}`}>
+                          <Truck className={`w-5 h-5 ${selectedPaymentMethod === 'Cash On Delivery' ? 'text-white dark:text-zinc-900' : 'text-gray-600 dark:text-zinc-400'}`} />
+                        </div>
+                        <div className="flex-1">
+                          <span className="block text-sm font-semibold text-gray-900 dark:text-zinc-100">Cash On Delivery</span>
+                          <span className="text-xs text-gray-500 dark:text-zinc-400">Pay in cash when it arrives</span>
                         </div>
                         <input
                           type="radio"
@@ -2882,20 +2885,18 @@ const Checkout = () => {
                           value="Cash On Delivery"
                           checked={selectedPaymentMethod === 'Cash On Delivery'}
                           onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
+                          className="w-5 h-5 accent-[#832729] dark:accent-amber-400"
                         />
                       </label>
 
-                      {/* Razorpay — Cards, UPI, Wallets & Net Banking */}
-                      <label className="flex items-center justify-between p-4 border-2 border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                            <CreditCard className="w-5 h-5 text-gray-600 dark:text-zinc-400" />
-                          </div>
-                          <div>
-                            <span className="block text-sm font-medium text-gray-900 dark:text-zinc-100">Pay Online (Razorpay)</span>
-                            <span className="text-xs text-gray-500 dark:text-zinc-400">Cards, UPI, Wallets & Net Banking</span>
-                          </div>
+                      {/* Razorpay */}
+                      <label className={`flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all ${selectedPaymentMethod === 'Razorpay' ? 'border-2 border-[#832729] bg-[#832729]/5 dark:bg-amber-400/5 dark:border-amber-400' : 'border border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700'}`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedPaymentMethod === 'Razorpay' ? 'bg-[#832729] dark:bg-amber-400' : 'bg-gray-100 dark:bg-zinc-800'}`}>
+                          <CreditCard className={`w-5 h-5 ${selectedPaymentMethod === 'Razorpay' ? 'text-white dark:text-zinc-900' : 'text-gray-600 dark:text-zinc-400'}`} />
+                        </div>
+                        <div className="flex-1">
+                          <span className="block text-sm font-semibold text-gray-900 dark:text-zinc-100">Pay Online</span>
+                          <span className="text-xs text-gray-500 dark:text-zinc-400">Cards, UPI, Wallets & Net Banking</span>
                         </div>
                         <input
                           type="radio"
@@ -2903,76 +2904,78 @@ const Checkout = () => {
                           value="Razorpay"
                           checked={selectedPaymentMethod === 'Razorpay'}
                           onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
+                          className="w-5 h-5 accent-[#832729] dark:accent-amber-400"
                         />
                       </label>
                     </div>
                   </div>
 
-                  {/* Order Details */}
-                  <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/85 dark:bg-zinc-900/85 p-5 shadow-[0_24px_60px_-48px_rgba(0,0,0,0.5)]">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-4">Order Details</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 dark:text-zinc-400">Sub Total (include vat and tax)</span>
-                        <span className="font-semibold text-gray-900 dark:text-zinc-100">{formatPrice(subtotal)}</span>
-                      </div>
-                      <Separator className="my-3" />
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-gray-900 dark:text-zinc-100">Total (include vat and tax)</span>
-                        <span className="text-xl font-bold text-gray-900 dark:text-zinc-100">{formatPrice(desktopTotal)}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <Separator />
 
-                  {/* Selected Items Preview */}
-                  <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/85 dark:bg-zinc-900/85 p-5 shadow-[0_24px_60px_-48px_rgba(0,0,0,0.5)]">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3">Selected item</h3>
-                    <div className="space-y-3">
-                      {items.slice(0, 1).map((item) => (
-                        <div key={item.id} className="flex items-center gap-4 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-4">
-                          <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-white dark:bg-zinc-900">
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1">{item.name}</h4>
-                            <p className="text-xs text-gray-500 dark:text-zinc-500 mt-1">Top Deals</p>
-                          </div>
-                        </div>
-                      ))}
-                      {items.length > 1 && (
-                        <p className="text-sm text-gray-500 dark:text-zinc-500">+ {items.length - 1} more item{items.length > 2 ? 's' : ''}</p>
-                      )}
+                  {/* Price Breakdown */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-zinc-400">Item Total</span>
+                      <span className="font-medium text-gray-900 dark:text-zinc-100">{formatPrice(subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-zinc-400">Delivery Fee</span>
+                      <span className={`font-medium ${deliveryCharge === 0 ? 'text-green-600' : 'text-gray-900 dark:text-zinc-100'}`}>
+                        {deliveryCharge === 0 ? 'FREE' : formatPrice(deliveryCharge)}
+                      </span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-green-600">Coupon Discount</span>
+                        <span className="font-medium text-green-600">− {formatPrice(discount)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-zinc-400">{gstLabel}</span>
+                      <span className="font-medium text-gray-900 dark:text-zinc-100">{formatPrice(taxAmount)}</span>
+                    </div>
+                    {pricing.codCharge > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 dark:text-zinc-400">COD Charge</span>
+                        <span className="font-medium text-gray-900 dark:text-zinc-100">{formatPrice(pricing.codCharge)}</span>
+                      </div>
+                    )}
+                    <Separator className="my-1" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-base font-bold text-gray-900 dark:text-zinc-100">Total</span>
+                      <span className="text-xl font-bold text-gray-900 dark:text-zinc-100">{formatPrice(desktopTotal)}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Footer with Continue Button */}
-                <div className="sticky bottom-0 bg-white/88 dark:bg-zinc-900/88 backdrop-blur border-t border-[#d4af37]/15 px-6 py-4 rounded-b-[28px]">
-                  <div className="flex gap-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowPaymentDetails(false)}
-                      className="flex-1 h-12 text-sm font-semibold border-gray-300 dark:border-zinc-700"
-                      disabled={isPlacingOrder}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handlePlaceOrder}
-                      disabled={isPlacingOrder}
-                      className="flex-1 h-12 bg-green-500 hover:bg-green-600 text-white font-semibold text-sm"
-                    >
-                      {isPlacingOrder ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          Placing Order...
-                        </>
-                      ) : (
-                        'CONTINUE'
-                      )}
-                    </Button>
-                  </div>
+                {/* Footer with CTA */}
+                <div className="sticky bottom-0 bg-white/95 dark:bg-zinc-950/95 backdrop-blur border-t border-gray-100 dark:border-zinc-800 px-6 py-4 space-y-2">
+                  <Button
+                    onClick={handlePlaceOrder}
+                    disabled={isPlacingOrder}
+                    className="w-full h-12 bg-[#832729] hover:bg-[#6f2123] text-white font-semibold text-sm rounded-xl shadow-lg shadow-[#832729]/25"
+                  >
+                    {isPlacingOrder ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        {selectedPaymentMethod === 'Cash On Delivery' ? 'Placing Order…' : 'Processing…'}
+                      </>
+                    ) : selectedPaymentMethod === 'Cash On Delivery' ? (
+                      'Place Order'
+                    ) : (
+                      <>
+                        <Shield className="w-4 h-4 mr-2" />
+                        Pay {formatPrice(desktopTotal)} securely
+                      </>
+                    )}
+                  </Button>
+                  <button
+                    onClick={() => setShowPaymentDetails(false)}
+                    disabled={isPlacingOrder}
+                    className="w-full text-center text-xs font-medium text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 disabled:opacity-50 py-1"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             </motion.div>

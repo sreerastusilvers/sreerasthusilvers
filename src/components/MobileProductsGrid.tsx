@@ -76,6 +76,7 @@ const MobileProductsGrid = () => {
         id: product.id || "",
         name: product.name,
         price: product.price,
+        originalPrice: product.originalPrice,
         image: product.media.images[0] || "",
         category: product.category,
         stock: product.inventory?.stock,

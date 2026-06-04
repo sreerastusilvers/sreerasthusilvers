@@ -10,6 +10,8 @@ export interface CartItem {
   id: string;
   name: string;
   price: number;
+  /** Real MRP / original price, when the product genuinely has one (> price). */
+  originalPrice?: number;
   image: string;
   quantity: number;
   stock?: number;
