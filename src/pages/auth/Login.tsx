@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth, UserProfile } from '@/contexts/AuthContext';
@@ -53,11 +53,15 @@ const Login = () => {
 
   const { login, loginWithGoogle, logout, updateUserProfile, user, userProfile, isDelivery, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // NOTE: Intentionally always redirect users to '/' (home) after login from
-  // mobile/desktop. Previously a `from` location-state var was being used
-  // which made deep-linked screens (e.g. /wishlist) become the post-login
-  // landing page — we no longer honour that.
+  // After a normal-user login, return to the page they came from (e.g. the
+  // product they were viewing when prompted to log in). Falls back to home.
+  // Callers pass it via navigate('/login', { state: { from } }) where `from`
+  // is either a location object or a pathname string.
+  const fromState = (location.state as { from?: { pathname?: string } | string } | null)?.from;
+  const fromPath =
+    (typeof fromState === 'string' ? fromState : fromState?.pathname) || '/';
 
   // Redirect if already logged in — skip when a login flow (2FA / WhatsApp) is in progress.
   useEffect(() => {
@@ -67,7 +71,7 @@ const Login = () => {
       } else if (userProfile.role === 'admin') {
         navigate('/admin/dashboard', { replace: true });
       } else {
-        navigate('/', { replace: true });
+        navigate(fromPath, { replace: true });
       }
     }
   }, [user, userProfile, isDelivery, authLoading, navigate]);
@@ -304,7 +308,7 @@ const Login = () => {
         return;
       }
 
-      const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
+      const destination = profile.role === 'admin' ? '/admin/dashboard' : fromPath;
       await proceedAfterLogin(profile, destination, false);
       // Do NOT reset loading — either navigating away or showing a modal
     } catch (err: any) {
@@ -336,7 +340,7 @@ const Login = () => {
     loginFlowRef.current = 'checking'; // prevent redirect useEffect
     try {
       const profile = await loginWithGoogle();
-      const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
+      const destination = profile.role === 'admin' ? '/admin/dashboard' : fromPath;
       await proceedAfterLogin(profile, destination, true);
       // Do NOT reset loading — either navigating away or showing a modal
     } catch (err: any) {

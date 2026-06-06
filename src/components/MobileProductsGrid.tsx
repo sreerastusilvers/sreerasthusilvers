@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Star, Heart, ShoppingBag, ShoppingCart, Eye, SlidersHorizontal, ChevronDown, X, Search, Check } from "lucide-react";
+import { Star, Heart, ShoppingBag, ShoppingCart, Eye, SlidersHorizontal, ChevronDown, X, Search, Check, Plus, Minus } from "lucide-react";
 import { subscribeToProducts, Product } from "@/services/productService";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +39,7 @@ const MobileProductsGrid = () => {
   const [showSortModal, setShowSortModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
-  const { addToCart } = useCart();
+  const { addToCart, items, updateQuantity, removeFromCart } = useCart();
   const { toast } = useToast();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
@@ -334,18 +334,55 @@ const MobileProductsGrid = () => {
 
               {/* Product Info */}
               <div className="p-2.5">
-                {/* Cart Icon & Rating - Same Row */}
+                {/* Cart control & Rating - Same Row */}
                 <div className="flex items-center justify-between mb-1.5">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(product);
-                    }}
-                    className="text-primary hover:text-primary/80 transition-colors"
-                    aria-label="Add to cart"
-                  >
-                    <ShoppingCart className="w-5 h-5" />
-                  </button>
+                  {(() => {
+                    const cartItem = items.find((i) => i.id === product.id);
+                    const qty = cartItem?.quantity ?? 0;
+                    if (qty > 0) {
+                      return (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1.5 bg-primary/10 rounded-full px-1 py-0.5"
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (qty <= 1) removeFromCart(product.id || "");
+                              else updateQuantity(product.id || "", qty - 1);
+                            }}
+                            className="w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center"
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="w-3 h-3 text-foreground" />
+                          </button>
+                          <span className="text-[11px] font-bold text-primary min-w-[14px] text-center">{qty}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateQuantity(product.id || "", qty + 1);
+                            }}
+                            className="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center"
+                            aria-label="Increase quantity"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(product);
+                        }}
+                        className="text-primary hover:text-primary/80 transition-colors"
+                        aria-label="Add to cart"
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                      </button>
+                    );
+                  })()}
 
                   {/* Rating & Reviews - Only show if product has rating */}
                   {product.rating && product.reviewCount && (
