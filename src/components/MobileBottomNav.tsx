@@ -2,23 +2,14 @@ import { Home, Grid, ShoppingCart, Menu, Heart } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useState, useEffect } from "react";
-import MobileSidebar from "./MobileSidebar";
 
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { totalItems, subtotal } = useCart();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Listen for sidebar toggle events from MobileHeader
-  useEffect(() => {
-    const handleToggle = () => setIsSidebarOpen(true);
-    window.addEventListener('toggle-mobile-sidebar', handleToggle);
-    return () => window.removeEventListener('toggle-mobile-sidebar', handleToggle);
-  }, []);
 
   // Listen for modal open/close events
   useEffect(() => {
@@ -72,9 +63,7 @@ const MobileBottomNav = () => {
 
   return (
     <>
-      <MobileSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      
-      <nav 
+      <nav
         className="hidden"
       >
         {/* SVG Background with curved notch */}
@@ -146,7 +135,7 @@ const MobileBottomNav = () => {
 
           {/* Menu */}
           <button
-            onClick={() => setIsSidebarOpen(true)}
+            onClick={() => navigate("/account")}
             className="flex flex-col items-center justify-center flex-1 h-full"
           >
             <Menu className={`w-6 h-6 text-muted-foreground`} strokeWidth={1.5} />

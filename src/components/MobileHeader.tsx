@@ -44,8 +44,8 @@ const MobileHeader = () => {
         <div className="flex items-center gap-2">
           <button
             className="p-1.5 hover:bg-muted rounded-full transition-colors"
-            onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
-            aria-label="Menu"
+            onClick={() => navigate('/account')}
+            aria-label="Account menu"
           >
             <Menu className="w-[24px] h-[24px] text-foreground/80" strokeWidth={1.5} />
           </button>

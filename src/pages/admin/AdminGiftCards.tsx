@@ -80,67 +80,99 @@ const AdminGiftCards: React.FC = () => {
   // Load users and gift cards
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reads every user ONCE, builds a uid -> {email,name} map for enrichment,
+  // fills the create-form user list, then loads all gift cards. `loading` is
+  // always cleared in `finally`, and a single network failure surfaces a toast
+  // instead of leaving the page stuck on the spinner forever.
   const loadData = async () => {
     try {
       setLoading(true);
-      await Promise.all([loadUsers(), loadAllGiftCards()]);
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const map = new Map<string, { email: string; name: string }>();
+      const userList: UserItem[] = [];
+      usersSnap.docs.forEach((d) => {
+        const data = d.data() as Record<string, unknown>;
+        const email = (data.email as string) || '';
+        const name = (data.username as string) || (data.name as string) || '';
+        map.set(d.id, { email, name });
+        if (data.role === 'user') userList.push({ uid: d.id, email, username: name });
+      });
+      setUsers(userList);
+      await loadAllGiftCards(usersSnap.docs, map);
+    } catch (error) {
+      console.error('Error loading gift card data:', error);
+      toast({ title: 'Error', description: 'Failed to load coupons. Please try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  const loadUsers = async () => {
-    try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('role', '==', 'user'));
-      const snapshot = await getDocs(q);
-      const usersData = snapshot.docs.map((doc) => ({
-        uid: doc.id,
-        ...doc.data(),
-      })) as UserItem[];
-      setUsers(usersData);
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  };
-
-  const loadAllGiftCards = async () => {
-    try {
-      // Get all users first, then fetch gift cards for each
-      const usersRef = collection(db, 'users');
-      const usersSnap = await getDocs(usersRef);
-      
-      const allCards: GiftCard[] = [];
-      
-      for (const userDoc of usersSnap.docs) {
-        const userData = userDoc.data();
-        const giftCardsRef = collection(db, 'users', userDoc.id, 'giftCards');
-        const gcSnap = await getDocs(giftCardsRef);
-        
-        gcSnap.docs.forEach((gcDoc) => {
-          allCards.push({
-            id: gcDoc.id,
-            userId: userDoc.id,
-            userEmail: userData.email || '',
-            userName: userData.username || userData.name || '',
-            ...gcDoc.data(),
-          } as GiftCard);
+  // Loads every gift card across all users.
+  //  • Fast path: a SINGLE collectionGroup('giftCards') query (needs the
+  //    giftCards collection-group rule deployed).
+  //  • Fallback: PARALLEL per-user subcollection reads — works with the existing
+  //    rules and replaces the old sequential N+1 scan that effectively never
+  //    finished (the cause of the perpetual loading spinner).
+  const loadAllGiftCards = async (
+    userDocs?: Array<{ id: string; data: () => Record<string, unknown> }>,
+    userMap?: Map<string, { email: string; name: string }>,
+  ) => {
+    let docs = userDocs;
+    let map = userMap;
+    if (!docs || !map) {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      docs = usersSnap.docs;
+      map = new Map();
+      usersSnap.docs.forEach((d) => {
+        const data = d.data() as Record<string, unknown>;
+        map!.set(d.id, {
+          email: (data.email as string) || '',
+          name: (data.username as string) || (data.name as string) || '',
         });
-      }
-
-      // Sort by createdAt desc
-      allCards.sort((a, b) => {
-        const aTime = a.createdAt?.toMillis?.() || 0;
-        const bTime = b.createdAt?.toMillis?.() || 0;
-        return bTime - aTime;
       });
-      
-      setGiftCards(allCards);
-    } catch (error) {
-      console.error('Error loading gift cards:', error);
     }
+
+    const enrich = (userId: string, gcDoc: { id: string; data: () => Record<string, unknown> }): GiftCard => {
+      const u = map!.get(userId);
+      return {
+        id: gcDoc.id,
+        userId,
+        userEmail: u?.email || '',
+        userName: u?.name || '',
+        ...gcDoc.data(),
+      } as GiftCard;
+    };
+
+    const sortByCreated = (cards: GiftCard[]) =>
+      cards.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+
+    // Fast path — one collection-group query for every gift card at once.
+    try {
+      const cgSnap = await getDocs(collectionGroup(db, 'giftCards'));
+      const cards = cgSnap.docs
+        .filter((d) => d.ref.parent.parent) // only gift cards under a user document
+        .map((d) => enrich(d.ref.parent.parent!.id, d));
+      setGiftCards(sortByCreated(cards));
+      return;
+    } catch (cgErr) {
+      console.warn('[giftCards] collection-group query unavailable, using per-user scan:', cgErr);
+    }
+
+    // Fallback — parallel per-user subcollection reads.
+    const results = await Promise.all(
+      docs.map(async (userDoc) => {
+        try {
+          const gcSnap = await getDocs(collection(db, 'users', userDoc.id, 'giftCards'));
+          return gcSnap.docs.map((gc) => enrich(userDoc.id, gc));
+        } catch {
+          return [] as GiftCard[];
+        }
+      }),
+    );
+    setGiftCards(sortByCreated(results.flat()));
   };
 
   const handleCreateGiftCard = async () => {

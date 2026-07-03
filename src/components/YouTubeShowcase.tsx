@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Play, Youtube as YoutubeIcon, ChevronLeft, ChevronRight, Maximize } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   subscribeHomeVideos,
   youtubeThumb,
@@ -323,6 +323,11 @@ const YouTubeShowcase = () => {
 
       <Dialog open={!!selectedVideo} onOpenChange={(open) => !open && setSelectedVideo(null)}>
         <DialogContent className="w-[96vw] max-w-7xl border-none bg-black/95 p-0 text-white shadow-[0_32px_90px_-24px_rgba(0,0,0,0.85)] sm:rounded-2xl overflow-hidden">
+          {/* Accessible title/description for screen readers (Radix requirement) */}
+          <DialogTitle className="sr-only">{selectedVideo?.title || "Video story"}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {selectedVideo?.description || "Video player"}
+          </DialogDescription>
           {selectedVideo && (
             <div className="flex max-h-[90vh] flex-col overflow-y-auto">
               <div className="px-5 pt-5 pr-14 sm:px-6 sm:pt-6">

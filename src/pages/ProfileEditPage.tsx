@@ -193,11 +193,7 @@ const ProfileEditPage = () => {
         {/* Desktop page wrapper for centered card width */}
         <div className="lg:max-w-3xl lg:mx-auto lg:px-6 lg:pt-8">
         <button
-          onClick={() => {
-            if (window.innerWidth >= 1024) { navigate('/account'); return; }
-            sessionStorage.setItem('openMobileSidebar', '1');
-            navigate('/');
-          }}
+          onClick={() => navigate('/account')}
           className="mb-4 hidden items-center gap-2 rounded-full border border-[#d4af37]/15 bg-white/90 dark:bg-zinc-900/90 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 shadow-sm transition-colors hover:bg-white dark:border-[#d4af37]/20 dark:bg-zinc-900/88 dark:text-zinc-100 dark:hover:bg-zinc-900 lg:inline-flex"
         >
           <ArrowLeft className="h-4 w-4" />

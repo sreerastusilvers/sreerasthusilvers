@@ -134,6 +134,14 @@ service cloud.firestore {
       allow update: if isAuthenticated(); // For redemption
       allow delete: if isAdmin();
     }
+
+    // --- GIFT CARDS collection-group read (admin manager fast query) ---
+    // Lets the admin gift card manager load every user's gift cards with one
+    // collectionGroup('giftCards') query instead of scanning users one by one.
+    // Writes stay governed by the specific per-user path rule above.
+    match /{path=**}/giftCards/{giftCardId} {
+      allow read: if isAdmin();
+    }
     
     // --- REFUNDS (global collection) ---
     match /refunds/{refundId} {

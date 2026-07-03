@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Truck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { DELIVERY_PARTNERS_ENABLED } from '@/config/features';
 
 interface DeliveryRouteProps {
   children: React.ReactNode;
@@ -11,6 +12,11 @@ interface DeliveryRouteProps {
 const DeliveryRoute: React.FC<DeliveryRouteProps> = ({ children }) => {
   const { user, userProfile, loading, isDelivery } = useAuth();
   const location = useLocation();
+
+  // Delivery-partner system is disabled — send everyone back home.
+  if (!DELIVERY_PARTNERS_ENABLED) {
+    return <Navigate to="/" replace />;
+  }
 
   // Show loading state while checking auth
   if (loading) {

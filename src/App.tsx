@@ -15,6 +15,7 @@ import ShoppingCart from "@/components/ShoppingCart";
 import ProtectedRoute from "@/guards/ProtectedRoute";
 import AdminRoute from "@/guards/AdminRoute";
 import DeliveryRoute from "@/guards/DeliveryRoute";
+import { DELIVERY_PARTNERS_ENABLED } from "@/config/features";
 import DeliveryLightThemeWrapper from "@/components/DeliveryLightThemeWrapper";
 
 // Public Pages
@@ -319,8 +320,9 @@ const App = () => {
                 <Route path="products/:productId" element={<ProductForm />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="orders/:orderId" element={<AdminOrderDetails />} />
-                <Route path="delivery-boys" element={<AdminDeliveryBoys />} />
-                <Route path="delivery-boys/:deliveryBoyId" element={<AdminDeliveryBoyDetails />} />
+                {/* Delivery-partner management — gated by feature flag (kept for future re-enable) */}
+                <Route path="delivery-boys" element={DELIVERY_PARTNERS_ENABLED ? <AdminDeliveryBoys /> : <Navigate to="/admin/dashboard" replace />} />
+                <Route path="delivery-boys/:deliveryBoyId" element={DELIVERY_PARTNERS_ENABLED ? <AdminDeliveryBoyDetails /> : <Navigate to="/admin/dashboard" replace />} />
                 <Route path="media" element={<Media />} />
                 <Route path="banners" element={<AdminBanners />} />
                 <Route path="showcases" element={<AdminShowcases />} />
@@ -346,46 +348,61 @@ const App = () => {
                 <Route path="newsletter" element={<AdminNewsletterSubscriptions />} />
               </Route>
 
-              {/* Delivery Partner Routes (always rendered in light mode) */}
-              <Route path="/delivery" element={<Navigate to="/deliverypartner" replace />} />
-              <Route
-                path="/deliverypartner"
-                element={
-                  <DeliveryLightThemeWrapper>
-                    <DeliveryLogin />
-                  </DeliveryLightThemeWrapper>
-                }
-              />
-              <Route
-                path="/delivery/dashboard"
-                element={
-                  <DeliveryRoute>
-                    <DeliveryLightThemeWrapper>
-                      <DeliveryDashboard />
-                    </DeliveryLightThemeWrapper>
-                  </DeliveryRoute>
-                }
-              />
-              <Route
-                path="/delivery/order/:orderId"
-                element={
-                  <DeliveryRoute>
-                    <DeliveryLightThemeWrapper>
-                      <DeliveryOrderDetails />
-                    </DeliveryLightThemeWrapper>
-                  </DeliveryRoute>
-                }
-              />
-              <Route
-                path="/delivery/map/:orderId"
-                element={
-                  <DeliveryRoute>
-                    <DeliveryLightThemeWrapper>
-                      <DeliveryMapPage />
-                    </DeliveryLightThemeWrapper>
-                  </DeliveryRoute>
-                }
-              />
+              {/* Delivery Partner Routes (always rendered in light mode).
+                  Gated by DELIVERY_PARTNERS_ENABLED — when off, every /delivery*
+                  URL redirects home. The components are intentionally kept so the
+                  workflow can be re-enabled by flipping the flag. */}
+              {DELIVERY_PARTNERS_ENABLED ? (
+                <>
+                  <Route path="/delivery" element={<Navigate to="/deliverypartner" replace />} />
+                  <Route
+                    path="/deliverypartner"
+                    element={
+                      <DeliveryLightThemeWrapper>
+                        <DeliveryLogin />
+                      </DeliveryLightThemeWrapper>
+                    }
+                  />
+                  <Route
+                    path="/delivery/dashboard"
+                    element={
+                      <DeliveryRoute>
+                        <DeliveryLightThemeWrapper>
+                          <DeliveryDashboard />
+                        </DeliveryLightThemeWrapper>
+                      </DeliveryRoute>
+                    }
+                  />
+                  <Route
+                    path="/delivery/order/:orderId"
+                    element={
+                      <DeliveryRoute>
+                        <DeliveryLightThemeWrapper>
+                          <DeliveryOrderDetails />
+                        </DeliveryLightThemeWrapper>
+                      </DeliveryRoute>
+                    }
+                  />
+                  <Route
+                    path="/delivery/map/:orderId"
+                    element={
+                      <DeliveryRoute>
+                        <DeliveryLightThemeWrapper>
+                          <DeliveryMapPage />
+                        </DeliveryLightThemeWrapper>
+                      </DeliveryRoute>
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <Route path="/delivery" element={<Navigate to="/" replace />} />
+                  <Route path="/deliverypartner" element={<Navigate to="/" replace />} />
+                  <Route path="/delivery/dashboard" element={<Navigate to="/" replace />} />
+                  <Route path="/delivery/order/:orderId" element={<Navigate to="/" replace />} />
+                  <Route path="/delivery/map/:orderId" element={<Navigate to="/" replace />} />
+                </>
+              )}
 
               {/* 404 Catch-all */}
               <Route path="*" element={<NotFound />} />

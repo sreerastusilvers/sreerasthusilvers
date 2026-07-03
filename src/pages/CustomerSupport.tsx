@@ -161,12 +161,7 @@ const CustomerSupport = () => {
         <button
           onClick={() => {
             if (selectedOption) { setSelectedOption(null); return; }
-            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-              sessionStorage.setItem('openMobileSidebar', '1');
-              navigate('/');
-            } else {
-              navigate(-1);
-            }
+            navigate('/account');
           }}
           className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[#d4af37]/15 bg-white/80 dark:bg-zinc-900/80 px-3 py-2 text-gray-700 dark:text-zinc-300 shadow-sm backdrop-blur transition-colors hover:text-gray-900 dark:border-[#d4af37]/20 dark:bg-zinc-900/85 dark:text-zinc-100 dark:hover:text-white lg:mb-6"
         >

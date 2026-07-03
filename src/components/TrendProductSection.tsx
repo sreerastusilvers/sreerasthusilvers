@@ -126,7 +126,7 @@ const TrendProductSection = () => {
                 className="flex-shrink-0 w-[150px] cursor-pointer"
                 onClick={() => navigate(`/product/${product.id}`)}
               >
-                <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/70">
+                <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/70 h-full flex flex-col">
                   <div className="aspect-square overflow-hidden bg-muted relative">
                     <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
                     <button
@@ -136,9 +136,9 @@ const TrendProductSection = () => {
                       <Heart className={`w-3.5 h-3.5 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
                     </button>
                   </div>
-                  <div className="p-2.5">
+                  <div className="p-2.5 flex flex-col flex-grow">
                     <p className="text-[11px] text-muted-foreground line-clamp-1 mb-0.5">{product.title}</p>
-                    <div className="flex items-end justify-between gap-1">
+                    <div className="mt-auto flex items-end justify-between gap-1">
                       <div className="flex flex-col min-w-0">
                         <p className="text-sm font-bold text-foreground leading-tight">₹{product.price.toLocaleString()}</p>
                         {product.oldPrice && product.oldPrice > product.price && (

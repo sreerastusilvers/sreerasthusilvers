@@ -759,6 +759,23 @@ export const updateOrderStatus = async (
       updateData.return_store_otp = generateOTP();
     }
 
+    // When an order is marked Delivered directly (admin-managed fulfilment),
+    // stamp the delivery time so the return window can be calculated, and treat
+    // a Cash-on-Delivery order's payment as collected at the point of delivery.
+    if (status === 'delivered') {
+      if (!currentData?.deliveredAt) {
+        updateData.deliveredAt = now;
+      }
+      if (
+        isCashOnDeliveryOrder(currentData as Pick<Order, 'paymentMethod'>) &&
+        !isPaymentSettled(currentData as Pick<Order, 'paymentMethod' | 'paymentStatus'>)
+      ) {
+        updateData.paymentStatus = 'paid';
+        updateData.paymentCollectedAt = now;
+        updateData.paymentCollectedByName = 'Admin';
+      }
+    }
+
     await updateDoc(docRef, updateData);
 
     // Restore stock when order is cancelled or returned — only if it was

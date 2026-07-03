@@ -7,9 +7,10 @@ import {
   BookOpen, 
   Gift, 
   Flame, 
-  UserCircle, 
-  Heart, 
-  Home, 
+  UserCircle,
+  Heart,
+  Home,
+  Landmark,
   MoreHorizontal,
   ChevronRight
 } from "lucide-react";
@@ -21,6 +22,7 @@ const buildCategoryTarget = (categorySlug: string, subSlug?: string) => {
     "pooja-items": "articles",
     mens: "jewellery",
     wedding: "jewellery",
+    artifacts: "others",
   };
 
   const subcategorySlugMap: Record<string, string> = {
@@ -28,6 +30,7 @@ const buildCategoryTarget = (categorySlug: string, subSlug?: string) => {
     "pooja-items": "pooja-items",
     mens: "mens",
     wedding: "wedding",
+    artifacts: "artifacts",
   };
 
   const resolvedParent = parentSlugMap[categorySlug] || categorySlug;
@@ -81,9 +84,15 @@ const categories = [
     href: buildCategoryTarget("wedding"),
     image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&h=200&fit=crop",
   },
-  { 
-    name: "Others", 
-    icon: Home, 
+  {
+    name: "Artifacts",
+    icon: Landmark,
+    href: buildCategoryTarget("artifacts"),
+    image: "https://images.unsplash.com/photo-1610375461246-83df859d849d?w=200&h=200&fit=crop",
+  },
+  {
+    name: "Others",
+    icon: Home,
     href: buildCategoryTarget("others"),
     image: "https://images.unsplash.com/photo-1556911220-bff31c812dba?w=200&h=200&fit=crop",
   },
@@ -99,6 +108,7 @@ const ICON_MAP: Record<string, any> = {
   mens: UserCircle,
   "men's": UserCircle,
   wedding: Heart,
+  artifacts: Landmark,
   others: Home,
   more: MoreHorizontal,
 };

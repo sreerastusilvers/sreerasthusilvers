@@ -17,22 +17,8 @@ import TestimonialsCarousel from "@/components/TestimonialsCarousel";
 import CollectionBanner from "@/components/CollectionBanner";
 import YouTubeShowcase from "@/components/YouTubeShowcase";
 import Footer from "@/components/Footer";
-import { useEffect } from "react";
 
 const Index = () => {
-  // Open mobile sidebar if requested via sessionStorage (e.g. when returning
-  // from an account sub-page via the back button).
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (sessionStorage.getItem("openMobileSidebar") === "1") {
-      sessionStorage.removeItem("openMobileSidebar");
-      const t = setTimeout(() => {
-        window.dispatchEvent(new Event("toggle-mobile-sidebar"));
-      }, 120);
-      return () => clearTimeout(t);
-    }
-  }, []);
-
   return (
     <div className="min-h-screen w-full overflow-x-clip bg-background">
       <Header />

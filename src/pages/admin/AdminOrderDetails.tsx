@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { subscribeToDeliveryBoys, DeliveryBoy } from '@/services/deliveryBoyService';
+import { DELIVERY_PARTNERS_ENABLED } from '@/config/features';
 import {
   assignDeliveryPartner,
   assignReturnPickupPartner,
@@ -297,11 +298,14 @@ const AdminOrderDetails = () => {
       toast.error('Status can only move forward in the workflow.');
       return;
     }
-    if (next === 'outForDelivery' && !order.delivery_boy_id && !order.delivery_partner_id) {
+    // When the in-house delivery system is enabled, these statuses are driven by
+    // the assign-partner / OTP panels rather than the dropdown. With it disabled,
+    // the admin moves the order through every status directly.
+    if (DELIVERY_PARTNERS_ENABLED && next === 'outForDelivery' && !order.delivery_boy_id && !order.delivery_partner_id) {
       toast.error('Assign a delivery partner first — that will mark the order as Out for Delivery.');
       return;
     }
-    if (next === 'returnScheduled') {
+    if (DELIVERY_PARTNERS_ENABLED && next === 'returnScheduled') {
       toast.error('Use the “Assign pickup partner” panel below to schedule a return — direct status change is disabled.');
       return;
     }
@@ -456,6 +460,19 @@ const AdminOrderDetails = () => {
 
   const badge = STATUS_BADGE[normalizedStatus] || STATUS_BADGE.pending;
   const nextStatus = normalizedStatus === 'picked' ? ('returned' as Order['status']) : getNextStatus(normalizedStatus);
+
+  // In admin-managed fulfilment mode (delivery system off), the admin advances
+  // the order through every step directly, so the hints reference the dropdown
+  // rather than a delivery partner / OTP.
+  const ADMIN_DRIVEN_HINTS: Record<string, string> = {
+    packed: 'Mark the order as Out for Delivery once it leaves the store.',
+    outForDelivery: 'Mark as Delivered once the customer has received the order.',
+    returnRequested: 'Approve the return, then set the status to Returned once the item is back.',
+    returnScheduled: 'Set the status to Returned once the item is back with you.',
+  };
+  const statusHint =
+    (!DELIVERY_PARTNERS_ENABLED && ADMIN_DRIVEN_HINTS[normalizedStatus]) ||
+    NEXT_STEP_HINT[normalizedStatus];
   const isCod = isCashOnDeliveryOrder(order);
   const isPaid = isPaymentSettled(order);
   const partnerName = order.delivery_partner_name || order.delivery_boy_name;
@@ -523,14 +540,16 @@ const AdminOrderDetails = () => {
           </div>
         </div>
 
-        {NEXT_STEP_HINT[normalizedStatus] && (
+        {statusHint && (
           <div className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
-            <span className="font-semibold">Next:</span> {NEXT_STEP_HINT[normalizedStatus]}
+            <span className="font-semibold">Next:</span> {statusHint}
           </div>
         )}
         {isCod && !isPaid && normalizedStatus === 'outForDelivery' && (
           <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
-            COD payment is still pending. The delivery partner must collect cash and mark it received before the order can be completed.
+            {DELIVERY_PARTNERS_ENABLED
+              ? 'COD payment is still pending. The delivery partner must collect cash and mark it received before the order can be completed.'
+              : 'This is a Cash on Delivery order. The payment will be recorded as collected when you mark the order Delivered.'}
           </div>
         )}
       </div>
@@ -703,7 +722,7 @@ const AdminOrderDetails = () => {
       </div>
 
       {/* Status + Assign Partner */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={`grid gap-4 ${DELIVERY_PARTNERS_ENABLED ? 'lg:grid-cols-2' : ''}`}>
         {/* Status control */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-zinc-100">
@@ -761,7 +780,7 @@ const AdminOrderDetails = () => {
               className="mt-3 w-full"
               variant="outline"
               size="sm"
-              disabled={savingStatus || (nextStatus === 'outForDelivery' && !partnerName)}
+              disabled={savingStatus || (DELIVERY_PARTNERS_ENABLED && nextStatus === 'outForDelivery' && !partnerName)}
               onClick={() => handleStatusChange(nextStatus)}
             >
               {savingStatus ? (
@@ -772,7 +791,8 @@ const AdminOrderDetails = () => {
           )}
         </div>
 
-        {/* Delivery partner / Return pickup partner */}
+        {/* Delivery partner / Return pickup partner — only when the delivery system is on */}
+        {DELIVERY_PARTNERS_ENABLED && (
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-zinc-100">
             <Truck className="h-4 w-4" />
@@ -918,6 +938,7 @@ const AdminOrderDetails = () => {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Delivery Window Setter — available once the order is packed or out for delivery */}

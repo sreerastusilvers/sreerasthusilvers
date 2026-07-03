@@ -172,14 +172,7 @@ const MobileOrders = () => {
         <div className="rounded-[28px] border border-[#d4af37]/15 bg-white/88 px-4 py-4 shadow-[0_30px_80px_-60px_rgba(0,0,0,0.5)] backdrop-blur dark:border-[#d4af37]/20 dark:bg-zinc-900/88 dark:shadow-[0_30px_80px_-60px_rgba(0,0,0,0.88)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
           <div className="flex items-center">
             <button
-              onClick={() => {
-                if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                  sessionStorage.setItem('openMobileSidebar', '1');
-                  navigate('/');
-                } else {
-                  navigate('/account');
-                }
-              }}
+              onClick={() => navigate('/account')}
               className="-ml-2 rounded-full p-2 transition-colors hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800"
             >
               <ArrowLeft className="w-6 h-6 text-gray-800 dark:text-zinc-200 dark:text-zinc-100" />

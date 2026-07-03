@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, UserProfile } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { auth } from '@/config/firebase';
+import { DELIVERY_PARTNERS_ENABLED } from '@/config/features';
+import shoppingBags from '@/assets/shopping-bags.png';
 import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import Header from '@/components/Header';
@@ -53,6 +56,8 @@ import {
   Edit,
   Phone,
   Video,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 const Account = () => {
@@ -230,7 +235,9 @@ interface LoginFormProps {
 const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as LoginTab | null;
-  const [activeTab, setActiveTab] = useState<LoginTab>(tabFromUrl === 'delivery' ? 'delivery' : 'user');
+  const [activeTab, setActiveTab] = useState<LoginTab>(
+    tabFromUrl === 'delivery' && DELIVERY_PARTNERS_ENABLED ? 'delivery' : 'user'
+  );
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -431,31 +438,33 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
             <span className="text-sm font-medium">Back</span>
           </button>
 
-          {/* Tabs */}
-          <div className="flex mb-6 bg-muted rounded-full p-1">
-            <button
-              onClick={() => handleTabChange('user')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
-                activeTab === 'user'
-                  ? 'bg-card text-primary shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground/80'
-              }`}
-            >
-              <User className="h-4 w-4" />
-              User
-            </button>
-            <button
-              onClick={() => handleTabChange('delivery')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
-                activeTab === 'delivery'
-                  ? 'bg-card text-primary shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground/80'
-              }`}
-            >
-              <Truck className="h-4 w-4" />
-              Delivery
-            </button>
-          </div>
+          {/* Tabs — the Delivery partner tab is hidden while the delivery system is off */}
+          {DELIVERY_PARTNERS_ENABLED && (
+            <div className="flex mb-6 bg-muted rounded-full p-1">
+              <button
+                onClick={() => handleTabChange('user')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
+                  activeTab === 'user'
+                    ? 'bg-card text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground/80'
+                }`}
+              >
+                <User className="h-4 w-4" />
+                User
+              </button>
+              <button
+                onClick={() => handleTabChange('delivery')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-sm font-medium transition-all ${
+                  activeTab === 'delivery'
+                    ? 'bg-card text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground/80'
+                }`}
+              >
+                <Truck className="h-4 w-4" />
+                Delivery
+              </button>
+            </div>
+          )}
 
           {/* Header */}
           <div className="text-center mb-5">
@@ -756,6 +765,7 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
 const AccountPage = () => {
   const navigate = useNavigate();
   const { logout, userProfile, user, updateUserProfile } = useAuth();
+  const { setTheme, resolvedTheme } = useTheme();
   const [selectedMenu, setSelectedMenu] = useState('orders');
   const [selectedOrderTab, setSelectedOrderTab] = useState('current');
   const [isMobile, setIsMobile] = useState(false);
@@ -929,6 +939,17 @@ const AccountPage = () => {
     { id: 'saved', label: 'Saved items', icon: Heart, path: '/wishlist' },
     { id: 'support', label: 'Customer support', icon: MessageCircle, path: '/customer-support' },
     { id: 'logout', label: 'Log out', icon: LogOut, path: null, action: 'logout' },
+  ];
+
+  // Drawer-style menu for the mobile account page (mirrors the old slide-in menu)
+  const accountMenu = [
+    { label: 'My Orders', icon: Package, href: '/account/orders' },
+    { label: 'My Video Calls', icon: Video, href: '/my-video-calls' },
+    { label: 'Edit Profile', icon: Edit, href: '/account/profile-edit' },
+    { label: 'Your Addresses', icon: MapPin, href: '/account/addresses' },
+    { label: 'Login & Security', icon: Shield, href: '/security' },
+    { label: 'Saved Items', icon: Heart, href: '/wishlist' },
+    { label: 'Customer Support', icon: MessageCircle, href: '/customer-support' },
   ];
 
   const quickAccessCards = [
@@ -1187,120 +1208,112 @@ const AccountPage = () => {
     return (
       <>
         <div className="min-h-screen pt-2 bg-muted pb-20" style={{ fontFamily: "'Poppins', sans-serif" }}>
-          <div className="px-4 py-2">
-            {/* Amazon-style Account Header */}
-            <div className="bg-card rounded-lg shadow-sm p-4 mb-4">
-              {/* Top Row: User info and icons */}
-              <div className="flex items-center justify-between mb-4">
-                {/* User Avatar and Name */}
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => navigate('/')}
-                    className="p-1 hover:bg-muted rounded-full transition-colors"
-                  >
-                    <ArrowLeft className="w-5 h-5 text-foreground/80" />
-                  </button>
-                  <div className="flex items-center gap-3">
-                    {avatarUrl ? (
-                      <img 
-                        key={`avatar-${avatarUrl}-${user?.uid}`}
-                        src={avatarUrl} 
-                        alt="Profile" 
-                        className="w-10 h-10 rounded-full object-cover border border-black flex-shrink-0"
-                        referrerPolicy="no-referrer"
-                        loading="eager"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center border border-black flex-shrink-0">
-                        <span className="text-white font-semibold text-sm">
-                          {(userProfile?.name || userProfile?.username || user?.email?.split('@')[0] || 'U').charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <span className="text-sm font-medium text-foreground">
-                      Hello, {(userProfile?.name || userProfile?.username || user?.email?.split('@')[0] || 'User').slice(0, 12)}...
-                    </span>
-                  </div>
+          <div className="px-4 py-2" style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
+            {/* Drawer-style top bar */}
+            <div className="flex items-center justify-between py-2">
+              <button
+                onClick={() => navigate('/')}
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                aria-label="Back to home"
+              >
+                <ArrowLeft className="w-5 h-5 text-foreground/80" strokeWidth={1.5} />
+              </button>
+              <User className="w-6 h-6 text-foreground/80" strokeWidth={1.5} />
+            </div>
+
+            {/* Hidden file input (avatar upload via Edit Profile) */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
+            />
+
+            {/* Welcome / profile banner */}
+            <div className="mb-3 mt-1 relative">
+              <div
+                className="bg-pink-50 dark:bg-pink-950/30 rounded-lg p-4 flex items-center justify-between gap-6 overflow-hidden"
+                style={{
+                  backgroundImage: `radial-gradient(circle at 0 50%, hsl(var(--background)) 8px, transparent 8px), radial-gradient(circle at 100% 50%, hsl(var(--background)) 8px, transparent 8px)`,
+                  backgroundSize: '16px 24px',
+                  backgroundPosition: 'left center, right center',
+                  backgroundRepeat: 'repeat-y',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+                }}
+              >
+                <div className="flex-shrink-0">
+                  {avatarUrl ? (
+                    <img
+                      key={`avatar-${avatarUrl}-${user?.uid}`}
+                      src={avatarUrl}
+                      alt="Profile"
+                      className="w-[90px] h-[90px] rounded-full object-cover border-2 border-white shadow-sm"
+                      referrerPolicy="no-referrer"
+                      loading="eager"
+                    />
+                  ) : (
+                    <img src={shoppingBags} alt="Shopping bags" className="w-[100px] h-[100px] object-contain" />
+                  )}
                 </div>
-
-                {/* Hidden file input */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Quick Action Pills */}
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-                <button 
-                  onClick={() => navigate('/account/orders')}
-                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-border rounded-full hover:bg-muted transition-colors"
-                >
-                  Orders
-                </button>
-                <button 
-                  onClick={() => navigate('/buy-again')}
-                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-border rounded-full hover:bg-muted transition-colors"
-                >
-                  Buy Again
-                </button>
-                <button 
-                  onClick={() => navigate('/wishlist')}
-                  className="flex-shrink-0 px-4 py-2 text-sm font-medium text-foreground/80 bg-card border border-border rounded-full hover:bg-muted transition-colors"
-                >
-                  Lists
-                </button>
+                <div className="flex-1 text-right min-w-0">
+                  <h3 className="text-foreground font-bold text-base leading-tight truncate">
+                    Hi, {(userProfile?.name || userProfile?.username || user?.displayName?.split(' ')[0] || 'Welcome')}
+                  </h3>
+                  <p className="text-muted-foreground text-xs mt-0.5 mb-3 truncate">{user?.email}</p>
+                  <button
+                    onClick={() => navigate('/account/profile-edit')}
+                    className="text-primary font-bold text-sm tracking-wide hover:underline"
+                  >
+                    VIEW PROFILE
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Navigation Menu */}
-            <div className="bg-card rounded-lg shadow-sm mb-4">
-              {menuItems.filter(item => item.id !== 'orders' && item.id !== 'archived' && item.id !== 'saved').map((item) => (
+            {/* Menu list — drawer style */}
+            <div className="bg-card rounded-lg shadow-sm overflow-hidden">
+              {accountMenu.map((item) => (
                 <button
-                  key={item.id}
-                  onClick={() => handleMenuClick(item)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 text-left transition-colors ${
-                    item.id === 'logout'
-                      ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30'
-                      : selectedMenu === item.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-foreground/80'
-                  }`}
+                  key={item.label}
+                  onClick={() => navigate(item.href)}
+                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors border-b border-border/50 text-left"
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <item.icon className="w-[22px] h-[22px] text-muted-foreground" strokeWidth={1.4} />
+                  <span className="text-[15px] font-medium text-foreground flex-1 tracking-wide">{item.label}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
                 </button>
               ))}
+
+              {/* Theme toggle */}
+              <button
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors border-b border-border/50 text-left"
+              >
+                {resolvedTheme === 'dark' ? (
+                  <Sun className="w-[22px] h-[22px] text-amber-500" strokeWidth={1.6} />
+                ) : (
+                  <Moon className="w-[22px] h-[22px] text-indigo-500" strokeWidth={1.6} />
+                )}
+                <span className="text-[15px] font-medium text-foreground flex-1 tracking-wide">
+                  {resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                </span>
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.2em] px-2 py-0.5 rounded-full bg-muted">
+                  {resolvedTheme === 'dark' ? 'Dark' : 'Light'}
+                </span>
+              </button>
+
+              {/* Logout */}
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors text-left"
+              >
+                <LogOut className="w-[22px] h-[22px] text-rose-500" strokeWidth={1.4} />
+                <span className="text-[15px] font-medium text-rose-600 dark:text-rose-400 flex-1 tracking-wide">Log Out</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
+              </button>
             </div>
-
-            {/* Main Content */}
-            {selectedMenu === 'addresses' && (
-              <div className="bg-card rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-foreground mb-2">Your Addresses</h3>
-                <p className="text-sm text-muted-foreground mb-4">Manage your saved addresses here.</p>
-                <Button onClick={() => navigate('/account/addresses')} className="w-full">
-                  View Addresses
-                </Button>
-              </div>
-            )}
-
-            {selectedMenu === 'security' && (
-              <div className="bg-card rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-foreground mb-2">Login & Security</h3>
-                <p className="text-sm text-muted-foreground mb-4">Manage your login credentials and security settings.</p>
-                <Button onClick={() => navigate('/security')} className="w-full">Manage Security</Button>
-              </div>
-            )}
-
-            {selectedMenu === 'support' && (
-              <div className="bg-card rounded-lg shadow-sm p-4">
-                <h3 className="text-lg font-bold text-foreground mb-2">Customer Support</h3>
-                <p className="text-sm text-muted-foreground">Get help with your orders and account.</p>
-              </div>
-            )}
           </div>
         </div>
         <MobileBottomNav />

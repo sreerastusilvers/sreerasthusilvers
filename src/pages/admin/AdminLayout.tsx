@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { DELIVERY_PARTNERS_ENABLED } from '@/config/features';
 import {
   LayoutDashboard,
   Package,
@@ -70,7 +71,10 @@ const AdminLayout = () => {
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/products', icon: Package, label: 'Products' },
     { path: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
-    { path: '/admin/delivery-boys', icon: Truck, label: 'Delivery Boys' },
+    // Delivery-partner management — only shown when the delivery system is enabled.
+    ...(DELIVERY_PARTNERS_ENABLED
+      ? [{ path: '/admin/delivery-boys', icon: Truck, label: 'Delivery Boys' }]
+      : []),
     { path: '/admin/customers', icon: Users2, label: 'Customers' },
     { path: '/admin/coupons', icon: Ticket, label: 'Coupons' },
     { path: '/admin/gift-cards', icon: Gift, label: 'Gift Cards' },
