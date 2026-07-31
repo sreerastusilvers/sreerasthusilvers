@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { createVideoCallRequest } from '@/services/videoCallRequestService';
 import { getCustomerSupportSettings } from '@/services/siteSettingsService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface VideoCallRequestModalProps {
   open: boolean;
@@ -207,11 +208,10 @@ const VideoCallRequestModal = ({
                   <div className="space-y-4">
                     {productImage && (
                       <div className="flex items-center gap-3 bg-muted/40 rounded-xl p-3">
-                        <img
+                        <SmartImage
                           src={productImage}
                           alt={productTitle}
-                          className="w-14 h-14 rounded-lg object-cover shrink-0"
-                        />
+                          className="w-14 h-14 rounded-lg object-cover shrink-0" preset="thumb" />
                         <p className="text-sm font-medium line-clamp-2">{productTitle}</p>
                       </div>
                     )}

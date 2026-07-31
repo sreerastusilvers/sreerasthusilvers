@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // ─── Slide to Pay Button Component ───
 const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
@@ -920,7 +921,7 @@ const MobileCheckout = () => {
                         className="flex items-center gap-3 px-4 py-4"
                       >
                         <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-800 ring-1 ring-gray-100 dark:ring-zinc-700">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
@@ -1182,7 +1183,7 @@ const MobileCheckout = () => {
             <div className="flex -space-x-2">
               {items.slice(0, 3).map((item, idx) => (
                 <div key={item.id} className="w-14 h-14 rounded-full overflow-hidden border-2 border-white dark:border-zinc-900 flex-shrink-0" style={{ zIndex: 3 - idx }}>
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                 </div>
               ))}
               {items.length > 3 && (
@@ -1260,11 +1261,10 @@ const MobileCheckout = () => {
                 >
                   {/* Image with discount badge */}
                   <div className="relative w-full h-[110px] bg-gray-50 dark:bg-zinc-900">
-                    <img
+                    <SmartImage
                       src={product.image}
                       alt={product.title}
-                      className="w-full h-full object-cover"
-                    />
+                      className="w-full h-full object-cover" preset="card" />
                     {product.discount && (
                       <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ fontFamily: "'Poppins', sans-serif" }}>
                         {product.discount}%<br />OFF
@@ -1474,7 +1474,7 @@ const MobileCheckout = () => {
                   {items.slice(0, 1).map((item) => (
                     <div key={item.id} className="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-3">
                       <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1">{item.name}</h4>
@@ -1711,7 +1711,7 @@ const MobileCheckout = () => {
                   {orderedItems.length > 0 && (
                     <div className="flex gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-3">
                       <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
-                        <img src={orderedItems[0].image} alt={orderedItems[0].name} className="w-full h-full object-cover" />
+                        <SmartImage src={orderedItems[0].image} alt={orderedItems[0].name} className="w-full h-full object-cover" preset="thumb" />
                       </div>
                       <div className="flex-1">
                         <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{orderedItems[0].name}</h5>
@@ -1735,7 +1735,7 @@ const MobileCheckout = () => {
                             {orderedItems.slice(1).map((item) => (
                               <div key={item.id} className="flex gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-3">
                                 <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
-                                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                  <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                                 </div>
                                 <div className="flex-1">
                                   <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 mb-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h5>
@@ -2609,11 +2609,10 @@ const Checkout = () => {
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-4">
                     <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                      <img
+                      <SmartImage
                         src={item.image}
                         alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
+                        className="w-full h-full object-cover" preset="thumb" />
                     </div>
                     <div className="flex-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       <h3 className="font-medium mb-1">{item.name}</h3>
@@ -2845,7 +2844,7 @@ const Checkout = () => {
                     {items.slice(0, showAllItems ? items.length : 2).map((item) => (
                       <div key={item.id} className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900 ring-1 ring-gray-100 dark:ring-zinc-800">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-sm font-medium text-gray-900 dark:text-zinc-100 truncate">{item.name}</h4>
@@ -3182,7 +3181,7 @@ const Checkout = () => {
                       {items.length > 0 && (
                         <div className="flex gap-4 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4">
                           <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
-                            <img src={items[0].image} alt={items[0].name} className="w-full h-full object-cover" />
+                            <SmartImage src={items[0].image} alt={items[0].name} className="w-full h-full object-cover" preset="thumb" />
                           </div>
                           <div className="flex-1">
                             <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-1">{items[0].name}</h5>
@@ -3206,7 +3205,7 @@ const Checkout = () => {
                                 {items.slice(1).map((item) => (
                                   <div key={item.id} className="flex gap-4 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4">
                                     <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
-                                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                      <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                                     </div>
                                     <div className="flex-1">
                                       <h5 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 mb-1">{item.name}</h5>

@@ -19,6 +19,7 @@ import {
   type VideoCallStatus,
 } from '@/services/videoCallRequestService';
 import type { Timestamp } from 'firebase/firestore';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<VideoCallStatus, {
@@ -268,11 +269,10 @@ function RequestCard({
         {req.productTitle && (
           <div className="flex items-center gap-2 mb-3">
             {req.productImage && (
-              <img
+              <SmartImage
                 src={req.productImage}
                 alt={req.productTitle}
-                className="w-9 h-9 rounded-lg object-cover border border-border flex-shrink-0"
-              />
+                className="w-9 h-9 rounded-lg object-cover border border-border flex-shrink-0" preset="thumb" />
             )}
             <p className="text-sm font-medium text-foreground leading-tight truncate">{req.productTitle}</p>
           </div>

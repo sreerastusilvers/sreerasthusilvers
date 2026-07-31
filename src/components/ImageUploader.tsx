@@ -3,6 +3,7 @@ import { useDropzone, type FileRejection } from 'react-dropzone';
 import { Upload, X, Loader2, FileText, CheckCircle2, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface ImageUploaderProps {
   onImageSelected: (file: File) => void;
@@ -164,11 +165,10 @@ const ImageUploader = ({
                   </p>
                 </div>
               ) : (
-                <img
+                <SmartImage
                   src={preview}
                   alt="Preview"
-                  className="w-full h-full object-cover"
-                />
+                  className="w-full h-full object-cover" preset="card" />
               )}
               {!isUploading && !hasPendingFile && (
                 <button

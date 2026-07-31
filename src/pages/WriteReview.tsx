@@ -10,6 +10,7 @@ import {
   hasUserPurchasedProduct 
 } from '@/services/reviewService';
 import { toast } from 'sonner';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface LocationState {
   productId: string;
@@ -174,7 +175,7 @@ const WriteReview = () => {
           className="flex items-center gap-4 bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-gray-100 dark:border-zinc-800 shadow-sm"
         >
           <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800">
-            <img src={productImage} alt={productName} className="w-full h-full object-cover" />
+            <SmartImage src={productImage} alt={productName} className="w-full h-full object-cover" preset="thumb" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-amber-600 font-medium uppercase tracking-wide mb-0.5">Reviewing</p>
@@ -300,7 +301,7 @@ const WriteReview = () => {
             <div className="grid grid-cols-4 gap-2 mt-3">
               {imagePreviews.map((preview, index) => (
                 <div key={index} className="relative aspect-square">
-                  <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-xl" />
+                  <SmartImage src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-xl" preset="card" />
                   <button
                     onClick={() => removeImage(index)}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-900 text-white rounded-full flex items-center justify-center shadow"

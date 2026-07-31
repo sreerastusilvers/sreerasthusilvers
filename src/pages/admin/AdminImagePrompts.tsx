@@ -34,6 +34,7 @@ import {
   subscribePromptHistory,
   deletePromptFromHistory,
 } from '@/services/promptHistoryService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 type PromptCategory = 'product-model' | 'product-studio' | 'hero-section' | 'custom';
 
@@ -133,7 +134,7 @@ function ImageDropZone({
       )}
       {image && preview ? (
         <div className="relative group rounded-lg border border-[#F5EFE6] overflow-hidden bg-gray-50">
-          <img src={preview} alt="preview" className="w-full h-36 object-contain bg-white" />
+          <SmartImage src={preview} alt="preview" className="w-full h-36 object-contain bg-white" preset="card" />
           <button
             type="button"
             onClick={onClear}
@@ -705,7 +706,7 @@ const AdminImagePrompts = () => {
                     <div className="grid grid-cols-3 gap-2 mb-2">
                       {heroPreviews.map((preview, idx) => (
                         <div key={idx} className="relative group rounded-lg border border-[#F5EFE6] overflow-hidden bg-gray-50">
-                          <img src={preview} alt={`ref-${idx + 1}`} className="w-full h-24 object-contain bg-white" />
+                          <SmartImage src={preview} alt={`ref-${idx + 1}`} className="w-full h-24 object-contain bg-white" preset="card" />
                           <button
                             type="button"
                             onClick={() => handleHeroImageRemove(idx)}

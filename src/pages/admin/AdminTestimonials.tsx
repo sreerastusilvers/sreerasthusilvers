@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import avatar1 from '@/assets/avatars/avatar-1.jpg';
 import avatar2 from '@/assets/avatars/avatar-2.jpg';
 import avatar3 from '@/assets/avatars/avatar-3.jpg';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const BUILT_IN_AVATARS = [
   // Real photos
@@ -316,12 +317,11 @@ const AdminTestimonials = () => {
                     {avatarUrl && (
                       <div className="mt-3 flex items-center gap-3">
                         {!urlError ? (
-                          <img
+                          <SmartImage
                             src={avatarUrl}
                             alt="Preview"
                             className="w-14 h-14 rounded-full object-cover border-2 border-gray-200"
-                            onError={() => setUrlError(true)}
-                          />
+                            onError={() => setUrlError(true)} preset="thumb" />
                         ) : (
                           <div className="w-14 h-14 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center text-red-400 text-xs text-center leading-tight px-1">
                             Invalid URL
@@ -461,7 +461,7 @@ const AdminTestimonials = () => {
                     {avatarMethod === 'avatar' ? (
                       <img src={BUILT_IN_AVATARS.find(a => a.key === selectedAvatar)?.src || avatar1} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
                     ) : avatarMethod === 'url' && avatarUrl && !urlError ? (
-                      <img src={avatarUrl} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+                      <SmartImage src={avatarUrl} alt="avatar" className="w-10 h-10 rounded-full object-cover" preset="thumb" />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold">
                         {formData.author ? formData.author[0].toUpperCase() : '?'}
@@ -522,11 +522,10 @@ const AdminTestimonials = () => {
                   className="p-5 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex gap-4 items-start">
-                    <img
+                    <SmartImage
                       src={resolveAvatar(t)}
                       alt={t.author}
-                      className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-                    />
+                      className="w-12 h-12 rounded-full object-cover flex-shrink-0" preset="thumb" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-semibold text-sm text-gray-900 truncate">"{t.title}"</h3>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { subscribeToActiveBanners, Banner } from "@/services/bannerService";
 import { useNavigate } from "react-router-dom";
+import { SmartImage } from "@/components/ui/smart-image";
 
 /**
  * Seamless looping hero carousel.
@@ -222,14 +223,11 @@ const HeroBanner = () => {
               >
                 <picture>
                   <source media="(max-width: 1023px)" srcSet={banner.mobileImageUrl || banner.imageUrl} />
-                  <img
+                  <SmartImage
                     src={banner.imageUrl}
                     alt={`Hero banner ${((idx % banners.length) || 0) + 1}`}
                     className="absolute inset-0 h-full w-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                    draggable={false}
-                  />
+                    draggable={false} preset="hero" />
                 </picture>
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/15 to-black/20 lg:from-black/55 lg:via-black/10 lg:to-black/25" />
                 <div className="absolute inset-x-0 bottom-0 top-auto p-5 lg:p-8">

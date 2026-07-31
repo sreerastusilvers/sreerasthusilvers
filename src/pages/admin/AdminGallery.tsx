@@ -13,6 +13,7 @@ import {
   GalleryImage,
 } from '@/services/galleryService';
 import { toast } from 'sonner';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const emptyForm = {
   alt: '',
@@ -218,14 +219,13 @@ const AdminGallery = () => {
                     />
                     {imageUrl && (
                       <div className="mt-3">
-                        <img
+                        <SmartImage
                           src={imageUrl}
                           alt="Preview"
                           className="w-32 h-32 rounded-lg object-cover border-2 border-gray-200"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
-                          }}
-                        />
+                          }} preset="card" />
                       </div>
                     )}
                   </div>
@@ -352,11 +352,10 @@ const AdminGallery = () => {
                   className="relative group"
                 >
                   <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200">
-                    <img
+                    <SmartImage
                       src={img.imageUrl}
                       alt={img.alt}
-                      className="w-full h-full object-cover"
-                    />
+                      className="w-full h-full object-cover" preset="tile" />
                     {img.status === 'inactive' && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <span className="text-xs font-semibold text-white bg-red-500 px-2 py-1 rounded">Inactive</span>

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getAllProducts } from "@/services/productService";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const FeaturedDeals = () => {
   const navigate = useNavigate();
@@ -97,11 +98,10 @@ const FeaturedDeals = () => {
                   onClick={() => navigate(`/product/${product.id}`)}
                 >
                   <div className="aspect-[3/4] relative overflow-hidden bg-muted rounded-lg mb-3">
-                    <img
+                    <SmartImage
                       src={product.image}
                       alt={product.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" preset="card" />
                     {product.oldPrice && (
                       <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold">
                         {Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}% OFF

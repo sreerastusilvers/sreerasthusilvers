@@ -48,6 +48,7 @@ import {
 } from '@/services/categoryService';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // YouTube helpers
 function extractYouTubeId(url: string): string | null {
@@ -676,7 +677,7 @@ const ProductForm = () => {
                           className="relative group cursor-move"
                         >
                           <div className="w-full aspect-square bg-gray-200 rounded-lg overflow-hidden ring-1 ring-gray-200">
-                            <img src={url} alt={'Product ' + (index + 1)} className={'w-full h-full object-cover ' + (thumbnail === url ? 'ring-2 ring-amber-500' : '')} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                            <SmartImage src={url} alt={'Product ' + (index + 1)} className={'w-full h-full object-cover ' + (thumbnail === url ? 'ring-2 ring-amber-500' : '')} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} preset="card" />
                           </div>
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
                             <button type="button" onClick={() => setThumbnail(url)} className="p-1.5 bg-amber-600 hover:bg-amber-700 rounded text-white" title="Set as thumbnail"><ImageIcon className="h-4 w-4" /></button>

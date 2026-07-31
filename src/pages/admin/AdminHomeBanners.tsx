@@ -23,6 +23,7 @@ import {
   type HomeBanner,
   type HomeBannerSlot,
 } from '@/services/homeContentService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface SlotConfig {
   slot: HomeBannerSlot;
@@ -156,11 +157,10 @@ const SlotCard = ({ config, banner }: { config: SlotConfig; banner?: HomeBanner 
             className="relative aspect-[16/10] rounded-xl border-2 border-dashed border-amber-200 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/10 grid place-items-center cursor-pointer hover:border-amber-400 transition-colors overflow-hidden"
           >
             {draft.imageUrl ? (
-              <img
+              <SmartImage
                 src={draft.imageUrl}
                 alt="Banner preview"
-                className="absolute inset-0 w-full h-full object-cover"
-              />
+                className="absolute inset-0 w-full h-full object-cover" preset="card" />
             ) : (
               <div className="text-center text-gray-400">
                 <ImageIcon className="w-8 h-8 mx-auto mb-2" />

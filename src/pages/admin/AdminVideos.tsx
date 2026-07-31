@@ -36,6 +36,7 @@ import {
   youtubeThumb,
   type HomeVideo,
 } from '@/services/homeContentService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const VideoForm = ({
   initial,
@@ -111,7 +112,7 @@ const VideoForm = ({
         />
         {videoId && (
           <div className="mt-3 aspect-video rounded-lg overflow-hidden border">
-            <img src={thumb} alt="Preview" className="w-full h-full object-cover" />
+            <SmartImage src={thumb} alt="Preview" className="w-full h-full object-cover" preset="tile" />
           </div>
         )}
       </div>

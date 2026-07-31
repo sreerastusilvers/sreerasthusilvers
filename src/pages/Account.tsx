@@ -59,6 +59,7 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const Account = () => {
   const { user, loading, logout, updateUserProfile } = useAuth();
@@ -1245,14 +1246,12 @@ const AccountPage = () => {
               >
                 <div className="flex-shrink-0">
                   {avatarUrl ? (
-                    <img
+                    <SmartImage
                       key={`avatar-${avatarUrl}-${user?.uid}`}
                       src={avatarUrl}
                       alt="Profile"
                       className="w-[90px] h-[90px] rounded-full object-cover border-2 border-white shadow-sm"
-                      referrerPolicy="no-referrer"
-                      loading="eager"
-                    />
+                      referrerPolicy="no-referrer" preset="thumb" />
                   ) : (
                     <img src={shoppingBags} alt="Shopping bags" className="w-[100px] h-[100px] object-contain" />
                   )}
@@ -1418,7 +1417,7 @@ const AccountPage = () => {
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="flex gap-3 bg-muted rounded-xl p-3">
                         <div className="w-16 h-16 bg-card rounded-lg flex-shrink-0 overflow-hidden border border-border">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h6 className="text-sm font-semibold text-foreground mb-1">{item.name}</h6>
@@ -1637,7 +1636,7 @@ const AccountPage = () => {
                             {order.items.map((item, idx) => (
                               <div key={idx} className="flex gap-4">
                                 <div className="w-20 h-20 bg-card rounded-lg flex-shrink-0 overflow-hidden">
-                                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                  <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-base font-semibold text-foreground mb-1">{item.name}</h4>

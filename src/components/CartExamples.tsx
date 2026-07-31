@@ -11,6 +11,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import { ShoppingBag, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // ===================================
 // EXAMPLE 1: Simple Add to Cart Button
@@ -176,11 +177,10 @@ export const CartItemsList = () => {
     <div className="space-y-4">
       {items.map((item) => (
         <div key={item.id} className="flex gap-4 border-b border-border pb-4">
-          <img
+          <SmartImage
             src={item.image}
             alt={item.name}
-            className="w-16 h-16 object-cover rounded-lg"
-          />
+            className="w-16 h-16 object-cover rounded-lg" preset="thumb" />
           <div className="flex-1">
             <h4 className="font-medium">{item.name}</h4>
             <p className="text-sm text-muted-foreground">{item.category}</p>
@@ -260,11 +260,10 @@ export const ProductCardWithCart = ({ product }) => {
 
   return (
     <div className="border border-border rounded-lg p-4 hover:shadow-lg transition-shadow">
-      <img
+      <SmartImage
         src={product.image}
         alt={product.title}
-        className="w-full aspect-square object-cover rounded-lg mb-4"
-      />
+        className="w-full aspect-square object-cover rounded-lg mb-4" preset="card" />
       
       <h3 className="font-semibold text-lg mb-2">{product.title}</h3>
       <p className="text-sm text-muted-foreground mb-3">{product.category}</p>

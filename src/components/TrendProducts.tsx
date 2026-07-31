@@ -2,13 +2,15 @@ import { useRef, useEffect, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { ChevronLeft, ChevronRight, Package, ShoppingCart, Heart } from "lucide-react";
 import ProductQuickView from "./ProductQuickView";
-import { subscribeToNewArrivals } from "@/services/productService";
+
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useToast } from "@/hooks/use-toast";
 import useAutoScroll from "@/hooks/useAutoScroll";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProductsByFlag } from '@/services/productCache';
 
 const TrendProducts = () => {
   const ref = useRef(null);
@@ -48,7 +50,7 @@ const TrendProducts = () => {
 
   // Real-time listener for new arrivals
   useEffect(() => {
-    const unsubscribe = subscribeToNewArrivals(
+    const unsubscribe = subscribeToActiveProductsByFlag('isNewArrival', 
       (fetchedProducts) => {
         const uiProducts = adaptFirebaseArrayToUI(fetchedProducts);
         setProducts(uiProducts);
@@ -197,11 +199,10 @@ const TrendProducts = () => {
                     onClick={() => navigate(`/product/${displayProducts[0].id}`)}
                     className="relative mb-3 cursor-pointer overflow-hidden rounded-[26px] aspect-[16/10] shadow-[0_20px_44px_-26px_rgba(0,0,0,0.5)]"
                   >
-                    <img
+                    <SmartImage
                       src={displayProducts[0].image}
                       alt={displayProducts[0].title}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
+                      className="absolute inset-0 w-full h-full object-cover" preset="detail" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                     <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/25 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-white">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
@@ -250,11 +251,10 @@ const TrendProducts = () => {
                     >
                       <div className="flex h-full flex-col overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-[0_12px_28px_-22px_rgba(114,77,31,0.4)] dark:border-[#d4af37]/15 dark:shadow-[0_14px_28px_-20px_rgba(0,0,0,0.7)]">
                         <div className="aspect-square overflow-hidden bg-secondary/50 dark:bg-muted relative">
-                          <img
+                          <SmartImage
                             src={product.image}
                             alt={product.title}
-                            className="w-full h-full object-cover"
-                          />
+                            className="w-full h-full object-cover" preset="card" />
                           <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.18em] dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/70">
                             New
                           </span>
@@ -331,11 +331,10 @@ const TrendProducts = () => {
                       >
                         <div className="group flex h-full flex-col overflow-hidden rounded-[26px] border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-xl">
                           <div className="relative aspect-square overflow-hidden bg-secondary/50 dark:bg-muted">
-                            <img
+                            <SmartImage
                               src={product.image}
                               alt={product.title}
-                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" preset="card" />
                             <button
                               onClick={(e) => handleWishlistClick(e, product.id, product.title)}
                               className="absolute right-2.5 top-2.5 rounded-full bg-background/95 p-2 shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-md dark:bg-card/95"

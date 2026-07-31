@@ -5,6 +5,7 @@ import avatar1 from "@/assets/avatars/avatar-1.jpg";
 import avatar2 from "@/assets/avatars/avatar-2.jpg";
 import avatar3 from "@/assets/avatars/avatar-3.jpg";
 import { subscribeToTestimonials, Testimonial } from "@/services/testimonialService";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const AVATAR_MAP: Record<string, string> = {
   "avatar-1": avatar1,
@@ -57,11 +58,10 @@ const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
       {testimonial.quote}
     </p>
     <div className="flex items-center gap-3 pt-4 border-t border-[#d4af37]/10">
-      <img
+      <SmartImage
         src={resolveAvatar(testimonial)}
         alt={testimonial.author}
-        className="w-11 h-11 rounded-full object-cover ring-2 ring-[#d4af37]/20"
-      />
+        className="w-11 h-11 rounded-full object-cover ring-2 ring-[#d4af37]/20" preset="thumb" />
       <div>
         <p className="font-medium text-sm text-foreground">{testimonial.author}</p>
         <p className="text-xs text-muted-foreground">{testimonial.role}</p>

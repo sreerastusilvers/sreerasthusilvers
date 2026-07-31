@@ -4,6 +4,7 @@ import { Search, Mic, ArrowLeft, X, Clock, TrendingUp, ShoppingBag } from "lucid
 import { useNavigate } from "react-router-dom";
 import { getAllProducts } from "@/services/productService";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
+import { SmartImage } from "@/components/ui/smart-image";
 
 // Speech Recognition types
 interface SpeechRecognitionEvent extends Event {
@@ -305,7 +306,7 @@ const MobileSearch = () => {
                 >
                   <div className="w-11 h-11 flex-shrink-0 bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden">
                     {product.image ? (
-                      <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
+                      <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover" preset="card" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <ShoppingBag className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
@@ -409,7 +410,7 @@ const MobileSearch = () => {
                     >
                       <div className="aspect-square bg-gray-100 dark:bg-zinc-800">
                         {product.image ? (
-                          <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
+                          <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover" preset="card" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <ShoppingBag className="w-6 h-6 text-gray-300 dark:text-zinc-700" />

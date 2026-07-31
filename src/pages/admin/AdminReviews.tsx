@@ -20,6 +20,7 @@ import {
   List,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const AdminReviews = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -230,7 +231,7 @@ const AdminReviews = () => {
                   {review.images?.length > 0 && (
                     <div className="flex gap-2 mb-3">
                       {review.images.slice(0, 3).map((img, i) => (
-                        <img key={i} src={img} alt="" className="w-14 h-14 object-cover rounded-lg" />
+                        <SmartImage key={i} src={img} alt="" className="w-14 h-14 object-cover rounded-lg" preset="tile" />
                       ))}
                     </div>
                   )}
@@ -392,7 +393,7 @@ const AdminReviews = () => {
                 {review.images?.length > 0 && (
                   <div className="flex gap-2 mb-3">
                     {review.images.slice(0, 3).map((img, i) => (
-                      <img key={i} src={img} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                      <SmartImage key={i} src={img} alt="" className="w-16 h-16 object-cover rounded-lg" preset="tile" />
                     ))}
                   </div>
                 )}
@@ -492,12 +493,11 @@ const AdminReviews = () => {
                   <p className="text-sm text-gray-500 mb-2">Photos ({selectedReview.images.length})</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {selectedReview.images.map((img, i) => (
-                      <img
+                      <SmartImage
                         key={i}
                         src={img}
                         alt={`Review photo ${i + 1}`}
-                        className="w-full aspect-square object-cover rounded-lg border"
-                      />
+                        className="w-full aspect-square object-cover rounded-lg border" preset="tile" />
                     ))}
                   </div>
                 </div>

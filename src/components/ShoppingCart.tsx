@@ -8,6 +8,7 @@ import loginCartImage from '@/assets/login-cart.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const ShoppingCart = () => {
   const { items, isCartOpen, closeCart, updateQuantity, removeFromCart, subtotal, totalItems, loading } = useCart();
@@ -325,12 +326,10 @@ const ShoppingCart = () => {
                         >
                           {/* Product Image */}
                           <div className="relative w-[88px] h-[88px] bg-muted rounded-xl overflow-hidden flex-shrink-0 ring-1 ring-border">
-                            <img
+                            <SmartImage
                               src={item.image}
                               alt={item.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                              loading="lazy"
-                            />
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" preset="thumb" />
                           </div>
 
                           {/* Product Details */}

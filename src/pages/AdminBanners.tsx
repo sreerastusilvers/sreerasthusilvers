@@ -13,6 +13,7 @@ import {
   Banner 
 } from '@/services/bannerService';
 import { toast } from 'sonner';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const AdminBanners = () => {
   const navigate = useNavigate();
@@ -338,18 +339,16 @@ const AdminBanners = () => {
                     {/* Image Preview */}
                     <div className="flex flex-shrink-0 gap-3">
                       <div className="w-40 h-24 rounded-lg overflow-hidden bg-gray-100">
-                        <img
+                        <SmartImage
                           src={banner.imageUrl}
                           alt="Desktop banner preview"
-                          className="w-full h-full object-cover"
-                        />
+                          className="w-full h-full object-cover" preset="hero" />
                       </div>
                       <div className="w-20 h-24 rounded-lg overflow-hidden bg-gray-100 border border-dashed border-gray-200">
-                        <img
+                        <SmartImage
                           src={banner.mobileImageUrl || banner.imageUrl}
                           alt="Mobile banner preview"
-                          className="w-full h-full object-cover"
-                        />
+                          className="w-full h-full object-cover" preset="hero" />
                       </div>
                     </div>
 

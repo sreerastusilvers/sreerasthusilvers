@@ -10,6 +10,7 @@ import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import MobileHeader from "./MobileHeader";
 import ThemeToggle from "./ThemeToggle";
 import SilverRateWidget from "./SilverRateWidget";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const Header = () => {
   const lightModeLogo = "/black_logo.png";
@@ -169,11 +170,10 @@ const Header = () => {
                           >
                             <div className="w-12 h-12 flex-shrink-0 bg-muted rounded overflow-hidden">
                               {product.image ? (
-                                <img
+                                <SmartImage
                                   src={product.image}
                                   alt={product.title}
-                                  className="w-full h-full object-cover"
-                                />
+                                  className="w-full h-full object-cover" preset="card" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
                                   <ShoppingBag className="w-6 h-6 text-muted-foreground" />
@@ -252,13 +252,12 @@ const Header = () => {
               >
                 {user ? (
                   userProfile?.avatar || user.photoURL ? (
-                    <img 
+                    <SmartImage 
                       key={userProfile?.avatar || user.photoURL}
                       src={userProfile?.avatar || user.photoURL} 
                       alt="Profile" 
                       className="w-[22px] h-[22px] rounded-full object-cover ring-1 ring-border"
-                      referrerPolicy="no-referrer"
-                    />
+                      referrerPolicy="no-referrer" preset="thumb" />
                   ) : (
                     <div className="w-[22px] h-[22px] rounded-full bg-[#832729] flex items-center justify-center">
                       <span className="text-white font-semibold text-[9px]">

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { getAllProducts, Product } from '@/services/productService';
 import logo from '@/assets/dark.png';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // Define main categories with their subcategories
 const mainCategories = [
@@ -173,11 +174,10 @@ const MobileCategories = () => {
                   ? 'border-red-500'
                   : 'border-gray-200'
               }`}>
-                <img 
+                <SmartImage 
                   src={category.image} 
                   alt={category.name}
-                  className="w-full h-full object-cover"
-                />
+                  className="w-full h-full object-cover" preset="card" />
               </div>
               <span className={`text-[10px] text-center leading-tight font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-full ${
                 selectedCategory.id === category.id
@@ -207,11 +207,10 @@ const MobileCategories = () => {
                 className="flex flex-col items-center"
               >
                 <div className="w-full aspect-[4/5] rounded-xl overflow-hidden bg-gray-100 dark:bg-zinc-800 mb-2 shadow-sm">
-                  <img
+                  <SmartImage
                     src={getSubcategoryImage(subcategory.name, subcategory.image)}
                     alt={subcategory.name}
-                    className="w-full h-full object-cover"
-                  />
+                    className="w-full h-full object-cover" preset="card" />
                 </div>
                 <span className="text-xs text-gray-700 dark:text-zinc-300 text-center font-medium truncate w-full" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   {subcategory.name.length > 12 ? subcategory.name.slice(0, 12) + '...' : subcategory.name}

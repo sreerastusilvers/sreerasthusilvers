@@ -20,6 +20,8 @@ import CategoryIconNav from "@/components/CategoryIconNav";
 import VideoCallRequestModal from "@/components/VideoCallRequestModal";
 import ProductCard from "@/components/ProductCard";
 import { Video } from "lucide-react";
+import { SmartImage } from "@/components/ui/smart-image";
+import { cldUrl } from "@/lib/cloudinaryUrl";
 
 const ProductDetail = () => {
   const { productId } = useParams();
@@ -597,21 +599,26 @@ const ProductDetail = () => {
                           </>
                         ) : (
                           <>
-                            {/* Desktop image with zoom */}
-                            <img
+                            {/* Desktop image with zoom - 2x scale needs the retina
+                                variant, which the detail srcset already tops out at */}
+                            <SmartImage
                               src={allMedia[selectedImage]?.src || product.image}
                               alt={product.alt}
                               className="w-full h-full object-cover transition-transform duration-200 ease-out hidden md:block"
+                              preset="detail"
+                              priority
                               style={{
                                 transform: isZooming ? 'scale(2)' : 'scale(1)',
                                 transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
                               }}
                             />
                             {/* Mobile image (no zoom) */}
-                            <img
+                            <SmartImage
                               src={allMedia[selectedImage]?.src || product.image}
                               alt={product.alt}
                               className="w-full h-full object-cover md:hidden"
+                              preset="detail"
+                              priority
                             />
                           </>
                         )}
@@ -665,10 +672,11 @@ const ProductDetail = () => {
                             : "border-transparent hover:border-primary/50"
                         }`}
                       >
-                        <img
+                        <SmartImage
                           src={item.thumb}
                           alt={`${product.title} ${item.type === 'video' ? 'video' : 'view'} ${index + 1}`}
                           className="w-full h-full object-contain p-1"
+                          preset="tile"
                         />
                         {item.type === 'video' && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20">
@@ -1057,7 +1065,7 @@ const ProductDetail = () => {
                                     onClick={() => setReviewLightbox({ images: review.images, index: i })}
                                     className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-primary"
                                   >
-                                    <img src={img} alt={`Review ${i + 1}`} className="w-full h-full object-cover" />
+                                    <SmartImage src={img} alt={`Review ${i + 1}`} className="w-full h-full object-cover" preset="tile" />
                                   </button>
                                 ))}
                               </div>
@@ -1219,7 +1227,7 @@ const ProductDetail = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2 }}
-                src={allMedia[selectedImage]?.src || product?.image}
+                src={cldUrl(allMedia[selectedImage]?.src || product?.image, 'zoom')}
                 alt={product?.alt}
                 className="max-w-full max-h-full object-contain p-4"
               />
@@ -1295,10 +1303,11 @@ const ProductDetail = () => {
             </button>
           )}
           {/* Image */}
-          <img
+          <SmartImage
             src={reviewLightbox.images[reviewLightbox.index]}
             alt="Review image"
             className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
+            preset="zoom"
             onClick={(e) => e.stopPropagation()}
           />
           {/* Next */}

@@ -16,13 +16,71 @@ export interface UploadProgress {
   percentage: number;
 }
 
+/**
+ * Longest edge we keep for an uploaded master, in pixels.
+ *
+ * The largest size we ever deliver is 1600px (the `zoom` preset), so storing a
+ * 4000px original just burns storage credits - a 3MB DSLR frame costs ~0.003
+ * credits/month to store and buys nothing. 2000px leaves headroom above the
+ * delivery ceiling without paying for pixels no customer will see.
+ */
+const MAX_UPLOAD_EDGE = 2000;
+const RECOMPRESS_QUALITY = 0.85;
+
+/**
+ * Downscale an oversized image in the browser before upload. Returns the
+ * original file untouched for videos, non-raster formats, or images already
+ * within the cap.
+ */
+const downscaleImage = async (file: File): Promise<File> => {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return file; // unsupported/corrupt - let Cloudinary decide
+  }
+
+  const longest = Math.max(bitmap.width, bitmap.height);
+  if (longest <= MAX_UPLOAD_EDGE) {
+    bitmap.close();
+    return file;
+  }
+
+  const scale = MAX_UPLOAD_EDGE / longest;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    bitmap.close();
+    return file;
+  }
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', RECOMPRESS_QUALITY),
+  );
+  if (!blob || blob.size >= file.size) return file;
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  });
+};
+
 // Upload a single file to Cloudinary
 export const uploadToCloudinary = async (
   file: File,
   onProgress?: (progress: UploadProgress) => void
 ): Promise<CloudinaryUploadResult> => {
+  const upload = await downscaleImage(file);
+
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', upload);
   formData.append('upload_preset', cloudinaryConfig.uploadPreset);
 
   return new Promise((resolve, reject) => {
@@ -108,39 +166,5 @@ export const validateFile = (file: File, options?: {
   return { valid: true };
 };
 
-// Get optimized URL with transformations
-export const getTransformedUrl = (
-  url: string,
-  transformations: {
-    width?: number;
-    height?: number;
-    crop?: 'fill' | 'fit' | 'scale' | 'limit';
-    quality?: 'auto' | 'auto:low' | 'auto:eco' | 'auto:good' | 'auto:best';
-    format?: 'auto' | 'webp' | 'jpg' | 'png';
-  }
-): string => {
-  if (!url || !url.includes('cloudinary')) return url;
-  
-  const { width, height, crop = 'limit', quality = 'auto', format = 'auto' } = transformations;
-  
-  const transforms = [
-    `f_${format}`,
-    `q_${quality}`,
-    `c_${crop}`,
-    width && `w_${width}`,
-    height && `h_${height}`,
-  ].filter(Boolean).join(',');
-  
-  return url.replace('/upload/', `/upload/${transforms}/`);
-};
-
-// Generate thumbnail URL
-export const getThumbnailUrl = (url: string, size = 200): string => {
-  return getTransformedUrl(url, {
-    width: size,
-    height: size,
-    crop: 'fill',
-    quality: 'auto',
-    format: 'auto',
-  });
-};
+// NOTE: delivery-URL building lives in src/lib/cloudinaryUrl.ts. Two unused
+// copies of that logic used to live here; render through <SmartImage> instead.

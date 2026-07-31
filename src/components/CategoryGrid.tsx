@@ -5,6 +5,7 @@ import unique from "@/assets/categories/unique.jpg";
 import tide from "@/assets/categories/tide.jpg";
 import organic from "@/assets/categories/organic.jpg";
 import icons from "@/assets/categories/icons.jpg";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const categories = [
   { id: 1, name: "One-Of-A-Kinds", subtitle: "BRACELETS", image: unique, link: "/shop/bracelets" },
@@ -35,12 +36,10 @@ const CategoryGrid = () => {
               >
                 {/* Background Image */}
                 <div className="absolute inset-0 pointer-events-none">
-                  <img
+                  <SmartImage
                     src={category.image}
                     alt={category.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    loading="lazy"
-                  />
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" preset="card" />
                   <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 via-foreground/20 to-transparent transition-colors group-hover:from-foreground/80" />
                 </div>
 

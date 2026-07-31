@@ -40,6 +40,7 @@ import {
 } from '@/services/orderService';
 import { subscribeToDeliveryBoys, DeliveryBoy } from '@/services/deliveryBoyService';
 import { toast } from 'sonner';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const AdminOrders = () => {
   const navigate = useNavigate();
@@ -661,7 +662,7 @@ const AdminOrders = () => {
                   <div className="space-y-2">
                     {selectedOrder.items.slice(0, 2).map((item, idx) => (
                       <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-lg p-2">
-                        <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover" />
+                        <SmartImage src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover" preset="thumb" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
                           <p className="text-xs text-gray-500">Qty: {item.quantity} × ₹{item.price.toFixed(2)}</p>
@@ -1139,7 +1140,7 @@ const AdminOrders = () => {
                   {selectedOrder.items.map((item, idx) => (
                     <div key={idx} className="flex gap-4 bg-gray-50 rounded-lg p-4">
                       <div className="w-20 h-20 bg-white rounded-lg flex-shrink-0 overflow-hidden">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                       </div>
                       <div className="flex-1">
                         <h4 className="text-sm font-semibold text-gray-900 mb-1">{item.name}</h4>

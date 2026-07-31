@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const About = () => {
   return (
@@ -174,11 +175,10 @@ const About = () => {
             ].map((item, index) => (
               <Card key={index} className="group cursor-pointer border-0 shadow-lg hover:shadow-xl transition-shadow">
                 <div className="relative overflow-hidden rounded-t-lg">
-                  <img
+                  <SmartImage
                     src={item.image}
                     alt={item.title}
-                    className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                    className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-300" preset="thumb" />
                   <div className="absolute top-4 left-4 bg-background/90 dark:bg-card/90 px-3 py-1 rounded text-sm font-medium">
                     {item.subtitle}
                   </div>
@@ -256,11 +256,10 @@ const About = () => {
             ].map((member, index) => (
               <div key={index} className="text-center group">
                 <div className="relative mb-6 overflow-hidden rounded-2xl">
-                  <img
+                  <SmartImage
                     src={member.image}
                     alt={member.name}
-                    className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                    className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-300" preset="card" />
                 </div>
                 <h3 className="text-xl font-medium mb-2">{member.name}</h3>
                 <p className="text-muted-foreground text-sm">{member.role}</p>

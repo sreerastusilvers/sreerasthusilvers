@@ -40,6 +40,7 @@ import {
   MessageCircle,
   Star,
 } from 'lucide-react';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // Order Status Stepper Component
 const OrderStatusStepper = ({ status, isReturnPickedState = false }: { status: string; isReturnPickedState?: boolean }) => {
@@ -649,11 +650,10 @@ const OrderDetailsPage = () => {
         <div className="rounded-[24px] border border-[#d4af37]/12 bg-white/92 px-4 py-4 shadow-[0_22px_55px_-40px_rgba(0,0,0,0.45)] backdrop-blur dark:border-[#d4af37]/18 dark:bg-zinc-900/92 dark:shadow-[0_22px_55px_-40px_rgba(0,0,0,0.88)]">
           <div className="flex gap-4">
             <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-[#d4af37]/10 bg-gray-50 dark:bg-zinc-900 dark:bg-zinc-800/70">
-              <img 
+              <SmartImage 
                 src={order.items[0]?.image} 
                 alt={order.items[0]?.name} 
-                className="w-full h-full object-cover" 
-              />
+                className="w-full h-full object-cover" preset="thumb" />
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1114,7 +1114,7 @@ const OrderDetailsPage = () => {
                 <>
                   <div className="mb-4 flex items-center gap-3">
                     {order.items[0]?.image && (
-                      <img src={order.items[0].image} alt={order.items[0].name} className="h-10 w-10 rounded-lg object-cover" />
+                      <SmartImage src={order.items[0].image} alt={order.items[0].name} className="h-10 w-10 rounded-lg object-cover" preset="thumb" />
                     )}
                     <p className="text-sm text-gray-600 dark:text-zinc-400">Share your experience with {order.items[0]?.name || 'this product'}</p>
                   </div>
@@ -1501,11 +1501,10 @@ const OrderDetailsPage = () => {
               <div className="mb-4">
                 <div className="flex gap-3">
                   <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0">
-                    <img 
+                    <SmartImage 
                       src={order.items[0]?.image} 
                       alt={order.items[0]?.name}
-                      className="w-full h-full object-cover"
-                    />
+                      className="w-full h-full object-cover" preset="thumb" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1573,7 +1572,7 @@ const OrderDetailsPage = () => {
                         : 'border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-gray-300 dark:border-zinc-700'
                     }`}
                   >
-                    <img src={item.image} alt={item.description} className="w-16 h-16 mb-2 object-contain dark:brightness-75 dark:opacity-80" />
+                    <SmartImage src={item.image} alt={item.description} className="w-16 h-16 mb-2 object-contain dark:brightness-75 dark:opacity-80" preset="thumb" />
                     <span className={`text-xs text-center leading-tight ${
                       returnReason === item.reason ? 'text-gray-900 dark:text-zinc-100 font-medium' : 'text-gray-600 dark:text-zinc-400'
                     }`} style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1648,11 +1647,10 @@ const OrderDetailsPage = () => {
                     <div>
                       <div className="flex gap-3">
                         <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0">
-                          <img 
+                          <SmartImage 
                             src={order.items[0]?.image} 
                             alt={order.items[0]?.name}
-                            className="w-full h-full object-cover"
-                          />
+                            className="w-full h-full object-cover" preset="thumb" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-sm font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2" style={{ fontFamily: "'Poppins', sans-serif" }}>

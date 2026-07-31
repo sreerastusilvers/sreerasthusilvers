@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getAllProducts, deleteProduct, updateProduct, Product } from '@/services/productService';
 import { useToast } from '@/hooks/use-toast';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -220,11 +221,10 @@ const Products = () => {
               onClick={() => navigate(`/admin/products/${product.id}`)}
             >
               <div className="relative aspect-square bg-gray-50">
-                <img
+                <SmartImage
                   src={product.media?.thumbnail || '/placeholder.png'}
                   alt={product.name}
-                  className="w-full h-full object-cover"
-                />
+                  className="w-full h-full object-cover" preset="tile" />
                 <span
                   className={`absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                     product.flags?.isActive
@@ -295,7 +295,7 @@ const Products = () => {
                   <tr key={product.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/products/${product.id}`)}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
-                        <img src={product.media?.thumbnail || '/placeholder.png'} alt={product.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100" />
+                        <SmartImage src={product.media?.thumbnail || '/placeholder.png'} alt={product.name} className="w-12 h-12 rounded-lg object-cover bg-gray-100" preset="tile" />
                         <div>
                           <p className="text-gray-900 font-medium">{product.name}</p>
                           <p className="text-gray-500 text-sm">SKU: {product.inventory?.sku || 'N/A'}</p>

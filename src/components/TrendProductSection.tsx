@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft, Heart, ShoppingCart } from "lucide-react";
-import { subscribeToTrendProducts } from "@/services/productService";
+
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useToast } from "@/hooks/use-toast";
 import useAutoScroll from "@/hooks/useAutoScroll";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProductsByFlag } from '@/services/productCache';
 
 const TrendProductSection = () => {
   const navigate = useNavigate();
@@ -27,7 +29,7 @@ const TrendProductSection = () => {
     canMobileTrendingScroll && products.length > 1 ? [...products, ...products] : products;
 
   useEffect(() => {
-    const unsubscribe = subscribeToTrendProducts((fbProducts) => {
+    const unsubscribe = subscribeToActiveProductsByFlag('isTrendProduct', (fbProducts) => {
       const uiProducts = adaptFirebaseArrayToUI(fbProducts);
       setProducts(uiProducts);
       setLoading(false);
@@ -128,7 +130,7 @@ const TrendProductSection = () => {
               >
                 <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/70 h-full flex flex-col">
                   <div className="aspect-square overflow-hidden bg-muted relative">
-                    <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+                    <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" preset="card" />
                     <button
                       onClick={(e) => handleWishlistClick(e, product.id, product.title)}
                       className="absolute top-2 right-2 p-1.5 bg-background/95 dark:bg-card/95 rounded-full shadow-sm"
@@ -223,11 +225,10 @@ const TrendProductSection = () => {
                       className={`relative cursor-pointer group rounded-2xl overflow-hidden ${layoutClass}`}
                       onClick={() => navigate(`/product/${product.id}`)}
                     >
-                      <img
+                      <SmartImage
                         src={product.image}
                         alt={product.title}
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" preset="card" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                       {/* Trending rank badge */}

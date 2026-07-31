@@ -3,6 +3,7 @@ import { X, Star, Heart, GitCompare, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface Product {
   id: string;
@@ -108,11 +109,10 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
                 <div className="grid grid-cols-1 md:grid-cols-2">
                   {/* Product Image */}
                   <div className="relative bg-muted aspect-square">
-                    <img
+                    <SmartImage
                       src={product.image}
                       alt={product.alt || product.title}
-                      className="w-full h-full object-contain p-6 md:p-10"
-                    />
+                      className="w-full h-full object-contain p-6 md:p-10" preset="card" />
                     {product.discount && (
                       <div className="absolute top-4 left-4 bg-destructive text-destructive-foreground text-xs font-bold px-3 py-1 rounded-full">
                         {product.discount}% OFF

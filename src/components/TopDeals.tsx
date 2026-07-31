@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft, Heart, ShoppingCart } from "lucide-react";
-import { subscribeToTopDeals } from "@/services/productService";
+
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useToast } from "@/hooks/use-toast";
 import useAutoScroll from "@/hooks/useAutoScroll";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProductsByFlag } from '@/services/productCache';
 
 const TopDeals = () => {
   const navigate = useNavigate();
@@ -72,7 +74,7 @@ const TopDeals = () => {
   };
 
   useEffect(() => {
-    const unsubscribe = subscribeToTopDeals((fbProducts) => {
+    const unsubscribe = subscribeToActiveProductsByFlag('isTopDeal', (fbProducts) => {
       const uiProducts = adaptFirebaseArrayToUI(fbProducts);
       setProducts(uiProducts);
       setLoading(false);
@@ -177,7 +179,7 @@ const TopDeals = () => {
               >
                 <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/70">
                   <div className="aspect-square overflow-hidden bg-muted relative">
-                    <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+                    <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" preset="card" />
                     <button
                       onClick={(e) => handleWishlistClick(e, product.id, product.title)}
                       className="absolute top-2 right-2 p-1.5 bg-background/95 dark:bg-card/95 rounded-full shadow-sm"
@@ -240,11 +242,10 @@ const TopDeals = () => {
               className="w-[38%] relative rounded-3xl overflow-hidden cursor-pointer group"
               onClick={() => navigate(`/product/${featuredProduct.id}`)}
             >
-              <img 
+              <SmartImage 
                 src={featuredProduct.image} 
                 alt={featuredProduct.title}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" preset="detail" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
               <div className="relative z-10 h-full flex flex-col justify-end p-8">
                 <span className="text-[10px] uppercase tracking-[0.25em] text-white/60 mb-2 font-light">Featured Collection</span>
@@ -285,7 +286,7 @@ const TopDeals = () => {
                     onClick={() => navigate(`/product/${product.id}`)}
                   >
                     <div className="aspect-square rounded-xl overflow-hidden bg-muted mb-2.5 relative">
-                      <img src={product.image} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" preset="card" />
                       <button
                         onClick={(e) => handleWishlistClick(e, product.id, product.title)}
                         className="absolute top-1.5 right-1.5 p-1 bg-background/95 dark:bg-card/95 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200"

@@ -70,6 +70,7 @@ import {
   toggleDeliveryBoyStatus,
   getDeliveryBoyStats,
 } from '@/services/deliveryBoyService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const AdminDeliveryBoys = () => {
   const navigate = useNavigate();
@@ -525,11 +526,10 @@ const AdminDeliveryBoys = () => {
               {/* Top: avatar + name + status pill */}
               <div className="flex items-start gap-3">
                 {deliveryBoy.profileImage ? (
-                  <img
+                  <SmartImage
                     src={deliveryBoy.profileImage}
                     alt={deliveryBoy.name}
-                    className="h-14 w-14 rounded-full object-cover ring-2 ring-[#d4af37]/40 shadow-sm"
-                  />
+                    className="h-14 w-14 rounded-full object-cover ring-2 ring-[#d4af37]/40 shadow-sm" preset="thumb" />
                 ) : (
                   <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#d4af37]/20 to-[#832729]/10 dark:from-amber-900/30 dark:to-amber-800/20 flex items-center justify-center ring-2 ring-[#d4af37]/40">
                     <span className="text-[#832729] dark:text-amber-300 font-semibold text-lg">
@@ -660,7 +660,7 @@ const AdminDeliveryBoys = () => {
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           {deliveryBoy.profileImage ? (
-                            <img src={deliveryBoy.profileImage} alt={deliveryBoy.name} className="h-10 w-10 rounded-full object-cover" />
+                            <SmartImage src={deliveryBoy.profileImage} alt={deliveryBoy.name} className="h-10 w-10 rounded-full object-cover" preset="thumb" />
                           ) : (
                             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                               <span className="text-blue-600 dark:text-blue-300 font-semibold text-sm">{deliveryBoy.name.charAt(0).toUpperCase()}</span>
@@ -979,7 +979,7 @@ const AdminDeliveryBoys = () => {
                 {/* Profile Info */}
                 <div className="px-6 py-5 flex items-center gap-4 border-b border-gray-100">
                   {profileDeliveryBoy.profileImage ? (
-                    <img src={profileDeliveryBoy.profileImage} alt={profileDeliveryBoy.name} className="h-16 w-16 rounded-full object-cover" />
+                    <SmartImage src={profileDeliveryBoy.profileImage} alt={profileDeliveryBoy.name} className="h-16 w-16 rounded-full object-cover" preset="thumb" />
                   ) : (
                     <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
                       <span className="text-blue-600 text-xl font-bold">{profileDeliveryBoy.name.charAt(0).toUpperCase()}</span>

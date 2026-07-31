@@ -12,6 +12,7 @@ import { useWishlist } from "@/hooks/useWishlist";
 import { getProduct } from "@/services/productService";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import { useAuth } from "@/contexts/AuthContext";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const Wishlist = () => {
   const navigate = useNavigate();
@@ -238,11 +239,10 @@ const Wishlist = () => {
                         onClick={() => handleProductClick(product.id)}
                       >
                         {product.image ? (
-                          <img
+                          <SmartImage
                             src={product.image}
                             alt={product.title}
-                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
-                          />
+                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500" preset="card" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-muted">
                             <ShoppingBag className="w-16 h-16 text-muted-foreground/30" />
@@ -451,11 +451,10 @@ const Wishlist = () => {
                       onClick={() => handleProductClick(product.id)}
                     >
                       {product.image ? (
-                        <img
+                        <SmartImage
                           src={product.image}
                           alt={product.title}
-                          className="w-full h-full object-cover"
-                        />
+                          className="w-full h-full object-cover" preset="card" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <ShoppingBag className="w-12 h-12 text-gray-300" />

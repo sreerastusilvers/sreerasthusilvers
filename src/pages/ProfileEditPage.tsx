@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // Helper function to create image from cropped area
 const createImage = (url: string): Promise<HTMLImageElement> =>
@@ -266,13 +267,12 @@ const ProfileEditPage = () => {
           <div className="flex flex-col items-center -mt-14 relative z-10">
             <div className="relative mb-2">
               {avatarUrl ? (
-                <img
+                <SmartImage
                   key={avatarUrl}
                   src={avatarUrl}
                   alt="Profile"
                   className="w-28 h-28 rounded-full object-cover border-4 border-white dark:border-zinc-800 shadow-lg bg-white dark:bg-zinc-900"
-                  referrerPolicy="no-referrer"
-                />
+                  referrerPolicy="no-referrer" preset="thumb" />
               ) : (
                 <div className="w-28 h-28 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700 flex items-center justify-center border-4 border-white dark:border-zinc-800 shadow-lg">
                   <span className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-3xl font-bold">{initials}</span>

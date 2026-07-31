@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { subscribeToShowcases, Showcase } from "@/services/showcaseService";
 import { Loader2 } from "lucide-react";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const CategoryShowcase = () => {
   const [showcases, setShowcases] = useState<Showcase[]>([]);
@@ -76,11 +77,10 @@ const CategoryShowcase = () => {
                   onClick={() => handleCardClick(showcase.id!)}
                 >
                   <div className={`relative h-full ${isFirst ? 'min-h-[360px] md:min-h-[420px]' : 'min-h-[220px]'}`}>
-                    <img
+                    <SmartImage
                       src={showcase.imageUrl}
                       alt={showcase.title}
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 lg:group-hover:scale-105"
-                    />
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 lg:group-hover:scale-105" preset="hero" />
                     
                     <div className={`absolute inset-0 bg-gradient-to-t from-black/75 via-black/18 to-transparent transition-all duration-300 lg:group-hover:from-black/82`} />
                     

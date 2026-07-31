@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Plus, Loader2 } from "lucide-react";
 import { subscribeToGalleryImages, GalleryImage } from "@/services/galleryService";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const InstagramGallery = () => {
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -51,11 +52,10 @@ const InstagramGallery = () => {
               transition={{ duration: 0.4, delay: index * 0.08 }}
               className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer"
             >
-              <img
+              <SmartImage
                 src={image.imageUrl}
                 alt={image.alt}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" preset="card" />
               {/* Hover Overlay */}
               <div className="absolute inset-0 bg-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                 <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">

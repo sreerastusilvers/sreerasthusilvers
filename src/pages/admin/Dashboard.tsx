@@ -18,6 +18,7 @@ import { getAllOrders, Order } from '@/services/orderService';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { toast } from 'sonner';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface StatCard {
   title: string;
@@ -261,11 +262,10 @@ const Dashboard = () => {
               <div className="space-y-3">
                 {recentProducts.map((product) => (
                   <div key={product.id} className="flex items-center gap-3">
-                    <img
+                    <SmartImage
                       src={product.media?.thumbnail || '/placeholder.png'}
                       alt={product.name}
-                      className="w-10 h-10 rounded-lg object-cover bg-gray-100"
-                    />
+                      className="w-10 h-10 rounded-lg object-cover bg-gray-100" preset="tile" />
                     <div className="flex-1 min-w-0">
                       <p className="text-gray-900 text-sm font-medium truncate">{product.name}</p>
                       <p className="text-gray-500 text-xs">{product.category}</p>

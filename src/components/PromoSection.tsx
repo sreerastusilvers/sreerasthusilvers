@@ -5,6 +5,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import useAutoScroll from "@/hooks/useAutoScroll";
 import { DEFAULT_HOME_COLLECTIONS } from "@/data/defaultHomeCollections";
 import { subscribeHomeCollections, HomeCollection } from "@/services/homeContentService";
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface CollectionCard {
   eyebrow: string;
@@ -129,12 +130,10 @@ const PromoSection = () => {
                 transition={{ duration: 0.55, delay: Math.min(idx * 0.06, 0.4) }}
                 className="group relative flex-shrink-0 w-[78vw] sm:w-[58vw] md:w-[420px] lg:w-[460px] aspect-[4/5] md:aspect-[3/4] rounded-[28px] overflow-hidden border border-white/40 dark:border-white/5 shadow-[0_24px_60px_-30px_rgba(60,30,10,0.55)] dark:shadow-[0_28px_70px_-32px_rgba(0,0,0,0.85)]"
               >
-                <img
+                <SmartImage
                   src={card.imageUrl}
                   alt={card.title}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.06]"
-                />
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.06]" preset="hero" />
                 <div className={`absolute inset-0 bg-gradient-to-t ${card.tint}`} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
 

@@ -21,7 +21,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CategoryIconNav from "@/components/CategoryIconNav";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import { subscribeToProducts } from "@/services/productService";
+import { subscribeToActiveProducts } from "@/services/productCache";
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import {
   subscribeToCategories,
@@ -41,6 +41,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
+import { SmartImage } from "@/components/ui/smart-image";
 
 // ─── helpers ──────────────────────────────────────────
 const priceRanges = [
@@ -98,12 +99,10 @@ const CategoryProductCard = memo(function CategoryProductCard({
         className="relative aspect-square overflow-hidden cursor-pointer"
         onClick={() => onOpen(product.id)}
       >
-        <img
+        <SmartImage
           src={product.image}
           alt={product.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-        />
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" preset="card" />
         {product.badge && (
           <span className="absolute top-2 left-2 bg-primary/90 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
             {product.badge}
@@ -242,29 +241,10 @@ const CategoryPage = () => {
     [categories, categorySlug]
   );
 
-  // Subscribe to products filtered by category name OR subcategory (graceful fallback for un-migrated products)
-  useEffect(() => {
-    if (!currentCategory) return;
-    setLoading(true);
-    const catName = currentCategory.name.toLowerCase();
-    const catSlug = currentCategory.slug.toLowerCase();
-    const unsub = subscribeToProducts((fbProducts) => {
-      const ui = adaptFirebaseArrayToUI(fbProducts);
-      const filtered = ui.filter((p) => {
-        const pc = (p.category || '').toLowerCase();
-        const psc = ((p as any).subcategory || '').toLowerCase();
-        return (
-          pc === catName ||
-          pc === catSlug ||
-          psc === catName ||
-          psc === catSlug
-        );
-      });
-      setAllProducts(filtered);
-      setLoading(false);
-    }, true);
-    return unsub;
-  }, [currentCategory]);
+  // NOTE: products are loaded by the single effect further down, which produces
+  // the same `allProducts` but also carries subcategory/subSubcategory. A second
+  // loader used to live here and was immediately overwritten by that one, so
+  // every category view paid twice for the catalog. Removed.
 
   // Apply filters
   const filteredProducts = useMemo(() => {
@@ -341,7 +321,7 @@ const CategoryPage = () => {
     // pull every active product and keep only those whose flag matches.
     if (!categorySlug && tagMeta) {
       setLoading(true);
-      const unsub = subscribeToProducts((fbProducts) => {
+      const unsub = subscribeToActiveProducts((fbProducts) => {
         const matching = fbProducts.filter(
           (p: any) => p?.flags?.[tagMeta.flag] === true
         );
@@ -360,7 +340,7 @@ const CategoryPage = () => {
       return unsub;
     }
     if (!currentCategory) return;
-    const unsub = subscribeToProducts((fbProducts) => {
+    const unsub = subscribeToActiveProducts((fbProducts) => {
       const catProducts = fbProducts.filter(
         (p) => p.category?.toLowerCase() === currentCategory.name.toLowerCase()
       );

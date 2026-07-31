@@ -5,6 +5,7 @@ import heroMain from "@/assets/hero-main.jpg";
 import heroShineBright from "@/assets/hero-shine-bright.jpg";
 import collectionBanner from "@/assets/collection-banner.jpg";
 import heroPearlNecklace from "@/assets/hero-pearl-necklace.png";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const slides = [
   {
@@ -85,11 +86,10 @@ const HeroCarousel = () => {
           style={{ zIndex: index === currentSlide ? 1 : 0 }}
         >
           <div className="absolute inset-0 w-full h-full">
-            <img
+            <SmartImage
               src={slide.image}
               alt="Luxury jewelry collection"
-              className="w-full h-full object-cover object-center"
-            />
+              className="w-full h-full object-cover object-center" preset="hero" />
             <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/40 to-transparent" />
           </div>
         </div>

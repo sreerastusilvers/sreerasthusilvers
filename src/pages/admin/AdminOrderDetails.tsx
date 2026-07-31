@@ -59,6 +59,7 @@ import {
   OrderMessage,
   subscribeToOrderMessages,
 } from '@/services/orderMessagingService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 /**
  * Canonical, simplified status options for the admin dropdown. Legacy values
@@ -566,11 +567,10 @@ const AdminOrderDetails = () => {
               className="flex items-center gap-3 rounded-lg bg-gray-50 p-2 dark:bg-zinc-800/50"
             >
               {item.image && (
-                <img
+                <SmartImage
                   src={item.image}
                   alt={item.name}
-                  className="h-12 w-12 rounded-md object-cover"
-                />
+                  className="h-12 w-12 rounded-md object-cover" preset="thumb" />
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-gray-900 dark:text-zinc-100">

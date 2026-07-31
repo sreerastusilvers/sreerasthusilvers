@@ -19,6 +19,7 @@ import {
   MapPin,
   RotateCcw as ReturnIcon,
 } from 'lucide-react';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const MobileOrders = () => {
   const navigate = useNavigate();
@@ -251,7 +252,7 @@ const MobileOrders = () => {
                 {order.items.map((item, idx) => (
                   <div key={idx} className="flex gap-3">
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-[#d4af37]/10 bg-gray-50 dark:bg-zinc-900 dark:bg-zinc-800/70">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="mb-1 text-sm font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>

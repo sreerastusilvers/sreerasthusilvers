@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface LocationState {
   productId: string;
@@ -82,11 +83,10 @@ const ThankYouReview = () => {
               transition={{ delay: 0.8 }}
               className="flex items-center gap-3 mb-8 text-left border-t pt-6"
             >
-              <img
+              <SmartImage
                 src={productImage}
                 alt={productName}
-                className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-              />
+                className="w-16 h-16 object-cover rounded-lg flex-shrink-0" preset="thumb" />
               <div>
                 <p className="text-xs text-gray-400 dark:text-zinc-500 mb-0.5">You reviewed</p>
                 <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{productName}</p>

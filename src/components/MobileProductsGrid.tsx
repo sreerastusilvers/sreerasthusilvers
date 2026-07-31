@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { Star, Heart, ShoppingBag, ShoppingCart, Eye, SlidersHorizontal, ChevronDown, X, Search, Check, Plus, Minus } from "lucide-react";
-import { subscribeToProducts, Product } from "@/services/productService";
+import { Product } from '@/services/productService';
+
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useNavigate } from "react-router-dom";
 import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProducts } from '@/services/productCache';
 
 type SortOption = "newest" | "price-low" | "price-high" | "popularity" | "discount" | "rating";
 type PriceRange = "all" | "under500" | "500-999" | "1000-above";
@@ -45,7 +48,7 @@ const MobileProductsGrid = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = subscribeToProducts((fetchedProducts) => {
+    const unsubscribe = subscribeToActiveProducts((fetchedProducts) => {
       setProducts(fetchedProducts);
       setLoading(false);
     });
@@ -324,12 +327,10 @@ const MobileProductsGrid = () => {
                 onClick={() => handleProductClick(product.id || "")}
                 className="relative aspect-square bg-muted cursor-pointer overflow-hidden"
               >
-                <img
+                <SmartImage
                   src={product.media.images[0] || "/placeholder.jpg"}
                   alt={product.name}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                  className="w-full h-full object-cover" preset="card" />
               </div>
 
               {/* Product Info */}

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // Loyalty Tier Configuration
 const LOYALTY_TIERS = [
@@ -593,11 +594,10 @@ const PurchaseSummary: React.FC = () => {
                       {/* Product Image */}
                       <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-zinc-800">
                         {firstItem?.image ? (
-                          <img 
+                          <SmartImage 
                             src={firstItem.image} 
                             alt={firstItem.name}
-                            className="w-full h-full object-cover"
-                          />
+                            className="w-full h-full object-cover" preset="thumb" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <Package className="w-6 h-6 text-gray-400 dark:text-zinc-500" />

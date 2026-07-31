@@ -11,6 +11,7 @@ import {
   deleteHomeCollection,
   uploadHomeMedia,
 } from '@/services/homeContentService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const TINTS: { label: string; value: string }[] = [
   { label: 'Maroon', value: 'from-[#3a1d20]/85 via-[#3a1d20]/35 to-transparent' },
@@ -210,7 +211,7 @@ const AdminHomeCollections = () => {
               className="group relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
             >
               <div className="aspect-[4/5] relative">
-                <img src={item.imageUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
+                <SmartImage src={item.imageUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover" preset="card" />
                 <div className={`absolute inset-0 bg-gradient-to-t ${item.tint || TINTS[0].value}`} />
                 <div className="absolute inset-x-0 bottom-0 p-4 text-white">
                   <p className="text-[10px] uppercase tracking-[0.25em] opacity-80">{item.eyebrow}</p>
@@ -286,11 +287,10 @@ const AdminHomeCollections = () => {
               <Field label="Image">
                 <div className="flex flex-col gap-2">
                   {(file || draft.imageUrl) && (
-                    <img
+                    <SmartImage
                       src={file ? URL.createObjectURL(file) : draft.imageUrl}
                       alt="preview"
-                      className="h-40 w-full object-cover rounded-lg border border-gray-200 dark:border-gray-700"
-                    />
+                      className="h-40 w-full object-cover rounded-lg border border-gray-200 dark:border-gray-700" preset="card" />
                   )}
                   <input
                     type="file"

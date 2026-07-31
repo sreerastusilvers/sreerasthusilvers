@@ -13,6 +13,7 @@ import {
   Showcase 
 } from '@/services/showcaseService';
 import { toast } from 'sonner';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const AdminShowcases = () => {
   const navigate = useNavigate();
@@ -305,7 +306,7 @@ const AdminShowcases = () => {
                             </p>
                           </div>
                         )}
-                        <img
+                        <SmartImage
                           src={imageUrl}
                           alt="Preview"
                           className={`w-full h-64 object-cover ${imageLoading || imageLoadError ? 'hidden' : 'block'}`}
@@ -316,8 +317,7 @@ const AdminShowcases = () => {
                           onError={() => {
                             setImageLoading(false);
                             setImageLoadError(true);
-                          }}
-                        />
+                          }} preset="card" />
                       </div>
                     )}
                   </div>
@@ -478,7 +478,7 @@ const AdminShowcases = () => {
                   className="rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
                 >
                   <div className="aspect-[4/5] bg-gray-100 relative">
-                    <img src={showcase.imageUrl} alt={showcase.title} className="w-full h-full object-cover" />
+                    <SmartImage src={showcase.imageUrl} alt={showcase.title} className="w-full h-full object-cover" preset="hero" />
                     <span className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full ${showcase.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                       {showcase.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
@@ -512,11 +512,10 @@ const AdminShowcases = () => {
                   <div className="flex gap-6">
                     {/* Image Preview */}
                     <div className="w-32 h-40 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
-                      <img
+                      <SmartImage
                         src={showcase.imageUrl}
                         alt={showcase.title}
-                        className="w-full h-full object-cover"
-                      />
+                        className="w-full h-full object-cover" preset="hero" />
                     </div>
 
                     {/* Info */}

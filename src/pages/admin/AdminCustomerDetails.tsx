@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { getProduct } from '@/services/productService';
 import { getUserWishlist } from '@/services/wishlistService';
 import { UIProduct, adaptFirebaseToUI } from '@/lib/productAdapter';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface CustomerOrder {
   id: string;
@@ -295,7 +296,7 @@ const AdminCustomerDetails = () => {
               <div className="mt-4 space-y-3">
                 {customer.wishlistItems.map((item) => (
                   <div key={item.id} className="flex gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3">
-                    <img src={item.image} alt={item.title} className="h-16 w-16 rounded-xl object-cover" />
+                    <SmartImage src={item.image} alt={item.title} className="h-16 w-16 rounded-xl object-cover" preset="thumb" />
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 text-sm font-semibold text-gray-900">{item.title}</p>
                       <p className="mt-1 text-xs text-gray-500">{item.category}</p>

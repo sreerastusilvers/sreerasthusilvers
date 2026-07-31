@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, ChevronLeft, Heart, ShoppingCart } from "lucide-react";
-import { subscribeToFeatured } from "@/services/productService";
+
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useToast } from "@/hooks/use-toast";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProductsByFlag } from '@/services/productCache';
 
 const FeaturedSection = () => {
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ const FeaturedSection = () => {
   const [currentPage, setCurrentPage] = useState(0);
 
   useEffect(() => {
-    const unsubscribe = subscribeToFeatured((fbProducts) => {
+    const unsubscribe = subscribeToActiveProductsByFlag('isFeatured', (fbProducts) => {
       const uiProducts = adaptFirebaseArrayToUI(fbProducts);
       setProducts(uiProducts);
       setLoading(false);
@@ -85,11 +87,10 @@ const FeaturedSection = () => {
       className="relative h-full min-h-[248px] cursor-pointer group rounded-[28px] overflow-hidden"
       onClick={() => navigate(`/product/${product.id}`)}
     >
-      <img
+      <SmartImage
         src={product.image}
         alt={product.title}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-      />
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" preset="card" />
       <div className={`absolute inset-0 ${compact ? "bg-gradient-to-t from-black/80 via-black/22 to-transparent" : "bg-gradient-to-t from-black/82 via-black/18 to-transparent"}`} />
 
       <button
@@ -157,7 +158,7 @@ const FeaturedSection = () => {
               className="relative min-h-[304px] cursor-pointer overflow-hidden rounded-[30px] border border-white/40 shadow-[0_26px_60px_-36px_rgba(0,0,0,0.58)]"
               onClick={() => navigate(`/product/${featuredProduct.id}`)}
             >
-              <img src={featuredProduct.image} alt={featuredProduct.title} className="absolute inset-0 w-full h-full object-cover" />
+              <SmartImage src={featuredProduct.image} alt={featuredProduct.title} className="absolute inset-0 w-full h-full object-cover" preset="detail" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-5 text-white">
                 <span className="inline-flex rounded-full border border-white/20 bg-white/10 backdrop-blur px-3 py-1 text-[10px] uppercase tracking-[0.26em] text-white/80 mb-3">
@@ -188,7 +189,7 @@ const FeaturedSection = () => {
                 >
                   <div className="overflow-hidden rounded-[24px] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(255,249,240,0.98)_100%)] shadow-[0_18px_42px_-28px_rgba(114,77,31,0.48)] dark:border-[#d4af37]/12 dark:bg-[linear-gradient(180deg,rgba(30,25,19,0.98)_0%,rgba(17,15,13,0.98)_100%)] dark:shadow-[0_24px_48px_-34px_rgba(0,0,0,0.82)]">
                     <div className="aspect-[4/4.5] overflow-hidden bg-muted relative">
-                      <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+                      <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" preset="card" />
                       <button
                         onClick={(e) => handleWishlistClick(e, product.id, product.title)}
                         className="absolute top-2 right-2 p-1.5 bg-background/95 dark:bg-card/95 rounded-full shadow-sm"
@@ -250,11 +251,10 @@ const FeaturedSection = () => {
                 className="relative rounded-[32px] overflow-hidden cursor-pointer group min-h-[520px]"
                 onClick={() => navigate(`/product/${featuredProduct.id}`)}
               >
-                <img
+                <SmartImage
                   src={featuredProduct.image}
                   alt={featuredProduct.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" preset="detail" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 z-10 p-8 text-white">
                   <span className="inline-flex rounded-full border border-white/20 bg-white/10 backdrop-blur px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white/80 mb-4">

@@ -6,6 +6,7 @@ import {
   subscribeHomeBanners,
   type HomeBanner,
 } from "@/services/homeContentService";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const FALLBACK: HomeBanner = {
   slot: "collection-wide",
@@ -41,11 +42,10 @@ const CollectionBanner = () => {
           transition={{ duration: 0.8 }}
           className="relative overflow-hidden rounded-2xl"
         >
-          <img
+          <SmartImage
             src={banner.imageUrl}
             alt={banner.title}
-            className="w-full h-[300px] md:h-[420px] object-cover"
-          />
+            className="w-full h-[300px] md:h-[420px] object-cover" preset="hero" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
           <div className="absolute inset-0 flex items-center">
             <div className="px-8 md:px-14">

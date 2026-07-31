@@ -12,6 +12,7 @@ import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { useWishlist } from '@/hooks/useWishlist';
 import { ArrowLeft, Package, Loader2, ShoppingCart, Search, ShoppingBag, ChevronDown, X, Heart } from 'lucide-react';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface OrderedProduct {
   productId: string;
@@ -270,11 +271,10 @@ const BuyAgain = () => {
                   className="aspect-[3/4] relative overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer"
                   onClick={() => navigate(`/product/${product.id}`)}
                 >
-                  <img
+                  <SmartImage
                     src={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" preset="card" />
                   {product.isOrdered && (
                     <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded">
                       ORDERED
@@ -350,11 +350,10 @@ const BuyAgain = () => {
                   onClick={() => navigate(`/product/${product.id}`)}
                 >
                   <div className="aspect-square relative overflow-hidden bg-gray-100 dark:bg-zinc-800">
-                    <img
+                    <SmartImage
                       src={product.image}
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" preset="card" />
                     {/* Wishlist Heart Icon */}
                     <button
                       onClick={(e) => {

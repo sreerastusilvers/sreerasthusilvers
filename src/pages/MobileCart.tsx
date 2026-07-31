@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
+import { SmartImage } from "@/components/ui/smart-image";
 
 // ─── Slide to Proceed Button Component ───
 const SlideToProceedButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
@@ -171,11 +172,10 @@ const MobileCart = () => {
 
               {/* Product Image */}
               <div className="relative w-20 h-20 bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden flex-shrink-0 shadow-md">
-                <img
+                <SmartImage
                   src={item.image}
                   alt={item.name}
-                  className="w-full h-full object-cover"
-                />
+                  className="w-full h-full object-cover" preset="thumb" />
               </div>
 
               {/* Product Details */}

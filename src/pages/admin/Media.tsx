@@ -9,6 +9,7 @@ import {
   UploadProgress,
   CloudinaryUploadResult,
 } from '@/services/cloudinaryService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface MediaItem {
   url: string;
@@ -192,11 +193,10 @@ const Media = () => {
                   className="relative group rounded-lg overflow-hidden bg-gray-100"
                 >
                   {item.type === 'image' ? (
-                    <img
+                    <SmartImage
                       src={item.url}
                       alt={`Media ${index + 1}`}
-                      className="w-full h-32 object-cover"
-                    />
+                      className="w-full h-32 object-cover" preset="tile" />
                   ) : (
                     <div className="w-full h-32 flex items-center justify-center bg-gray-100">
                       <Video className="h-12 w-12 text-gray-400" />
@@ -255,7 +255,7 @@ const Media = () => {
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         {item.type === 'image' ? (
-                          <img src={item.url} alt="" className="w-12 h-12 object-cover rounded" />
+                          <SmartImage src={item.url} alt="" className="w-12 h-12 object-cover rounded" preset="tile" />
                         ) : (
                           <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center"><Video className="h-5 w-5 text-gray-400" /></div>
                         )}

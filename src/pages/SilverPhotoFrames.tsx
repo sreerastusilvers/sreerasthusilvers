@@ -4,11 +4,13 @@ import { Home, ArrowLeft, Search, X, ChevronDown, ShoppingCart, Heart, Star, Sli
 import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { subscribeToProductsBySubcategory } from "@/services/productService";
+
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useToast } from "@/hooks/use-toast";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProductsBySubcategory } from '@/services/productCache';
 
 const SilverPhotoFrames = () => {
   const PAGE_TITLE = "Photo Frames";
@@ -36,7 +38,7 @@ const SilverPhotoFrames = () => {
 
   useEffect(() => {
     setLoading(true);
-    const unsubscribe = subscribeToProductsBySubcategory(SUBCATEGORY, (fbProducts) => {
+    const unsubscribe = subscribeToActiveProductsBySubcategory(SUBCATEGORY, (fbProducts) => {
       const uiProducts = adaptFirebaseArrayToUI(fbProducts);
       setProducts(uiProducts);
       setLoading(false);
@@ -275,7 +277,7 @@ const SilverPhotoFrames = () => {
                 {sortedProducts.map((product) => (
                   <motion.div key={product.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white dark:bg-zinc-900 rounded-lg border border-gray-200 dark:border-zinc-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="relative aspect-square bg-gray-100 dark:bg-zinc-800 cursor-pointer group" onClick={() => navigate(`/product/${product.id}`)}>
-                      <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" preset="card" />
                       <button onClick={(e) => { e.stopPropagation(); if (isInWishlist(product.id)) { removeFromWishlist(product.id); } else { addToWishlist(product.id); } }} className="absolute top-2 left-2 p-1.5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-colors z-10">
                         <Heart className={`w-3.5 h-3.5 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
                       </button>

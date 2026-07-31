@@ -15,6 +15,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { invalidateProductCache } from './productCache';
 
 // Product Types
 export interface ProductMedia {
@@ -105,7 +106,8 @@ export const createProduct = async (product: Omit<Product, 'id'>, adminId: strin
   });
   
   console.log('productService: Product SKU updated');
-  
+
+  invalidateProductCache();
   return docRef.id;
 };
 
@@ -116,11 +118,13 @@ export const updateProduct = async (productId: string, updates: Partial<Product>
     ...updates,
     updatedAt: serverTimestamp(),
   });
+  invalidateProductCache();
 };
 
 // Delete a product
 export const deleteProduct = async (productId: string): Promise<void> => {
   await deleteDoc(doc(db, PRODUCTS_COLLECTION, productId));
+  invalidateProductCache();
 };
 
 // Get a single product by ID

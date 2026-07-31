@@ -1,13 +1,15 @@
 import { useRef, useEffect, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { Package, ShoppingCart, Heart, ChevronLeft, ChevronRight } from "lucide-react";
-import { subscribeToBestSellers } from "@/services/productService";
+
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useToast } from "@/hooks/use-toast";
 import useAutoScroll from "@/hooks/useAutoScroll";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProductsByFlag } from '@/services/productCache';
 
 const BestSellers = () => {
   const ref = useRef(null);
@@ -45,7 +47,7 @@ const BestSellers = () => {
   // Real-time subscription to best sellers
   useEffect(() => {
     setLoading(true);
-    const unsubscribe = subscribeToBestSellers((fbProducts) => {
+    const unsubscribe = subscribeToActiveProductsByFlag('isBestSeller', (fbProducts) => {
       const uiProducts = adaptFirebaseArrayToUI(fbProducts);
       setProducts(uiProducts);
       setLoading(false);
@@ -198,11 +200,10 @@ const BestSellers = () => {
                   >
                     <div className="flex">
                       <div className="relative w-[44%] overflow-hidden">
-                        <img
+                        <SmartImage
                           src={products[0].image}
                           alt={products[0].title}
-                          className="w-full h-full object-cover aspect-[4/5]"
-                        />
+                          className="w-full h-full object-cover aspect-[4/5]" preset="detail" />
                         <span className="absolute top-2 left-2 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[8px] font-bold tracking-wide text-black shadow-sm" style={{ background: 'linear-gradient(135deg, #f4d57a 0%, #d4af37 50%, #b8941f 100%)' }}>
                           ★ #1 BEST
                         </span>
@@ -260,11 +261,10 @@ const BestSellers = () => {
                         className="group cursor-pointer flex-shrink-0 w-[150px] flex flex-col overflow-hidden rounded-[20px] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,249,240,0.98)_100%)] shadow-[0_12px_28px_-22px_rgba(114,77,31,0.45)] transition-all duration-300 active:scale-[0.98] dark:border-[#d4af37]/15 dark:bg-[linear-gradient(180deg,rgba(28,22,16,0.98)_0%,rgba(16,14,12,0.98)_100%)] dark:shadow-[0_14px_28px_-20px_rgba(0,0,0,0.7)]"
                       >
                         <div className="relative aspect-square overflow-hidden bg-muted">
-                          <img
+                          <SmartImage
                             src={product.image}
                             alt={product.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" preset="card" />
                           {rank <= 5 && (
                             <span className="absolute top-2 left-2 inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold text-black shadow-sm" style={{ background: 'linear-gradient(135deg, #f4d57a 0%, #d4af37 50%, #b8941f 100%)' }}>
                               #{rank}
@@ -347,11 +347,10 @@ const BestSellers = () => {
                         >
                           <div className="bg-card rounded-[26px] overflow-hidden h-full flex flex-col shadow-sm hover:shadow-xl transition-all duration-300 group border border-border">
                             <div className="aspect-square overflow-hidden bg-muted relative">
-                              <img
+                              <SmartImage
                                 src={product.image}
                                 alt={product.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" preset="card" />
 
                               {showRankBadge && (
                                 <div className="absolute top-2.5 left-2.5 z-10">

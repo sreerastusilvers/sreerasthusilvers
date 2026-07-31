@@ -22,6 +22,7 @@ import {
 } from '@/services/videoCallRequestService';
 import { sendVideoCallInAppTemplate, sendVideoCallMeetTemplate } from '@/services/whatsappService';
 import type { Timestamp } from 'firebase/firestore';
+import { SmartImage } from "@/components/ui/smart-image";
 
 const STATUS_LABELS: Record<VideoCallStatus, { label: string; color: string }> = {
   pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
@@ -178,11 +179,10 @@ const AdminVideoCalls = () => {
         {req.productTitle && (
           <div className="flex items-center gap-3 mb-3 bg-muted/40 rounded-xl p-2.5">
             {req.productImage && (
-              <img
+              <SmartImage
                 src={req.productImage}
                 alt={req.productTitle}
-                className="w-12 h-12 rounded-lg object-cover shrink-0 border border-border"
-              />
+                className="w-12 h-12 rounded-lg object-cover shrink-0 border border-border" preset="thumb" />
             )}
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">Product</p>

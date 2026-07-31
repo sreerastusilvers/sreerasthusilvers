@@ -4,7 +4,7 @@ import { ArrowRight, Home, ArrowLeft, Search, X, ChevronDown, ShoppingCart, Load
 import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { subscribeToProducts } from "@/services/productService";
+
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -16,6 +16,8 @@ import necklaceImg from "@/assets/products/necklace-1.jpg";
 import ringImg from "@/assets/products/ring-1.jpg";
 import earringsImg from "@/assets/products/earrings-1.jpg";
 import bandImg from "@/assets/products/band-1.jpg";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProducts } from '@/services/productCache';
 
 const homeDecorCategories = [
   {
@@ -78,7 +80,7 @@ const HomeDecorCollections = () => {
   // Fetch all products from Firebase and filter by home decor-related categories
   useEffect(() => {
     setLoading(true);
-    const unsubscribe = subscribeToProducts(
+    const unsubscribe = subscribeToActiveProducts(
       (fbProducts) => {
         const uiProducts = adaptFirebaseArrayToUI(fbProducts);
         // Filter only home decor-related products
@@ -603,12 +605,10 @@ const HomeDecorCollections = () => {
                     <div className="relative overflow-hidden flex flex-col items-center">
                       {/* Small Circular Image for Mobile */}
                       <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 dark:bg-zinc-800 mb-2 relative">
-                        <img
+                        <SmartImage
                           src={category.image}
                           alt={category.title}
-                          loading="lazy"
-                          className="w-full h-full object-cover"
-                        />
+                          className="w-full h-full object-cover" preset="card" />
                       </div>
 
                       {/* Category Info */}
@@ -646,12 +646,10 @@ const HomeDecorCollections = () => {
                     <div className="relative overflow-hidden flex flex-col items-center">
                       {/* Image Container - Circular */}
                       <div className="w-40 h-40 md:w-48 md:h-48 rounded-full overflow-hidden bg-gray-100 dark:bg-zinc-800 mb-6 relative">
-                        <img
+                        <SmartImage
                           src={category.image}
                           alt={category.title}
-                          loading="lazy"
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        />
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" preset="card" />
                         
                         {/* Hover Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-center pb-8">
@@ -751,11 +749,10 @@ const HomeDecorCollections = () => {
                       className="relative aspect-square bg-gray-100 dark:bg-zinc-800 cursor-pointer group"
                       onClick={() => navigate(`/product/${product.id}`)}
                     >
-                      <img
+                      <SmartImage
                         src={product.image}
                         alt={product.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" preset="card" />
                       
                       {/* Wishlist Icon - Top Left */}
                       <button

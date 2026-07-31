@@ -4,11 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Star, Heart, ShoppingBag, Check, X, Package, ChevronDown } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { subscribeToProductsBySubcategory } from "@/services/productService";
+
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { Slider } from "@/components/ui/slider";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
+import { SmartImage } from "@/components/ui/smart-image";
+import { subscribeToActiveProductsBySubcategory } from '@/services/productCache';
 
 type SortOption = 'default' | 'price-low-high' | 'price-high-low' | 'newest' | 'best-rating';
 
@@ -34,7 +36,7 @@ const GoldRings = () => {
     console.log('GoldRings: Setting up real-time listener...');
     setLoading(true);
     
-    const unsubscribe = subscribeToProductsBySubcategory('Rings', (fbProducts) => {
+    const unsubscribe = subscribeToActiveProductsBySubcategory('Rings', (fbProducts) => {
       const uiProducts = adaptFirebaseArrayToUI(fbProducts);
       const goldRings = uiProducts.filter(product => 
         product.title.toLowerCase().includes('gold') ||
@@ -237,7 +239,7 @@ const GoldRings = () => {
                 sortedProducts.map((product, index) => (
                 <motion.div key={product.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: index * 0.05 }} className="group cursor-pointer" onClick={() => handleProductClick(product.id)}>
                   <div className="relative bg-muted rounded-xl overflow-hidden aspect-square mb-4">
-                    <img src={product.image} alt={product.alt} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <SmartImage src={product.image} alt={product.alt} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" preset="card" />
                     <div className="absolute top-3 right-3 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-300">
                       <motion.button onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id, product.title); }} whileTap={{ scale: 0.9 }} className={`p-2 rounded-full transition-all duration-300 ${isInWishlist(product.id) ? "text-red-500" : "text-white/90 hover:text-red-500"}`} style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>
                         <Heart className="w-5 h-5" fill={isInWishlist(product.id) ? "currentColor" : "none"} strokeWidth={2} />

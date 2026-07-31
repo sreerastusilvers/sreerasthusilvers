@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import promoHeart from "@/assets/promo-heart.jpg";
 import promoRing from "@/assets/promo-ring.jpg";
+import { SmartImage } from "@/components/ui/smart-image";
 
 const tiles = [
   {
@@ -47,12 +48,10 @@ const PromoTiles = () => {
             >
               {/* Background Image */}
               <div className="absolute inset-0">
-                <img
+                <SmartImage
                   src={tile.image}
                   alt={tile.title}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading="lazy"
-                />
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" preset="card" />
                 <div className={`absolute inset-0 bg-gradient-to-t ${tile.gradient}`} />
               </div>
 

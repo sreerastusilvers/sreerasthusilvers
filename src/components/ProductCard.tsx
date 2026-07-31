@@ -6,6 +6,7 @@ import { useWishlist } from "@/hooks/useWishlist";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface Product {
   id: string;
@@ -115,11 +116,12 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
     >
       {/* Image Container */}
       <div className="product-card-image relative bg-muted rounded-xl lg:rounded-2xl overflow-hidden aspect-square mb-2 lg:mb-3">
-        <img
+        <SmartImage
           src={product.image}
           alt={product.alt || product.title}
           className="w-full h-full object-cover"
-          loading="lazy"
+          preset="card"
+          priority={index < 4}
         />
 
         {/* Wishlist Heart - Top Right */}

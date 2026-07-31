@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { DeliveryBoy, getDeliveryBoyById } from '@/services/deliveryBoyService';
 import { getDeliveryBoyOrders, Order } from '@/services/orderService';
+import { SmartImage } from "@/components/ui/smart-image";
 
 interface DeliveryRating {
   id: string;
@@ -95,7 +96,7 @@ const AdminDeliveryBoyDetails = () => {
       <div className="flex flex-col gap-4 rounded-2xl border border-blue-200/50 bg-gradient-to-br from-blue-50 via-white to-indigo-50/30 p-6 shadow-sm md:flex-row md:items-center md:justify-between">
         <div className="flex items-start gap-4">
           {deliveryBoy.profileImage ? (
-            <img src={deliveryBoy.profileImage} alt={deliveryBoy.name} className="h-16 w-16 rounded-full object-cover shadow-sm" />
+            <SmartImage src={deliveryBoy.profileImage} alt={deliveryBoy.name} className="h-16 w-16 rounded-full object-cover shadow-sm" preset="thumb" />
           ) : (
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl font-bold text-blue-700">
               {deliveryBoy.name.charAt(0).toUpperCase()}
