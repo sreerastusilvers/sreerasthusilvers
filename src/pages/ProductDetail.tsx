@@ -190,10 +190,10 @@ const ProductDetail = () => {
     fetchReviewData();
   }, [productId, user]);
 
-  // Scroll to top on mount
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [productId]);
+  // NOTE: scrolling on navigation is owned by <ScrollToTop>, which scrolls to
+  // top on PUSH and restores the saved position on POP. A local scrollTo(0,0)
+  // used to live here and forced the top even when the user pressed Back,
+  // fighting restoration.
 
   const incrementQuantity = () => setQuantity((prev) => prev + 1);
   const decrementQuantity = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));

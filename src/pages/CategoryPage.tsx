@@ -23,6 +23,7 @@ import CategoryIconNav from "@/components/CategoryIconNav";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { subscribeToActiveProducts } from "@/services/productCache";
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
+import { matchesTaxon } from "@/lib/taxonomy";
 import {
   subscribeToCategories,
   seedDefaultCategories,
@@ -246,20 +247,34 @@ const CategoryPage = () => {
   // loader used to live here and was immediately overwritten by that one, so
   // every category view paid twice for the catalog. Removed.
 
+  // Taxonomy options for the active category, used to reconcile products that
+  // stored a subcategory *name* against filters that address it by *slug*.
+  const subOptions = useMemo(
+    () => currentCategory?.subcategories ?? [],
+    [currentCategory],
+  );
+  const subSubOptions = useMemo(
+    () => subOptions.find((s) => s.slug === activeSub)?.children ?? [],
+    [subOptions, activeSub],
+  );
+
   // Apply filters
   const filteredProducts = useMemo(() => {
     let list = [...allProducts];
 
-    // subcategory filter — match against raw product data (we attached subcategory via adapter below)
+    // Subcategory filter.
+    //
+    // The admin form saves the subcategory *name* ("Men & Women") while these
+    // filters address it by *slug* ("men-women"), so a direct comparison only
+    // matched when the name happened to be a single plain word - anything with
+    // a space or symbol silently returned zero products. Accept either form so
+    // existing product data keeps working without a migration.
     if (activeSub) {
-      list = list.filter(
-        (p) => (p as any).subcategory?.toLowerCase() === activeSub.toLowerCase()
-      );
+      list = list.filter((p) => matchesTaxon((p as any).subcategory, activeSub, subOptions));
     }
     if (activeSubSub) {
-      list = list.filter(
-        (p) =>
-          (p as any).subSubcategory?.toLowerCase() === activeSubSub.toLowerCase()
+      list = list.filter((p) =>
+        matchesTaxon((p as any).subSubcategory, activeSubSub, subSubOptions),
       );
     }
 
@@ -288,7 +303,7 @@ const CategoryPage = () => {
     }
 
     return list;
-  }, [allProducts, activeSub, activeSubSub, activePriceIdx, activeSortBy]);
+  }, [allProducts, activeSub, activeSubSub, activePriceIdx, activeSortBy, subOptions, subSubOptions]);
 
   // ── filter helpers ──
   const setFilter = (key: string, val: string) => {

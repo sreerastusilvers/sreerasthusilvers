@@ -39,6 +39,21 @@ export default function ScrollToTop() {
   const positionsRef = useRef<Map<string, number>>(loadPositions());
   // When true, the scroll event listener skips saving (navigation in progress).
   const lockRef = useRef(false);
+  /**
+   * Key of the route currently on screen.
+   *
+   * On popstate the browser has already swapped window.location to the incoming
+   * URL, so we cannot read the outgoing key from it - we need this ref. It must
+   * track EVERY navigation, not just POP: a version that only updated inside the
+   * popstate handler went stale after any forward navigation, so going back
+   * saved the product page's scroll position under the category page's key and
+   * wiped it.
+   */
+  const currentKeyRef = useRef(`${pathname}${search}`);
+
+  useEffect(() => {
+    currentKeyRef.current = `${pathname}${search}`;
+  }, [pathname, search]);
 
   // Disable the browser's built-in scroll restoration so we control it.
   useEffect(() => {
@@ -84,11 +99,10 @@ export default function ScrollToTop() {
       return origReplace(...args);
     };
 
-    // For back/forward (POP): popstate fires before React re-renders.
-    let prevKey = window.location.pathname + window.location.search;
+    // For back/forward (POP): popstate fires before React re-renders, so
+    // currentKeyRef still holds the outgoing route.
     const handlePopstate = () => {
-      snapshotAndLock(prevKey);
-      prevKey = window.location.pathname + window.location.search;
+      snapshotAndLock(currentKeyRef.current);
     };
     window.addEventListener('popstate', handlePopstate);
 
