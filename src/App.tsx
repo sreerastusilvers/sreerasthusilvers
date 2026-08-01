@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,86 +21,81 @@ import DeliveryLightThemeWrapper from "@/components/DeliveryLightThemeWrapper";
 // Public Pages
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import CategoryPage from "./pages/CategoryPage";
-import ProductDetail from "./pages/ProductDetail";
-import Contact from "./pages/Contact";
-import About from "./pages/About";
-import CustomerSupport from "./pages/CustomerSupport";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TermsConditions from "./pages/TermsConditions";
-import ShippingPolicy from "./pages/ShippingPolicy";
-import CancellationRefundPolicy from "./pages/CancellationRefundPolicy";
-import Wishlist from "./pages/Wishlist";
-import MobileCategories from "./pages/MobileCategories";
-import Checkout from "./pages/Checkout";
-import Profile from "./pages/Profile";
-import Account from "./pages/Account";
-import SavedAddresses from "./pages/SavedAddresses";
-import BuyAgain from "./pages/BuyAgain";
+const CategoryPage = lazy(() => import("./pages/CategoryPage"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Contact = lazy(() => import("./pages/Contact"));
+const About = lazy(() => import("./pages/About"));
+const CustomerSupport = lazy(() => import("./pages/CustomerSupport"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsConditions = lazy(() => import("./pages/TermsConditions"));
+const ShippingPolicy = lazy(() => import("./pages/ShippingPolicy"));
+const CancellationRefundPolicy = lazy(() => import("./pages/CancellationRefundPolicy"));
+const Wishlist = lazy(() => import("./pages/Wishlist"));
+const MobileCategories = lazy(() => import("./pages/MobileCategories"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Account = lazy(() => import("./pages/Account"));
+const SavedAddresses = lazy(() => import("./pages/SavedAddresses"));
+const BuyAgain = lazy(() => import("./pages/BuyAgain"));
 import LoadingScreen from "./components/LoadingScreen";
 import ScrollToTop from "./components/ScrollToTop";
-import MobileCart from "./pages/MobileCart";
-import MobileOrders from "./pages/MobileOrders";
-import OrderDetailsPage from "./pages/OrderDetailsPage";
-import CancelOrderPage from "./pages/CancelOrderPage";
-import ProfileEditPage from "./pages/ProfileEditPage";
-import MobileSearch from "./pages/MobileSearch";
-import SearchResults from "./pages/SearchResults";
-
+const MobileCart = lazy(() => import("./pages/MobileCart"));
+const MobileOrders = lazy(() => import("./pages/MobileOrders"));
+const OrderDetailsPage = lazy(() => import("./pages/OrderDetailsPage"));
+const CancelOrderPage = lazy(() => import("./pages/CancelOrderPage"));
+const ProfileEditPage = lazy(() => import("./pages/ProfileEditPage"));
+const MobileSearch = lazy(() => import("./pages/MobileSearch"));
+const SearchResults = lazy(() => import("./pages/SearchResults"));
 // Purchase Summary & Security Pages
-import PurchaseSummary from "./pages/PurchaseSummary";
-import SecurityPage from "./pages/SecurityPage";
-
+const PurchaseSummary = lazy(() => import("./pages/PurchaseSummary"));
+const SecurityPage = lazy(() => import("./pages/SecurityPage"));
 // Auth Pages
-import Login from "./pages/auth/Login";
-import Signup from "./pages/auth/Signup";
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
-import VerifyEmail from "./pages/auth/VerifyEmail";
-
+const Login = lazy(() => import("./pages/auth/Login"));
+const Signup = lazy(() => import("./pages/auth/Signup"));
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
+const VerifyEmail = lazy(() => import("./pages/auth/VerifyEmail"));
 // Admin Pages
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminLayout from "./pages/admin/AdminLayout";
-import Dashboard from "./pages/admin/Dashboard";
-import Products from "./pages/admin/Products";
-import ProductForm from "./pages/admin/ProductForm";
-import Media from "./pages/admin/Media";
-import AdminBanners from "./pages/AdminBanners";
-import AdminShowcases from "./pages/admin/AdminShowcases";
-import AdminTestimonials from "./pages/admin/AdminTestimonials";
-import AdminGallery from "./pages/admin/AdminGallery";
-import AdminOrders from "./pages/AdminOrders";
-import AdminDeliveryBoys from "./pages/admin/AdminDeliveryBoys";
-import AdminGiftCards from "./pages/admin/AdminGiftCards";
-import AdminCoupons from "./pages/admin/AdminCoupons";
-import AdminReviews from "./pages/admin/AdminReviews";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminImagePrompts from "./pages/admin/AdminImagePrompts";
-import AdminCustomers from './pages/admin/AdminCustomers';
-import AdminCustomerDetails from './pages/admin/AdminCustomerDetails';
-import AdminSiteSettings from './pages/admin/AdminSiteSettings';
-import AdminSilverRate from './pages/admin/AdminSilverRate';
-import AdminCommerceSettings from './pages/admin/AdminCommerceSettings';
-import AdminHomeBanners from './pages/admin/AdminHomeBanners';
-import AdminHomeCollections from './pages/admin/AdminHomeCollections';
-import AdminVideos from './pages/admin/AdminVideos';
-import AdminNotifications from './pages/admin/AdminNotifications';
-import AdminWhatsApp from './pages/admin/AdminWhatsApp';
-import AdminDeliveryBoyDetails from './pages/admin/AdminDeliveryBoyDetails';
-import AdminOrderDetails from './pages/admin/AdminOrderDetails';
-import AdminVideoCalls from './pages/admin/AdminVideoCalls';
-import AdminNewsletterSubscriptions from './pages/admin/AdminNewsletterSubscriptions';
-import MyVideoCalls from './pages/MyVideoCalls';
-import VideoCallPage from './pages/VideoCallPage';
-import WriteReview from "./pages/WriteReview";
-import ThankYouReview from "./pages/ThankYouReview";
-
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const Dashboard = lazy(() => import("./pages/admin/Dashboard"));
+const Products = lazy(() => import("./pages/admin/Products"));
+const ProductForm = lazy(() => import("./pages/admin/ProductForm"));
+const Media = lazy(() => import("./pages/admin/Media"));
+const AdminBanners = lazy(() => import("./pages/AdminBanners"));
+const AdminShowcases = lazy(() => import("./pages/admin/AdminShowcases"));
+const AdminTestimonials = lazy(() => import("./pages/admin/AdminTestimonials"));
+const AdminGallery = lazy(() => import("./pages/admin/AdminGallery"));
+const AdminOrders = lazy(() => import("./pages/AdminOrders"));
+const AdminDeliveryBoys = lazy(() => import("./pages/admin/AdminDeliveryBoys"));
+const AdminGiftCards = lazy(() => import("./pages/admin/AdminGiftCards"));
+const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons"));
+const AdminReviews = lazy(() => import("./pages/admin/AdminReviews"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminImagePrompts = lazy(() => import("./pages/admin/AdminImagePrompts"));
+const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
+const AdminCustomerDetails = lazy(() => import("./pages/admin/AdminCustomerDetails"));
+const AdminSiteSettings = lazy(() => import("./pages/admin/AdminSiteSettings"));
+const AdminSilverRate = lazy(() => import("./pages/admin/AdminSilverRate"));
+const AdminCommerceSettings = lazy(() => import("./pages/admin/AdminCommerceSettings"));
+const AdminHomeBanners = lazy(() => import("./pages/admin/AdminHomeBanners"));
+const AdminHomeCollections = lazy(() => import("./pages/admin/AdminHomeCollections"));
+const AdminVideos = lazy(() => import("./pages/admin/AdminVideos"));
+const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
+const AdminWhatsApp = lazy(() => import("./pages/admin/AdminWhatsApp"));
+const AdminDeliveryBoyDetails = lazy(() => import("./pages/admin/AdminDeliveryBoyDetails"));
+const AdminOrderDetails = lazy(() => import("./pages/admin/AdminOrderDetails"));
+const AdminVideoCalls = lazy(() => import("./pages/admin/AdminVideoCalls"));
+const AdminNewsletterSubscriptions = lazy(() => import("./pages/admin/AdminNewsletterSubscriptions"));
+const MyVideoCalls = lazy(() => import("./pages/MyVideoCalls"));
+const VideoCallPage = lazy(() => import("./pages/VideoCallPage"));
+const WriteReview = lazy(() => import("./pages/WriteReview"));
+const ThankYouReview = lazy(() => import("./pages/ThankYouReview"));
 // Delivery Partner Pages
-import DeliveryLogin from "./pages/delivery/DeliveryLogin";
-import DeliveryDashboard from "./pages/delivery/DeliveryDashboard";
-import DeliveryOrderDetails from "./pages/delivery/DeliveryOrderDetails";
-import DeliveryMapPage from "./pages/delivery/DeliveryMapPage";
-
+const DeliveryLogin = lazy(() => import("./pages/delivery/DeliveryLogin"));
+const DeliveryDashboard = lazy(() => import("./pages/delivery/DeliveryDashboard"));
+const DeliveryOrderDetails = lazy(() => import("./pages/delivery/DeliveryOrderDetails"));
+const DeliveryMapPage = lazy(() => import("./pages/delivery/DeliveryMapPage"));
 const queryClient = new QueryClient();
 
 const LEGACY_SHOP_REDIRECTS: Record<string, string> = {
@@ -132,6 +127,15 @@ const LegacyHomeDecorRedirect = () => <Navigate to="/category/others" replace />
 
 const LegacyGiftsRedirect = () => <Navigate to="/category/gifting" replace />;
 
+/** Shown while a route's JS chunk downloads. Deliberately dependency-free. */
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  );
+}
+
 const App = () => {
   // Check if the app has been loaded before in this session
   const [isLoaded, setIsLoaded] = useState(() => {
@@ -155,6 +159,8 @@ const App = () => {
             <BrowserRouter>
               <ScrollToTop />
               <ShoppingCart />
+            {/* Route components are lazy-loaded; this fallback covers the chunk fetch. */}
+            <Suspense fallback={<RouteFallback />}>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Index />} />
@@ -407,6 +413,7 @@ const App = () => {
               {/* 404 Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </BrowserRouter>
             </TooltipProvider>
           </SilverRateProvider>

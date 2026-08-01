@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { subscribeEmail } from "@/services/newsletterService";
+import { LazyMount } from "@/components/ui/lazy-mount";
 import {
   Facebook,
   Instagram,
@@ -290,7 +291,10 @@ const Footer = () => {
 
         {/* Map */}
         {settings.mapEmbedUrl && (
-          <div className="mt-12 rounded-2xl overflow-hidden border border-white/10">
+          <LazyMount
+            className="mt-12 rounded-2xl overflow-hidden border border-white/10"
+            placeholder={<div className="h-[220px] w-full bg-white/5" />}
+          >
             <iframe
               src={settings.mapEmbedUrl}
               width="100%"
@@ -301,7 +305,7 @@ const Footer = () => {
               referrerPolicy="no-referrer-when-downgrade"
               title="Store Location"
             />
-          </div>
+          </LazyMount>
         )}
       </div>
 

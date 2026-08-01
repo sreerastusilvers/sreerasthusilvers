@@ -105,5 +105,29 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          /**
+           * Only group dependencies that genuinely load on first paint, so a
+           * code change doesn't bust their cache.
+           *
+           * Do NOT list route-specific libraries (jspdf, html2canvas, leaflet)
+           * here. Naming a module in manualChunks promotes it into the entry
+           * graph, and Vite then emits a <link rel="modulepreload"> for it - so
+           * declaring a "vendor-pdf" chunk made every visitor download 609 KB of
+           * PDF tooling on the homepage. Left alone, Rollup folds them into the
+           * lazy route chunk that actually imports them.
+           */
+          manualChunks: {
+            "vendor-react": ["react", "react-dom", "react-router-dom"],
+            "vendor-firebase": ["firebase/app", "firebase/auth", "firebase/firestore"],
+            "vendor-motion": ["framer-motion"],
+          },
+        },
+      },
+      // Chunks are split now; warn only if something genuinely large reappears.
+      chunkSizeWarningLimit: 900,
+    },
   };
 });

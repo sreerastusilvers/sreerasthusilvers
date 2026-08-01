@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { subscribeToActiveBanners, Banner } from "@/services/bannerService";
 import { useNavigate } from "react-router-dom";
 import { SmartImage } from "@/components/ui/smart-image";
+import { cldUrl } from "@/lib/cloudinaryUrl";
 
 /**
  * Seamless looping hero carousel.
@@ -21,8 +22,21 @@ const HeroBanner = () => {
   const [transitionsEnabled, setTransitionsEnabled] = useState(true);
   const preloadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
 
-  const getBannerImageSources = (banner: Banner) =>
-    [banner.imageUrl, banner.mobileImageUrl].filter((value): value is string => Boolean(value));
+  /**
+   * URLs to warm before revealing the carousel.
+   *
+   * These must be the exact URLs the markup below requests, otherwise the
+   * preload is a pure waste: it used to fetch the raw originals (~2.5 MB each,
+   * ~10 MB total on the homepage) while the rendered <SmartImage> asked for the
+   * transformed version separately, so every banner was paid for twice.
+   */
+  const getBannerImageSources = (banner: Banner) => {
+    const mobileSource = banner.mobileImageUrl || banner.imageUrl;
+    return [
+      banner.imageUrl ? cldUrl(banner.imageUrl, 'hero') : null,
+      mobileSource ? cldUrl(mobileSource, 'detail') : null,
+    ].filter((value): value is string => Boolean(value));
+  };
 
   useEffect(() => {
     const unsubscribe = subscribeToActiveBanners(
@@ -222,12 +236,21 @@ const HeroBanner = () => {
                 aria-label={`Hero banner ${((idx % banners.length) || 0) + 1}`}
               >
                 <picture>
-                  <source media="(max-width: 1023px)" srcSet={banner.mobileImageUrl || banner.imageUrl} />
+                  {/* A <source> wins over the <img> when its media query matches,
+                      so it needs the same transform - an untransformed srcSet here
+                      served multi-MB originals no matter what the <img> asked for. */}
+                  <source
+                    media="(max-width: 1023px)"
+                    srcSet={cldUrl(banner.mobileImageUrl || banner.imageUrl, 'detail')}
+                  />
                   <SmartImage
                     src={banner.imageUrl}
                     alt={`Hero banner ${((idx % banners.length) || 0) + 1}`}
                     className="absolute inset-0 h-full w-full object-cover"
-                    draggable={false} preset="hero" />
+                    draggable={false}
+                    preset="hero"
+                    priority={idx === 0}
+                  />
                 </picture>
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/15 to-black/20 lg:from-black/55 lg:via-black/10 lg:to-black/25" />
                 <div className="absolute inset-x-0 bottom-0 top-auto p-5 lg:p-8">
