@@ -345,7 +345,12 @@ const MobileCheckout = () => {
       let verifiedPayment: VerifiedPayment | null = null;
       if (selectedPaymentMethod !== 'Cash On Delivery') {
         verifiedPayment = await payWithRazorpay({
+          // `amount` is a cross-check only; /api/create-order re-prices these
+          // line items from Firestore and refuses to charge a mismatched total.
           amount: total,
+          lineItems: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+          paymentMethod: selectedPaymentMethod,
+          couponCode: pricing.appliedCoupon?.code,
           receipt: orderId,
           name: 'Sreerasthu Silvers',
           description: `Order ${orderId}`,
@@ -2025,7 +2030,12 @@ const Checkout = () => {
       let verifiedPayment: VerifiedPayment | null = null;
       if (selectedPaymentMethod !== 'Cash On Delivery') {
         verifiedPayment = await payWithRazorpay({
+          // `amount` is a cross-check only; /api/create-order re-prices these
+          // line items from Firestore and refuses to charge a mismatched total.
           amount: total,
+          lineItems: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+          paymentMethod: selectedPaymentMethod,
+          couponCode: pricing.appliedCoupon?.code,
           receipt: orderId,
           name: 'Sreerasthu Silvers',
           description: `Order ${orderId}`,

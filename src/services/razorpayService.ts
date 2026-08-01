@@ -37,8 +37,18 @@ export interface VerifiedPayment {
 }
 
 export interface RazorpayCheckoutOptions {
-  /** Amount in the major unit (rupees). Converted to paise before sending. */
+  /**
+   * Amount in the major unit (rupees). Sent only as a cross-check - the server
+   * re-prices the order from Firestore and rejects a mismatch. Changing this
+   * value in devtools cannot change what the customer is charged.
+   */
   amount: number;
+  /** Cart contents. The server prices these; required for the order to be created. */
+  lineItems: Array<{ productId: string; quantity: number }>;
+  /** Drives the CoD surcharge server-side. */
+  paymentMethod?: string;
+  /** Re-validated server-side; an invalid code is simply ignored. */
+  couponCode?: string;
   /** Defaults to INR. */
   currency?: string;
   /** Receipt id stored against the Razorpay order (e.g. the internal order number). */
@@ -113,6 +123,10 @@ async function createOrder(options: RazorpayCheckoutOptions): Promise<CreateOrde
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        // The server prices `items` and treats `amount` only as a cross-check.
+        items: options.lineItems,
+        paymentMethod: options.paymentMethod,
+        couponCode: options.couponCode,
         amount: amountInPaise,
         currency: options.currency || 'INR',
         receipt: options.receipt,
