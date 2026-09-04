@@ -19,7 +19,7 @@ const list = TARGETS.flatMap((dir) =>
     .filter((p) => p.endsWith('.tsx') && !p.includes('/admin/'))
     .filter((p) => !SKIP.has(p.split('/').pop()))
 );
-
+ 
 const PAIRS = [
   ['bg-white/95', 'dark:bg-zinc-900/95'],
   ['bg-white/90', 'dark:bg-zinc-900/90'],
