@@ -1,6 +1,6 @@
 import { FirebaseOptions, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
 
@@ -31,7 +31,19 @@ const secondaryApp = initializeApp(firebaseConfig, 'secondary');
 // Initialize services
 export const auth = getAuth(app);
 export const secondaryAuth = getAuth(secondaryApp); // For creating users without signing out admin
-export const db = getFirestore(app);
+/**
+ * `ignoreUndefinedProperties` makes Firestore skip `undefined` fields instead of
+ * throwing "Unsupported field value: undefined".
+ *
+ * Forms build their payloads with `field: value || undefined` for optional
+ * inputs, so any empty optional field aborted the whole write - leaving an
+ * admin with "Failed to update product" and no clue which field was to blame.
+ * Skipping them is the documented behaviour for exactly this pattern.
+ *
+ * Note this means `undefined` = "leave this field as it is" on an update; to
+ * actually clear a stored field, write `null`.
+ */
+export const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
 export const storage = getStorage(app);
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { describeError } from '@/lib/errorMessage';
 
 const AdminSilverRate = () => {
   const [silverPricePerGram, setSilverPricePerGram] = useState<number>(95);
@@ -52,7 +53,7 @@ const AdminSilverRate = () => {
       toast.success('Silver rate updated — customers see it instantly ✓');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to save silver rate');
+      toast.error('Could not save the silver rate', { description: describeError(err) });
     } finally {
       setSaving(false);
     }

@@ -49,6 +49,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { SmartImage } from "@/components/ui/smart-image";
 import BarcodeScannerDialog from '@/components/admin/BarcodeScannerDialog';
+import { describeError } from '@/lib/errorMessage';
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -134,8 +135,8 @@ const Products = () => {
     } catch (error) {
       console.error('Error fetching products:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to fetch products',
+        title: 'Could not load products',
+        description: describeError(error),
         variant: 'destructive',
       });
     } finally {
@@ -164,8 +165,8 @@ const Products = () => {
     } catch (error) {
       console.error('Error toggling visibility:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to update product visibility',
+        title: 'Could not change visibility',
+        description: describeError(error),
         variant: 'destructive',
       });
     }
@@ -189,8 +190,8 @@ const Products = () => {
     } catch (error) {
       console.error('Error deleting product:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete product',
+        title: 'Could not delete product',
+        description: describeError(error),
         variant: 'destructive',
       });
     } finally {

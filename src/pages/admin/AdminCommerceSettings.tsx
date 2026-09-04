@@ -53,6 +53,8 @@ import {
   type FaqEntry,
 } from '@/services/siteSettingsService';
 
+import { describeError } from '@/lib/errorMessage';
+
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
 const Section = ({
@@ -100,7 +102,7 @@ const CouponsTab = () => {
       try {
         setSettings(await getCouponsSettings());
       } catch (e) {
-        toast.error('Failed to load coupons');
+        toast.error('Could not load coupons', { description: describeError(e) });
       } finally {
         setLoading(false);
       }
@@ -152,7 +154,7 @@ const CouponsTab = () => {
       toast.success('Coupons saved');
     } catch (e) {
       console.error(e);
-      toast.error('Failed to save coupons');
+      toast.error('Could not save coupons', { description: describeError(e) });
     } finally {
       setSaving(false);
     }
@@ -354,7 +356,7 @@ const DeliveryGstTab = () => {
         setDelivery(d);
         setGst(g);
       } catch (e) {
-        toast.error('Failed to load delivery / GST settings');
+        toast.error('Could not load delivery / GST settings', { description: describeError(e) });
       } finally {
         setLoading(false);
       }
@@ -388,7 +390,7 @@ const DeliveryGstTab = () => {
       toast.success('Delivery & GST saved');
     } catch (e) {
       console.error(e);
-      toast.error('Failed to save');
+      toast.error('Could not save delivery / GST settings', { description: describeError(e) });
     } finally {
       setSaving(false);
     }
@@ -644,7 +646,7 @@ const SupportTab = () => {
       try {
         setS(await getCustomerSupportSettings());
       } catch (e) {
-        toast.error('Failed to load support settings');
+        toast.error('Could not load support settings', { description: describeError(e) });
       } finally {
         setLoading(false);
       }
@@ -675,7 +677,7 @@ const SupportTab = () => {
       toast.success('Support settings saved');
     } catch (e) {
       console.error(e);
-      toast.error('Failed to save');
+      toast.error('Could not save support settings', { description: describeError(e) });
     } finally {
       setSaving(false);
     }

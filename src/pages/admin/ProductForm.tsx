@@ -54,6 +54,7 @@ import BarcodeScannerDialog from '@/components/admin/BarcodeScannerDialog';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { SmartImage } from "@/components/ui/smart-image";
+import { describeError } from '@/lib/errorMessage';
 
 // YouTube helpers
 function extractYouTubeId(url: string): string | null {
@@ -90,6 +91,26 @@ function saveSpecSuggestion(label: string, value: string) {
   }
   localStorage.setItem(SPEC_SUGGESTIONS_KEY, JSON.stringify(suggestions));
 }
+
+/** Red asterisk marking a field the form will not submit without. */
+const Required = () => (
+  <span className="text-red-500 ml-0.5" title="Required">
+    *
+  </span>
+);
+
+/** Inline validation message shown under the field it belongs to. */
+const FieldError = ({ message }: { message?: string }) =>
+  message ? (
+    <p className="mt-1 text-xs font-medium text-red-600 flex items-center gap-1">
+      <span aria-hidden>!</span>
+      {message}
+    </p>
+  ) : null;
+
+/** Red ring on an invalid control, so the offending field is obvious. */
+const invalidRing = (hasError?: boolean) =>
+  hasError ? ' border-red-400 ring-1 ring-red-300 focus-visible:ring-red-400' : '';
 
 const ProductForm = () => {
   const { productId } = useParams();
@@ -195,6 +216,24 @@ const ProductForm = () => {
   });
 
   const [scannerOpen, setScannerOpen] = useState(false);
+
+  /**
+   * Per-field validation messages, keyed by field name.
+   *
+   * Submitting used to fail with one generic "Please fill in all required
+   * fields" toast that never said which field, and a save that failed
+   * server-side said only "Failed to update product". Both now name the
+   * problem, and the offending field is highlighted and scrolled to.
+   */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (field: string) =>
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
 
   /**
    * Per-product delivery override.
@@ -308,7 +347,7 @@ const ProductForm = () => {
       }
     } catch (error) {
       console.error('Error fetching product:', error);
-      toast({ title: 'Error', description: 'Failed to fetch product details', variant: 'destructive' });
+      toast({ title: 'Could not load this product', description: describeError(error), variant: 'destructive' });
     } finally {
       setFetchingProduct(false);
     }
@@ -323,8 +362,8 @@ const ProductForm = () => {
       setFormData((prev) => ({ ...prev, subcategory: newSubcategory.trim(), subSubcategory: '' }));
       setNewSubcategory('');
       toast({ title: 'Success', description: 'Subcategory added' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to add subcategory', variant: 'destructive' });
+    } catch (error) {
+      toast({ title: 'Could not add subcategory', description: describeError(error), variant: 'destructive' });
     } finally {
       setAddingSub(false);
     }
@@ -339,8 +378,8 @@ const ProductForm = () => {
       setFormData((prev) => ({ ...prev, subSubcategory: newSubSubcategory.trim() }));
       setNewSubSubcategory('');
       toast({ title: 'Success', description: 'Sub-subcategory added' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to add sub-subcategory', variant: 'destructive' });
+    } catch (error) {
+      toast({ title: 'Could not add sub-subcategory', description: describeError(error), variant: 'destructive' });
     } finally {
       setAddingSubSub(false);
     }
@@ -406,10 +445,12 @@ const ProductForm = () => {
         uploadedUrls.push(result.secure_url);
       }
       setImages((prev) => [...prev, ...uploadedUrls]);
+      if (uploadedUrls.length > 0) clearFieldError('images');
       if (!thumbnail && uploadedUrls.length > 0) setThumbnail(uploadedUrls[0]);
       toast({ title: 'Success', description: `${uploadedUrls.length} image(s) uploaded` });
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to upload images', variant: 'destructive' });
+      console.error('Image upload failed:', error);
+      toast({ title: 'Image upload failed', description: describeError(error), variant: 'destructive' });
     } finally {
       setUploadingImages(false);
       setUploadProgress(0);
@@ -426,6 +467,7 @@ const ProductForm = () => {
     try {
       new URL(imageUrlInput);
       setImages((prev) => [...prev, imageUrlInput]);
+      clearFieldError('images');
       if (!thumbnail) setThumbnail(imageUrlInput);
       setImageUrlInput('');
       toast({ title: 'Success', description: 'Image URL added' });
@@ -467,17 +509,68 @@ const ProductForm = () => {
   const addSpecRow = () => setSpecifications((prev) => [...prev, { label: '', value: '' }]);
   const removeSpecRow = (index: number) => setSpecifications((prev) => prev.filter((_, i) => i !== index));
 
+  /** Field name -> message for everything the form requires. */
+  const validate = (): Record<string, string> => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.name.trim()) errors.name = 'Product name is required';
+    if (!formData.category) errors.category = 'Pick a category';
+
+    if (silverPricing.enabled) {
+      // The price is computed from the calculator, so validate its inputs.
+      if (!(parseFloat(silverPricing.weightGrams) > 0)) {
+        errors.weightGrams = 'Enter the silver weight in grams';
+      }
+      if (!(silverRate > 0)) {
+        errors.silverRate = 'No live silver rate is set — add one under Silver Rate, or turn the calculator off';
+      }
+    } else if (!(parseFloat(formData.price) > 0)) {
+      errors.price = 'Enter a price greater than 0';
+    }
+
+    if (images.length === 0) errors.images = 'Add at least one product image';
+
+    if (delivery.override && delivery.chargeEnabled) {
+      if (delivery.withinState === '' && delivery.outsideState === '') {
+        errors.delivery = 'Enter the delivery charges, or switch "Charge delivery" off for free delivery';
+      }
+    }
+
+    return errors;
+  };
+
+  /** Human labels for the toast summary, in the order they appear in the form. */
+  const FIELD_LABELS: Record<string, string> = {
+    name: 'Product Name',
+    category: 'Category',
+    price: 'Price',
+    weightGrams: 'Silver weight',
+    silverRate: 'Silver rate',
+    images: 'Product Images',
+    delivery: 'Delivery charges',
+  };
+
   // Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.category || !formData.price) {
-      toast({ title: 'Validation Error', description: 'Please fill in all required fields', variant: 'destructive' });
+
+    const errors = validate();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const missing = Object.keys(errors).map((k) => FIELD_LABELS[k] || k);
+      toast({
+        title: missing.length === 1 ? 'One field needs attention' : `${missing.length} fields need attention`,
+        description: Object.values(errors).join(' · '),
+        variant: 'destructive',
+      });
+      // Put the first problem on screen — the form is long enough that an
+      // error above the fold is invisible when you save from the bottom.
+      const first = document.querySelector<HTMLElement>('[data-field-error="true"]');
+      first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      (first?.querySelector('input, textarea, button') as HTMLElement | null)?.focus?.();
       return;
     }
-    if (images.length === 0) {
-      toast({ title: 'Validation Error', description: 'Please upload at least one product image', variant: 'destructive' });
-      return;
-    }
+    setFieldErrors({});
 
     setLoading(true);
     try {
@@ -494,10 +587,13 @@ const ProductForm = () => {
       const productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'> = {
         name: formData.name,
         slug: generateSlug(formData.name),
-        barcode: formData.barcode.trim() || undefined,
+        // `null` rather than `undefined`: on an update Firestore treats
+        // undefined as "leave unchanged", so clearing a barcode or subcategory
+        // would silently keep the old value.
+        barcode: formData.barcode.trim() || null,
         category: formData.category,
-        subcategory: formData.subcategory || undefined,
-        subSubcategory: formData.subSubcategory || undefined,
+        subcategory: formData.subcategory || null,
+        subSubcategory: formData.subSubcategory || null,
         description: formData.description,
         price: parseFloat(formData.price),
         ...(!silverPricing.enabled && formData.originalPrice && { originalPrice: parseFloat(formData.originalPrice) }),
@@ -538,7 +634,13 @@ const ProductForm = () => {
       navigate('/admin/products');
     } catch (error) {
       console.error('Error saving product:', error);
-      toast({ title: 'Error', description: 'Failed to ' + (isEditing ? 'update' : 'create') + ' product', variant: 'destructive' });
+      // Show what actually went wrong. A bare "Failed to update product" left
+      // no way to tell a permission problem from a bad field or a quota limit.
+      toast({
+        title: 'Failed to ' + (isEditing ? 'update' : 'create') + ' product',
+        description: describeError(error),
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -568,6 +670,9 @@ const ProductForm = () => {
           </h1>
           <p className="text-gray-500 text-xs truncate">
             {isEditing ? formData.name || 'Update product details' : 'Add a new product to your catalog'}
+            <span className="ml-2 hidden sm:inline text-gray-400">
+              · fields marked <span className="text-red-500">*</span> are required
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2 ml-auto">
@@ -607,9 +712,18 @@ const ProductForm = () => {
               <CardTitle className="text-gray-900">Basic Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label className="text-gray-700">Product Name *</Label>
-                <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="Enter product name" className="mt-2 bg-gray-100 border-gray-300 text-gray-900" required />
+              <div data-field-error={!!fieldErrors.name}>
+                <Label className="text-gray-700">
+                  Product Name<Required />
+                </Label>
+                <Input
+                  name="name"
+                  value={formData.name}
+                  onChange={(e) => { clearFieldError('name'); handleInputChange(e); }}
+                  placeholder="Enter product name"
+                  className={'mt-2 bg-gray-100 border-gray-300 text-gray-900' + invalidRing(!!fieldErrors.name)}
+                />
+                <FieldError message={fieldErrors.name} />
               </div>
 
               <div>
@@ -639,10 +753,18 @@ const ProductForm = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-gray-700">Category *</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value, subcategory: '', subSubcategory: '' }))}>
-                    <SelectTrigger className="mt-2 bg-gray-100 border-gray-300 text-gray-900">
+                <div data-field-error={!!fieldErrors.category}>
+                  <Label className="text-gray-700">
+                    Category<Required />
+                  </Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => {
+                      clearFieldError('category');
+                      setFormData((prev) => ({ ...prev, category: value, subcategory: '', subSubcategory: '' }));
+                    }}
+                  >
+                    <SelectTrigger className={'mt-2 bg-gray-100 border-gray-300 text-gray-900' + invalidRing(!!fieldErrors.category)}>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-200">
@@ -651,6 +773,7 @@ const ProductForm = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  <FieldError message={fieldErrors.category} />
                 </div>
 
                 <div>
@@ -712,8 +835,11 @@ const ProductForm = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Images */}
-              <div>
-                <Label className="text-gray-700">Product Images *</Label>
+              <div data-field-error={!!fieldErrors.images}>
+                <Label className="text-gray-700">
+                  Product Images<Required />
+                </Label>
+                <FieldError message={fieldErrors.images} />
                 <div className="flex gap-2 mt-2 mb-3">
                   <button type="button" onClick={() => setImageUploadMode('upload')} className={'flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ' + (imageUploadMode === 'upload' ? 'bg-gray-100 text-gray-900' : 'bg-white text-gray-600 hover:bg-gray-50')}>
                     Upload Files
@@ -908,17 +1034,23 @@ const ProductForm = () => {
 
                     {/* Inputs row */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <Label className="text-gray-700 text-xs font-medium">Weight (grams) — x</Label>
+                      <div data-field-error={!!fieldErrors.weightGrams || !!fieldErrors.silverRate}>
+                        <Label className="text-gray-700 text-xs font-medium">
+                          Weight (grams) — x<Required />
+                        </Label>
                         <Input
                           type="number"
                           value={silverPricing.weightGrams}
-                          onChange={(e) => setSilverPricing((prev) => ({ ...prev, weightGrams: e.target.value }))}
+                          onChange={(e) => {
+                            clearFieldError('weightGrams');
+                            setSilverPricing((prev) => ({ ...prev, weightGrams: e.target.value }));
+                          }}
                           placeholder="e.g., 12"
                           min="0"
                           step="0.01"
-                          className="mt-1.5 bg-white border-amber-200 text-gray-900 text-sm"
+                          className={'mt-1.5 bg-white border-amber-200 text-gray-900 text-sm' + invalidRing(!!fieldErrors.weightGrams)}
                         />
+                        <FieldError message={fieldErrors.weightGrams || fieldErrors.silverRate} />
                         {silverRate > 0 && silverPricing.weightGrams && (
                           <p className="text-xs text-amber-600 mt-1">
                             Silver cost: ₹{(parseFloat(silverPricing.weightGrams || '0') * silverRate).toFixed(2)}
@@ -1024,9 +1156,21 @@ const ProductForm = () => {
                       className="mt-2 bg-gray-100 border-gray-300 text-gray-900"
                     />
                   </div>
-                  <div>
-                    <Label className="text-gray-700">Price (&#8377;) *</Label>
-                    <Input name="price" type="number" value={formData.price} onChange={handleInputChange} placeholder="0.00" min="0" step="0.01" className="mt-2 bg-gray-100 border-gray-300 text-gray-900" required />
+                  <div data-field-error={!!fieldErrors.price}>
+                    <Label className="text-gray-700">
+                      Price (&#8377;)<Required />
+                    </Label>
+                    <Input
+                      name="price"
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => { clearFieldError('price'); handleInputChange(e); }}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className={'mt-2 bg-gray-100 border-gray-300 text-gray-900' + invalidRing(!!fieldErrors.price)}
+                    />
+                    <FieldError message={fieldErrors.price} />
                   </div>
                   <div>
                     <Label className="text-gray-700">Discount</Label>
@@ -1151,14 +1295,17 @@ const ProductForm = () => {
                   </div>
 
                   {delivery.chargeEnabled ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-field-error={!!fieldErrors.delivery}>
+                      <div className="sm:col-span-2">
+                        <FieldError message={fieldErrors.delivery} />
+                      </div>
                       <div>
                         <Label className="text-gray-700">Within Andhra Pradesh (&#8377;)</Label>
                         <Input
                           type="number"
                           min="0"
                           value={delivery.withinState}
-                          onChange={(e) => setDelivery((p) => ({ ...p, withinState: e.target.value }))}
+                          onChange={(e) => { clearFieldError('delivery'); setDelivery((p) => ({ ...p, withinState: e.target.value })); }}
                           placeholder="0"
                           className="mt-2 bg-gray-100 border-gray-300 text-gray-900"
                         />
@@ -1169,7 +1316,7 @@ const ProductForm = () => {
                           type="number"
                           min="0"
                           value={delivery.outsideState}
-                          onChange={(e) => setDelivery((p) => ({ ...p, outsideState: e.target.value }))}
+                          onChange={(e) => { clearFieldError('delivery'); setDelivery((p) => ({ ...p, outsideState: e.target.value })); }}
                           placeholder="0"
                           className="mt-2 bg-gray-100 border-gray-300 text-gray-900"
                         />
