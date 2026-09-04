@@ -82,8 +82,10 @@ const MobileCart = () => {
   const [promoCode, setPromoCode] = useState('');
 
   // Shared pricing engine — same source of truth as Checkout & ShoppingCart.
-  // Default to COD so the displayed total is the worst case.
-  const pricing = useCheckoutPricing(subtotal, items.length === 0, 'cod');
+  // Delivery is quoted at the home-state rate until an address is picked.
+  const pricing = useCheckoutPricing(subtotal, items.length === 0, 'Razorpay', {
+    productIds: items.map((i) => i.id),
+  });
 
   // Desktop users hitting /cart should see the slide-over drawer instead of
   // the mobile page. We pushed /cart in their history before /checkout, so
@@ -116,7 +118,6 @@ const MobileCart = () => {
   const deliveryFee = pricing.deliveryCharge;
   const freeDelivery = pricing.freeDelivery;
   const taxAmount = pricing.gstAddOnTop ? pricing.gstAmount : 0;
-  const codCharge = pricing.codCharge;
   const totalAmount = pricing.total;
 
   const formatPrice = (price: number) => {
@@ -328,17 +329,16 @@ const MobileCart = () => {
                     {freeDelivery ? 'FREE' : formatPrice(deliveryFee)}
                   </span>
                 </div>
+                {pricing.deliveryEstimated && (
+                  <p className="text-[11px] text-gray-500 dark:text-zinc-500 -mt-1">
+                    Final delivery charge is calculated from your shipping address at checkout.
+                  </p>
+                )}
                 
                 {taxAmount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600 dark:text-zinc-400">GST</span>
                     <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(taxAmount)}</span>
-                  </div>
-                )}
-                {codCharge > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-zinc-400">COD Charge</span>
-                    <span className="text-gray-900 dark:text-zinc-100 font-medium">{formatPrice(codCharge)}</span>
                   </div>
                 )}
 

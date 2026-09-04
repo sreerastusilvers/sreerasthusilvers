@@ -114,7 +114,7 @@ const MobileCheckout = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [tempSelectedAddress, setTempSelectedAddress] = useState<Address | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Cash On Delivery');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Razorpay');
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
@@ -287,8 +287,13 @@ const MobileCheckout = () => {
     return `₹ ${price.toFixed(2)}`;
   };
 
-  // Admin-driven pricing (coupons / delivery / GST / COD all live in /admin/commerce-settings)
-  const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod);
+  // Admin-driven pricing (coupons / delivery / GST all live in /admin/commerce-settings).
+  // Product ids let per-product delivery overrides apply; the address state
+  // selects the within-state / outside-state / per-state rate.
+  const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod, {
+    productIds: items.map((i) => i.id),
+    destinationState: selectedAddress?.state,
+  });
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
   const gstLabel = `GST (${pricing.gst.rate}%${pricing.gst.inclusive ? ' included' : ''})`;
@@ -337,19 +342,20 @@ const MobileCheckout = () => {
         quantity: item.quantity,
       }));
 
-      // ── Collect online payment up-front (everything except Cash On Delivery) ──
+      // ── Collect online payment up-front ──
       // Opens Razorpay Standard Checkout and waits for a server-verified payment.
       // The order is only written to Firestore AFTER the signature is verified,
       // so cancelled/failed payments never create an order. Throws
       // PaymentCancelledError on dismiss (handled in catch below).
       let verifiedPayment: VerifiedPayment | null = null;
-      if (selectedPaymentMethod !== 'Cash On Delivery') {
+      {
         verifiedPayment = await payWithRazorpay({
           // `amount` is a cross-check only; /api/create-order re-prices these
           // line items from Firestore and refuses to charge a mismatched total.
           amount: total,
           lineItems: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
           paymentMethod: selectedPaymentMethod,
+          shippingState: selectedAddress.state,
           couponCode: pricing.appliedCoupon?.code,
           receipt: orderId,
           name: 'Sreerasthu Silvers',
@@ -426,7 +432,6 @@ const MobileCheckout = () => {
         } : {}),
         gstRate: pricing.gst.rate,
         gstInclusive: !!pricing.gst.inclusive,
-        codCharge: pricing.codCharge || 0,
         shippingAddress: {
           fullName: selectedAddress.fullName,
           mobile: selectedAddress.phoneNumber,
@@ -1415,24 +1420,6 @@ const MobileCheckout = () => {
               <div className="px-4 py-4">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-4">Payment Method</h3>
                 <div className="space-y-3">
-                  {/* Cash on Delivery */}
-                  <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                        <CreditCard className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
-                      </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">Cash On Delivery</span>
-                    </div>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="Cash On Delivery"
-                      checked={selectedPaymentMethod === 'Cash On Delivery'}
-                      onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
-                    />
-                  </label>
-
                   {/* Razorpay — Cards, UPI, Wallets & Net Banking */}
                   <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
                     <div className="flex items-center gap-3">
@@ -1670,9 +1657,7 @@ const MobileCheckout = () => {
                 className="text-sm text-gray-600 dark:text-zinc-400 text-center mb-6"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
-                {selectedPaymentMethod === 'Cash On Delivery'
-                  ? 'Your order is confirmed! Pay in cash when your order arrives.'
-                  : 'Payment is successfully processed and your Order is on the way.'}
+                Payment is successfully processed and your Order is on the way.
               </motion.p>
 
               {/* Order Details */}
@@ -1683,9 +1668,7 @@ const MobileCheckout = () => {
                     Your order # is: <span className="font-bold">{orderId}</span>
                   </p>
                   <p className="text-xs text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                    {selectedPaymentMethod === 'Cash On Delivery'
-                      ? 'Your order is confirmed and will be dispatched soon. Pay on delivery.'
-                      : 'Payment is successfully processed and your Order is on the way.'}
+                    Payment is successfully processed and your Order is on the way.
                   </p>
                 </div>
               </div>
@@ -1824,7 +1807,7 @@ const Checkout = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [tempSelectedAddress, setTempSelectedAddress] = useState<Address | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Cash On Delivery');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Razorpay');
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
   const [orderId] = useState(() => generateOrderNumber());
@@ -1975,7 +1958,10 @@ const Checkout = () => {
   };
 
   // Admin-driven pricing (must be called before any conditional returns — Rules of Hooks)
-  const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod);
+  const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod, {
+    productIds: items.map((i) => i.id),
+    destinationState: selectedAddress?.state,
+  });
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
   const gstLabel = `GST (${pricing.gst.rate}%${pricing.gst.inclusive ? ' included' : ''})`;
@@ -2022,19 +2008,20 @@ const Checkout = () => {
         quantity: item.quantity,
       }));
 
-      // ── Collect online payment up-front (everything except Cash On Delivery) ──
+      // ── Collect online payment up-front ──
       // Opens Razorpay Standard Checkout and waits for a server-verified payment.
       // The order is only written to Firestore AFTER the signature is verified,
       // so cancelled/failed payments never create an order. Throws
       // PaymentCancelledError on dismiss (handled in catch below).
       let verifiedPayment: VerifiedPayment | null = null;
-      if (selectedPaymentMethod !== 'Cash On Delivery') {
+      {
         verifiedPayment = await payWithRazorpay({
           // `amount` is a cross-check only; /api/create-order re-prices these
           // line items from Firestore and refuses to charge a mismatched total.
           amount: total,
           lineItems: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
           paymentMethod: selectedPaymentMethod,
+          shippingState: selectedAddress.state,
           couponCode: pricing.appliedCoupon?.code,
           receipt: orderId,
           name: 'Sreerasthu Silvers',
@@ -2111,7 +2098,6 @@ const Checkout = () => {
         } : {}),
         gstRate: pricing.gst.rate,
         gstInclusive: !!pricing.gst.inclusive,
-        codCharge: pricing.codCharge || 0,
         shippingAddress: {
           fullName: selectedAddress.fullName,
           mobile: selectedAddress.phoneNumber,
@@ -2732,7 +2718,13 @@ const Checkout = () => {
                   <span className={deliveryCharge === 0 ? 'text-green-600' : ''}>
                     {deliveryCharge === 0 ? (
                       <span className="flex items-center gap-1">
-                        <span className="line-through text-muted-foreground">₹200</span>
+                        {/* Strike through the real configured charge, not a
+                            hardcoded figure - delivery is admin-managed now. */}
+                        {pricing.deliveryBeforeFree > 0 && (
+                          <span className="line-through text-muted-foreground">
+                            {formatPrice(pricing.deliveryBeforeFree)}
+                          </span>
+                        )}
                         <span className="font-medium">FREE</span>
                       </span>
                     ) : (
@@ -2753,16 +2745,9 @@ const Checkout = () => {
                   </div>
                 )}
 
-                {pricing.codCharge > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">COD Charge</span>
-                    <span>{formatPrice(pricing.codCharge)}</span>
-                  </div>
-                )}
-
-                {subtotal >= 5000 && (
+                {pricing.freeDelivery && pricing.deliveryBeforeFree > 0 && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
-                    🎉 You're saving ₹200 on delivery!
+                    🎉 You're saving {formatPrice(pricing.deliveryBeforeFree)} on delivery!
                   </div>
                 )}
 
@@ -2879,25 +2864,6 @@ const Checkout = () => {
                   <div>
                     <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-zinc-400 mb-2.5">Payment Method</h3>
                     <div className="space-y-2.5">
-                      {/* Cash on Delivery */}
-                      <label className={`flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all ${selectedPaymentMethod === 'Cash On Delivery' ? 'border-2 border-[#832729] bg-[#832729]/5 dark:bg-amber-400/5 dark:border-amber-400' : 'border border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700'}`}>
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedPaymentMethod === 'Cash On Delivery' ? 'bg-[#832729] dark:bg-amber-400' : 'bg-gray-100 dark:bg-zinc-800'}`}>
-                          <Truck className={`w-5 h-5 ${selectedPaymentMethod === 'Cash On Delivery' ? 'text-white dark:text-zinc-900' : 'text-gray-600 dark:text-zinc-400'}`} />
-                        </div>
-                        <div className="flex-1">
-                          <span className="block text-sm font-semibold text-gray-900 dark:text-zinc-100">Cash On Delivery</span>
-                          <span className="text-xs text-gray-500 dark:text-zinc-400">Pay in cash when it arrives</span>
-                        </div>
-                        <input
-                          type="radio"
-                          name="desktopPaymentMethod"
-                          value="Cash On Delivery"
-                          checked={selectedPaymentMethod === 'Cash On Delivery'}
-                          onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                          className="w-5 h-5 accent-[#832729] dark:accent-amber-400"
-                        />
-                      </label>
-
                       {/* Razorpay */}
                       <label className={`flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all ${selectedPaymentMethod === 'Razorpay' ? 'border-2 border-[#832729] bg-[#832729]/5 dark:bg-amber-400/5 dark:border-amber-400' : 'border border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700'}`}>
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedPaymentMethod === 'Razorpay' ? 'bg-[#832729] dark:bg-amber-400' : 'bg-gray-100 dark:bg-zinc-800'}`}>
@@ -2943,12 +2909,6 @@ const Checkout = () => {
                       <span className="text-gray-600 dark:text-zinc-400">{gstLabel}</span>
                       <span className="font-medium text-gray-900 dark:text-zinc-100">{formatPrice(taxAmount)}</span>
                     </div>
-                    {pricing.codCharge > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600 dark:text-zinc-400">COD Charge</span>
-                        <span className="font-medium text-gray-900 dark:text-zinc-100">{formatPrice(pricing.codCharge)}</span>
-                      </div>
-                    )}
                     <Separator className="my-1" />
                     <div className="flex items-center justify-between">
                       <span className="text-base font-bold text-gray-900 dark:text-zinc-100">Total</span>
@@ -2967,10 +2927,8 @@ const Checkout = () => {
                     {isPlacingOrder ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        {selectedPaymentMethod === 'Cash On Delivery' ? 'Placing Order…' : 'Processing…'}
+                        Processing…
                       </>
-                    ) : selectedPaymentMethod === 'Cash On Delivery' ? (
-                      'Place Order'
                     ) : (
                       <>
                         <Shield className="w-4 h-4 mr-2" />

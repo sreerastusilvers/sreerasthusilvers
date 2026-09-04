@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { 
   Gem, 
   Armchair, 
@@ -16,86 +16,28 @@ import {
 } from "lucide-react";
 import { subscribeToCategories, Category } from "@/services/categoryService";
 
-const buildCategoryTarget = (categorySlug: string, subSlug?: string) => {
-  const parentSlugMap: Record<string, string> = {
-    gifting: "articles",
-    "pooja-items": "articles",
-    mens: "jewellery",
-    wedding: "jewellery",
-    artifacts: "others",
-  };
+/**
+ * Storefront category strip.
+ *
+ * This used to render a hardcoded list that re-pointed Gifting, Pooja Items,
+ * Men's and Wedding at a *parent* category ("/category/articles?sub=gifting").
+ * Those are real top-level categories in Firestore, and products saved under
+ * them store `category: "Gifting"` - so the link led to a page that filtered
+ * Articles by a subcategory nothing used, and every one of those tabs showed an
+ * empty grid. The nav now renders whatever `categories` actually contains, so a
+ * category the admin creates appears here and its link always resolves.
+ */
 
-  const subcategorySlugMap: Record<string, string> = {
-    gifting: "gifting",
-    "pooja-items": "pooja-items",
-    mens: "mens",
-    wedding: "wedding",
-    artifacts: "artifacts",
-  };
-
-  const resolvedParent = parentSlugMap[categorySlug] || categorySlug;
-  const resolvedSub = subSlug || subcategorySlugMap[categorySlug];
-
-  return resolvedSub
-    ? `/category/${resolvedParent}?sub=${resolvedSub}`
-    : `/category/${resolvedParent}`;
-};
-
-const categories = [
-  { 
-    name: "Jewellery", 
-    icon: Gem, 
-    href: buildCategoryTarget("jewellery"),
-    image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=200&h=200&fit=crop",
-  },
-  { 
-    name: "Furniture", 
-    icon: Armchair, 
-    href: buildCategoryTarget("furniture"),
-    image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=200&h=200&fit=crop",
-  },
-  { 
-    name: "Articles", 
-    icon: BookOpen, 
-    href: buildCategoryTarget("articles"),
-    image: "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=200&h=200&fit=crop",
-  },
-  { 
-    name: "Gifting", 
-    icon: Gift, 
-    href: buildCategoryTarget("gifting"),
-    image: "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=200&h=200&fit=crop",
-  },
-  { 
-    name: "Pooja Items", 
-    icon: Flame, 
-    href: buildCategoryTarget("pooja-items"),
-    image: "https://images.unsplash.com/photo-1610375461246-83df859d849d?w=200&h=200&fit=crop",
-  },
-  { 
-    name: "Men's", 
-    icon: UserCircle, 
-    href: buildCategoryTarget("mens"),
-    image: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&h=200&fit=crop",
-  },
-  { 
-    name: "Wedding", 
-    icon: Heart, 
-    href: buildCategoryTarget("wedding"),
-    image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&h=200&fit=crop",
-  },
-  {
-    name: "Artifacts",
-    icon: Landmark,
-    href: buildCategoryTarget("artifacts"),
-    image: "https://images.unsplash.com/photo-1610375461246-83df859d849d?w=200&h=200&fit=crop",
-  },
-  {
-    name: "Others",
-    icon: Home,
-    href: buildCategoryTarget("others"),
-    image: "https://images.unsplash.com/photo-1556911220-bff31c812dba?w=200&h=200&fit=crop",
-  },
+/** Fallback order for the handful of categories that ship by default. */
+const CATEGORY_ORDER = [
+  'jewellery',
+  'furniture',
+  'articles',
+  'gifting',
+  'pooja-items',
+  'mens',
+  'wedding',
+  'others',
 ];
 
 const ICON_MAP: Record<string, any> = {
@@ -119,6 +61,28 @@ const CategoryIconNav = () => {
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const desktopScrollRef = useRef<HTMLDivElement>(null);
   const [firebaseCategories, setFirebaseCategories] = useState<Category[]>([]);
+
+  /**
+   * Nav entries built from Firestore. Ordering puts the known defaults first
+   * (so the strip keeps its familiar shape) and appends anything new after.
+   */
+  const categories = useMemo(
+    () =>
+      [...firebaseCategories]
+        .sort((a, b) => {
+          const ai = CATEGORY_ORDER.indexOf(a.slug);
+          const bi = CATEGORY_ORDER.indexOf(b.slug);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        })
+        .map((cat) => ({
+          name: cat.name,
+          slug: cat.slug,
+          icon: ICON_MAP[cat.slug] || ICON_MAP[cat.name.toLowerCase()] || MoreHorizontal,
+          href: `/category/${cat.slug}`,
+          subcategories: cat.subcategories || [],
+        })),
+    [firebaseCategories],
+  );
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -152,14 +116,6 @@ const CategoryIconNav = () => {
     window.addEventListener("scroll", controlMobileNav);
     return () => window.removeEventListener("scroll", controlMobileNav);
   }, []);
-
-  // Find Firebase category by slug to get subcategories
-  const getSubcategories = (slug: string) => {
-    const cat = firebaseCategories.find(
-      (c) => c.slug === slug || c.name.toLowerCase() === slug.toLowerCase()
-    );
-    return cat?.subcategories || [];
-  };
 
   const handleMouseEnter = (categoryName: string) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -214,7 +170,7 @@ const CategoryIconNav = () => {
       >
         <div ref={mobileScrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide px-2.5 py-1.5">
           {categories.map((category, index) => {
-            const isActive = `${location.pathname}${location.search}` === category.href;
+            const isActive = location.pathname === category.href;
             const Icon = category.icon;
             return (
               <motion.a
@@ -258,10 +214,10 @@ const CategoryIconNav = () => {
         <div className="max-w-[1440px] mx-auto px-8 lg:px-12">
           <div ref={desktopScrollRef} className="flex items-center justify-center gap-1 overflow-x-auto scrollbar-hide">
             {categories.map((category, index) => {
-              const isActive = `${location.pathname}${location.search}` === category.href;
+              const isActive = location.pathname === category.href;
               const Icon = category.icon;
-              const categorySlug = category.href.split('/category/')[1]?.split('?')[0] || '';
-              const subcategories = getSubcategories(categorySlug);
+              const categorySlug = category.slug;
+              const subcategories = category.subcategories;
               const hasSubcategories = subcategories.length > 0;
 
               return (

@@ -47,7 +47,7 @@ import {
   type Coupon,
   type CouponsSettings,
   type DeliverySettings,
-  type DeliveryTier,
+  type StateDeliveryRate,
   type GstSettings,
   type CustomerSupportSettings,
   type FaqEntry,
@@ -366,29 +366,22 @@ const DeliveryGstTab = () => {
   const updateGst = <K extends keyof GstSettings>(k: K, v: GstSettings[K]) =>
     setGst((p) => ({ ...p, [k]: v }));
 
-  const updateTier = (id: string, patch: Partial<DeliveryTier>) =>
+  const updateStateRate = (id: string, patch: Partial<StateDeliveryRate>) =>
     setDelivery((p) => ({
       ...p,
-      tiers: p.tiers.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      stateRates: (p.stateRates || []).map((r) => (r.id === id ? { ...r, ...patch } : r)),
     }));
 
-  const addTier = () =>
+  const addStateRate = () =>
     setDelivery((p) => ({
       ...p,
-      tiers: [
-        ...p.tiers,
-        { id: newId(), label: 'New Tier', minOrder: 0, charge: 0, estimatedDays: '' },
-      ],
+      stateRates: [...(p.stateRates || []), { id: newId(), state: '', charge: 0 }],
     }));
 
-  const removeTier = (id: string) =>
-    setDelivery((p) => ({ ...p, tiers: p.tiers.filter((t) => t.id !== id) }));
+  const removeStateRate = (id: string) =>
+    setDelivery((p) => ({ ...p, stateRates: (p.stateRates || []).filter((r) => r.id !== id) }));
 
   const handleSave = async () => {
-    if (delivery.tiers.length === 0) {
-      toast.error('At least one delivery tier is required');
-      return;
-    }
     setSaving(true);
     try {
       await Promise.all([saveDeliverySettings(delivery), saveGstSettings(gst)]);
@@ -411,8 +404,63 @@ const DeliveryGstTab = () => {
 
   return (
     <div className="space-y-6">
-      <Section title="Delivery Charges" subtitle="Configure shipping tiers and free-delivery threshold" icon={Truck}>
-        <div className="space-y-4">
+      <Section
+        title="Delivery Charges"
+        subtitle="One universal charge for the whole catalogue, priced by destination state"
+        icon={Truck}
+      >
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-900/10 p-3">
+            <Switch
+              checked={delivery.enabled}
+              onCheckedChange={(v) => updateDelivery('enabled', v)}
+            />
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Charge delivery on all products
+              </p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                Off means free delivery everywhere. A product with its own delivery
+                charges (Products → edit → Delivery) always uses those instead.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-xs">Ships From (state)</Label>
+              <Input
+                value={delivery.homeState}
+                onChange={(e) => updateDelivery('homeState', e.target.value)}
+                placeholder="Andhra Pradesh"
+                disabled={!delivery.enabled}
+              />
+              <p className="text-[11px] text-gray-500 mt-1">
+                Orders to this state pay the within-state charge.
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">Within {delivery.homeState || 'home state'} (₹)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={delivery.withinStateCharge}
+                onChange={(e) => updateDelivery('withinStateCharge', Number(e.target.value) || 0)}
+                disabled={!delivery.enabled}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Outside {delivery.homeState || 'home state'} (₹)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={delivery.outsideStateCharge}
+                onChange={(e) => updateDelivery('outsideStateCharge', Number(e.target.value) || 0)}
+                disabled={!delivery.enabled}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-xs">Free Delivery Above (₹)</Label>
@@ -420,137 +468,94 @@ const DeliveryGstTab = () => {
                 type="number"
                 min={0}
                 value={delivery.freeDeliveryAbove}
-                onChange={(e) =>
-                  updateDelivery('freeDeliveryAbove', Number(e.target.value) || 0)
-                }
+                onChange={(e) => updateDelivery('freeDeliveryAbove', Number(e.target.value) || 0)}
               />
-              <p className="text-[11px] text-gray-500 mt-1">Set 0 to disable free delivery.</p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Set 0 to disable. Applies to every product, including per-product charges.
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">Estimated Delivery Time</Label>
+              <Input
+                value={delivery.estimatedDays ?? ''}
+                onChange={(e) => updateDelivery('estimatedDays', e.target.value)}
+                placeholder="3-5 business days"
+              />
             </div>
           </div>
 
           <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tiers</h4>
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Per-state rates
+                </h4>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                  Everything ships from {delivery.homeState || 'your home state'}, so a far
+                  state costs more than a neighbouring one. A state listed here is charged
+                  exactly this amount and ignores the outside-state rate — including for
+                  products with their own delivery charges. Match the state name to what
+                  customers pick in their address (e.g. "Delhi", "Kerala").
+                </p>
+              </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={addTier}
-                className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                onClick={addStateRate}
+                disabled={!delivery.enabled}
+                className="border-amber-200 text-amber-700 hover:bg-amber-50 shrink-0"
               >
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add Tier
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add State
               </Button>
             </div>
-            <div className="space-y-3">
-              {delivery.tiers.map((t) => (
-                <div
-                  key={t.id}
-                  className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border border-gray-200 dark:border-gray-800 rounded-lg p-3 bg-gray-50 dark:bg-gray-950"
-                >
-                  <div className="md:col-span-3">
-                    <Label className="text-xs">Label</Label>
-                    <Input
-                      value={t.label}
-                      onChange={(e) => updateTier(t.id, { label: e.target.value })}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-xs">Min Order (₹)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={t.minOrder}
-                      onChange={(e) =>
-                        updateTier(t.id, { minOrder: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-xs">Charge (₹)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={t.charge}
-                      onChange={(e) =>
-                        updateTier(t.id, { charge: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                  <div className="md:col-span-4">
-                    <Label className="text-xs">Estimated Days</Label>
-                    <Input
-                      value={t.estimatedDays ?? ''}
-                      onChange={(e) =>
-                        updateTier(t.id, { estimatedDays: e.target.value })
-                      }
-                      placeholder="3-5 business days"
-                    />
-                  </div>
-                  <div className="md:col-span-1 flex justify-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeTier(t.id)}
-                      className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              Cash on Delivery
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <Switch
-                  checked={delivery.codEnabled}
-                  onCheckedChange={(v) => updateDelivery('codEnabled', v)}
-                />
-                <span className="text-sm">Enable COD</span>
+            {(delivery.stateRates || []).length === 0 ? (
+              <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                No state overrides — everywhere outside {delivery.homeState || 'the home state'}{' '}
+                pays ₹{delivery.outsideStateCharge}.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {(delivery.stateRates || []).map((r) => (
+                  <div
+                    key={r.id}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border border-gray-200 dark:border-gray-800 rounded-lg p-3 bg-gray-50 dark:bg-gray-950"
+                  >
+                    <div className="md:col-span-7">
+                      <Label className="text-xs">State</Label>
+                      <Input
+                        value={r.state}
+                        onChange={(e) => updateStateRate(r.id, { state: e.target.value })}
+                        placeholder="Delhi"
+                        disabled={!delivery.enabled}
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <Label className="text-xs">Charge (₹)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={r.charge}
+                        onChange={(e) => updateStateRate(r.id, { charge: Number(e.target.value) || 0 })}
+                        disabled={!delivery.enabled}
+                      />
+                    </div>
+                    <div className="md:col-span-1 flex justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeStateRate(r.id)}
+                        className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                <Label className="text-xs">COD Charge (₹)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={delivery.codCharge}
-                  onChange={(e) =>
-                    updateDelivery('codCharge', Number(e.target.value) || 0)
-                  }
-                  disabled={!delivery.codEnabled}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">COD Min Order (₹)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={delivery.codMinOrder}
-                  onChange={(e) =>
-                    updateDelivery('codMinOrder', Number(e.target.value) || 0)
-                  }
-                  disabled={!delivery.codEnabled}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">COD Max Order (₹, 0 = no cap)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={delivery.codMaxOrder}
-                  onChange={(e) =>
-                    updateDelivery('codMaxOrder', Number(e.target.value) || 0)
-                  }
-                  disabled={!delivery.codEnabled}
-                />
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </Section>
@@ -584,6 +589,12 @@ const DeliveryGstTab = () => {
               disabled={!gst.enabled}
             />
             <span className="text-sm">Inclusive (price already contains GST)</span>
+          </div>
+          <div className="md:col-span-2 -mt-1">
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Inclusive: checkout shows how much of the price is GST and adds nothing to
+              the total. Exclusive: GST is calculated on the subtotal and added on top.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Switch

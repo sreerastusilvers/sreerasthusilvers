@@ -521,10 +521,12 @@ const AdminOrderDetails = () => {
           <div>
             <p className="text-[11px] uppercase tracking-widest text-gray-400">Payment</p>
             <p className="mt-1 font-semibold text-gray-900 dark:text-zinc-100">
-              {order.paymentMethod || 'COD'}
+              {order.paymentMethod || 'Online'}
             </p>
+            {/* Cash on Delivery was retired, but historic orders still carry it -
+                so the label follows the order rather than assuming COD. */}
             <p className={`text-xs font-medium ${isPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
-              {isPaid ? (isCod ? 'COD collected' : 'Paid') : 'COD pending'}
+              {isPaid ? (isCod ? 'COD collected' : 'Paid') : isCod ? 'COD pending' : 'Payment pending'}
             </p>
             {order.paymentCollectedAt && (
               <p className="mt-1 text-[11px] text-gray-500">

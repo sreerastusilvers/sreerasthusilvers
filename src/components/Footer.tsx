@@ -63,18 +63,13 @@ const toSlug = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const categoryParentMap: Record<string, string> = {
-  gifting: "articles",
-  "pooja-items": "articles",
-  mens: "jewellery",
-  wedding: "jewellery",
-};
-
-const buildCategoryHref = (name: string) => {
-  const slug = toSlug(name);
-  const parent = categoryParentMap[slug];
-  return parent ? `/category/${parent}?sub=${slug}` : `/category/${slug}`;
-};
+/**
+ * Gifting, Pooja Items, Men's and Wedding are top-level categories in Firestore,
+ * not subcategories of Articles/Jewellery. The old parent map sent them to
+ * "/category/articles?sub=gifting", which filtered Articles by a subcategory no
+ * product carries and always rendered an empty page.
+ */
+const buildCategoryHref = (name: string) => `/category/${toSlug(name)}`;
 
 const Footer = () => {
   const lightModeLogo = "/black_logo.png";

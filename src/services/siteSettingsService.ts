@@ -185,41 +185,95 @@ export function evaluateCoupon(
 // DELIVERY
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Legacy order-value tiers. No longer edited anywhere - the admin panel now
+ * exposes one universal charge - but kept so historic `siteSettings/delivery`
+ * documents still parse and can be migrated on read.
+ */
 export interface DeliveryTier {
   id: string;
-  label: string; // "Standard", "Express", etc.
-  minOrder: number; // tier applies when subtotal >= minOrder
+  label: string;
+  minOrder: number;
   charge: number;
-  estimatedDays?: string; // "3-5 business days"
+  estimatedDays?: string;
+}
+
+/** An exact charge for one destination state, overriding the outside-state rate. */
+export interface StateDeliveryRate {
+  id: string;
+  state: string;
+  charge: number;
+}
+
+/** Per-product delivery override, edited on the product form. */
+export interface ProductDeliveryConfig {
+  /** false => this product always ships free, whatever the universal setting says. */
+  chargeEnabled: boolean;
+  /** Charge when the destination is inside `homeState`. */
+  withinState: number;
+  /** Charge for every other state. */
+  outsideState: number;
 }
 
 export interface DeliverySettings {
-  tiers: DeliveryTier[];
+  /** Master switch for the universal charge. Off => free unless a product overrides. */
+  enabled: boolean;
+  /** Where orders ship from - destinations in this state pay `withinStateCharge`. */
+  homeState: string;
+  withinStateCharge: number;
+  outsideStateCharge: number;
+  /** Exact rates for specific far states (Delhi, Kerala, ...). */
+  stateRates: StateDeliveryRate[];
   freeDeliveryAbove: number; // 0 = disabled
-  codEnabled: boolean;
-  codCharge: number;
-  codMinOrder: number;
-  codMaxOrder: number; // 0 = no cap
+  estimatedDays?: string;
+  /** @deprecated superseded by the universal charge; retained for old documents. */
+  tiers?: DeliveryTier[];
+  /** @deprecated COD was removed from checkout; retained so old orders still read. */
+  codEnabled?: boolean;
+  codCharge?: number;
+  codMinOrder?: number;
+  codMaxOrder?: number;
   updatedAt?: unknown;
 }
 
 export const DEFAULT_DELIVERY: DeliverySettings = {
-  tiers: [
-    { id: 'standard', label: 'Standard', minOrder: 0, charge: 50, estimatedDays: '3-5 business days' },
-  ],
+  enabled: true,
+  homeState: 'Andhra Pradesh',
+  withinStateCharge: 50,
+  outsideStateCharge: 100,
+  stateRates: [],
   freeDeliveryAbove: 999,
-  codEnabled: true,
-  codCharge: 0,
-  codMinOrder: 0,
-  codMaxOrder: 0,
+  estimatedDays: '3-5 business days',
 };
 
 const DELIVERY_DOC = doc(db, 'siteSettings', 'delivery');
 
+/**
+ * Bring a stored delivery document up to the current shape.
+ *
+ * Documents written before the universal charge existed only carry `tiers`;
+ * their flat rate becomes both the within- and outside-state charge so pricing
+ * does not silently drop to zero the first time the new code reads an old doc.
+ */
+const normalizeDelivery = (raw: Partial<DeliverySettings> | undefined): DeliverySettings => {
+  const merged = { ...DEFAULT_DELIVERY, ...(raw || {}) };
+
+  if (raw && raw.withinStateCharge === undefined && Array.isArray(raw.tiers) && raw.tiers.length) {
+    const legacyCharge = raw.tiers[0]?.charge ?? DEFAULT_DELIVERY.withinStateCharge;
+    merged.withinStateCharge = legacyCharge;
+    merged.outsideStateCharge = legacyCharge;
+    merged.estimatedDays = raw.tiers[0]?.estimatedDays || merged.estimatedDays;
+  }
+
+  merged.enabled = raw?.enabled ?? true;
+  merged.stateRates = Array.isArray(merged.stateRates) ? merged.stateRates : [];
+  return merged;
+};
+
 export async function getDeliverySettings(): Promise<DeliverySettings> {
   try {
     const snap = await getDoc(DELIVERY_DOC);
-    if (snap.exists()) return { ...DEFAULT_DELIVERY, ...(snap.data() as DeliverySettings) };
+    if (snap.exists()) return normalizeDelivery(snap.data() as DeliverySettings);
   } catch (e) {
     console.error('getDeliverySettings failed', e);
   }
@@ -229,10 +283,7 @@ export async function getDeliverySettings(): Promise<DeliverySettings> {
 export function subscribeDeliverySettings(cb: (s: DeliverySettings) => void) {
   return onSnapshot(
     DELIVERY_DOC,
-    (snap) => {
-      if (snap.exists()) cb({ ...DEFAULT_DELIVERY, ...(snap.data() as DeliverySettings) });
-      else cb(DEFAULT_DELIVERY);
-    },
+    (snap) => cb(snap.exists() ? normalizeDelivery(snap.data() as DeliverySettings) : DEFAULT_DELIVERY),
     (err) => {
       console.error('subscribeDeliverySettings error', err);
       cb(DEFAULT_DELIVERY);
@@ -244,21 +295,78 @@ export async function saveDeliverySettings(settings: DeliverySettings): Promise<
   await setDoc(DELIVERY_DOC, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
 }
 
+const normalizeState = (v?: string) => (v || '').trim().toLowerCase();
+
+/** One cart line, as far as delivery pricing is concerned. */
+export interface DeliverableItem {
+  delivery?: ProductDeliveryConfig | null;
+}
+
 /**
- * Compute delivery charge for a subtotal given the current settings.
- * Returns { charge, freeDelivery, tier? }.
+ * Charge for a single product shipped to `destinationState`.
+ *
+ * Precedence, highest first:
+ *   1. A product marked "free delivery" ships free, always.
+ *   2. A state listed in `stateRates` uses that exact charge - this is what
+ *      keeps a far state like Delhi from being billed the same as a neighbour
+ *      when everything ships from Andhra Pradesh.
+ *   3. A product with its own charges uses them (within vs outside home state).
+ *   4. Otherwise the universal charge applies, or 0 when it is switched off.
+ *
+ * `destinationState` is unknown until an address is chosen (the cart page), and
+ * is then treated as the home state so the cart quotes the lower figure and
+ * checkout adjusts it upward once the address is known.
+ */
+export function computeItemDeliveryCharge(
+  item: DeliverableItem,
+  destinationState: string | undefined,
+  settings: DeliverySettings
+): number {
+  const cfg = item?.delivery;
+  if (cfg && cfg.chargeEnabled === false) return 0;
+
+  const isHome =
+    !destinationState || normalizeState(destinationState) === normalizeState(settings.homeState);
+
+  if (!isHome) {
+    const override = (settings.stateRates || []).find(
+      (r) => normalizeState(r.state) === normalizeState(destinationState)
+    );
+    if (override) return Math.max(0, override.charge || 0);
+  }
+
+  if (cfg && cfg.chargeEnabled) {
+    return Math.max(0, (isHome ? cfg.withinState : cfg.outsideState) || 0);
+  }
+
+  if (!settings.enabled) return 0;
+  return Math.max(0, (isHome ? settings.withinStateCharge : settings.outsideStateCharge) || 0);
+}
+
+/**
+ * Delivery charge for a whole cart.
+ *
+ * The cart pays the *highest* line charge rather than the sum: a shopper buying
+ * five bangles is one parcel, and summing per-product rates would quote absurd
+ * shipping on a large order.
  */
 export function computeDeliveryCharge(
   subtotal: number,
-  settings: DeliverySettings
-): { charge: number; freeDelivery: boolean; tier?: DeliveryTier } {
+  settings: DeliverySettings,
+  items: DeliverableItem[] = [],
+  destinationState?: string
+): { charge: number; freeDelivery: boolean; estimatedDays?: string } {
   if (settings.freeDeliveryAbove > 0 && subtotal >= settings.freeDeliveryAbove) {
-    return { charge: 0, freeDelivery: true };
+    return { charge: 0, freeDelivery: true, estimatedDays: settings.estimatedDays };
   }
-  // pick the highest matching tier (largest minOrder <= subtotal)
-  const sorted = [...settings.tiers].sort((a, b) => b.minOrder - a.minOrder);
-  const tier = sorted.find((t) => subtotal >= t.minOrder) ?? settings.tiers[0];
-  return { charge: tier?.charge ?? 0, freeDelivery: false, tier };
+
+  const lines = items.length ? items : [{}];
+  const charge = lines.reduce(
+    (max, item) => Math.max(max, computeItemDeliveryCharge(item, destinationState, settings)),
+    0
+  );
+
+  return { charge, freeDelivery: charge === 0, estimatedDays: settings.estimatedDays };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -79,24 +79,90 @@ function setCors(res: VercelResponse) {
 // ── Pricing helpers: must mirror src/hooks/useCheckoutPricing.ts ─────────────
 
 const DEFAULT_DELIVERY = {
-  tiers: [{ minOrder: 0, charge: 50 }],
+  enabled: true,
+  homeState: 'Andhra Pradesh',
+  withinStateCharge: 50,
+  outsideStateCharge: 100,
+  stateRates: [] as Array<{ state: string; charge: number }>,
   freeDeliveryAbove: 999,
-  codEnabled: true,
-  codCharge: 0,
 };
-const DEFAULT_GST = { enabled: false, rate: 0 };
+const DEFAULT_GST = { enabled: false, rate: 0, inclusive: false };
 
-function computeDeliveryCharge(subtotal: number, s: any): number {
-  if (s.freeDeliveryAbove > 0 && subtotal >= s.freeDeliveryAbove) return 0;
-  const tiers = Array.isArray(s.tiers) && s.tiers.length ? s.tiers : DEFAULT_DELIVERY.tiers;
-  const sorted = [...tiers].sort((a, b) => b.minOrder - a.minOrder);
-  const tier = sorted.find((t) => subtotal >= t.minOrder) ?? tiers[0];
-  return tier?.charge ?? 0;
+const normState = (v: unknown) => String(v || '').trim().toLowerCase();
+
+/**
+ * Per-product delivery charge - mirrors `computeItemDeliveryCharge` in
+ * src/services/siteSettingsService.ts. Keep the two in step: the client's total
+ * is cross-checked against this one and a divergence blocks checkout.
+ */
+function itemDeliveryCharge(product: any, destState: string, s: any): number {
+  const cfg = product?.delivery;
+  if (cfg && cfg.chargeEnabled === false) return 0;
+
+  const isHome = !destState || normState(destState) === normState(s.homeState);
+
+  if (!isHome) {
+    const rates = Array.isArray(s.stateRates) ? s.stateRates : [];
+    const override = rates.find((r: any) => normState(r?.state) === normState(destState));
+    if (override) return Math.max(0, Number(override.charge) || 0);
+  }
+
+  if (cfg && cfg.chargeEnabled) {
+    return Math.max(0, Number(isHome ? cfg.withinState : cfg.outsideState) || 0);
+  }
+
+  if (!s.enabled) return 0;
+  return Math.max(0, Number(isHome ? s.withinStateCharge : s.outsideStateCharge) || 0);
 }
 
-/** The client forces `inclusive: false`, so GST always adds on top when enabled. */
+/**
+ * Bring a stored delivery document up to the current shape - mirrors
+ * `normalizeDelivery` in src/services/siteSettingsService.ts.
+ *
+ * This must run on the RAW document, before defaults are merged in: after a
+ * merge `withinStateCharge` is always set, so a legacy tiers-only document
+ * would silently be priced at the default rate instead of its own, and the
+ * client/server totals would disagree - which blocks checkout outright.
+ */
+function normalizeDelivery(raw: Record<string, any> | null) {
+  const merged: any = { ...DEFAULT_DELIVERY, ...(raw || {}) };
+
+  if (raw && raw.withinStateCharge === undefined && Array.isArray(raw.tiers) && raw.tiers.length) {
+    const legacy = Number(raw.tiers[0]?.charge) || 0;
+    merged.withinStateCharge = legacy;
+    merged.outsideStateCharge = legacy;
+  }
+
+  merged.enabled = raw?.enabled ?? true;
+  merged.stateRates = Array.isArray(merged.stateRates) ? merged.stateRates : [];
+  return merged;
+}
+
+/** A cart is one parcel, so it pays the highest line charge - never the sum. */
+function computeDeliveryCharge(
+  subtotal: number,
+  s: any,
+  products: any[],
+  destState: string,
+): number {
+  if (s.freeDeliveryAbove > 0 && subtotal >= s.freeDeliveryAbove) return 0;
+
+  const lines = products.length ? products : [null];
+  return lines.reduce(
+    (max: number, p: any) => Math.max(max, itemDeliveryCharge(p, destState, s)),
+    0,
+  );
+}
+
+/**
+ * GST added on top of the subtotal.
+ *
+ * When the admin marks prices GST-inclusive the tax is already inside the item
+ * prices, so nothing is added - the checkout only shows how much of the total
+ * is tax. Returning a figure here in that case double-charged the customer.
+ */
 function computeGstOnTop(subtotal: number, gst: any): number {
-  if (!gst?.enabled || !(gst.rate > 0)) return 0;
+  if (!gst?.enabled || !(gst.rate > 0) || gst.inclusive) return 0;
   return Math.round((subtotal * gst.rate) / 100);
 }
 
@@ -123,6 +189,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = (req.body || {}) as {
     items?: Array<{ productId?: string; quantity?: unknown }>;
     paymentMethod?: string;
+    shippingState?: string;
     couponCode?: string;
     amount?: unknown;
     currency?: unknown;
@@ -165,7 +232,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       getDoc('siteSettings/gst'),
       getDoc('siteSettings/silverRate'),
     ]);
-    const delivery = { ...DEFAULT_DELIVERY, ...(deliveryDoc || {}) };
+    const delivery = normalizeDelivery(deliveryDoc);
     const gst = { ...DEFAULT_GST, ...(gstDoc || {}) };
     const ratePerGram = Number(silverDoc?.manualPricePerGramInr) || 0;
 
@@ -229,12 +296,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (usable) discount = couponDiscount(coupon, subtotal);
     }
 
-    const isCod = /cash|cod/i.test(body.paymentMethod || '');
-    const deliveryCharge = computeDeliveryCharge(subtotal, delivery);
+    // The destination state comes from the customer's own shipping address, the
+    // same value stored on the order document, and only selects a delivery rate.
+    const destState = typeof body.shippingState === 'string' ? body.shippingState : '';
+    const deliveryCharge = computeDeliveryCharge(subtotal, delivery, products, destState);
     const gstAmount = computeGstOnTop(subtotal, gst);
-    const codCharge = isCod && delivery.codEnabled ? delivery.codCharge || 0 : 0;
 
-    serverTotal = Math.max(0, subtotal + deliveryCharge + gstAmount + codCharge - discount);
+    serverTotal = Math.max(0, subtotal + deliveryCharge + gstAmount - discount);
   } catch (error: unknown) {
     return res.status(500).json({
       error: 'Could not price this order',

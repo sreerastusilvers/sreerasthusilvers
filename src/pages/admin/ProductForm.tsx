@@ -11,6 +11,9 @@ import {
   Trash2,
   Calculator,
   Info,
+  ScanLine,
+  Truck,
+  Save,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,10 +45,12 @@ import {
 import {
   subscribeToCategories,
   seedDefaultCategories,
+  healDuplicateCategories,
   addSubcategory,
   addSubSubcategory,
   Category,
 } from '@/services/categoryService';
+import BarcodeScannerDialog from '@/components/admin/BarcodeScannerDialog';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { SmartImage } from "@/components/ui/smart-image";
@@ -120,7 +125,11 @@ const ProductForm = () => {
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    seedDefaultCategories();
+    // Seed any missing default, then fold away duplicate documents left behind
+    // by the old non-idempotent seeding (that is what listed every category
+    // twice and rendered "JewelleryJewellery" in the trigger). Both are no-ops
+    // once the collection is clean.
+    seedDefaultCategories().then(() => healDuplicateCategories());
     const unsub = subscribeToCategories(setCategories);
     return unsub;
   }, []);
@@ -164,6 +173,7 @@ const ProductForm = () => {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
+    barcode: '',
     category: '',
     subcategory: '',
     subSubcategory: '',
@@ -182,6 +192,23 @@ const ProductForm = () => {
     isBestSeller: false,
     isTopDeal: false,
     isTrendProduct: false,
+  });
+
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  /**
+   * Per-product delivery override.
+   *
+   * Off => this product always ships free. On => it uses these two charges
+   * instead of the universal charge in Commerce → Delivery. Leaving it off and
+   * untouched is not the same as "free": a product only overrides the universal
+   * charge once the admin turns this on (see `hasDeliveryOverride`).
+   */
+  const [delivery, setDelivery] = useState({
+    override: false,
+    chargeEnabled: true,
+    withinState: '',
+    outsideState: '',
   });
 
   // Dynamic specifications
@@ -220,9 +247,10 @@ const ProductForm = () => {
       if (product) {
         setFormData({
           name: product.name,
+          barcode: product.barcode || '',
           category: product.category,
           subcategory: product.subcategory || '',
-          subSubcategory: (product as any).subSubcategory || '',
+          subSubcategory: product.subSubcategory || '',
           description: product.description,
           tags: '',
           price: product.price.toString(),
@@ -242,6 +270,16 @@ const ProductForm = () => {
         setImages(product.media?.images || []);
         setVideos(product.media?.videos || []);
         setThumbnail(product.media?.thumbnail || '');
+
+        const d = product.delivery;
+        if (d) {
+          setDelivery({
+            override: true,
+            chargeEnabled: d.chargeEnabled !== false,
+            withinState: d.withinState != null ? String(d.withinState) : '',
+            outsideState: d.outsideState != null ? String(d.outsideState) : '',
+          });
+        }
 
         const specs = product.specifications || {};
         const specEntries: { label: string; value: string }[] = [];
@@ -456,6 +494,7 @@ const ProductForm = () => {
       const productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'> = {
         name: formData.name,
         slug: generateSlug(formData.name),
+        barcode: formData.barcode.trim() || undefined,
         category: formData.category,
         subcategory: formData.subcategory || undefined,
         subSubcategory: formData.subSubcategory || undefined,
@@ -468,6 +507,17 @@ const ProductForm = () => {
         inventory: { stock: parseInt(formData.stock) || 0, sku: '', weight: formData.weight, weightUnit: formData.weightUnit },
         specifications: specsObj as any,
         flags: { isActive: formData.isActive, isFeatured: formData.isFeatured, isNewArrival: formData.isNewArrival, isBestSeller: formData.isBestSeller, isTopDeal: formData.isTopDeal, isTrendProduct: formData.isTrendProduct },
+        // Delivery: only written when the admin explicitly overrides the
+        // universal charge, so an untouched product keeps following Commerce.
+        // `null` (not undefined) so switching the override off actually clears
+        // the stored config and the product falls back to the universal charge.
+        delivery: delivery.override
+          ? {
+              chargeEnabled: delivery.chargeEnabled,
+              withinState: parseFloat(delivery.withinState) || 0,
+              outsideState: parseFloat(delivery.outsideState) || 0,
+            }
+          : null,
         // Silver rate-based pricing snapshot
         silverPricing: silverPricing.enabled ? {
           enabled: true,
@@ -504,23 +554,51 @@ const ProductForm = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
+      {/* Header — sticky so the save button is reachable from anywhere in the
+          form. The long form used to put "Update Product" only at the very
+          bottom, which meant scrolling past every section to save one edit. */}
+      <div className="sticky top-0 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 py-3 bg-white/95 backdrop-blur border-b border-gray-200 flex items-center gap-3 flex-wrap">
         <Button variant="ghost" size="sm" onClick={() => navigate('/admin/products')} className="text-gray-600 hover:text-gray-900">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
             {isEditing ? 'Edit Product' : 'Add New Product'}
           </h1>
-          <p className="text-gray-600 mt-1 text-sm">
-            {isEditing ? 'Update product details' : 'Add a new product to your catalog'}
+          <p className="text-gray-500 text-xs truncate">
+            {isEditing ? formData.name || 'Update product details' : 'Add a new product to your catalog'}
           </p>
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button
+            type="button"
+            variant="outline"
+            className="border-gray-300 text-gray-700 hover:bg-gray-100"
+            onClick={() => navigate('/admin/products')}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="product-form"
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {loading
+              ? isEditing ? 'Updating…' : 'Creating…'
+              : isEditing ? 'Update Product' : 'Create Product'}
+          </Button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+      <form id="product-form" onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-4 lg:space-y-6">
           {/* Basic Info */}
@@ -532,6 +610,32 @@ const ProductForm = () => {
               <div>
                 <Label className="text-gray-700">Product Name *</Label>
                 <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="Enter product name" className="mt-2 bg-gray-100 border-gray-300 text-gray-900" required />
+              </div>
+
+              <div>
+                <Label className="text-gray-700">Barcode</Label>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    name="barcode"
+                    value={formData.barcode}
+                    onChange={handleInputChange}
+                    placeholder="Scan or type the barcode"
+                    className="flex-1 bg-gray-100 border-gray-300 text-gray-900"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-amber-300 text-amber-700 hover:bg-amber-50 shrink-0"
+                    onClick={() => setScannerOpen(true)}
+                  >
+                    <ScanLine className="h-4 w-4 mr-2" />
+                    Scan
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Saved with the product so you can find it later by scanning or searching
+                  the barcode on the Products page.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1007,6 +1111,84 @@ const ProductForm = () => {
               <p className="text-xs text-gray-500">Previously entered values will appear as suggestions.</p>
             </CardContent>
           </Card>
+
+          {/* Delivery — per-product override of Commerce → Delivery */}
+          <Card className="bg-white border-gray-200">
+            <CardHeader>
+              <CardTitle className="text-gray-900 flex items-center gap-2">
+                <Truck className="h-4 w-4 text-amber-600" /> Delivery
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <Label className="text-gray-700">Set delivery for this product</Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Off: this product follows the universal charge in Commerce → Delivery.
+                  </p>
+                </div>
+                <Switch
+                  checked={delivery.override}
+                  onCheckedChange={(checked) => setDelivery((p) => ({ ...p, override: checked }))}
+                />
+              </div>
+
+              {delivery.override && (
+                <div className="space-y-4 border-t border-gray-200 pt-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label className="text-gray-700">Charge delivery</Label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Off means this product always ships free.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={delivery.chargeEnabled}
+                      onCheckedChange={(checked) =>
+                        setDelivery((p) => ({ ...p, chargeEnabled: checked }))
+                      }
+                    />
+                  </div>
+
+                  {delivery.chargeEnabled ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-gray-700">Within Andhra Pradesh (&#8377;)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={delivery.withinState}
+                          onChange={(e) => setDelivery((p) => ({ ...p, withinState: e.target.value }))}
+                          placeholder="0"
+                          className="mt-2 bg-gray-100 border-gray-300 text-gray-900"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-gray-700">Outside Andhra Pradesh (&#8377;)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={delivery.outsideState}
+                          onChange={(e) => setDelivery((p) => ({ ...p, outsideState: e.target.value }))}
+                          placeholder="0"
+                          className="mt-2 bg-gray-100 border-gray-300 text-gray-900"
+                        />
+                      </div>
+                      <p className="sm:col-span-2 text-xs text-gray-500">
+                        A state listed under Commerce → Delivery → Per-state rates overrides the
+                        outside-AP figure for that destination, and free delivery above the
+                        order threshold still applies.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                      Free delivery — no charge is added for this product.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}
@@ -1066,6 +1248,16 @@ const ProductForm = () => {
           </div>
         </div>
       </form>
+
+      <BarcodeScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onDetected={(code) => {
+          setFormData((prev) => ({ ...prev, barcode: code }));
+          toast({ title: 'Barcode scanned', description: code });
+        }}
+        description="Point the camera at the product barcode. It is saved with the product."
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -12,6 +12,8 @@ import {
   Package,
   LayoutGrid,
   List,
+  ScanLine,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,8 +34,21 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { getAllProducts, deleteProduct, updateProduct, Product } from '@/services/productService';
+import {
+  subscribeToCategories,
+  healDuplicateCategories,
+  Category,
+} from '@/services/categoryService';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { SmartImage } from "@/components/ui/smart-image";
+import BarcodeScannerDialog from '@/components/admin/BarcodeScannerDialog';
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -43,21 +58,72 @@ const Products = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [subcategoryFilter, setSubcategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [scannerOpen, setScannerOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchProducts();
+    // Admin screens are the only place with write access, so this is where the
+    // duplicate category documents left by the old seeding get merged away.
+    healDuplicateCategories();
+    const unsub = subscribeToCategories(setCategories);
+    return unsub;
   }, []);
 
+  /**
+   * Search + category/subcategory/status filters.
+   *
+   * The "Filters" button next to the search box used to be inert, so the only
+   * way to see one category's products was to type its name into search - and
+   * that also matched every product whose *name* contained the word. Filtering
+   * by the stored category value is exact, and search now also matches SKU and
+   * barcode so a scanned code finds its product.
+   */
   useEffect(() => {
-    const filtered = products.filter(
-      (product) =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const q = searchQuery.trim().toLowerCase();
+    const filtered = products.filter((product) => {
+      if (categoryFilter !== 'all' && (product.category || '') !== categoryFilter) return false;
+      if (subcategoryFilter !== 'all' && (product.subcategory || '') !== subcategoryFilter) {
+        return false;
+      }
+      if (statusFilter === 'active' && !product.flags?.isActive) return false;
+      if (statusFilter === 'inactive' && product.flags?.isActive) return false;
+      if (!q) return true;
+      return (
+        product.name?.toLowerCase().includes(q) ||
+        product.category?.toLowerCase().includes(q) ||
+        (product.subcategory || '').toLowerCase().includes(q) ||
+        (product.subSubcategory || '').toLowerCase().includes(q) ||
+        (product.inventory?.sku || '').toLowerCase().includes(q) ||
+        (product.barcode || '').toLowerCase().includes(q)
+      );
+    });
     setFilteredProducts(filtered);
-  }, [searchQuery, products]);
+  }, [searchQuery, products, categoryFilter, subcategoryFilter, statusFilter]);
+
+  /** Subcategories of the selected category, for the second filter dropdown. */
+  const subcategoryOptions = useMemo(() => {
+    if (categoryFilter === 'all') return [];
+    const cat = categories.find((c) => c.name === categoryFilter);
+    return cat?.subcategories || [];
+  }, [categories, categoryFilter]);
+
+  const activeFilterCount =
+    (categoryFilter !== 'all' ? 1 : 0) +
+    (subcategoryFilter !== 'all' ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0);
+
+  const clearFilters = () => {
+    setCategoryFilter('all');
+    setSubcategoryFilter('all');
+    setStatusFilter('all');
+  };
 
   const fetchProducts = async () => {
     try {
@@ -158,18 +224,42 @@ const Products = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <Input
-            placeholder="Search products..."
+            placeholder="Search by name, category, SKU or barcode..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
+            className="pl-10 pr-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <Button
           variant="outline"
           className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          onClick={() => setScannerOpen(true)}
+          title="Scan a barcode to find its product"
+        >
+          <ScanLine className="h-4 w-4 mr-2" />
+          Scan
+        </Button>
+        <Button
+          variant="outline"
+          className="border-gray-300 text-gray-700 hover:bg-gray-50 relative"
+          onClick={() => setShowFilters((v) => !v)}
         >
           <Filter className="h-4 w-4 mr-2" />
           Filters
+          {activeFilterCount > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-amber-600 text-white text-[11px] font-semibold">
+              {activeFilterCount}
+            </span>
+          )}
         </Button>
         <div className="flex border border-gray-300 rounded-md overflow-hidden">
           <button
@@ -186,6 +276,85 @@ const Products = () => {
           </button>
         </div>
       </div>
+
+      {showFilters && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="text-xs font-medium text-gray-600">Category</label>
+            <Select
+              value={categoryFilter}
+              onValueChange={(v) => {
+                setCategoryFilter(v);
+                setSubcategoryFilter('all');
+              }}
+            >
+              <SelectTrigger className="mt-1.5 bg-white border-gray-300 text-gray-900">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-600">Subcategory</label>
+            <Select
+              value={subcategoryFilter}
+              onValueChange={setSubcategoryFilter}
+              disabled={categoryFilter === 'all' || subcategoryOptions.length === 0}
+            >
+              <SelectTrigger className="mt-1.5 bg-white border-gray-300 text-gray-900">
+                <SelectValue placeholder="All subcategories" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="all">All subcategories</SelectItem>
+                {subcategoryOptions.map((sub) => (
+                  <SelectItem key={sub.slug} value={sub.name}>
+                    {sub.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-600">Status</label>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}
+            >
+              <SelectTrigger className="mt-1.5 bg-white border-gray-300 text-gray-900">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="active">Active only</SelectItem>
+                <SelectItem value="inactive">Inactive only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="sm:col-span-3 flex items-center justify-between">
+            <p className="text-xs text-gray-500">
+              {filteredProducts.length} of {products.length} products
+            </p>
+            {activeFilterCount > 0 && (
+              <button
+                onClick={clearFilters}
+                className="text-xs font-medium text-amber-700 hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Products View */}
       {loading ? (
@@ -372,6 +541,22 @@ const Products = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BarcodeScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onDetected={(code) => {
+          setSearchQuery(code);
+          const hit = products.find((p) => (p.barcode || '').trim() === code.trim());
+          toast({
+            title: hit ? 'Product found' : 'No product with that barcode',
+            description: hit ? hit.name : code,
+            variant: hit ? undefined : 'destructive',
+          });
+        }}
+        title="Scan to find a product"
+        description="Scanning fills the search box with the barcode."
+      />
     </div>
   );
 };

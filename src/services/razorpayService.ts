@@ -45,8 +45,14 @@ export interface RazorpayCheckoutOptions {
   amount: number;
   /** Cart contents. The server prices these; required for the order to be created. */
   lineItems: Array<{ productId: string; quantity: number }>;
-  /** Drives the CoD surcharge server-side. */
+  /** Recorded on the order; every payment now runs through Razorpay. */
   paymentMethod?: string;
+  /**
+   * Destination state from the shipping address. The server prices delivery
+   * from it (within-state vs outside-state vs a per-state override), so it must
+   * match the address the order is placed against.
+   */
+  shippingState?: string;
   /** Re-validated server-side; an invalid code is simply ignored. */
   couponCode?: string;
   /** Defaults to INR. */
@@ -126,6 +132,7 @@ async function createOrder(options: RazorpayCheckoutOptions): Promise<CreateOrde
         // The server prices `items` and treats `amount` only as a cross-check.
         items: options.lineItems,
         paymentMethod: options.paymentMethod,
+        shippingState: options.shippingState,
         couponCode: options.couponCode,
         amount: amountInPaise,
         currency: options.currency || 'INR',

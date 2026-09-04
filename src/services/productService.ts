@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { invalidateProductCache } from './productCache';
+import type { ProductDeliveryConfig } from './siteSettingsService';
 
 // Product Types
 export interface ProductMedia {
@@ -56,6 +57,8 @@ export interface Product {
   id?: string;
   name: string;
   slug: string;
+  /** Scanned/typed product barcode (EAN, UPC, Code128...). Unique per product. */
+  barcode?: string;
   category: string;
   subcategory?: string;
   subSubcategory?: string;
@@ -69,6 +72,11 @@ export interface Product {
   specifications: ProductSpecifications;
   flags: ProductFlags;
   seo?: ProductSEO;
+  /**
+   * Per-product delivery override. Absent => the product follows the universal
+   * charge in /admin/commerce-settings. See `computeItemDeliveryCharge`.
+   */
+  delivery?: ProductDeliveryConfig;
   rating?: number;
   reviewCount?: number;
   createdAt?: Date | Timestamp;

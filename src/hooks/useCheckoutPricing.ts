@@ -8,17 +8,26 @@ import {
   DEFAULT_GST,
   type DeliverySettings,
   type GstSettings,
+  type DeliverableItem,
 } from '@/services/siteSettingsService';
 import {
   validateCoupon,
   subscribeCoupons,
   type Coupon,
 } from '@/services/couponService';
+import { getActiveProductsCached } from '@/services/productCache';
 
 export interface CheckoutPricing {
   subtotal: number;
   deliveryCharge: number;
   freeDelivery: boolean;
+  /**
+   * What delivery would have cost without the free-delivery threshold. Lets the
+   * summary show "~~₹150~~ FREE" with a real number instead of a hardcoded one.
+   */
+  deliveryBeforeFree: number;
+  /** True while no address is chosen yet, so the quote may still rise. */
+  deliveryEstimated: boolean;
   gstAmount: number;
   gstAddOnTop: boolean;
   discount: number;
@@ -34,19 +43,29 @@ export interface CheckoutPricing {
   setIsCod: (v: boolean) => void;
 }
 
+export interface CheckoutPricingOptions {
+  /** Product ids in the cart, so per-product delivery overrides are honoured. */
+  productIds?: string[];
+  /** Destination state from the selected address; unknown on the cart page. */
+  destinationState?: string;
+}
+
 /**
- * Centralised pricing engine consumed by Checkout / MobileCheckout. All
+ * Centralised pricing engine consumed by Checkout / MobileCheckout / cart. All
  * numbers come from admin-managed Firestore documents (siteSettings/*) so
  * editing them in /admin/commerce-settings reflects everywhere instantly.
  *
  * Coupons are validated against the `coupons` Firestore collection managed
- * via the admin panel — the single source of truth for coupon data.
+ * via the admin panel - the single source of truth for coupon data.
  */
 export function useCheckoutPricing(
   subtotal: number,
   isEmpty: boolean,
-  paymentMethod: string
+  paymentMethod: string,
+  options: CheckoutPricingOptions = {}
 ): CheckoutPricing {
+  const { productIds, destinationState } = options;
+
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [delivery, setDelivery] = useState<DeliverySettings>(DEFAULT_DELIVERY);
   const [gst, setGst] = useState<GstSettings>(DEFAULT_GST);
@@ -72,19 +91,85 @@ export function useCheckoutPricing(
     }
   }, [subtotal, appliedCoupon]);
 
-  const isCod = paymentMethod?.toLowerCase().includes('cash') || paymentMethod?.toLowerCase().includes('cod');
-  const effectiveGst = useMemo<GstSettings>(() => ({ ...gst, inclusive: false }), [gst]);
+  /**
+   * Per-product delivery overrides, resolved from the shared catalog cache.
+   *
+   * Cart lines only carry id/name/price, so the product's delivery config is
+   * looked up here rather than duplicated into every `addToCart` call site.
+   * The catalog is already cached for the session, so this costs no reads.
+   */
+  const idsKey = (productIds || []).join(',');
+  const [deliveryByProduct, setDeliveryByProduct] = useState<Record<string, DeliverableItem>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!idsKey) {
+      setDeliveryByProduct({});
+      return;
+    }
+    getActiveProductsCached()
+      .then((products) => {
+        if (cancelled) return;
+        const map: Record<string, DeliverableItem> = {};
+        for (const p of products) {
+          if (p.id && p.delivery) map[p.id] = { delivery: p.delivery };
+        }
+        setDeliveryByProduct(map);
+      })
+      .catch(() => {
+        // Falls back to the universal charge - never blocks checkout.
+      });
+    return () => { cancelled = true; };
+  }, [idsKey]);
+
+  const deliveryItems = useMemo<DeliverableItem[]>(
+    () => (productIds || []).map((id) => deliveryByProduct[id] || {}),
+    [idsKey, deliveryByProduct] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const pricing = useMemo(() => {
     if (isEmpty) {
-      return { deliveryCharge: 0, freeDelivery: false, gstAmount: 0, gstAddOnTop: false, codCharge: 0, total: 0 };
+      return {
+        deliveryCharge: 0,
+        freeDelivery: false,
+        deliveryBeforeFree: 0,
+        deliveryEstimated: false,
+        gstAmount: 0,
+        gstAddOnTop: false,
+        codCharge: 0,
+        total: 0,
+      };
     }
-    const { charge: deliveryCharge, freeDelivery } = computeDeliveryCharge(subtotal, delivery);
-    const { gstAmount, addOnTop } = computeGst(subtotal, effectiveGst);
-    const codCharge = isCod && delivery.codEnabled ? (delivery.codCharge || 0) : 0;
-    const total = subtotal + deliveryCharge + (addOnTop ? gstAmount : 0) + codCharge - appliedDiscount;
-    return { deliveryCharge, freeDelivery, gstAmount, gstAddOnTop: addOnTop, codCharge, total: Math.max(0, total) };
-  }, [subtotal, isEmpty, delivery, effectiveGst, appliedDiscount, isCod]);
+    const { charge: deliveryCharge, freeDelivery } = computeDeliveryCharge(
+      subtotal,
+      delivery,
+      deliveryItems,
+      destinationState
+    );
+    const { charge: deliveryBeforeFree } = computeDeliveryCharge(
+      subtotal,
+      { ...delivery, freeDeliveryAbove: 0 },
+      deliveryItems,
+      destinationState
+    );
+    // `inclusive` is honoured here: when the admin says prices already contain
+    // GST, `addOnTop` is false and the tax is shown as a breakdown of the
+    // subtotal instead of being charged a second time. An earlier version
+    // forced `inclusive: false`, so switching it on in the admin panel changed
+    // the label but still added GST to the total.
+    const { gstAmount, addOnTop } = computeGst(subtotal, gst);
+    const total = subtotal + deliveryCharge + (addOnTop ? gstAmount : 0) - appliedDiscount;
+    return {
+      deliveryCharge,
+      freeDelivery,
+      deliveryBeforeFree,
+      deliveryEstimated: !destinationState && deliveryCharge > 0,
+      gstAmount,
+      gstAddOnTop: addOnTop,
+      codCharge: 0,
+      total: Math.max(0, total),
+    };
+  }, [subtotal, isEmpty, delivery, gst, appliedDiscount, deliveryItems, destinationState]);
 
   return {
     subtotal,
@@ -94,7 +179,7 @@ export function useCheckoutPricing(
     couponError,
     coupons,
     delivery,
-    gst: effectiveGst,
+    gst,
     applyCoupon: async (code: string) => {
       const r = await validateCoupon(code, subtotal);
       if (r.valid && r.coupon) {
@@ -113,6 +198,6 @@ export function useCheckoutPricing(
       setAppliedDiscount(0);
       setCouponError(null);
     },
-    setIsCod: () => {}, // payment method drives CoD detection automatically
+    setIsCod: () => {}, // Cash on Delivery was retired; kept so callers still compile
   };
 }

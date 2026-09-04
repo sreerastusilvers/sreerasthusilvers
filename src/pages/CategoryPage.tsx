@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from "react";
+import { useState, useEffect, useMemo, useRef, memo } from "react";
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -190,6 +190,13 @@ const CategoryPage = () => {
 
   // Data
   const [allProducts, setAllProducts] = useState<UIProduct[]>([]);
+  /**
+   * True when this category's products were found by subcategory rather than by
+   * category (see the products effect below). The sidebar then filters on the
+   * level underneath - a product's sub-subcategory - because that is where the
+   * detail lives for these categories.
+   */
+  const [subcategoryFallback, setSubcategoryFallback] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -258,6 +265,47 @@ const CategoryPage = () => {
     [subOptions, activeSub],
   );
 
+  /**
+   * How many products sit under each subcategory (and sub-subcategory) of the
+   * category on screen.
+   *
+   * Used to hide taxonomy the catalogue does not actually use. The category
+   * documents accumulated subcategories over time (and merging the duplicated
+   * seed added a few more), so the sidebar listed filters that could only ever
+   * return "Products Coming Soon".
+   */
+  const subCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    const childCounts = new Map<string, number>();
+
+    for (const sub of subOptions) {
+      const inSub = allProducts.filter((p) =>
+        matchesTaxon(
+          subcategoryFallback ? (p as any).subSubcategory : (p as any).subcategory,
+          sub.slug,
+          subOptions,
+        ),
+      );
+      counts.set(sub.slug, inSub.length);
+      for (const child of sub.children || []) {
+        const n = inSub.filter((p) =>
+          matchesTaxon((p as any).subSubcategory, child.slug, sub.children || []),
+        ).length;
+        childCounts.set(`${sub.slug}/${child.slug}`, n);
+      }
+    }
+    return { counts, childCounts };
+  }, [allProducts, subOptions, subcategoryFallback]);
+
+  /**
+   * Subcategories worth showing: ones with products, plus whichever is active
+   * (so a link shared with a filter still renders its own chip).
+   */
+  const visibleSubOptions = useMemo(
+    () => subOptions.filter((s) => (subCounts.counts.get(s.slug) || 0) > 0 || s.slug === activeSub),
+    [subOptions, subCounts, activeSub],
+  );
+
   // Apply filters
   const filteredProducts = useMemo(() => {
     let list = [...allProducts];
@@ -270,7 +318,13 @@ const CategoryPage = () => {
     // a space or symbol silently returned zero products. Accept either form so
     // existing product data keeps working without a migration.
     if (activeSub) {
-      list = list.filter((p) => matchesTaxon((p as any).subcategory, activeSub, subOptions));
+      list = list.filter((p) =>
+        matchesTaxon(
+          subcategoryFallback ? (p as any).subSubcategory : (p as any).subcategory,
+          activeSub,
+          subOptions,
+        ),
+      );
     }
     if (activeSubSub) {
       list = list.filter((p) =>
@@ -303,17 +357,31 @@ const CategoryPage = () => {
     }
 
     return list;
-  }, [allProducts, activeSub, activeSubSub, activePriceIdx, activeSortBy, subOptions, subSubOptions]);
+  }, [allProducts, activeSub, activeSubSub, activePriceIdx, activeSortBy, subOptions, subSubOptions, subcategoryFallback]);
 
   // ── filter helpers ──
-  const setFilter = (key: string, val: string) => {
+  /**
+   * Write several filters in one URL update.
+   *
+   * Picking a sub-subcategory used to call `setFilter("sub", ...)` and then
+   * `setFilter("subsub", ...)`. Both built their next URL from the same
+   * `searchParams` snapshot, so the second call overwrote the first and the
+   * `sub` parameter never survived - the page then filtered by sub-subcategory
+   * alone against an empty option list, which is why choosing e.g. Watches
+   * without first selecting Womens showed nothing.
+   */
+  const setFilters = (patch: Record<string, string>) => {
     const p = new URLSearchParams(searchParams);
-    if (val) p.set(key, val);
-    else p.delete(key);
-    // Reset subsub when sub changes
-    if (key === "sub") p.delete("subsub");
+    for (const [key, val] of Object.entries(patch)) {
+      if (val) p.set(key, val);
+      else p.delete(key);
+      // Changing the subcategory invalidates any sub-subcategory not set here.
+      if (key === "sub" && !("subsub" in patch)) p.delete("subsub");
+    }
     setSearchParams(p, { replace: true });
   };
+
+  const setFilter = (key: string, val: string) => setFilters({ [key]: val });
 
   const clearAllFilters = () => setSearchParams({}, { replace: true });
 
@@ -328,6 +396,46 @@ const CategoryPage = () => {
 
   const activeFilterCount = [activeSub, activeSubSub, activePriceIdx].filter(Boolean).length;
 
+  /**
+   * Incremental rendering.
+   *
+   * A category like Jewellery matches ~585 products and the grid used to mount
+   * every card at once - hundreds of images and framer-motion nodes in one
+   * commit, which is what made opening a category (or picking a subcategory
+   * from the nav dropdown) sit there "buffering" for seconds on a phone. We
+   * render a page at a time and grow as the shopper reaches the end.
+   */
+  const PAGE_SIZE = 24;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Any filter/sort change starts the list over from the first page.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [activeSub, activeSubSub, activePriceIdx, activeSortBy, categorySlug, activeTag]);
+
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleCount),
+    [filteredProducts, visibleCount],
+  );
+  const hasMore = visibleCount < filteredProducts.length;
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const node = sentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisibleCount((c) => c + PAGE_SIZE);
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, filteredProducts.length]);
+
   // ── Override adapter to carry subcategory data ──
   // We re-subscribe with raw data to keep subcategory info
   const [rawProducts, setRawProducts] = useState<any[]>([]);
@@ -336,6 +444,7 @@ const CategoryPage = () => {
     // pull every active product and keep only those whose flag matches.
     if (!categorySlug && tagMeta) {
       setLoading(true);
+      setSubcategoryFallback(false); // tag views are not category-scoped
       const unsub = subscribeToActiveProducts((fbProducts) => {
         const matching = fbProducts.filter(
           (p: any) => p?.flags?.[tagMeta.flag] === true
@@ -351,14 +460,41 @@ const CategoryPage = () => {
         setAllProducts(uiProducts);
         setRawProducts(matching);
         setLoading(false);
-      }, true);
+      });
       return unsub;
     }
-    if (!currentCategory) return;
+    // Categories have loaded but this slug matches none of them - stop the
+    // spinner so the "Category not found" branch can render instead of the page
+    // buffering forever.
+    if (!currentCategory) {
+      if (categories.length > 0) setLoading(false);
+      return;
+    }
     const unsub = subscribeToActiveProducts((fbProducts) => {
-      const catProducts = fbProducts.filter(
+      let catProducts = fbProducts.filter(
         (p) => p.category?.toLowerCase() === currentCategory.name.toLowerCase()
       );
+
+      /**
+       * Fallback: a top-level category whose products are actually filed one
+       * level down.
+       *
+       * Men's, for instance, is its own category document, but every men's
+       * piece is stored as Jewellery / subcategory "Mens" - so addressing it by
+       * its own slug found nothing and the tab rendered an empty grid. Rather
+       * than re-filing 600 products (or hardcoding a parent map, which is what
+       * used to send Gifting to /category/articles?sub=gifting and broke when
+       * Gifting became a real category), fall back to matching the slug against
+       * the *subcategory* of every product.
+       */
+      const usedSubcategoryFallback = catProducts.length === 0;
+      if (usedSubcategoryFallback) {
+        catProducts = fbProducts.filter((p) =>
+          matchesTaxon((p as any).subcategory, currentCategory.slug, []),
+        );
+      }
+      setSubcategoryFallback(usedSubcategoryFallback && catProducts.length > 0);
+
       // Build UI products with extra fields
       const uiProducts = catProducts.map((fp) => {
         const ui = adaptFirebaseArrayToUI([fp])[0];
@@ -371,15 +507,15 @@ const CategoryPage = () => {
       setAllProducts(uiProducts);
       setRawProducts(catProducts);
       setLoading(false);
-    }, true);
+    });
     return unsub;
-  }, [currentCategory, categorySlug, activeTag]);
+  }, [currentCategory, categorySlug, activeTag, categories.length]);
 
   // ── Render: filter sidebar content (reused desktop + mobile) ──
   const FilterContent = () => (
     <div className="space-y-6">
       {/* Subcategories */}
-      {currentCategory && currentCategory.subcategories.length > 0 && (
+      {currentCategory && visibleSubOptions.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">
             Subcategories
@@ -393,20 +529,29 @@ const CategoryPage = () => {
             >
               All {currentCategory.name}
             </button>
-            {currentCategory.subcategories.map((sub) => (
+            {visibleSubOptions.map((sub) => {
+              const visibleChildren = (sub.children || []).filter(
+                (c) =>
+                  (subCounts.childCounts.get(`${sub.slug}/${c.slug}`) || 0) > 0 ||
+                  (activeSub === sub.slug && activeSubSub === c.slug),
+              );
+              return (
               <div key={sub.slug}>
                 <div className="flex items-center">
                   <button
                     onClick={() => { setFilter("sub", sub.slug); setMobileFiltersOpen(false); }}
-                    className={`flex-1 text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    className={`flex-1 text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between gap-2 ${
                       activeSub === sub.slug
                         ? "bg-primary text-white"
                         : "text-foreground/80 hover:bg-muted"
                     }`}
                   >
-                    {sub.name}
+                    <span>{sub.name}</span>
+                    <span className={`text-[11px] ${activeSub === sub.slug ? "text-white/70" : "text-muted-foreground"}`}>
+                      {subCounts.counts.get(sub.slug) || 0}
+                    </span>
                   </button>
-                  {sub.children && sub.children.length > 0 && (
+                  {visibleChildren.length > 0 && (
                     <button
                       onClick={() => toggleExpandSub(sub.slug)}
                       className="p-2 text-muted-foreground hover:text-foreground"
@@ -421,35 +566,38 @@ const CategoryPage = () => {
                 </div>
                 {/* Sub-sub-categories dropdown */}
                 <AnimatePresence>
-                  {expandedSubs.has(sub.slug) && sub.children && sub.children.length > 0 && (
+                  {expandedSubs.has(sub.slug) && visibleChildren.length > 0 && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden ml-4 space-y-1"
                     >
-                      {sub.children.map((child) => (
+                      {visibleChildren.map((child) => (
                         <button
                           key={child.slug}
                           onClick={() => {
-                            setFilter("sub", sub.slug);
-                            setFilter("subsub", child.slug);
+                            setFilters({ sub: sub.slug, subsub: child.slug });
                             setMobileFiltersOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                          className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between gap-2 ${
                             activeSubSub === child.slug
                               ? "bg-primary/10 text-primary font-medium"
                               : "text-muted-foreground hover:bg-muted"
                           }`}
                         >
-                          {child.name}
+                          <span>{child.name}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {subCounts.childCounts.get(`${sub.slug}/${child.slug}`) || 0}
+                          </span>
                         </button>
                       ))}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -741,18 +889,34 @@ const CategoryPage = () => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                {filteredProducts.map((product) => (
-                  <CategoryProductCard
-                    key={product.id}
-                    product={product}
-                    wishlisted={isInWishlist(product.id)}
-                    onOpen={handleCardOpen}
-                    onAddToCart={(p) => { void handleCardAddToCart(p); }}
-                    onToggleWishlist={handleCardToggleWishlist}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                  {visibleProducts.map((product) => (
+                    <CategoryProductCard
+                      key={product.id}
+                      product={product}
+                      wishlisted={isInWishlist(product.id)}
+                      onOpen={handleCardOpen}
+                      onAddToCart={(p) => { void handleCardAddToCart(p); }}
+                      onToggleWishlist={handleCardToggleWishlist}
+                    />
+                  ))}
+                </div>
+
+                {hasMore && (
+                  <div ref={sentinelRef} className="flex flex-col items-center gap-3 py-8">
+                    <button
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      className="px-6 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground/80 hover:bg-muted transition-colors"
+                    >
+                      Load more
+                    </button>
+                    <p className="text-xs text-muted-foreground">
+                      Showing {visibleProducts.length} of {filteredProducts.length}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

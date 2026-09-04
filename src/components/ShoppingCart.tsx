@@ -19,10 +19,12 @@ const ShoppingCart = () => {
   const [couponInput, setCouponInput] = useState('');
   const [currentStep] = useState(1); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
 
-  // Shared pricing engine — same source of truth as Checkout. Default to COD
-  // so the displayed total is the worst case; switching to UPI/online at
-  // checkout can only reduce it (no surprise increases).
-  const pricing = useCheckoutPricing(subtotal, items.length === 0, 'cod');
+  // Shared pricing engine — same source of truth as Checkout. No address is
+  // chosen yet, so delivery is quoted at the home-state rate and re-priced at
+  // checkout once the shipping state is known.
+  const pricing = useCheckoutPricing(subtotal, items.length === 0, 'Razorpay', {
+    productIds: items.map((i) => i.id),
+  });
 
   // On mobile, redirect to /checkout instead of opening the drawer
   useEffect(() => {
@@ -51,7 +53,6 @@ const ShoppingCart = () => {
   const freeDelivery = pricing.freeDelivery;
   const gstAmount = pricing.gstAmount;
   const gstAddOnTop = pricing.gstAddOnTop;
-  const codCharge = pricing.codCharge;
   const discount = pricing.discount;
   const total = pricing.total;
 
@@ -497,22 +498,24 @@ const ShoppingCart = () => {
                           {freeDelivery ? 'FREE' : `₹ ${deliveryCharge.toLocaleString()}`}
                         </span>
                       </div>
-                      {freeDelivery && (
+                      {/* Only celebrate a threshold that actually saved money -
+                          a catalogue with no delivery charge at all is not a
+                          "free delivery offer". */}
+                      {freeDelivery && pricing.deliveryBeforeFree > 0 && (
                         <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 dark:bg-green-950/30 dark:text-green-400 px-3 py-1.5 rounded-md">
                           <span>🎉</span>
                           <span>Free delivery on orders above ₹{pricing.delivery?.freeDeliveryAbove?.toLocaleString() ?? '999'}!</span>
                         </div>
                       )}
+                      {pricing.deliveryEstimated && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Final delivery charge is calculated from your shipping address at checkout.
+                        </p>
+                      )}
                       {gstAddOnTop && gstAmount > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">GST</span>
                           <span className="text-foreground">₹ {gstAmount.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {codCharge > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">COD Charge</span>
-                          <span className="text-foreground">₹ {codCharge.toLocaleString()}</span>
                         </div>
                       )}
                       <div className="h-px bg-border" />
