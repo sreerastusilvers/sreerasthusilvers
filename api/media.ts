@@ -28,8 +28,13 @@ import { randomBytes } from 'node:crypto';
  *   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
  *   R2_PUBLIC_URL               public read base, no trailing slash
  *   R2_BILLING_CYCLE_DAY        day of month the Cloudflare period starts (default 1)
- *   CLOUDFLARE_ANALYTICS_TOKEN  API token with Account Analytics: Read (optional,
- *                               without it Class B reads cannot be measured)
+ *   CLOUDFLARE_ANALYTICS_TOKEN  API token with Account Analytics: Read, plus Cache
+ *                               Purge for the zone (optional; without Analytics:Read,
+ *                               Class B reads cannot be measured; without Cache Purge,
+ *                               a deleted photo can keep serving from Cloudflare's edge
+ *                               cache for up to a year - see purgeCache() below)
+ *   CLOUDFLARE_ZONE_ID          the zone owning R2_PUBLIC_URL's domain (needed for
+ *                               Cache Purge above; found on the domain's Overview page)
  */
 
 // Free tier, per Cloudflare account, per billing month. Storage uses decimal GB
@@ -423,6 +428,46 @@ function invalidateUsage() {
   usageCache = null;
 }
 
+/** Cloudflare's purge-by-URL API accepts at most 30 URLs per call. */
+const PURGE_BATCH = 30;
+
+/**
+ * Ask Cloudflare to drop cached copies of these URLs from its edge.
+ *
+ * Deleted objects are marked `Cache-Control: immutable, max-age=31536000`, so
+ * without this, Cloudflare keeps serving a cached copy of a "deleted" photo
+ * for up to a year - deleting from R2 alone is not enough. Best-effort: a
+ * failure here must not fail the delete the caller already asked for and got
+ * (the file really is gone from storage; only the edge cache lags).
+ *
+ * Needs CLOUDFLARE_ZONE_ID and a Cloudflare API token with "Cache Purge"
+ * permission for the zone (the same token used for CLOUDFLARE_ANALYTICS_TOKEN
+ * can hold both permissions - see MEDIA_STORAGE.md). Silently skipped if
+ * either is missing, so cache purging is optional, not required to run.
+ */
+async function purgeCache(urls: string[]): Promise<void> {
+  const zoneId = (process.env.CLOUDFLARE_ZONE_ID || '').trim();
+  const token = (process.env.CLOUDFLARE_ANALYTICS_TOKEN || '').trim();
+  if (!zoneId || !token || urls.length === 0) return;
+
+  for (let i = 0; i < urls.length; i += PURGE_BATCH) {
+    const batch = urls.slice(i, i + PURGE_BATCH);
+    try {
+      const resp = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: batch }),
+      });
+      const json = (await resp.json()) as { success?: boolean; errors?: unknown };
+      if (!resp.ok || !json.success) {
+        console.warn('[media] cache purge failed (file stays cached until it expires):', JSON.stringify(json.errors));
+      }
+    } catch (err) {
+      console.warn('[media] cache purge request failed:', err);
+    }
+  }
+}
+
 // ── Upload ──────────────────────────────────────────────────────────────────
 
 type Sniffed = { ext: 'jpg' | 'png' | 'webp' | 'pdf'; contentType: string };
@@ -550,6 +595,7 @@ async function handleDelete(req: VercelRequest, caller: Caller) {
   const { client, bucketUrl } = r2();
   const deleted: string[] = [];
   const skipped: string[] = [];
+  const purgeUrls: string[] = [];
 
   for (const raw of urls) {
     const url = String(raw || '');
@@ -570,10 +616,12 @@ async function handleDelete(req: VercelRequest, caller: Caller) {
       if (!resp.ok && resp.status !== 404) {
         throw new HttpError(502, 'SERVER', `Storage refused to delete a file (HTTP ${resp.status}).`);
       }
+      purgeUrls.push(`${base}/${k}`);
     }
     deleted.push(url);
   }
   if (deleted.length) invalidateUsage();
+  await purgeCache(purgeUrls);
   return { deleted, skipped };
 }
 

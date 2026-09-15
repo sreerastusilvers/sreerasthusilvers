@@ -40,7 +40,11 @@ The keys don't depend on any provider. Firestore stores `R2_PUBLIC_URL + "/" + k
 
 ## Environment variables (Vercel → Settings → Environment Variables, and local `.env`)
 
-`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`, `R2_BILLING_CYCLE_DAY`, `CLOUDFLARE_ANALYTICS_TOKEN`. See `.env.example`.
+`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`, `R2_BILLING_CYCLE_DAY`, `CLOUDFLARE_ANALYTICS_TOKEN`, `CLOUDFLARE_ZONE_ID`. See `.env.example`.
+
+`CLOUDFLARE_ANALYTICS_TOKEN` needs two permissions on the same token (Cloudflare dashboard → profile icon → API Tokens → edit the token → Add more → add a second permission group):
+- **Account → Account Analytics → Read** — powers the live usage numbers on `/admin/storage`.
+- **Zone → Cache Purge → Purge**, scoped to the zone that owns your `R2_PUBLIC_URL` domain — without this, deleting a photo removes it from R2 but a cached copy can keep being served from Cloudflare's edge for up to a year (deletes still work; they just aren't instant at the edge).
 
 ## Moving the files later
 
