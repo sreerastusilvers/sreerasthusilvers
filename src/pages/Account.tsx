@@ -13,7 +13,7 @@ import CategoryIconNav from '@/components/CategoryIconNav';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn, cancelReturn } from '@/services/orderService';
-import { uploadToCloudinary, UploadProgress } from '@/services/cloudinaryService';
+import { uploadImage, deleteMedia, describeUploadError, IMAGE_TYPES } from '@/services/mediaStorage';
 import { useWhatsAppOtpVerification } from '@/hooks/useWhatsAppOtpVerification';
 import { getSecuritySettings, generateDeviceFingerprint, updateSecuritySettings } from '@/services/securityService';
 import TwoFactorChallengeModal from '@/components/auth/TwoFactorChallengeModal';
@@ -796,29 +796,29 @@ const AccountPage = () => {
     if (!file || !user) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+    if (!IMAGE_TYPES.includes(file.type)) {
+      toast.error('Please select a JPG, PNG or WebP image');
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB');
+    // The photo is shrunk to 500 KB before upload; this only guards the phone.
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Image size should be less than 20MB');
       return;
     }
 
     setUploadingPhoto(true);
     try {
-      const result = await uploadToCloudinary(file, (progress: UploadProgress) => {
-        console.log(`Upload progress: ${progress.percentage}%`);
-      });
+      const previousAvatar = userProfile?.avatar;
+      const result = await uploadImage(file, { category: 'avatars', autoCompress: true });
 
-      await updateUserProfile({ avatar: result.secure_url });
-      setAvatarUrl(result.secure_url);
+      await updateUserProfile({ avatar: result.url });
+      setAvatarUrl(result.url);
+      if (previousAvatar && previousAvatar !== result.url) void deleteMedia([previousAvatar]);
       toast.success('Profile photo updated successfully');
     } catch (error) {
       console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo. Please try again.');
+      toast.error(describeUploadError(error));
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) {

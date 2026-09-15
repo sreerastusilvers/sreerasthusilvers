@@ -4,6 +4,7 @@ import { Upload, X, Loader2, FileText, CheckCircle2, RotateCcw } from 'lucide-re
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { SmartImage } from "@/components/ui/smart-image";
+import { assertUploadableImage, formatBytes, MAX_PDF_BYTES } from '@/services/mediaStorage';
 
 interface ImageUploaderProps {
   onImageSelected: (file: File) => void;
@@ -12,10 +13,8 @@ interface ImageUploaderProps {
   existingFileType?: 'pdf' | 'image';
   onRemove?: () => void;
   isUploading?: boolean;
-  /** When true, also accept PDF files (used for refund receipts). */
+  /** When true, also accept PDF files (up to 1 MB; used for refund receipts). */
   acceptPdf?: boolean;
-  /** Maximum file size in bytes. Default 10 MB. */
-  maxSizeBytes?: number;
   /**
    * When true, after selecting a file the component shows a preview with
    * Upload / Replace / Cancel buttons. `onImageSelected` is only fired
@@ -29,14 +28,6 @@ interface ImageUploaderProps {
   onCancelUpload?: () => void;
 }
 
-const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-
-const formatBytes = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
 const ImageUploader = ({
   onImageSelected,
   existingImageUrl,
@@ -45,7 +36,6 @@ const ImageUploader = ({
   onRemove,
   isUploading,
   acceptPdf = false,
-  maxSizeBytes = DEFAULT_MAX_BYTES,
   confirmBeforeUpload = false,
   uploadProgress,
   onCancelUpload,
@@ -82,18 +72,34 @@ const ImageUploader = ({
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
     if (rejectedFiles.length > 0) {
-      const tooBig = rejectedFiles[0]?.errors?.some((error) => error.code === 'file-too-large');
-      const reasons = rejectedFiles[0]?.errors?.map((error) => error.message).join(', ');
-      if (tooBig) {
-        toast.error(`File too large. Max size is ${formatBytes(maxSizeBytes)}.`);
-      } else {
-        toast.error(reasons || 'File rejected');
-      }
+      const wrongType = rejectedFiles[0]?.errors?.some((error) => error.code === 'file-invalid-type');
+      toast.error(
+        wrongType
+          ? acceptPdf ? 'Only JPG, PNG, WebP or PDF files are allowed.' : 'Only JPG, PNG or WebP images are allowed.'
+          : rejectedFiles[0]?.errors?.map((error) => error.message).join(', ') || 'File rejected',
+      );
       return;
     }
 
     if (acceptedFiles.length === 0) return;
     const file = acceptedFiles[0];
+
+    // Size is checked here rather than via dropzone's maxSize because images
+    // and PDFs have different limits, and the message should say which applies.
+    if (file.type === 'application/pdf') {
+      if (file.size > MAX_PDF_BYTES) {
+        toast.error(`"${file.name}" is ${formatBytes(file.size)}. PDFs must be 1 MB or less.`);
+        return;
+      }
+    } else {
+      try {
+        assertUploadableImage(file);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'File rejected');
+        return;
+      }
+    }
+
     renderPreviewForFile(file);
 
     if (confirmBeforeUpload) {
@@ -102,15 +108,13 @@ const ImageUploader = ({
     } else {
       onImageSelected(file);
     }
-  }, [onImageSelected, confirmBeforeUpload, maxSizeBytes]);
+  }, [onImageSelected, confirmBeforeUpload, acceptPdf]);
 
+  const imageAccept = { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'] };
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
-    accept: acceptPdf
-      ? { 'image/*': [], 'application/pdf': ['.pdf'] }
-      : { 'image/*': [] },
+    accept: acceptPdf ? { ...imageAccept, 'application/pdf': ['.pdf'] } : imageAccept,
     maxFiles: 1,
-    maxSize: maxSizeBytes,
     noClick: confirmBeforeUpload && hasPendingFile, // disable dropzone click while confirming
     noKeyboard: confirmBeforeUpload && hasPendingFile,
   });
@@ -259,7 +263,7 @@ const ImageUploader = ({
               </p>
               <p className="text-xs text-gray-500 dark:text-zinc-500">or click to browse</p>
               <p className="text-xs text-gray-400 dark:text-zinc-500 mt-2">
-                Max size: {formatBytes(maxSizeBytes)} • {acceptPdf ? 'Images and PDF supported' : 'All image formats supported'}
+                {acceptPdf ? 'JPG, PNG, WebP up to 500 KB • PDF up to 1 MB' : 'JPG, PNG or WebP • max 500 KB'}
               </p>
             </div>
           </motion.div>

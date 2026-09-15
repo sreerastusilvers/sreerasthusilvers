@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Star, X, Loader2, Camera, Video, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Star, X, Loader2, Camera, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  createReview, 
-  uploadReviewImages, 
-  uploadReviewVideo,
-  hasUserPurchasedProduct 
+import {
+  createReview,
+  uploadReviewImages,
+  hasUserPurchasedProduct
 } from '@/services/reviewService';
+import { IMAGE_ACCEPT, IMAGE_TYPES } from '@/services/mediaStorage';
 import { toast } from 'sonner';
 import { SmartImage } from "@/components/ui/smart-image";
 
@@ -33,8 +33,6 @@ const WriteReview = () => {
   const [reviewText, setReviewText] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [video, setVideo] = useState<File | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string>('');
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -62,12 +60,14 @@ const WriteReview = () => {
       return;
     }
     
+    // Photos are shrunk to 500 KB on submit, so only reject files too big to
+    // process comfortably on a phone.
     const validFiles = files.filter(file => {
-      const isImage = file.type.startsWith('image/');
-      const isUnder5MB = file.size <= 5 * 1024 * 1024;
-      if (!isImage) toast.error(`${file.name} is not an image`);
-      if (!isUnder5MB) toast.error(`${file.name} is larger than 5MB`);
-      return isImage && isUnder5MB;
+      const isImage = IMAGE_TYPES.includes(file.type);
+      const isUnder20MB = file.size <= 20 * 1024 * 1024;
+      if (!isImage) toast.error(`${file.name} is not a JPG, PNG or WebP photo`);
+      else if (!isUnder20MB) toast.error(`${file.name} is larger than 20MB`);
+      return isImage && isUnder20MB;
     });
     
     setImages(prev => [...prev, ...validFiles]);
@@ -80,23 +80,11 @@ const WriteReview = () => {
     });
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('video/')) { toast.error('Please upload a video file'); return; }
-    if (file.size > 200 * 1024 * 1024) { toast.error('Video must be under 200MB'); return; }
-    setVideo(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setVideoPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const removeVideo = () => { setVideo(null); setVideoPreview(''); };
 
   const handleSubmit = async () => {
     if (!user || !productId) { toast.error('Please login to submit a review'); return; }
@@ -109,21 +97,12 @@ const WriteReview = () => {
       let imageUrls: string[] = [];
       if (images.length > 0) {
         try {
-          imageUrls = await uploadReviewImages(images, user.uid, productId);
+          imageUrls = await uploadReviewImages(images);
         } catch {
           toast.error('Images could not be uploaded, but your review will still be submitted.');
         }
       }
-      
-      let videoUrl: string | undefined;
-      if (video) {
-        try {
-          videoUrl = await uploadReviewVideo(video, user.uid, productId);
-        } catch {
-          toast.error('Video could not be uploaded, but your review will still be submitted.');
-        }
-      }
-      
+
       await createReview({
         productId,
         productName: productName || 'Product',
@@ -133,7 +112,6 @@ const WriteReview = () => {
         rating,
         reviewText: reviewText.trim(),
         images: imageUrls,
-        ...(videoUrl ? { videoUrl } : {}),
         isVerifiedPurchase: true,
         status: 'pending',
       });
@@ -262,14 +240,14 @@ const WriteReview = () => {
           className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm"
         >
           <div className="mb-4">
-            <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Photos & Video</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Photos</p>
             <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">Show others what you experienced</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {/* Add Photos */}
             <label className={`block cursor-pointer ${images.length >= 4 ? 'opacity-50 pointer-events-none' : ''}`}>
-              <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" disabled={images.length >= 4} />
+              <input type="file" accept={IMAGE_ACCEPT} multiple onChange={handleImageUpload} className="hidden" disabled={images.length >= 4} />
               <div className="border-2 border-dashed border-amber-200 bg-amber-50/50 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-amber-400 hover:bg-amber-50 transition-all">
                 <div className="w-11 h-11 bg-amber-100 rounded-full flex items-center justify-center">
                   <Camera size={20} className="text-amber-600" />
@@ -281,19 +259,6 @@ const WriteReview = () => {
               </div>
             </label>
 
-            {/* Add Video */}
-            <label className={`block cursor-pointer ${video ? 'opacity-50 pointer-events-none' : ''}`}>
-              <input type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" disabled={!!video} />
-              <div className="border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-blue-400 hover:bg-blue-50 transition-all">
-                <div className="w-11 h-11 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Video size={20} className="text-blue-600" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Add Video</p>
-                  <p className="text-xs text-gray-400 dark:text-zinc-500">Up to 200MB</p>
-                </div>
-              </div>
-            </label>
           </div>
 
           {/* Image Previews */}
@@ -313,18 +278,6 @@ const WriteReview = () => {
             </div>
           )}
 
-          {/* Video Preview */}
-          {videoPreview && (
-            <div className="relative mt-3">
-              <video src={videoPreview} controls className="w-full max-h-48 rounded-xl object-cover" />
-              <button
-                onClick={removeVideo}
-                className="absolute top-2 right-2 w-6 h-6 bg-gray-900/80 text-white rounded-full flex items-center justify-center"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          )}
         </motion.div>
       </div>
 

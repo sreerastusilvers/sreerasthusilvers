@@ -11,7 +11,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { uploadToCloudinary } from '@/services/cloudinaryService';
+import { uploadImage } from '@/services/mediaStorage';
 
 export interface Testimonial {
   id?: string;
@@ -30,12 +30,10 @@ export interface Testimonial {
 
 const COLLECTION = 'testimonials';
 
-// Upload avatar via Cloudinary
+// Upload avatar (JPG/PNG/WebP, max 500 KB - see mediaStorage)
 export const uploadTestimonialAvatar = async (file: File): Promise<string> => {
-  if (file.size > 5 * 1024 * 1024) throw new Error('Image must be less than 5MB');
-  if (!file.type.startsWith('image/')) throw new Error('Only image files are allowed');
-  const result = await uploadToCloudinary(file);
-  return result.secure_url;
+  const result = await uploadImage(file, { category: 'testimonials' });
+  return result.url;
 };
 
 export const getAllTestimonials = async (): Promise<Testimonial[]> => {

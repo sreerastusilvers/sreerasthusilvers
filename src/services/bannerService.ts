@@ -12,7 +12,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig } from '@/config/cloudinary';
+import { uploadImage } from '@/services/mediaStorage';
 
 export interface Banner {
   id?: string;
@@ -27,36 +27,11 @@ export interface Banner {
 
 const BANNERS_COLLECTION = 'banners';
 
-// Upload banner image to Cloudinary (no CORS issues)
+// Upload banner image (JPG/PNG/WebP, max 500 KB - see mediaStorage)
 export const uploadBannerImage = async (file: File): Promise<string> => {
   try {
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      throw new Error('Image size must be less than 10MB');
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      throw new Error('Only image files are allowed');
-    }
-
-    // Upload to Cloudinary
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-    formData.append('folder', 'homepage-banners');
-
-    const response = await fetch(CLOUDINARY_UPLOAD_URL, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to upload image to Cloudinary');
-    }
-
-    const data = await response.json();
-    return data.secure_url;
+    const result = await uploadImage(file, { category: 'banners' });
+    return result.url;
   } catch (error) {
     console.error('Error uploading banner image:', error);
     throw error;

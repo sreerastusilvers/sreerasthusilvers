@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { uploadToCloudinary } from '@/services/cloudinaryService';
+import { uploadImage, deleteMedia, describeUploadError } from '@/services/mediaStorage';
 import { updateSecuritySettings } from '@/services/securityService';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
@@ -136,14 +136,16 @@ const ProfileEditPage = () => {
     try {
       const croppedBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
       const croppedFile = new File([croppedBlob], 'profile-picture.jpg', { type: 'image/jpeg' });
-      const result = await uploadToCloudinary(croppedFile);
-      setAvatarUrl(result.secure_url);
-      await updateUserProfile({ avatar: result.secure_url });
+      const previousAvatar = userProfile?.avatar;
+      const result = await uploadImage(croppedFile, { category: 'avatars', autoCompress: true });
+      setAvatarUrl(result.url);
+      await updateUserProfile({ avatar: result.url });
+      if (previousAvatar && previousAvatar !== result.url) void deleteMedia([previousAvatar]);
       toast.success('Profile photo updated!');
       setImageToCrop(null);
     } catch (error) {
       console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo. Please try again.');
+      toast.error(describeUploadError(error));
       if (userProfile?.avatar) {
         setAvatarUrl(userProfile.avatar);
       } else if (user?.photoURL) {

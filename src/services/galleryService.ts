@@ -12,7 +12,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { uploadToCloudinary } from './cloudinaryService';
+import { uploadImage } from './mediaStorage';
 
 export interface GalleryImage {
   id?: string;
@@ -26,10 +26,10 @@ export interface GalleryImage {
 
 const COLLECTION_NAME = 'gallery';
 
-// Upload gallery image to Cloudinary
+// Upload gallery image (JPG/PNG/WebP, max 500 KB - see mediaStorage)
 export const uploadGalleryImage = async (file: File): Promise<string> => {
-  const result = await uploadToCloudinary(file);
-  return result.secure_url;
+  const result = await uploadImage(file, { category: 'gallery' });
+  return result.url;
 };
 
 // Get all gallery images (with optional status filter)

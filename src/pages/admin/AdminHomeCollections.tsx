@@ -12,6 +12,7 @@ import {
   uploadHomeMedia,
 } from '@/services/homeContentService';
 import { SmartImage } from "@/components/ui/smart-image";
+import { assertUploadableImage, describeUploadError, IMAGE_ACCEPT } from "@/services/mediaStorage";
 
 const TINTS: { label: string; value: string }[] = [
   { label: 'Maroon', value: 'from-[#3a1d20]/85 via-[#3a1d20]/35 to-transparent' },
@@ -96,7 +97,7 @@ const AdminHomeCollections = () => {
       let imageUrl = draft.imageUrl;
       if (file) {
         toast.loading('Uploading image…', { id: 'hc-upload' });
-        imageUrl = await uploadHomeMedia(file, 'home-collections');
+        imageUrl = await uploadHomeMedia(file);
         toast.success('Image uploaded', { id: 'hc-upload' });
       }
       const payload = {
@@ -294,8 +295,20 @@ const AdminHomeCollections = () => {
                   )}
                   <input
                     type="file"
-                    accept="image/*"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    accept={IMAGE_ACCEPT}
+                    onChange={(e) => {
+                      const picked = e.target.files?.[0] || null;
+                      if (picked) {
+                        try {
+                          assertUploadableImage(picked);
+                        } catch (err) {
+                          toast.error(describeUploadError(err));
+                          e.target.value = '';
+                          return;
+                        }
+                      }
+                      setFile(picked);
+                    }}
                     className="text-sm"
                   />
                   <input

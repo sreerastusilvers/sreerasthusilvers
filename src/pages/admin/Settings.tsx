@@ -89,33 +89,18 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Cloudinary Config */}
+        {/* Media Storage */}
         <Card className="bg-white border-gray-200">
           <CardHeader>
             <CardTitle className="text-gray-900 flex items-center gap-2">
               <Cloud className="h-5 w-5 text-blue-500" />
-              Cloudinary Configuration
+              Media Storage
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between py-2 border-b border-gray-200">
-              <span className="text-gray-600">Cloud Name</span>
-              <span className="text-gray-900 font-mono">doxwyrp8n</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-gray-200">
-              <span className="text-gray-600">Upload Preset</span>
-              <span className="text-gray-900 font-mono">sreerasthusilvers</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-gray-200">
-              <span className="text-gray-600">Status</span>
-              <span className="text-green-600 flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-600 rounded-full"></span>
-                Active
-              </span>
-            </div>
-            <p className="text-gray-500 text-xs mt-4">
-              Cloudinary is configured for image and video uploads. All media is
-              automatically optimized.
+            <p className="text-gray-600">
+              Images are stored on Cloudflare R2. See Storage in the admin menu for live
+              free-plan usage and estimates.
             </p>
           </CardContent>
         </Card>

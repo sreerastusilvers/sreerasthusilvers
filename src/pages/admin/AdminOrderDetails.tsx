@@ -49,7 +49,7 @@ import {
 } from '@/services/orderService';
 import ImageUploader from '@/components/ImageUploader';
 import { db } from '@/config/firebase';
-import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig } from '@/config/cloudinary';
+import { uploadDocument, describeUploadError } from '@/services/mediaStorage';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1139,53 +1139,15 @@ const AdminOrderDetails = () => {
 function RefundReceiptUploader({ order }: { order: Order }) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const xhrRef = useRef<XMLHttpRequest | null>(null);
 
   const handleUpload = async (file: File) => {
-    const MAX_BYTES = 15 * 1024 * 1024;
-    if (file.size > MAX_BYTES) {
-      toast.error('File too large. Refund receipts must be under 15 MB.');
-      return;
-    }
-
     setUploading(true);
     setProgress(0);
     try {
       const isPdf = file.type === 'application/pdf';
-
-      const url = await new Promise<string>((resolve, reject) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-        formData.append('folder', `orders/${order.id}/refund-receipts`);
-        // Let Cloudinary auto-detect resource type so PDFs and images both work
-        formData.append('resource_type', 'auto');
-
-        const xhr = new XMLHttpRequest();
-        xhrRef.current = xhr;
-        // For PDFs Cloudinary expects /raw/upload, for images /upload — use auto path
-        const uploadUrl = CLOUDINARY_UPLOAD_URL.replace('/upload', '/upload');
-        xhr.open('POST', uploadUrl);
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            setProgress(Math.round((e.loaded / e.total) * 100));
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            const res = JSON.parse(xhr.responseText);
-            resolve(res.secure_url as string);
-          } else {
-            const errRes = JSON.parse(xhr.responseText || '{}');
-            reject(new Error(errRes?.error?.message || `Upload failed (${xhr.status})`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Network error during upload'));
-        xhr.onabort = () => reject(new Error('aborted'));
-        xhr.send(formData);
+      const { url } = await uploadDocument(file, {
+        category: 'receipts',
+        onProgress: (p) => setProgress(p.percentage),
       });
 
       await updateDoc(doc(db, 'orders', order.id), {
@@ -1197,21 +1159,11 @@ function RefundReceiptUploader({ order }: { order: Order }) {
       toast.success('Refund receipt uploaded');
     } catch (err) {
       console.error('[refund-receipt] upload failed:', err);
-      const e = err as { message?: string };
-      if (e.message === 'aborted') {
-        toast.info('Upload stopped. Choose another receipt when ready.');
-      } else {
-        toast.error(e.message || 'Upload failed');
-      }
+      toast.error(describeUploadError(err));
     } finally {
-      xhrRef.current = null;
       setUploading(false);
       setProgress(0);
     }
-  };
-
-  const cancelUpload = () => {
-    xhrRef.current?.abort();
   };
 
   return (
@@ -1220,20 +1172,18 @@ function RefundReceiptUploader({ order }: { order: Order }) {
         <Receipt className="h-4 w-4" /> Refund Receipt
       </h2>
       <p className="mb-3 text-xs text-emerald-800/80 dark:text-emerald-300/80">
-        Upload the refund receipt (image or PDF, max 15 MB). The customer will
+        Upload the refund receipt (image up to 500 KB, or PDF up to 1 MB). The customer will
         see a “View Receipt” button on their order page once uploaded.
       </p>
       <ImageUploader
         acceptPdf
         confirmBeforeUpload
-        maxSizeBytes={15 * 1024 * 1024}
         onImageSelected={handleUpload}
         existingImageUrl={order.refundReceiptUrl || undefined}
         existingFileName={order.refundReceiptName || undefined}
         existingFileType={order.refundReceiptType || undefined}
         isUploading={uploading}
         uploadProgress={uploading ? progress : undefined}
-        onCancelUpload={uploading ? cancelUpload : undefined}
       />
       {order.refundReceiptUrl && (
         <a

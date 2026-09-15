@@ -11,7 +11,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { uploadToCloudinary } from '@/services/cloudinaryService';
+import { uploadImage } from '@/services/mediaStorage';
 
 export interface Showcase {
   id?: string;
@@ -28,33 +28,21 @@ export interface Showcase {
 
 const SHOWCASES_COLLECTION = 'showcases';
 
-// Upload showcase image via Cloudinary (no CORS issues)
+// Upload showcase image (JPG/PNG/WebP, max 500 KB - see mediaStorage)
 export const uploadShowcaseImage = async (file: File): Promise<string> => {
   try {
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      throw new Error('Image size must be less than 10MB');
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      throw new Error('Only image files are allowed');
-    }
-
-    const result = await uploadToCloudinary(file);
-    return result.secure_url;
+    const result = await uploadImage(file, { category: 'showcases' });
+    return result.url;
   } catch (error: any) {
     console.error('Error uploading showcase image:', error);
     throw new Error(error.message || 'Failed to upload image');
   }
 };
 
-// Cloudinary deletion requires server-side; we just skip it on delete
-export const deleteShowcaseImage = async (_imageUrl: string): Promise<void> => {
-  // Cloudinary public deletion requires a signed API call (server-side).
-  // Images will be cleaned up manually or via Cloudinary dashboard.
-  console.info('Image cleanup skipped (Cloudinary requires server-side deletion).');
-};
+// Intentionally keeps the file: the image field also accepts pasted URLs, so
+// the same file may be in use elsewhere (a product photo, another showcase).
+// Showcase images are few; an occasional leftover costs next to nothing.
+export const deleteShowcaseImage = async (_imageUrl: string): Promise<void> => {};
 
 // Get all showcases
 export const getAllShowcases = async (): Promise<Showcase[]> => {

@@ -3,12 +3,7 @@ import { Upload, Image as ImageIcon, Video, Trash2, Copy, Check, Loader2, Layout
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import {
-  uploadToCloudinary,
-  validateFile,
-  UploadProgress,
-  CloudinaryUploadResult,
-} from '@/services/cloudinaryService';
+import { uploadImage, describeUploadError, IMAGE_ACCEPT } from '@/services/mediaStorage';
 import { SmartImage } from "@/components/ui/smart-image";
 
 interface MediaItem {
@@ -38,52 +33,28 @@ const Media = () => {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const isVideo = file.type.startsWith('video/');
-
-        // Validate file
-        const validation = validateFile(file, {
-          maxSizeMB: isVideo ? 50 : 10,
-          allowedTypes: isVideo
-            ? ['video/mp4', 'video/webm']
-            : ['image/jpeg', 'image/png', 'image/webp'],
-        });
-
-        if (!validation.valid) {
-          toast({
-            title: 'Invalid File',
-            description: validation.error,
-            variant: 'destructive',
+        try {
+          const result = await uploadImage(file, {
+            category: 'media',
+            onProgress: (progress) => {
+              setUploadProgress(Math.round(((i + progress.percentage / 100) / files.length) * 100));
+            },
           });
-          continue;
+          newItems.push({ url: result.url, type: 'image', publicId: result.key, uploadedAt: new Date() });
+        } catch (error) {
+          toast({ title: 'Not uploaded', description: describeUploadError(error), variant: 'destructive' });
+          if ((error as { code?: string })?.code === 'LIMIT_REACHED') break;
         }
-
-        const result = await uploadToCloudinary(file, (progress: UploadProgress) => {
-          setUploadProgress(
-            Math.round(((i + progress.percentage / 100) / files.length) * 100)
-          );
-        });
-
-        newItems.push({
-          url: result.secure_url,
-          type: isVideo ? 'video' : 'image',
-          publicId: result.public_id,
-          uploadedAt: new Date(),
-        });
       }
 
       setMediaItems((prev) => [...newItems, ...prev]);
 
-      toast({
-        title: 'Success',
-        description: `${newItems.length} file(s) uploaded successfully`,
-      });
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload files',
-        variant: 'destructive',
-      });
+      if (newItems.length > 0) {
+        toast({
+          title: 'Success',
+          description: `${newItems.length} file(s) uploaded successfully`,
+        });
+      }
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -150,16 +121,16 @@ const Media = () => {
                     Click to upload or drag and drop
                   </p>
                   <p className="text-sm text-gray-500">
-                    Images (JPG, PNG, WebP) up to 10MB
+                    Images (JPG, PNG, WebP) up to 500 KB
                   </p>
-                  <p className="text-sm text-gray-500">Videos (MP4, WebM) up to 50MB</p>
+                  <p className="text-sm text-gray-500">For videos, use a YouTube link</p>
                 </>
               )}
             </div>
             <input
               type="file"
               className="hidden"
-              accept="image/*,video/*"
+              accept={IMAGE_ACCEPT}
               multiple
               onChange={handleFileUpload}
               disabled={uploading}
@@ -292,26 +263,9 @@ const Media = () => {
         </CardContent>
       </Card>
 
-      {/* Cloudinary Info */}
-      <Card className="bg-white border-gray-200">
-        <CardHeader>
-          <CardTitle className="text-gray-900">Cloudinary Configuration</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Cloud Name:</span>
-            <span className="text-gray-900 font-mono">doxwyrp8n</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Upload Preset:</span>
-            <span className="text-gray-900 font-mono">sreerasthusilvers</span>
-          </div>
-          <p className="text-gray-500 text-xs mt-4">
-            All uploaded media is stored securely on Cloudinary CDN and optimized for fast
-            delivery.
-          </p>
-        </CardContent>
-      </Card>
+      <p className="text-xs text-gray-500">
+        Files are stored on Cloudflare R2. Free-plan usage is shown on the Storage page.
+      </p>
     </div>
   );
 };

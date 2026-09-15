@@ -16,6 +16,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { invalidateProductCache } from './productCache';
+import { deleteMedia } from './mediaStorage';
+import { isManagedImageUrl } from '@/lib/mediaUrl';
 import type { ProductDeliveryConfig } from './siteSettingsService';
 
 // Product Types
@@ -131,8 +133,39 @@ export const updateProduct = async (productId: string, updates: Partial<Product>
 
 // Delete a product
 export const deleteProduct = async (productId: string): Promise<void> => {
-  await deleteDoc(doc(db, PRODUCTS_COLLECTION, productId));
+  const ref = doc(db, PRODUCTS_COLLECTION, productId);
+  const snap = await getDoc(ref);
+  await deleteDoc(ref);
   invalidateProductCache();
+  // Background: the product is gone either way; cleanup only frees storage.
+  void releaseProductImages(snap.data()?.media?.images || []);
+};
+
+/**
+ * Delete stored photo files that no product references any more.
+ *
+ * A URL can sit on two products (the Paste URL box accepts any link), so each
+ * one is checked with an array-contains query before its file is removed.
+ * Only files uploaded through /api/media are candidates; external links and
+ * legacy Cloudinary URLs are ignored.
+ */
+export const releaseProductImages = async (urls: string[]): Promise<void> => {
+  const candidates = [...new Set(urls.filter(isManagedImageUrl))];
+  const inUse = await Promise.all(
+    candidates.map(async (url) => {
+      try {
+        const users = await getDocs(
+          query(collection(db, PRODUCTS_COLLECTION), where('media.images', 'array-contains', url), limit(1)),
+        );
+        return !users.empty;
+      } catch (err) {
+        console.warn('[media] could not check image usage, keeping file:', err);
+        return true;
+      }
+    }),
+  );
+  const orphaned = candidates.filter((_, i) => !inUse[i]);
+  if (orphaned.length) await deleteMedia(orphaned);
 };
 
 // Get a single product by ID

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -35,13 +35,15 @@ import {
   updateProduct,
   getProduct,
   generateSlug,
+  releaseProductImages,
   Product,
 } from '@/services/productService';
 import {
-  uploadToCloudinary,
-  validateFile,
-  UploadProgress,
-} from '@/services/cloudinaryService';
+  uploadImage,
+  describeUploadError,
+  MAX_PRODUCT_IMAGES,
+  IMAGE_ACCEPT,
+} from '@/services/mediaStorage';
 import {
   subscribeToCategories,
   seedDefaultCategories,
@@ -266,6 +268,21 @@ const ProductForm = () => {
   const [images, setImages] = useState<string[]>([]);
   const [videos, setVideos] = useState<string[]>([]);
   const [thumbnail, setThumbnail] = useState<string>('');
+  // Stored files this form may need to clean up: what the product had when it
+  // loaded, plus everything uploaded since. Whatever isn't in the saved product
+  // (or never gets saved) is released so it doesn't sit in storage unused.
+  const loadedImagesRef = useRef<string[]>([]);
+  const sessionUploadsRef = useRef<string[]>([]);
+  const savedRef = useRef(false);
+
+  useEffect(
+    () => () => {
+      if (!savedRef.current && sessionUploadsRef.current.length) {
+        void releaseProductImages(sessionUploadsRef.current);
+      }
+    },
+    [],
+  );
 
   // Derived subcategories
   const selectedCategory = categories.find((c) => c.name === formData.category);
@@ -307,6 +324,7 @@ const ProductForm = () => {
           isTrendProduct: (product.flags as any)?.isTrendProduct ?? false,
         });
         setImages(product.media?.images || []);
+        loadedImagesRef.current = product.media?.images || [];
         setVideos(product.media?.videos || []);
         setThumbnail(product.media?.thumbnail || '');
 
@@ -426,31 +444,62 @@ const ProductForm = () => {
 
   // Image handlers
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const input = e.target;
+    const picked = Array.from(input.files || []);
+    input.value = ''; // let the same file be picked again after a fix
+    if (picked.length === 0) return;
+
+    const slots = MAX_PRODUCT_IMAGES - images.length;
+    if (slots <= 0) {
+      toast({
+        title: `Maximum ${MAX_PRODUCT_IMAGES} photos per product`,
+        description: 'Remove a photo before adding another.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const files = picked.slice(0, slots);
+    if (picked.length > slots) {
+      toast({
+        title: `Only ${slots} more photo${slots === 1 ? '' : 's'} allowed`,
+        description: `A product can have at most ${MAX_PRODUCT_IMAGES} photos. Uploading the first ${slots}.`,
+      });
+    }
+
     setUploadingImages(true);
     setUploadProgress(0);
+    const uploadedUrls: string[] = [];
+    const failures: string[] = [];
     try {
-      const uploadedUrls: string[] = [];
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const validation = validateFile(file, { maxSizeMB: 10, allowedTypes: ['image/jpeg', 'image/png', 'image/webp'] });
-        if (!validation.valid) {
-          toast({ title: 'Invalid File', description: validation.error, variant: 'destructive' });
-          continue;
+        try {
+          const result = await uploadImage(files[i], {
+            category: 'products',
+            onProgress: (progress) => {
+              setUploadProgress(Math.round(((i + progress.percentage / 100) / files.length) * 100));
+            },
+          });
+          uploadedUrls.push(result.url);
+          sessionUploadsRef.current.push(result.url);
+        } catch (error) {
+          failures.push(describeUploadError(error));
+          // Paused for the storage limit: the rest would fail the same way.
+          if ((error as { code?: string })?.code === 'LIMIT_REACHED') break;
         }
-        const result = await uploadToCloudinary(file, (progress: UploadProgress) => {
-          setUploadProgress(Math.round(((i + progress.percentage / 100) / files.length) * 100));
-        });
-        uploadedUrls.push(result.secure_url);
       }
-      setImages((prev) => [...prev, ...uploadedUrls]);
-      if (uploadedUrls.length > 0) clearFieldError('images');
-      if (!thumbnail && uploadedUrls.length > 0) setThumbnail(uploadedUrls[0]);
-      toast({ title: 'Success', description: `${uploadedUrls.length} image(s) uploaded` });
-    } catch (error) {
-      console.error('Image upload failed:', error);
-      toast({ title: 'Image upload failed', description: describeError(error), variant: 'destructive' });
+      if (uploadedUrls.length > 0) {
+        setImages((prev) => [...prev, ...uploadedUrls].slice(0, MAX_PRODUCT_IMAGES));
+        clearFieldError('images');
+        if (!thumbnail) setThumbnail(uploadedUrls[0]);
+        toast({ title: 'Success', description: `${uploadedUrls.length} image(s) uploaded` });
+      }
+      if (failures.length > 0) {
+        toast({
+          title: failures.length === 1 ? 'A photo was not uploaded' : `${failures.length} photos were not uploaded`,
+          description: [...new Set(failures)].join(' '),
+          variant: 'destructive',
+        });
+      }
     } finally {
       setUploadingImages(false);
       setUploadProgress(0);
@@ -464,6 +513,14 @@ const ProductForm = () => {
 
   const handleAddImageUrl = () => {
     if (!imageUrlInput.trim()) return;
+    if (images.length >= MAX_PRODUCT_IMAGES) {
+      toast({
+        title: `Maximum ${MAX_PRODUCT_IMAGES} photos per product`,
+        description: 'Remove a photo before adding another.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       new URL(imageUrlInput);
       setImages((prev) => [...prev, imageUrlInput]);
@@ -529,6 +586,9 @@ const ProductForm = () => {
     }
 
     if (images.length === 0) errors.images = 'Add at least one product image';
+    else if (images.length > MAX_PRODUCT_IMAGES) {
+      errors.images = `A product can have at most ${MAX_PRODUCT_IMAGES} photos — remove ${images.length - MAX_PRODUCT_IMAGES}`;
+    }
 
     if (delivery.override && delivery.chargeEnabled) {
       if (delivery.withinState === '' && delivery.outsideState === '') {
@@ -631,6 +691,9 @@ const ProductForm = () => {
         await createProduct(productData, user!.uid);
         toast({ title: 'Success', description: 'Product created successfully' });
       }
+      savedRef.current = true;
+      const dropped = [...loadedImagesRef.current, ...sessionUploadsRef.current].filter((url) => !images.includes(url));
+      if (dropped.length) void releaseProductImages(dropped);
       navigate('/admin/products');
     } catch (error) {
       console.error('Error saving product:', error);
@@ -849,7 +912,13 @@ const ProductForm = () => {
                   </button>
                 </div>
 
-                {imageUploadMode === 'upload' ? (
+                {images.length >= MAX_PRODUCT_IMAGES ? (
+                  <div className="flex items-center justify-center w-full h-32 border-2 border-gray-200 border-dashed rounded-lg bg-gray-50 text-center px-4">
+                    <p className="text-sm text-gray-600">
+                      {MAX_PRODUCT_IMAGES} of {MAX_PRODUCT_IMAGES} photos added — the maximum. Remove one to add another.
+                    </p>
+                  </div>
+                ) : imageUploadMode === 'upload' ? (
                   <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-amber-600 transition-colors">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       {uploadingImages ? (
@@ -861,11 +930,13 @@ const ProductForm = () => {
                         <>
                           <Upload className="h-8 w-8 text-gray-600 mb-2" />
                           <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                          <p className="text-xs text-gray-500">PNG, JPG, WebP up to 10MB</p>
+                          <p className="text-xs text-gray-500">
+                            JPG, PNG or WebP · max 500 KB each · up to {MAX_PRODUCT_IMAGES} photos ({images.length}/{MAX_PRODUCT_IMAGES} used)
+                          </p>
                         </>
                       )}
                     </div>
-                    <input type="file" className="hidden" accept="image/*" multiple onChange={handleImageUpload} disabled={uploadingImages} />
+                    <input type="file" className="hidden" accept={IMAGE_ACCEPT} multiple onChange={handleImageUpload} disabled={uploadingImages} />
                   </label>
                 ) : (
                   <div className="flex gap-2">

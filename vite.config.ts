@@ -63,6 +63,8 @@ function razorpayApiDevMiddleware() {
   const routes: Record<string, () => Promise<{ default: Function }>> = {
     "/api/create-order": () => import("./api/create-order.ts"),
     "/api/verify-payment": () => import("./api/verify-payment.ts"),
+    // Media uploads / deletes / storage usage (Cloudflare R2).
+    "/api/media": () => import("./api/media.ts"),
   };
 
   return {

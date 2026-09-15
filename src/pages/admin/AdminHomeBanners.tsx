@@ -24,6 +24,7 @@ import {
   type HomeBannerSlot,
 } from '@/services/homeContentService';
 import { SmartImage } from "@/components/ui/smart-image";
+import { describeUploadError, IMAGE_ACCEPT } from "@/services/mediaStorage";
 
 interface SlotConfig {
   slot: HomeBannerSlot;
@@ -86,12 +87,12 @@ const SlotCard = ({ config, banner }: { config: SlotConfig; banner?: HomeBanner 
     if (!file) return;
     setUploading(true);
     try {
-      const url = await uploadHomeMedia(file, 'home-banners');
+      const url = await uploadHomeMedia(file);
       setField('imageUrl', url);
       toast.success('Image uploaded');
     } catch (err) {
       console.error(err);
-      toast.error('Upload failed');
+      toast.error(describeUploadError(err));
     } finally {
       setUploading(false);
     }
@@ -176,7 +177,7 @@ const SlotCard = ({ config, banner }: { config: SlotConfig; banner?: HomeBanner 
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept={IMAGE_ACCEPT}
             className="hidden"
             onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
           />

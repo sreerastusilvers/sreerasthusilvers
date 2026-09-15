@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
 import { recordLoginAttempt } from '@/services/securityService';
+import { isManagedImageUrl } from '@/lib/mediaUrl';
 
 // Types
 export interface UserProfile {
@@ -142,9 +143,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }).catch(() => {});
             }
             
-            // Only sync Google photoURL if user doesn't have a custom avatar (Cloudinary URL)
-            // This prevents overwriting custom uploaded avatars
-            const hasCustomAvatar = profile?.avatar && profile.avatar.includes('cloudinary');
+            // Only sync Google photoURL if user doesn't have a custom avatar
+            // (uploaded to our storage, or a legacy Cloudinary URL). This
+            // prevents overwriting custom uploaded avatars.
+            const hasCustomAvatar =
+              !!profile?.avatar && (profile.avatar.includes('cloudinary') || isManagedImageUrl(profile.avatar));
             
             if (updatedUser.photoURL && profile && !hasCustomAvatar && profile.avatar !== updatedUser.photoURL) {
               try {

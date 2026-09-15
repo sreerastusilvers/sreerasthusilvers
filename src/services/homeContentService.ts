@@ -13,7 +13,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig } from '@/config/cloudinary';
+import { uploadImage } from '@/services/mediaStorage';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Home Banners — promo tiles + wide collection banner managed by admin.
@@ -39,16 +39,10 @@ export interface HomeBanner {
 
 const HOME_BANNERS = 'homeBanners';
 
-export async function uploadHomeMedia(file: File, folder = 'home-banners'): Promise<string> {
-  if (file.size > 10 * 1024 * 1024) throw new Error('File must be < 10 MB');
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-  formData.append('folder', folder);
-  const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
-  if (!res.ok) throw new Error('Cloudinary upload failed');
-  const data = await res.json();
-  return data.secure_url as string;
+/** Home banner / collection image (JPG/PNG/WebP, max 500 KB - see mediaStorage). */
+export async function uploadHomeMedia(file: File): Promise<string> {
+  const result = await uploadImage(file, { category: 'home' });
+  return result.url;
 }
 
 export async function getHomeBanners(slot?: HomeBannerSlot): Promise<HomeBanner[]> {

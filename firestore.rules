@@ -179,7 +179,19 @@ service cloud.firestore {
     // --- STORE MANAGEMENT (Products & Admin Data) ---
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAdmin();
+      // At most 5 photos per product (MAX_PRODUCT_IMAGES in src/services/mediaStorage.ts).
+      // An update that leaves the photo list as it was is still allowed, so an
+      // older product with more photos can get stock/price edits before it's trimmed.
+      allow create: if isAdmin() && productImages(request.resource.data).size() <= 5;
+      allow update: if isAdmin() && (
+        productImages(request.resource.data).size() <= 5 ||
+        productImages(request.resource.data) == productImages(resource.data)
+      );
+      allow delete: if isAdmin();
+    }
+
+    function productImages(data) {
+      return data.get('media', {}).get('images', []);
     }
 
     match /admin/{docId} {

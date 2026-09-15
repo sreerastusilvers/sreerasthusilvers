@@ -16,7 +16,7 @@ import {
   increment,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { CLOUDINARY_UPLOAD_URL, cloudinaryConfig } from '@/config/cloudinary';
+import { uploadImage } from '@/services/mediaStorage';
 
 export interface Review {
   id: string;
@@ -137,48 +137,19 @@ export const voteReviewHelpful = async (
 };
 
 /**
- * Upload a file to Cloudinary
+ * Upload review photos. Customer photos are shrunk in the browser to fit the
+ * 500 KB limit; files are stored under the signed-in user's own folder.
  */
-const uploadToCloudinary = async (file: File, folder: string): Promise<string> => {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-  formData.append('folder', folder);
-
-  const res = await fetch(CLOUDINARY_UPLOAD_URL, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!res.ok) throw new Error('Cloudinary upload failed');
-  const data = await res.json();
-  return data.secure_url;
+export const uploadReviewImages = async (files: File[]): Promise<string[]> => {
+  const results = await Promise.all(
+    files.map((file) => uploadImage(file, { category: 'reviews', autoCompress: true })),
+  );
+  return results.map((r) => r.url);
 };
 
-/**
- * Upload review images to Cloudinary
- */
-export const uploadReviewImages = async (
-  files: File[],
-  userId: string,
-  productId: string
-): Promise<string[]> => {
-  const folder = `reviews/${userId}/${productId}`;
-  const uploadPromises = files.map((file) => uploadToCloudinary(file, folder));
-  return Promise.all(uploadPromises);
-};
-
-/**
- * Upload review video to Cloudinary
- */
-export const uploadReviewVideo = async (
-  file: File,
-  userId: string,
-  productId: string
-): Promise<string> => {
-  const folder = `reviews/${userId}/${productId}`;
-  return uploadToCloudinary(file, folder);
-};
+// Review *videos* are switched off: a single phone clip can be 50-200 MB, and a
+// handful would use up the 10 GB free storage. Re-enable by adding a video
+// upload path to /api/media (direct-to-bucket presigned uploads) with a firm cap.
 
 /**
  * Create a new review

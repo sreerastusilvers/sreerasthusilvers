@@ -1,0 +1,316 @@
+import { auth } from '@/config/firebase';
+import { PREVIEW_MAX_EDGE } from '@/lib/mediaUrl';
+
+/**
+ * Client for /api/media - every file upload in the app goes through here.
+ *
+ * Rules (the server enforces them again; these just fail fast with a clear message):
+ *  - Images: JPG, PNG or WebP, at most 500 KB.
+ *    Admin screens reject bigger files - photos are compressed before upload.
+ *    Customer screens (review photos, profile picture) shrink the photo in the
+ *    browser instead, because customers can't be asked to compress.
+ *  - PDFs (refund receipts only): at most 1 MB.
+ *  - Products: at most MAX_PRODUCT_IMAGES photos.
+ */
+
+export const MAX_IMAGE_BYTES = 500 * 1024;
+export const MAX_PDF_BYTES = 1024 * 1024;
+export const MAX_PRODUCT_IMAGES = 5;
+export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+/** For `<input accept>` - narrower than image/* so HEIC/GIF aren't offered. */
+export const IMAGE_ACCEPT = IMAGE_TYPES.join(',');
+
+/** Fired on window when the server pauses uploads; the admin popup listens for it. */
+export const STORAGE_LIMIT_EVENT = 'media:storage-limit';
+
+export type MediaCategory =
+  | 'products' | 'banners' | 'home' | 'gallery' | 'showcases' | 'testimonials'
+  | 'media' | 'receipts' | 'avatars' | 'reviews';
+
+export type MediaErrorCode =
+  | 'TOO_LARGE' | 'BAD_TYPE' | 'LIMIT_REACHED' | 'AUTH' | 'FORBIDDEN'
+  | 'NOT_CONFIGURED' | 'NETWORK' | 'SERVER' | 'BAD_REQUEST';
+
+export class MediaUploadError extends Error {
+  constructor(public code: MediaErrorCode, message: string, public usage?: StorageUsage) {
+    super(message);
+    this.name = 'MediaUploadError';
+  }
+}
+
+export interface UploadedMedia {
+  url: string;
+  key: string;
+  bytes: number;
+  contentType: string;
+  previewUrl?: string;
+}
+
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+  percentage: number;
+}
+
+export interface StorageUsage {
+  periodStart: string;
+  periodEnd: string;
+  storageBytes: number;
+  objectCount: number;
+  classA: number;
+  classB: number | null;
+  source: 'analytics' | 'estimate';
+  fetchedAt: string;
+  limits: { storageBytes: number; classA: number; classB: number };
+  thresholds: { warn: number; block: number };
+  percent: { storage: number; classA: number; classB: number | null };
+  level: 'ok' | 'warn' | 'block';
+  reasons: string[];
+  notes: string[];
+}
+
+export const formatBytes = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+  if (bytes < 1000 ** 3) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / 1000 ** 3).toFixed(2)} GB`;
+};
+
+// ── Validation ──────────────────────────────────────────────────────────────
+
+/** Throws a readable error unless `file` is an allowed image within 500 KB. */
+export const assertUploadableImage = (file: File): void => {
+  if (!IMAGE_TYPES.includes(file.type)) {
+    throw new MediaUploadError('BAD_TYPE', `"${file.name}" is not a JPG, PNG or WebP image.`);
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new MediaUploadError(
+      'TOO_LARGE',
+      `"${file.name}" is ${formatBytes(file.size)}. Please compress it to 500 KB or less and upload again.`,
+    );
+  }
+};
+
+// ── In-browser image work ───────────────────────────────────────────────────
+
+const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number) =>
+  new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+
+/**
+ * Draw `bitmap` scaled to fit `maxEdge` and encode it. WebP where the browser
+ * can encode it; Safari can't and silently returns PNG, so fall back to JPEG
+ * on a white ground (JPEG has no alpha - transparent pixels would turn black).
+ */
+const encodeScaled = async (bitmap: ImageBitmap, maxEdge: number, quality: number): Promise<Blob> => {
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new MediaUploadError('BAD_TYPE', 'This browser cannot process images.');
+
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const webp = await canvasToBlob(canvas, 'image/webp', quality);
+  if (webp && webp.type === 'image/webp') return webp;
+
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const jpeg = await canvasToBlob(canvas, 'image/jpeg', quality);
+  if (!jpeg) throw new MediaUploadError('BAD_TYPE', 'Could not process this image.');
+  return jpeg;
+};
+
+const decode = async (file: Blob, name: string): Promise<ImageBitmap> => {
+  try {
+    return await createImageBitmap(file);
+  } catch {
+    throw new MediaUploadError('BAD_TYPE', `"${name}" could not be read as an image.`);
+  }
+};
+
+/** Small preview used by product cards and thumbnails. Best effort. */
+const createPreview = async (file: File): Promise<Blob | null> => {
+  try {
+    const bitmap = await decode(file, file.name);
+    try {
+      return await encodeScaled(bitmap, PREVIEW_MAX_EDGE, 0.8);
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Shrink a customer photo until it fits in 500 KB. Photos already within the
+ * limit are still re-encoded when they're JPEGs, which strips EXIF data such as
+ * the GPS location a phone camera embeds.
+ */
+export const compressImageToLimit = async (file: File, maxBytes = MAX_IMAGE_BYTES): Promise<File> => {
+  if (file.size <= maxBytes && file.type !== 'image/jpeg' && IMAGE_TYPES.includes(file.type)) return file;
+
+  const bitmap = await decode(file, file.name);
+  try {
+    const attempts: Array<[number, number]> = [
+      [2000, 0.85], [2000, 0.72], [1600, 0.72], [1280, 0.7], [1024, 0.65], [800, 0.6], [640, 0.55],
+    ];
+    for (const [edge, quality] of attempts) {
+      const blob = await encodeScaled(bitmap, edge, quality);
+      if (blob.size <= maxBytes) {
+        const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + `.${ext}`, { type: blob.type });
+      }
+    }
+  } finally {
+    bitmap.close();
+  }
+  throw new MediaUploadError('TOO_LARGE', `"${file.name}" could not be made small enough. Please choose another photo.`);
+};
+
+// ── Transport ───────────────────────────────────────────────────────────────
+
+const toBase64 = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ''));
+    reader.onerror = () => reject(new MediaUploadError('BAD_TYPE', 'Could not read the file.'));
+    reader.readAsDataURL(blob);
+  });
+
+const authHeader = async (): Promise<string> => {
+  const user = auth.currentUser;
+  if (!user) throw new MediaUploadError('AUTH', 'Please sign in to upload files.');
+  return `Bearer ${await user.getIdToken()}`;
+};
+
+/** Shape of every /api/media JSON response. */
+interface ApiPayload {
+  ok?: boolean;
+  code?: MediaErrorCode;
+  error?: string;
+  usage?: StorageUsage;
+  publicUrlConfigured?: boolean;
+}
+
+const toMediaError = (status: number, payload: ApiPayload | null): MediaUploadError => {
+  const code = (payload?.code as MediaErrorCode) || (status === 0 ? 'NETWORK' : 'SERVER');
+  const error = new MediaUploadError(code, payload?.error || `Upload failed (HTTP ${status}).`, payload?.usage);
+  if (code === 'LIMIT_REACHED' && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(STORAGE_LIMIT_EVENT, { detail: payload?.usage }));
+  }
+  return error;
+};
+
+const postJson = <T>(body: object, onProgress?: (p: UploadProgress) => void) =>
+  authHeader().then(
+    (authorization) =>
+      new Promise<T>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/media');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', authorization);
+        if (onProgress) {
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              onProgress({ loaded: e.loaded, total: e.total, percentage: Math.round((e.loaded / e.total) * 100) });
+            }
+          };
+        }
+        xhr.onload = () => {
+          let payload: ApiPayload | null = null;
+          try {
+            payload = JSON.parse(xhr.responseText);
+          } catch {
+            /* non-JSON (e.g. a proxy error page) */
+          }
+          if (xhr.status >= 200 && xhr.status < 300 && payload?.ok) resolve(payload as unknown as T);
+          else reject(toMediaError(xhr.status, payload));
+        };
+        xhr.onerror = () => reject(new MediaUploadError('NETWORK', 'Network error during upload. Check your connection.'));
+        xhr.send(JSON.stringify(body));
+      }),
+  );
+
+// ── Public API ──────────────────────────────────────────────────────────────
+
+export interface UploadImageOptions {
+  category: MediaCategory;
+  /** Shrink oversized photos instead of rejecting them (customer-facing screens). */
+  autoCompress?: boolean;
+  onProgress?: (progress: UploadProgress) => void;
+}
+
+export const uploadImage = async (file: File, options: UploadImageOptions): Promise<UploadedMedia> => {
+  const ready = options.autoCompress ? await compressImageToLimit(file) : file;
+  assertUploadableImage(ready);
+
+  const preview = await createPreview(ready);
+  return postJson<UploadedMedia>(
+    {
+      action: 'upload',
+      category: options.category,
+      file: { name: ready.name, data: await toBase64(ready) },
+      ...(preview ? { preview: { data: await toBase64(preview) } } : {}),
+    },
+    options.onProgress,
+  );
+};
+
+/** Image (≤500 KB) or PDF (≤1 MB). Used for refund receipts. */
+export const uploadDocument = async (
+  file: File,
+  options: { category: MediaCategory; onProgress?: (progress: UploadProgress) => void },
+): Promise<UploadedMedia> => {
+  if (file.type !== 'application/pdf') return uploadImage(file, options);
+  if (file.size > MAX_PDF_BYTES) {
+    throw new MediaUploadError('TOO_LARGE', `"${file.name}" is ${formatBytes(file.size)}. PDFs must be 1 MB or less.`);
+  }
+  return postJson<UploadedMedia>(
+    { action: 'upload', category: options.category, file: { name: file.name, data: await toBase64(file) } },
+    options.onProgress,
+  );
+};
+
+/**
+ * Remove stored files by URL. Anything that isn't ours (Cloudinary, pasted
+ * links) is skipped by the server. Never throws: a failed cleanup must not
+ * fail the save that triggered it - it only leaves an orphaned file behind.
+ */
+export const deleteMedia = async (urls: Array<string | undefined | null>): Promise<void> => {
+  const list = [...new Set(urls.filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)))];
+  for (let i = 0; i < list.length; i += 25) {
+    try {
+      await postJson({ action: 'delete', urls: list.slice(i, i + 25) });
+    } catch (err) {
+      console.warn('[media] cleanup failed:', err);
+    }
+  }
+};
+
+export const fetchStorageUsage = async (
+  refresh = false,
+): Promise<{ usage: StorageUsage; publicUrlConfigured: boolean }> => {
+  const resp = await fetch(`/api/media${refresh ? '?refresh=1' : ''}`, {
+    headers: { Authorization: await authHeader() },
+  });
+  let payload: ApiPayload | null = null;
+  try {
+    payload = (await resp.json()) as ApiPayload;
+  } catch {
+    /* handled below */
+  }
+  if (!resp.ok || !payload?.ok) throw toMediaError(resp.status, payload);
+  return { usage: payload.usage, publicUrlConfigured: !!payload.publicUrlConfigured };
+};
+
+/** One friendly sentence for a toast. */
+export const describeUploadError = (error: unknown): string => {
+  if (error instanceof MediaUploadError) {
+    if (error.code === 'LIMIT_REACHED') return 'Uploads are paused because the free storage plan is almost full.';
+    if (error.code === 'NOT_CONFIGURED') return 'Image storage is not set up on the server yet.';
+    return error.message;
+  }
+  return error instanceof Error ? error.message : 'Upload failed.';
+};

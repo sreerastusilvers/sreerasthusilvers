@@ -87,6 +87,7 @@ const AdminDeliveryBoyDetails = lazy(() => import("./pages/admin/AdminDeliveryBo
 const AdminOrderDetails = lazy(() => import("./pages/admin/AdminOrderDetails"));
 const AdminVideoCalls = lazy(() => import("./pages/admin/AdminVideoCalls"));
 const AdminNewsletterSubscriptions = lazy(() => import("./pages/admin/AdminNewsletterSubscriptions"));
+const AdminStorage = lazy(() => import("./pages/admin/AdminStorage"));
 const MyVideoCalls = lazy(() => import("./pages/MyVideoCalls"));
 const VideoCallPage = lazy(() => import("./pages/VideoCallPage"));
 const WriteReview = lazy(() => import("./pages/WriteReview"));
@@ -352,6 +353,7 @@ const App = () => {
                 <Route path="customers" element={<AdminCustomers />} />
                 <Route path="customers/:customerId" element={<AdminCustomerDetails />} />
                 <Route path="newsletter" element={<AdminNewsletterSubscriptions />} />
+                <Route path="storage" element={<AdminStorage />} />
               </Route>
 
               {/* Delivery Partner Routes (always rendered in light mode).

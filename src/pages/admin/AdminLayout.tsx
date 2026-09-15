@@ -29,8 +29,10 @@ import {
   Video,
   Coins,
   Mail,
+  HardDrive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import StorageLimitWatcher from '@/components/admin/StorageLimitWatcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -85,6 +87,7 @@ const AdminLayout = () => {
     { path: '/admin/image-prompts', icon: Sparkles, label: 'AI Prompts' },
     { path: '/admin/marketing', icon: Bell, label: 'Marketing' },
     { path: '/admin/whatsapp', icon: MessagesSquare, label: 'WhatsApp' },
+    { path: '/admin/storage', icon: HardDrive, label: 'Storage' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
   ];
 
@@ -293,6 +296,7 @@ const AdminLayout = () => {
         {/* Page Content */}
         <main className="p-4 lg:p-6 admin-panel">
           <Outlet />
+          <StorageLimitWatcher />
         </main>
       </div>
     </div>
