@@ -50,6 +50,24 @@ import { useToast } from '@/hooks/use-toast';
 import { SmartImage } from "@/components/ui/smart-image";
 import BarcodeScannerDialog from '@/components/admin/BarcodeScannerDialog';
 import { describeError } from '@/lib/errorMessage';
+import { matchesTaxon } from '@/lib/taxonomy';
+
+/**
+ * One dropdown row: name on the left, how many products it holds on the right -
+ * the same "name + count" read the storefront category filters give.
+ */
+const FilterOption = ({ label, count }: { label: string; count: number }) => (
+  <span className="flex w-full items-center justify-between gap-3">
+    <span className={count === 0 ? 'text-gray-400' : undefined}>{label}</span>
+    <span
+      className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${
+        count === 0 ? 'bg-gray-100 text-gray-400' : 'bg-amber-50 text-amber-700'
+      }`}
+    >
+      {count}
+    </span>
+  </span>
+);
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -62,7 +80,9 @@ const Products = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
+  // Sub levels are held as slugs, matched with matchesTaxon - see the filter effect.
   const [subcategoryFilter, setSubcategoryFilter] = useState('all');
+  const [subSubcategoryFilter, setSubSubcategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [scannerOpen, setScannerOpen] = useState(false);
   const { toast } = useToast();
@@ -78,35 +98,28 @@ const Products = () => {
   }, []);
 
   /**
-   * Search + category/subcategory/status filters.
-   *
    * The "Filters" button next to the search box used to be inert, so the only
    * way to see one category's products was to type its name into search - and
-   * that also matched every product whose *name* contained the word. Filtering
-   * by the stored category value is exact, and search now also matches SKU and
-   * barcode so a scanned code finds its product.
+   * that also matched every product whose *name* contained the word. Search now
+   * also matches SKU and barcode so a scanned code finds its product.
    */
-  useEffect(() => {
-    const q = searchQuery.trim().toLowerCase();
-    const filtered = products.filter((product) => {
-      if (categoryFilter !== 'all' && (product.category || '') !== categoryFilter) return false;
-      if (subcategoryFilter !== 'all' && (product.subcategory || '') !== subcategoryFilter) {
-        return false;
-      }
-      if (statusFilter === 'active' && !product.flags?.isActive) return false;
-      if (statusFilter === 'inactive' && product.flags?.isActive) return false;
-      if (!q) return true;
-      return (
-        product.name?.toLowerCase().includes(q) ||
+  const matchesSearch = (product: Product, q: string) => {
+    if (!q) return true;
+    return Boolean(
+      product.name?.toLowerCase().includes(q) ||
         product.category?.toLowerCase().includes(q) ||
         (product.subcategory || '').toLowerCase().includes(q) ||
         (product.subSubcategory || '').toLowerCase().includes(q) ||
         (product.inventory?.sku || '').toLowerCase().includes(q) ||
-        (product.barcode || '').toLowerCase().includes(q)
-      );
-    });
-    setFilteredProducts(filtered);
-  }, [searchQuery, products, categoryFilter, subcategoryFilter, statusFilter]);
+        (product.barcode || '').toLowerCase().includes(q),
+    );
+  };
+
+  const matchesStatus = (product: Product) => {
+    if (statusFilter === 'active') return Boolean(product.flags?.isActive);
+    if (statusFilter === 'inactive') return !product.flags?.isActive;
+    return true;
+  };
 
   /** Subcategories of the selected category, for the second filter dropdown. */
   const subcategoryOptions = useMemo(() => {
@@ -115,14 +128,98 @@ const Products = () => {
     return cat?.subcategories || [];
   }, [categories, categoryFilter]);
 
+  /** Children of the selected subcategory, for the third filter dropdown. */
+  const subSubcategoryOptions = useMemo(() => {
+    if (subcategoryFilter === 'all') return [];
+    const sub = subcategoryOptions.find((s) => s.slug === subcategoryFilter);
+    return sub?.children || [];
+  }, [subcategoryOptions, subcategoryFilter]);
+
+  /**
+   * Everything the taxonomy dropdowns choose from: search and status applied,
+   * but not the category levels themselves, so each option can show how many
+   * products picking it would give.
+   */
+  const searchPool = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return products.filter((p) => matchesSearch(p, q) && matchesStatus(p));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, searchQuery, statusFilter]);
+
+  const inCategory = useMemo(
+    () =>
+      categoryFilter === 'all'
+        ? searchPool
+        : searchPool.filter((p) => (p.category || '') === categoryFilter),
+    [searchPool, categoryFilter],
+  );
+
+  const inSubcategory = useMemo(
+    () =>
+      subcategoryFilter === 'all'
+        ? inCategory
+        : inCategory.filter((p) => matchesTaxon(p.subcategory, subcategoryFilter, subcategoryOptions)),
+    [inCategory, subcategoryFilter, subcategoryOptions],
+  );
+
+  /**
+   * Counts shown next to each dropdown option.
+   *
+   * Sub levels are matched with matchesTaxon because the product form stores
+   * the display *name* while these dropdowns address a *slug* - comparing the
+   * two directly showed zero products for any name with a space in it.
+   */
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of searchPool) {
+      const key = p.category || '';
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  }, [searchPool]);
+
+  const subcategoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const sub of subcategoryOptions) {
+      counts.set(
+        sub.slug,
+        inCategory.filter((p) => matchesTaxon(p.subcategory, sub.slug, subcategoryOptions)).length,
+      );
+    }
+    return counts;
+  }, [inCategory, subcategoryOptions]);
+
+  const subSubcategoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const child of subSubcategoryOptions) {
+      counts.set(
+        child.slug,
+        inSubcategory.filter((p) => matchesTaxon(p.subSubcategory, child.slug, subSubcategoryOptions)).length,
+      );
+    }
+    return counts;
+  }, [inSubcategory, subSubcategoryOptions]);
+
+  useEffect(() => {
+    const filtered =
+      subSubcategoryFilter === 'all'
+        ? inSubcategory
+        : inSubcategory.filter((p) =>
+            matchesTaxon(p.subSubcategory, subSubcategoryFilter, subSubcategoryOptions),
+          );
+    setFilteredProducts(filtered);
+  }, [inSubcategory, subSubcategoryFilter, subSubcategoryOptions]);
+
   const activeFilterCount =
     (categoryFilter !== 'all' ? 1 : 0) +
     (subcategoryFilter !== 'all' ? 1 : 0) +
+    (subSubcategoryFilter !== 'all' ? 1 : 0) +
     (statusFilter !== 'all' ? 1 : 0);
 
   const clearFilters = () => {
     setCategoryFilter('all');
     setSubcategoryFilter('all');
+    setSubSubcategoryFilter('all');
     setStatusFilter('all');
   };
 
@@ -279,7 +376,7 @@ const Products = () => {
       </div>
 
       {showFilters && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="text-xs font-medium text-gray-600">Category</label>
             <Select
@@ -287,16 +384,19 @@ const Products = () => {
               onValueChange={(v) => {
                 setCategoryFilter(v);
                 setSubcategoryFilter('all');
+                setSubSubcategoryFilter('all');
               }}
             >
               <SelectTrigger className="mt-1.5 bg-white border-gray-300 text-gray-900">
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent className="bg-white">
-                <SelectItem value="all">All categories</SelectItem>
+                <SelectItem value="all">
+                  <FilterOption label="All categories" count={searchPool.length} />
+                </SelectItem>
                 {categories.map((c) => (
                   <SelectItem key={c.id} value={c.name}>
-                    {c.name}
+                    <FilterOption label={c.name} count={categoryCounts.get(c.name) || 0} />
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -307,21 +407,54 @@ const Products = () => {
             <label className="text-xs font-medium text-gray-600">Subcategory</label>
             <Select
               value={subcategoryFilter}
-              onValueChange={setSubcategoryFilter}
+              onValueChange={(v) => {
+                setSubcategoryFilter(v);
+                setSubSubcategoryFilter('all');
+              }}
               disabled={categoryFilter === 'all' || subcategoryOptions.length === 0}
             >
               <SelectTrigger className="mt-1.5 bg-white border-gray-300 text-gray-900">
                 <SelectValue placeholder="All subcategories" />
               </SelectTrigger>
               <SelectContent className="bg-white">
-                <SelectItem value="all">All subcategories</SelectItem>
+                <SelectItem value="all">
+                  <FilterOption label="All subcategories" count={inCategory.length} />
+                </SelectItem>
                 {subcategoryOptions.map((sub) => (
-                  <SelectItem key={sub.slug} value={sub.name}>
-                    {sub.name}
+                  <SelectItem key={sub.slug} value={sub.slug}>
+                    <FilterOption label={sub.name} count={subcategoryCounts.get(sub.slug) || 0} />
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-600">Sub-subcategory</label>
+            <Select
+              value={subSubcategoryFilter}
+              onValueChange={setSubSubcategoryFilter}
+              disabled={subcategoryFilter === 'all' || subSubcategoryOptions.length === 0}
+            >
+              <SelectTrigger className="mt-1.5 bg-white border-gray-300 text-gray-900">
+                <SelectValue placeholder="All sub-subcategories" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="all">
+                  <FilterOption label="All sub-subcategories" count={inSubcategory.length} />
+                </SelectItem>
+                {subSubcategoryOptions.map((child) => (
+                  <SelectItem key={child.slug} value={child.slug}>
+                    <FilterOption label={child.name} count={subSubcategoryCounts.get(child.slug) || 0} />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {subcategoryFilter !== 'all' && subSubcategoryOptions.length === 0 && (
+              <p className="mt-1 text-[11px] text-gray-400">
+                This subcategory has no sub-subcategories.
+              </p>
+            )}
           </div>
 
           <div>
@@ -341,7 +474,7 @@ const Products = () => {
             </Select>
           </div>
 
-          <div className="sm:col-span-3 flex items-center justify-between">
+          <div className="sm:col-span-2 lg:col-span-4 flex items-center justify-between">
             <p className="text-xs text-gray-500">
               {filteredProducts.length} of {products.length} products
             </p>

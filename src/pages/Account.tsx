@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, UserProfile } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -233,8 +233,36 @@ interface LoginFormProps {
   onLoginComplete: (profile: UserProfile, destination: string, isGoogle: boolean) => Promise<void>;
 }
 
+/** Screens that must never be a post-login destination, or login loops. */
+const AUTH_PATHS = [
+  '/login', '/signup', '/admin', '/auth', '/verify-email', '/forgot-password', '/reset-password', '/__',
+];
+
+/**
+ * Where to land after signing in.
+ *
+ * ProtectedRoute sends `state.from` when it bounces a guest off a protected
+ * page, and the product page sends it when "Add to Cart" needs an account.
+ * That was being thrown away and everyone was dropped on the homepage - so a
+ * shopper who clicked "Add to Cart" or opened checkout lost their place mid
+ * purchase. Honour it when it points at a real in-app page; otherwise keep the
+ * old behaviour (admins to their dashboard, everyone else home).
+ */
+const resolveDestination = (from: unknown, role: string | undefined): string => {
+  const fallback = role === 'admin' ? '/admin/dashboard' : '/';
+  const loc = from as { pathname?: string; search?: string; hash?: string } | null | undefined;
+  const pathname = typeof loc?.pathname === 'string' ? loc.pathname : '';
+
+  // In-app absolute paths only: the browser reads "//evil.com" as another site.
+  if (!pathname.startsWith('/') || pathname.startsWith('//')) return fallback;
+  if (AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return fallback;
+
+  return `${pathname}${loc?.search || ''}${loc?.hash || ''}`;
+};
+
 const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const tabFromUrl = searchParams.get('tab') as LoginTab | null;
   const [activeTab, setActiveTab] = useState<LoginTab>(
     tabFromUrl === 'delivery' && DELIVERY_PARTNERS_ENABLED ? 'delivery' : 'user'
@@ -286,7 +314,7 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
 
     try {
       const profile = await loginWithGoogle();
-      const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
+      const destination = resolveDestination(location.state?.from, profile.role);
       await onLoginComplete(profile, destination, true);
       // Do NOT reset loading — navigating away or showing a modal
     } catch (err: any) {
@@ -347,8 +375,9 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
     try {
       if (isSignUp) {
         await signup(email, password, fullName, phone || undefined, sameForWhatsApp);
-        // Signup: skip 2FA/WhatsApp flow (brand-new account)
-        navigate('/', { replace: true });
+        // Signup: skip 2FA/WhatsApp flow (brand-new account), but still return
+        // to whatever the shopper was doing before the account was required.
+        navigate(resolveDestination(location.state?.from, 'user'), { replace: true });
         // Don't reset emailLoading - navigating away
         return;
       } else {
@@ -375,7 +404,7 @@ const LoginForm = ({ onLoginStart, onLoginError, onLoginComplete }: LoginFormPro
           return;
         }
 
-        const destination = profile.role === 'admin' ? '/admin/dashboard' : '/';
+        const destination = resolveDestination(location.state?.from, profile.role);
         await onLoginComplete(profile, destination, false);
         // Do NOT reset loading — navigating away or showing a modal
         return;
