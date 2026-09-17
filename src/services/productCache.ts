@@ -86,6 +86,9 @@ const createdMillis = (p: Product) => {
   return typeof seconds === 'number' ? seconds * 1000 : 0;
 };
 
+/** 1 when the product has at least one photo, 0 when it has none - used to sort, so it is a number. */
+const hasPhoto = (p: Product) => (p.media?.images?.length ? 1 : 0);
+
 const fetchSnapshot = async (): Promise<Product[]> => {
   const resp = await fetch(CATALOG_URL, { headers: { Accept: 'application/json' } });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -107,7 +110,11 @@ const fetchActiveProducts = async (): Promise<Product[]> => {
     products = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Product);
   }
 
-  products.sort((a, b) => createdMillis(b) - createdMillis(a));
+  // Newest first, but a product with no photo never leads a row: it would show
+  // as an empty grey card on the homepage, and the newest products are exactly
+  // the ones still waiting for their photoshoot. They stay listed and findable -
+  // adding a photo puts them back in date order by itself.
+  products.sort((a, b) => hasPhoto(b) - hasPhoto(a) || createdMillis(b) - createdMillis(a));
 
   return products;
 };
@@ -183,6 +190,10 @@ type SectionFlag = 'isBestSeller' | 'isTopDeal' | 'isFeatured' | 'isNewArrival' 
  * Cache-backed replacement for the home-page section listeners
  * (best sellers / top deals / featured / new arrivals / trends). The home page
  * ran five separate queries; now all five read the one cached catalog.
+ *
+ * Products with no photo are left out of these rows entirely: a card with an
+ * empty grey box is worse than a shorter row, and every section here already
+ * handles having nothing to show. They stay listed in categories and search.
  */
 export const subscribeToActiveProductsByFlag = (
   flag: SectionFlag,
@@ -190,7 +201,7 @@ export const subscribeToActiveProductsByFlag = (
   limitCount = 10,
 ) =>
   subscribeToActiveProducts((products) =>
-    callback(products.filter((p) => p.flags?.[flag] === true).slice(0, limitCount)),
+    callback(products.filter((p) => p.flags?.[flag] === true && hasPhoto(p)).slice(0, limitCount)),
   );
 
 /** Call after any admin write so the next read reflects it immediately. */

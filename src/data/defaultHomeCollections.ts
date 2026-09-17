@@ -9,8 +9,11 @@ export const DEFAULT_HOME_COLLECTIONS: Array<
     subtitle: "Devotional silverware for daily rituals.",
     ctaLabel: "Shop Pooja",
     ctaLink: "/category/pooja-items",
+    // Our own photo: the Unsplash one that used to be here 404s now, and these
+    // defaults are what shows when Firestore can't be reached - so they must not
+    // depend on anything outside our own storage.
     imageUrl:
-      "https://images.unsplash.com/photo-1604608672516-f1b9b1d7a8b3?auto=format&fit=crop&w=1200&q=80",
+      "https://images.sreerasthusilvers.com/products/2026/09/m3bd50a1a721a43e3accf0a3b.jpg",
     tint: "from-[#2a1810]/88 via-[#2a1810]/35 to-transparent",
     active: true,
     order: 0,
