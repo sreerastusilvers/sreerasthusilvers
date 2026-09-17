@@ -3,8 +3,21 @@
   "buildCommand": "npm run build",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    {
+      "source": "/catalog/products.json",
+      "destination": "https://images.sreerasthusilvers.com/catalog/products.json"
+    },
+    {
+      "source": "/product/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|TelegramBot|Slackbot|Discordbot|SkypeUriPreview|Pinterest|redditbot|Embedly|vkShare).*"
+        }
+      ],
+      "destination": "/api/media?og=product&id=:id"
+    },
     { "source": "/((?!api/).*)", "destination": "/" }
   ]
 }
-
-

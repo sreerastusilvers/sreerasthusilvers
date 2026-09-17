@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { invalidateProductCache } from './productCache';
+import { requestCatalogRefresh } from './catalogPublisher';
 import { deleteMedia } from './mediaStorage';
 import { isManagedImageUrl } from '@/lib/mediaUrl';
 import type { ProductDeliveryConfig } from './siteSettingsService';
@@ -118,6 +119,7 @@ export const createProduct = async (product: Omit<Product, 'id'>, adminId: strin
   console.log('productService: Product SKU updated');
 
   invalidateProductCache();
+  requestCatalogRefresh([docRef.id]);
   return docRef.id;
 };
 
@@ -129,6 +131,7 @@ export const updateProduct = async (productId: string, updates: Partial<Product>
     updatedAt: serverTimestamp(),
   });
   invalidateProductCache();
+  requestCatalogRefresh([productId]);
 };
 
 // Delete a product
@@ -137,6 +140,7 @@ export const deleteProduct = async (productId: string): Promise<void> => {
   const snap = await getDoc(ref);
   await deleteDoc(ref);
   invalidateProductCache();
+  requestCatalogRefresh([productId]);
   // Background: the product is gone either way; cleanup only frees storage.
   void releaseProductImages(snap.data()?.media?.images || []);
 };

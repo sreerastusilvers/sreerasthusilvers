@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getAllProducts } from "@/services/productService";
+import { getActiveProductsCached } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import MobileHeader from "./MobileHeader";
 import ThemeToggle from "./ThemeToggle";
@@ -37,7 +37,7 @@ const Header = () => {
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const products = await getAllProducts();
+        const products = await getActiveProductsCached();
         const uiProducts = products.map((p) => adaptFirebaseToUI(p));
         setAllProducts(uiProducts);
       } catch (error) {

@@ -21,6 +21,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CategoryIconNav from "@/components/CategoryIconNav";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import ProductPagination from "@/components/ProductPagination";
 import { subscribeToActiveProducts } from "@/services/productCache";
 import { UIProduct, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { matchesTaxon } from "@/lib/taxonomy";
@@ -378,6 +379,8 @@ const CategoryPage = () => {
       // Changing the subcategory invalidates any sub-subcategory not set here.
       if (key === "sub" && !("subsub" in patch)) p.delete("subsub");
     }
+    // A different result set: page 3 of the old one means nothing, start again.
+    p.delete("page");
     setSearchParams(p, { replace: true });
   };
 
@@ -397,44 +400,50 @@ const CategoryPage = () => {
   const activeFilterCount = [activeSub, activeSubSub, activePriceIdx].filter(Boolean).length;
 
   /**
-   * Incremental rendering.
+   * Numbered pages.
    *
-   * A category like Jewellery matches ~585 products and the grid used to mount
-   * every card at once - hundreds of images and framer-motion nodes in one
-   * commit, which is what made opening a category (or picking a subcategory
-   * from the nav dropdown) sit there "buffering" for seconds on a phone. We
-   * render a page at a time and grow as the shopper reaches the end.
+   * A category like Jewellery matches ~585 products. Mounting every card at once
+   * made opening a category "buffer" for seconds on a phone, and scrolling kept
+   * adding cards (and downloading their photos) with no end. Instead the grid
+   * shows one page of PAGE_SIZE products, with the page number in the URL
+   * (?page=2) so back/forward and shared links land on the same page.
+   * Filter and sort changes go back to page 1 (see setFilters).
    */
   const PAGE_SIZE = 24;
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  // Any filter/sort change starts the list over from the first page.
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeSub, activeSubSub, activePriceIdx, activeSortBy, categorySlug, activeTag]);
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const requestedPage = Number.parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = Math.min(Math.max(1, Number.isNaN(requestedPage) ? 1 : requestedPage), totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
 
   const visibleProducts = useMemo(
-    () => filteredProducts.slice(0, visibleCount),
-    [filteredProducts, visibleCount],
+    () => filteredProducts.slice(pageStart, pageStart + PAGE_SIZE),
+    [filteredProducts, pageStart],
   );
-  const hasMore = visibleCount < filteredProducts.length;
 
+  const pageHref = (page: number) => {
+    const p = new URLSearchParams(searchParams);
+    if (page <= 1) p.delete("page");
+    else p.set("page", String(page));
+    const qs = p.toString();
+    return `${location.pathname}${qs ? `?${qs}` : ""}`;
+  };
+
+  // Not `replace`: each page is a history entry, so Back returns to the previous page.
+  const goToPage = (page: number) => {
+    const p = new URLSearchParams(searchParams);
+    if (page <= 1) p.delete("page");
+    else p.set("page", String(page));
+    setSearchParams(p);
+  };
+
+  // A new page starts at the top of the results, not wherever the pager was.
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+  const shownPage = useRef(currentPage);
   useEffect(() => {
-    if (!hasMore) return;
-    const node = sentinelRef.current;
-    if (!node) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setVisibleCount((c) => c + PAGE_SIZE);
-        }
-      },
-      { rootMargin: "600px 0px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMore, filteredProducts.length]);
+    if (shownPage.current === currentPage) return;
+    shownPage.current = currentPage;
+    resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [currentPage]);
 
   // ── Override adapter to carry subcategory data ──
   // We re-subscribe with raw data to keep subcategory info
@@ -860,7 +869,7 @@ const CategoryPage = () => {
           </aside>
 
           {/* Products grid */}
-          <div className="flex-1 min-w-0">
+          <div ref={resultsRef} className="flex-1 min-w-0 scroll-mt-32">
             {/* Desktop: result count + sort */}
             <div className="hidden lg:flex items-center justify-between mb-6">
               <p className="text-sm text-muted-foreground">
@@ -903,16 +912,16 @@ const CategoryPage = () => {
                   ))}
                 </div>
 
-                {hasMore && (
-                  <div ref={sentinelRef} className="flex flex-col items-center gap-3 py-8">
-                    <button
-                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      className="px-6 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground/80 hover:bg-muted transition-colors"
-                    >
-                      Load more
-                    </button>
+                {totalPages > 1 && (
+                  <div className="flex flex-col items-center gap-3 py-8">
+                    <ProductPagination
+                      page={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={goToPage}
+                      hrefFor={pageHref}
+                    />
                     <p className="text-xs text-muted-foreground">
-                      Showing {visibleProducts.length} of {filteredProducts.length}
+                      Showing {pageStart + 1}–{pageStart + visibleProducts.length} of {filteredProducts.length}
                     </p>
                   </div>
                 )}

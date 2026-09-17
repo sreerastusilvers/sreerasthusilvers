@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { uploadImage } from '@/services/mediaStorage';
+import { requestCatalogRefresh } from '@/services/catalogPublisher';
 
 export interface Review {
   id: string;
@@ -268,6 +269,7 @@ export const updateReviewStatus = async (
         reviewCount: stats.totalReviews,
         reviews: stats.totalReviews,
       });
+      requestCatalogRefresh([reviewData.productId]);
     } catch (e) {
       console.error('Error updating product rating after review status change:', e);
     }
@@ -291,6 +293,7 @@ export const deleteReview = async (reviewId: string): Promise<void> => {
         reviewCount: stats.totalReviews,
         reviews: stats.totalReviews,
       });
+      requestCatalogRefresh([reviewData.productId]);
     } catch (e) {
       console.error('Error updating product rating after review deletion:', e);
     }

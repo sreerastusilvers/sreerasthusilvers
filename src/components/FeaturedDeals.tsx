@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { getAllProducts } from "@/services/productService";
+import { getActiveProductsCached } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
 import { SmartImage } from "@/components/ui/smart-image";
@@ -14,7 +14,7 @@ const FeaturedDeals = () => {
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const allProducts = await getAllProducts();
+        const allProducts = await getActiveProductsCached();
         const uiProducts = allProducts.map(p => adaptFirebaseToUI(p as any));
         // Get featured deals (products with discount)
         const dealsProducts = uiProducts

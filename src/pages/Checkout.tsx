@@ -12,7 +12,7 @@ import Footer from '@/components/Footer';
 import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
 import { ArrowLeft, Tag, Gift, ChevronDown, Shield, ChevronRight, Plus, Minus, Zap, CreditCard, MapPin, MoreVertical, Sparkles, ShoppingBag, Truck, Home, Edit, X, Loader2, Trash2, Search, ScanLine, Mic, Check } from 'lucide-react';
-import { getActiveProducts } from '@/services/productService';
+import { getActiveProductsCached } from '@/services/productCache';
 import { adaptFirebaseToUI, UIProduct } from '@/lib/productAdapter';
 import { getUserAddresses, getDefaultAddress, Address, addAddress, AddressFormData } from '@/services/addressService';
 import { createOrder, generateOrderNumber, OrderFormData, OrderItem } from '@/services/orderService';
@@ -183,7 +183,7 @@ const MobileCheckout = () => {
       
       // Fetch suggested products
       try {
-        const products = await getActiveProducts();
+        const products = await getActiveProductsCached();
         const uiProducts = products.slice(0, 8).map(adaptFirebaseToUI);
         setSuggestedProducts(uiProducts);
       } catch (e) {

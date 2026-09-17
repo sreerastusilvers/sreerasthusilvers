@@ -1,15 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, ArrowLeft, SlidersHorizontal, ShoppingBag, X } from "lucide-react";
-import { getAllProducts } from "@/services/productService";
+import { getActiveProductsCached } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import ProductCard from "@/components/ProductCard";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import ProductPagination from "@/components/ProductPagination";
+
+/** Results per page; the page number lives in the URL (?page=2). */
+const PAGE_SIZE = 24;
 
 const SearchResults = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const query = searchParams.get("q") || "";
   const highlightId = searchParams.get("highlight") || "";
 
@@ -22,7 +27,7 @@ const SearchResults = () => {
     const loadProducts = async () => {
       setLoading(true);
       try {
-        const products = await getAllProducts();
+        const products = await getActiveProductsCached();
         const uiProducts = products.map((p) => adaptFirebaseToUI(p as any));
         setAllProducts(uiProducts);
       } catch (error) {
@@ -83,6 +88,34 @@ const SearchResults = () => {
     return products;
   }, [filteredProducts, sortBy, highlightId]);
 
+  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / PAGE_SIZE));
+  const requestedPage = Number.parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = Math.min(Math.max(1, Number.isNaN(requestedPage) ? 1 : requestedPage), totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pagedProducts = sortedProducts.slice(pageStart, pageStart + PAGE_SIZE);
+
+  const pageHref = (page: number) => {
+    const p = new URLSearchParams(searchParams);
+    if (page <= 1) p.delete("page");
+    else p.set("page", String(page));
+    return `${location.pathname}?${p.toString()}`;
+  };
+
+  function goToPage(page: number) {
+    const p = new URLSearchParams(searchParams);
+    if (page <= 1) p.delete("page");
+    else p.set("page", String(page));
+    if (p.toString() !== searchParams.toString()) setSearchParams(p);
+  }
+
+  // A new page starts at the top, not wherever the pager was.
+  const shownPage = useRef(currentPage);
+  useEffect(() => {
+    if (shownPage.current === currentPage) return;
+    shownPage.current = currentPage;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
+
   // Scroll to highlighted product on load
   useEffect(() => {
     if (highlightId && !loading && sortedProducts.length > 0) {
@@ -139,6 +172,7 @@ const SearchResults = () => {
                   onClick={() => {
                     setSortBy(opt.value);
                     setShowFilters(false);
+                    goToPage(1);
                   }}
                   className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
                     sortBy === opt.value
@@ -185,7 +219,7 @@ const SearchResults = () => {
       {!loading && sortedProducts.length > 0 && (
         <div className="p-3">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-            {sortedProducts.map((product, index) => (
+            {pagedProducts.map((product, index) => (
               <motion.div
                 key={product.id}
                 id={`product-${product.id}`}
@@ -198,6 +232,19 @@ const SearchResults = () => {
               </motion.div>
             ))}
           </div>
+          {totalPages > 1 && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <ProductPagination
+                page={currentPage}
+                totalPages={totalPages}
+                onPageChange={goToPage}
+                hrefFor={pageHref}
+              />
+              <p className="text-xs text-gray-500 dark:text-zinc-400">
+                Showing {pageStart + 1}–{pageStart + pagedProducts.length} of {sortedProducts.length}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

@@ -7,11 +7,23 @@ import { randomBytes } from 'node:crypto';
  * /api/media - the only door into object storage (Cloudflare R2 today).
  *
  *   GET  /api/media                      -> usage vs free tier (admin)
- *   POST /api/media { action: 'upload' } -> store one file (+ optional preview)
+ *   GET  /api/media?og=product&id=<id>   -> link-preview HTML for WhatsApp etc. (public)
+ *   POST /api/media { action: 'upload' } -> store one file (+ optional preview / og image)
  *   POST /api/media { action: 'delete' } -> remove files by public URL
+ *   POST /api/media { action: 'publish-catalog' }            -> rebuild catalog snapshot (admin)
+ *   POST /api/media { action: 'publish-catalog', productIds } -> refresh those products (signed in)
  *
  * Why one function: the Vercel Hobby plan caps a deployment at 12 serverless
- * functions and this project already had 11.
+ * functions and this project already had 11. The catalog snapshot and the link
+ * previews live here for the same reason - both are files in object storage.
+ *
+ * Catalog snapshot: the storefront reads the product list from
+ * `catalog/products.json` (served same-origin at /catalog/products.json via a
+ * vercel.json rewrite) instead of querying Firestore. On the Spark plan the
+ * Firestore free tier is 50k document reads a day and the catalog alone is ~600
+ * documents, so reading it per visitor capped the site at a few dozen visitors a
+ * day. Product writes (admin edits, order stock changes, review counts) ask this
+ * endpoint to refresh just those products, so a normal edit costs one read.
  *
  * Why uploads go through here instead of straight from the browser: the R2
  * secret must never reach the client, and this is where the free-tier guard
@@ -52,7 +64,20 @@ const MAX_IMAGE_BYTES = 500 * 1024;
 const MAX_PREVIEW_BYTES = 200 * 1024;
 const MAX_PDF_BYTES = 1024 * 1024;
 const PREVIEW_SUFFIX = '__w600.webp';
+/**
+ * JPEG copy used as the og:image in link previews. WhatsApp silently drops
+ * preview images much above ~300 KB and does not reliably accept WebP, so the
+ * WebP card preview can't double as it and the full photo is often too large.
+ */
+const OG_SUFFIX = '__og.jpg';
+const MAX_OG_BYTES = 280 * 1024;
 const MAX_DELETE_BATCH = 25;
+
+const CATALOG_KEY = 'catalog/products.json';
+/** Browsers and the CDN may reuse the snapshot for this long after a product change. */
+const CATALOG_CACHE_CONTROL = 'public, max-age=60';
+const MAX_REFRESH_IDS = 25;
+const PRODUCT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Category =
   | 'products' | 'banners' | 'home' | 'gallery' | 'showcases' | 'testimonials'
@@ -515,6 +540,7 @@ async function handleUpload(req: VercelRequest, caller: Caller) {
     category?: string;
     file?: { name?: string; data?: string };
     preview?: { data?: string };
+    og?: { data?: string };
   };
 
   const category = body.category as Category;
@@ -540,6 +566,12 @@ async function handleUpload(req: VercelRequest, caller: Caller) {
     if (!pType || pType.ext === 'pdf' || preview.length > MAX_PREVIEW_BYTES) {
       preview = null; // A bad preview isn't worth failing the upload; the full image still works.
     }
+  }
+
+  let og: Buffer | null = null;
+  if (type.ext !== 'pdf' && body.og?.data) {
+    og = decodeBase64(body.og.data);
+    if (sniff(og)?.ext !== 'jpg' || og.length > MAX_OG_BYTES) og = null; // same reasoning as the preview
   }
 
   const usage = await getUsage();
@@ -573,7 +605,18 @@ async function handleUpload(req: VercelRequest, caller: Caller) {
       preview = null;
     }
   }
-  recordWrite(file.length + (preview?.length || 0), preview ? 2 : 1);
+  let ogUrl: string | undefined;
+  if (og) {
+    const ogKey = `${dir}/${id}${OG_SUFFIX}`;
+    try {
+      await putObject(ogKey, og, 'image/jpeg');
+      ogUrl = `${base}/${ogKey}`;
+    } catch (err) {
+      console.warn('[media] og image upload failed, original kept:', err);
+      og = null;
+    }
+  }
+  recordWrite(file.length + (preview?.length || 0) + (og?.length || 0), 1 + (preview ? 1 : 0) + (og ? 1 : 0));
 
   return {
     url: `${base}/${key}`,
@@ -581,6 +624,7 @@ async function handleUpload(req: VercelRequest, caller: Caller) {
     bytes: file.length,
     contentType: type.contentType,
     previewUrl,
+    ogUrl,
   };
 }
 
@@ -609,7 +653,9 @@ async function handleDelete(req: VercelRequest, caller: Caller) {
     if (!caller.isAdmin && !ownsIt) throw new HttpError(403, 'FORBIDDEN', 'You can only delete your own files.');
 
     const keys = [key];
-    if (!key.endsWith('.pdf')) keys.push(key.replace(/\.(jpg|png|webp)$/, PREVIEW_SUFFIX));
+    if (!key.endsWith('.pdf')) {
+      keys.push(key.replace(/\.(jpg|png|webp)$/, PREVIEW_SUFFIX), key.replace(/\.(jpg|png|webp)$/, OG_SUFFIX));
+    }
     // DeleteObject is a free operation on R2. A 404 is fine - it's already gone.
     for (const k of keys) {
       const resp = await client.fetch(`${bucketUrl}/${encodeKey(k)}`, { method: 'DELETE' });
@@ -625,6 +671,255 @@ async function handleDelete(req: VercelRequest, caller: Caller) {
   return { deleted, skipped };
 }
 
+// ── Catalog snapshot ────────────────────────────────────────────────────────
+
+type CatalogProduct = Record<string, unknown> & { id: string };
+interface CatalogFile {
+  version: 1;
+  generatedAt: string;
+  count: number;
+  products: CatalogProduct[];
+}
+
+/**
+ * Firestore values that JSON can't carry are flattened. Timestamps become
+ * `{ __ts, seconds, nanoseconds }`, which src/services/productCache.ts turns
+ * back into real Timestamps so storefront code calling `.toDate()` still works.
+ */
+function toJsonSafe(value: unknown): unknown {
+  if (value instanceof admin.firestore.Timestamp) {
+    return { __ts: true, seconds: value.seconds, nanoseconds: value.nanoseconds };
+  }
+  if (value instanceof admin.firestore.DocumentReference) return value.path;
+  if (value instanceof admin.firestore.GeoPoint) return { latitude: value.latitude, longitude: value.longitude };
+  if (Array.isArray(value)) return value.map(toJsonSafe);
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = toJsonSafe(v);
+    return out;
+  }
+  return value;
+}
+
+const isListed = (doc: admin.firestore.DocumentSnapshot) => doc.exists && doc.get('flags.isActive') === true;
+const catalogEntry = (doc: admin.firestore.DocumentSnapshot): CatalogProduct => ({
+  id: doc.id,
+  ...(toJsonSafe(doc.data()) as Record<string, unknown>),
+});
+const createdSeconds = (p: CatalogProduct) => Number((p.createdAt as { seconds?: number } | undefined)?.seconds ?? 0);
+
+/** Newest first - the order the storefront has always shown. */
+function serializeCatalog(products: CatalogProduct[]): Buffer {
+  products.sort((a, b) => createdSeconds(b) - createdSeconds(a));
+  const file: CatalogFile = { version: 1, generatedAt: new Date().toISOString(), count: products.length, products };
+  return Buffer.from(JSON.stringify(file));
+}
+
+async function readCatalog(): Promise<{ file: CatalogFile; etag: string } | null> {
+  const { client, bucketUrl } = r2();
+  const resp = await client.fetch(`${bucketUrl}/${encodeKey(CATALOG_KEY)}`);
+  if (resp.status === 404) return null;
+  if (!resp.ok) throw new HttpError(502, 'SERVER', `Could not read the catalog snapshot (HTTP ${resp.status}).`);
+  return { file: (await resp.json()) as CatalogFile, etag: resp.headers.get('etag') || '' };
+}
+
+/** Returns false when `ifMatch` no longer matches, i.e. someone else saved first. */
+async function writeCatalog(body: Buffer, ifMatch?: string): Promise<boolean> {
+  const { client, bucketUrl } = r2();
+  const resp = await client.fetch(`${bucketUrl}/${encodeKey(CATALOG_KEY)}`, {
+    method: 'PUT',
+    body: new Uint8Array(body),
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': CATALOG_CACHE_CONTROL,
+      ...(ifMatch ? { 'If-Match': ifMatch } : {}),
+    },
+  });
+  if (resp.status === 412) return false;
+  if (!resp.ok) throw new HttpError(502, 'SERVER', `Could not save the catalog snapshot (HTTP ${resp.status}).`);
+  return true;
+}
+
+/** Full rebuild: one read per active product (~600). Admin only. */
+async function rebuildCatalog() {
+  initAdmin();
+  const snap = await admin.firestore().collection('products').where('flags.isActive', '==', true).get();
+  const body = serializeCatalog(snap.docs.map(catalogEntry));
+  await writeCatalog(body);
+  return { mode: 'rebuilt', count: snap.size, bytes: body.length };
+}
+
+/**
+ * Refresh named products in the snapshot: one read each, never the whole
+ * collection. Any signed-in user may ask (an order changes stock, a review
+ * changes the rating), because the server re-reads the truth from Firestore -
+ * the caller only names products, it can't supply their contents.
+ */
+async function handlePublishCatalog(req: VercelRequest, caller: Caller) {
+  const raw = ((req.body || {}) as { productIds?: unknown }).productIds;
+  if (raw === undefined) {
+    if (!caller.isAdmin) throw new HttpError(403, 'FORBIDDEN', 'Only admins can rebuild the whole catalog.');
+    return rebuildCatalog();
+  }
+  if (
+    !Array.isArray(raw) ||
+    raw.length === 0 ||
+    raw.length > MAX_REFRESH_IDS ||
+    !raw.every((id) => typeof id === 'string' && PRODUCT_ID.test(id))
+  ) {
+    throw new HttpError(400, 'BAD_REQUEST', `Send between 1 and ${MAX_REFRESH_IDS} product ids.`);
+  }
+
+  const ids = [...new Set(raw as string[])];
+  initAdmin();
+  const db = admin.firestore();
+  const docs = await db.getAll(...ids.map((id) => db.collection('products').doc(id)));
+
+  // Read-modify-write guarded by the ETag, so two refreshes at once can't drop each other's change.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const current = await readCatalog();
+    if (!current) {
+      // No snapshot yet. Creating one costs a full read, which only an admin may trigger.
+      if (caller.isAdmin) return rebuildCatalog();
+      return { mode: 'skipped', reason: 'no-catalog' };
+    }
+    const byId = new Map(current.file.products.map((p) => [String(p.id), p]));
+    for (const doc of docs) {
+      if (isListed(doc)) byId.set(doc.id, catalogEntry(doc));
+      else byId.delete(doc.id);
+    }
+    if (await writeCatalog(serializeCatalog([...byId.values()]), current.etag)) {
+      return { mode: 'refreshed', refreshed: ids.length, count: byId.size };
+    }
+  }
+  throw new HttpError(409, 'CONFLICT', 'The catalog kept changing while saving. Please try again.');
+}
+
+// ── Link previews ───────────────────────────────────────────────────────────
+
+/**
+ * WhatsApp, Facebook, Telegram etc. build a link preview from the raw HTML of a
+ * URL and never run JavaScript, so the SPA's product page shows them only the
+ * generic index.html tags. vercel.json sends those crawlers' requests for
+ * /product/:id here instead; people still get the normal app.
+ */
+interface PreviewProduct {
+  name?: string;
+  description?: string;
+  price?: number;
+  media?: { thumbnail?: string; images?: string[] };
+}
+
+const MANAGED_IMAGE = /^(https?:\/\/[^?#]+\/m[0-9a-f]{24})\.(jpg|png|webp)$/;
+const PREVIEW_LOOKUP_TIMEOUT_MS = 2500;
+
+const escapeHtml = (value: unknown) =>
+  String(value ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+  );
+
+export function productPreviewHtml(product: PreviewProduct | null, pageUrl: string, image: string | null): string {
+  const name = product?.name?.trim();
+  const title = name ? `${name} | Sreerasthu Silvers` : 'Sreerasthu Silvers | 92.5 Pure Silver Jewellery';
+  const price = typeof product?.price === 'number' ? `₹${product.price.toLocaleString('en-IN')}` : '';
+  const about = String(product?.description || '').replace(/\s+/g, ' ').trim();
+  let description = [price, about].filter(Boolean).join(' · ');
+  if (description.length > 200) description = `${description.slice(0, 197).trimEnd()}...`;
+  if (!description) description = 'Handcrafted 92.5 pure silver jewellery, gifts and pooja articles.';
+  const imageType = image?.endsWith('.png') ? 'image/png' : image?.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+
+  const t = escapeHtml(title);
+  const d = escapeHtml(description);
+  const u = escapeHtml(pageUrl);
+  const i = image ? escapeHtml(image) : '';
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${t}</title>
+<meta name="description" content="${d}">
+<link rel="canonical" href="${u}">
+<meta property="og:site_name" content="Sreerasthu Silvers">
+<meta property="og:type" content="product">
+<meta property="og:title" content="${t}">
+<meta property="og:description" content="${d}">
+<meta property="og:url" content="${u}">
+${image ? `<meta property="og:image" content="${i}">
+<meta property="og:image:secure_url" content="${i}">
+<meta property="og:image:type" content="${imageType}">
+<meta property="og:image:alt" content="${t}">
+` : ''}<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${t}">
+<meta name="twitter:description" content="${d}">
+${image ? `<meta name="twitter:image" content="${i}">\n` : ''}</head>
+<body>
+<p><a href="${u}">${t}</a></p>
+<script>location.replace(${JSON.stringify(pageUrl).replace(/</g, '\\u003c')})</script>
+</body>
+</html>`;
+}
+
+/** The small JPEG made for previews, falling back to the product photo itself. */
+async function previewImage(product: PreviewProduct | null): Promise<string | null> {
+  const src = product?.media?.thumbnail || product?.media?.images?.[0];
+  if (!src) return null;
+  const managed = MANAGED_IMAGE.exec(src);
+  if (!managed) return src;
+  const og = `${managed[1]}${OG_SUFFIX}`;
+  try {
+    if ((await fetch(og, { method: 'HEAD' })).ok) return og;
+  } catch {
+    // fall through to the original photo
+  }
+  return src;
+}
+
+async function handleProductPreview(req: VercelRequest, res: VercelResponse) {
+  const params = new URL(req.url || '/', 'http://localhost').searchParams;
+  const id = params.get('id') || '';
+  const header = (name: string) => String(req.headers[name] || '').split(',')[0].trim();
+  const host = header('x-forwarded-host') || header('host');
+  const proto = header('x-forwarded-proto') || 'https';
+  const pageUrl = `${host ? `${proto}://${host}` : ''}/product/${encodeURIComponent(id)}`;
+
+  let product: PreviewProduct | null = null;
+  if (PRODUCT_ID.test(id)) {
+    try {
+      product = ((await readCatalog())?.file.products.find((p) => p.id === id) as PreviewProduct | undefined) ?? null;
+    } catch (err) {
+      console.warn('[media] preview: catalog unavailable:', err);
+    }
+    if (!product) {
+      // Not in the snapshot yet (brand new, or no snapshot published): one read.
+      // Bounded: link-preview crawlers give up after a few seconds, and the SDK
+      // retries a quota error for ~10s. A generic preview beats no preview.
+      try {
+        initAdmin();
+        const doc = await Promise.race([
+          admin.firestore().collection('products').doc(id).get(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`no answer in ${PREVIEW_LOOKUP_TIMEOUT_MS}ms`)), PREVIEW_LOOKUP_TIMEOUT_MS),
+          ),
+        ]);
+        if (isListed(doc)) product = doc.data() as PreviewProduct;
+      } catch (err) {
+        console.warn('[media] preview: product lookup failed:', err instanceof Error ? err.message : err);
+      }
+    }
+  }
+
+  const html = productPreviewHtml(product, pageUrl, await previewImage(product));
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  // Let Vercel's edge answer repeat crawls; a miss is cached briefly so a new product shows up soon.
+  res.setHeader(
+    'Cache-Control',
+    product ? 'public, max-age=0, s-maxage=600, stale-while-revalidate=86400' : 'public, max-age=0, s-maxage=60',
+  );
+  res.statusCode = 200;
+  res.end(html);
+}
+
 // ── Entry ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -632,6 +927,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
+    // Public, before authentication: crawlers building link previews never sign in.
+    if (req.method === 'GET' && /[?&]og=product(&|$)/.test(req.url || '')) {
+      return await handleProductPreview(req, res);
+    }
+
     const caller = await authenticate(req);
 
     if (req.method === 'GET') {
@@ -645,6 +945,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const action = ((req.body || {}) as { action?: string }).action;
       if (action === 'upload') return res.status(200).json({ ok: true, ...(await handleUpload(req, caller)) });
       if (action === 'delete') return res.status(200).json({ ok: true, ...(await handleDelete(req, caller)) });
+      if (action === 'publish-catalog') {
+        return res.status(200).json({ ok: true, ...(await handlePublishCatalog(req, caller)) });
+      }
       throw new HttpError(400, 'BAD_REQUEST', 'Unknown action.');
     }
 

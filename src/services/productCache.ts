@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import type { Product } from './productService';
 
@@ -15,12 +15,35 @@ import type { Product } from './productService';
  * that a new bangle appeared without a refresh. So we read once, share the
  * result across every consumer, and re-read only after TTL or an admin write.
  *
+ * Where the catalog comes from: a JSON snapshot of the active products, served
+ * from the CDN (see `publish-catalog` in api/media.ts), costs no Firestore reads
+ * at all. Even reading once per visitor, ~600 documents each, would cap the site
+ * at about 80 visitors a day on the free plan. If the snapshot can't be loaded
+ * the catalog is read from Firestore as before, so the site keeps working.
+ *
  * Admin screens deliberately bypass this and keep using getAllProducts().
  */
 
 const PRODUCTS_COLLECTION = 'products';
 const TTL_MS = 5 * 60 * 1000;
-const STORAGE_KEY = 'ss:catalog:v1';
+const STORAGE_KEY = 'ss:catalog:v2';
+/** Same-origin; vercel.json (production) and vite.config.ts (dev) proxy it to object storage. */
+const CATALOG_URL = import.meta.env.VITE_CATALOG_URL || '/catalog/products.json';
+
+/**
+ * Restore Firestore Timestamps flattened to JSON - the snapshot's
+ * `{ __ts, seconds, nanoseconds }` and `Timestamp.toJSON()`'s shape in
+ * sessionStorage - so code calling `createdAt.toDate()` works either way.
+ */
+const reviveTimestamps = (_key: string, value: unknown) => {
+  if (value && typeof value === 'object') {
+    const v = value as { __ts?: boolean; type?: string; seconds?: number; nanoseconds?: number };
+    if ((v.__ts === true || v.type === 'firestore/timestamp/1.0') && typeof v.seconds === 'number') {
+      return new Timestamp(v.seconds, v.nanoseconds ?? 0);
+    }
+  }
+  return value;
+};
 /** Above this, skip sessionStorage rather than risk a QuotaExceededError. */
 const MAX_PERSIST_BYTES = 2_000_000;
 
@@ -37,7 +60,7 @@ const readPersisted = (): CacheEntry | null => {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as CacheEntry;
+    const parsed = JSON.parse(raw, reviveTimestamps) as CacheEntry;
     return isFresh(parsed) ? parsed : null;
   } catch {
     return null;
@@ -54,12 +77,26 @@ const persist = (entry: CacheEntry) => {
   }
 };
 
-const fetchActiveProducts = async (): Promise<Product[]> => {
-  const snapshot = await getDocs(
-    query(collection(db, PRODUCTS_COLLECTION), where('flags.isActive', '==', true)),
-  );
+const fetchSnapshot = async (): Promise<Product[]> => {
+  const resp = await fetch(CATALOG_URL, { headers: { Accept: 'application/json' } });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  // A missing rewrite serves index.html with a 200, which fails to parse here - also a fallback case.
+  const file = JSON.parse(await resp.text(), reviveTimestamps) as { version?: number; products?: Product[] };
+  if (file.version !== 1 || !Array.isArray(file.products)) throw new Error('unexpected snapshot format');
+  return file.products.filter((p) => p.flags?.isActive === true);
+};
 
-  const products = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Product);
+const fetchActiveProducts = async (): Promise<Product[]> => {
+  let products: Product[];
+  try {
+    products = await fetchSnapshot();
+  } catch (err) {
+    console.warn('[productCache] catalog snapshot unavailable, reading Firestore instead:', err);
+    const snapshot = await getDocs(
+      query(collection(db, PRODUCTS_COLLECTION), where('flags.isActive', '==', true)),
+    );
+    products = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Product);
+  }
 
   products.sort((a, b) => {
     const aTime = a.createdAt as any;

@@ -1,0 +1,146 @@
+[
+  {
+    "folder": "pendants/Pendant_015_92.5 Pure Silver Antique Gold-Plated Tassel Pendant Set with Ruby Pink Kemp and Emerald Accents",
+    "bucket": "pendants",
+    "picked": "92.5 Pure Silver Antique Gold-Plated Tassel Pendant Set with Ruby Pink Kemp and Emerald Accents",
+    "confidence": "m",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "pendants/Pendant_045_Royal Antique Silver Gold Polish Lakshmi Lotus Statement Pendant with Pearl Drops",
+    "bucket": "pendants",
+    "picked": "Royal Antique Silver Gold Polish Lakshmi Lotus Statement Pendant with Pearl Drops",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "pendants/Pendant_085_Antique Oxidized Sterling Silver Bal Krishna Flute and Makhan Matki Pendant",
+    "bucket": "pendants",
+    "picked": "Antique Oxidized Sterling Silver Bal Krishna Flute & Makhan Matki Pendant",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "ss/earrings/Earring_001_92.5 Silver Baguette Hoop Drops",
+    "bucket": "ss/earrings",
+    "picked": "92.5 Silver Baguette Hoop Drops\"",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "ss/earrings/Earring_021_92.5 Silver Traditional Emerald-Green Pear Studs",
+    "bucket": "ss/earrings",
+    "picked": "92.5 Silver Traditional Emerald-Green Pear Studs",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "ss/earrings/Earring_047_92.5 Pure Sterling Silver Mother-of-Pearl Floral Stud Earrings",
+    "bucket": "ss/earrings",
+    "picked": "92.5 Sterling Silver Rose Gold Temple Bell Drop Earrings",
+    "confidence": "m",
+    "correct": false,
+    "truthInWindow": true
+  },
+  {
+    "folder": "temple necklaces/Necklace_002_Lakshmi Antique 92.5 Silver Necklace with Gold Polish, Pearls and Green Beads",
+    "bucket": "temple necklaces",
+    "picked": "Royal Peacock Antique Necklace in 92.5 Sterling Silver with Gold Polish",
+    "confidence": "h",
+    "correct": false,
+    "truthInWindow": true
+  },
+  {
+    "folder": "temple necklaces/Necklace_007_Emerald Green and CZ White Lakshmi Festive Silver Necklace",
+    "bucket": "temple necklaces",
+    "picked": "Emerald Green and CZ White Lakshmi Festive Silver Necklace",
+    "confidence": "m",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "temple necklaces/Necklace_018_Heritage Gold-Polished Silver Peacock Pendant Choker in Ruby and Emerald",
+    "bucket": "temple necklaces",
+    "picked": "none",
+    "confidence": "m",
+    "correct": false,
+    "truthInWindow": false
+  },
+  {
+    "folder": "ladies rings/Ring_003_Rainbow Baguette 92.5 Pure Silver Multi-Layer Band Ring",
+    "bucket": "ladies rings",
+    "picked": "Rainbow Baguette 92.5 Pure Silver Multi-Layer Band Ring",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "ladies rings/Ring_024_Pear-Cut Solitaire Pear Halo Engagement Ring in 92.5 Sterling Silver",
+    "bucket": "ladies rings",
+    "picked": "Pear-Cut Solitaire Pear Halo Engagement Ring in 92.5 Sterling Silver",
+    "confidence": "l",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "ladies rings/Ring_050_Black Star Onyx Halo Ring in 92.5 Sterling Silver with Clear Pave Border",
+    "bucket": "ladies rings",
+    "picked": "Black Star Onyx Halo Ring in 92.5 Sterling Silver with Clear Pavé Border",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "rose gold and fancy necklaces/Necklace_040_Nature-Inspired Leaf Necklace Set in 92.5 Sterling Silver with Rose Gold Polish",
+    "bucket": "rose gold and fancy necklaces",
+    "picked": "Nature-Inspired Leaf Necklace Set in 92.5 Sterling Silver with Rose Gold Polish",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "rose gold and fancy necklaces/Necklace_061_S-Link Eternity Rose Gold Plated Pure Silver Jewelry Set",
+    "bucket": "rose gold and fancy necklaces",
+    "picked": "S-Link Eternity Rose Gold Plated Pure Silver Jewelry Set",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "rose gold and fancy necklaces/Necklace_070_92.5 Sterling Silver Teardrop Sparkle Necklace Set with Matching Earrings and Bracelet",
+    "bucket": "rose gold and fancy necklaces",
+    "picked": "92.5 Sterling Silver Teardrop Sparkle Necklace Set with Matching Earrings & Bracelet",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "ss/kaan/Kaan_Product_01_Enchanted Vine Leaf Ear Climbers - 92.5 Pure Sterling Silver",
+    "bucket": "ss/kaan",
+    "picked": "Enchanted Vine Leaf Ear Climbers – 92.5 Pure Sterling Silver",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "ss/kaan/Kaan_Product_04_Dual-Tone Blossom Branch Ear Climbers - 92.5 Pure Sterling Silver Gold Polish",
+    "bucket": "ss/kaan",
+    "picked": "Dual-Tone Blossom Branch Ear Climbers – 92.5 Pure Sterling Silver in gold polish",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  },
+  {
+    "folder": "ss/kaan/Kaan_Product_09_Radiant Round and Marquise Leaf 92.5 Sterling Silver Gold-Plated Kaans",
+    "bucket": "ss/kaan",
+    "picked": "Radiant Round & Marquise Leaf 92.5 Sterling Silver Gold-Plated Kaans",
+    "confidence": "h",
+    "correct": true,
+    "truthInWindow": true
+  }
+]

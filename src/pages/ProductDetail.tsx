@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Truck, Shield, RotateCcw, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
-import { getProduct, getActiveProducts } from "@/services/productService";
+import { getProduct, type Product as FirebaseProduct } from "@/services/productService";
+import { getActiveProductsCached } from "@/services/productCache";
 import { UIProductDetail, adaptFirebaseToUIDetail, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 import { useCart } from "@/contexts/CartContext";
@@ -18,6 +19,7 @@ import MobileSearchBar from "@/components/MobileSearchBar";
 import Footer from "@/components/Footer";
 import CategoryIconNav from "@/components/CategoryIconNav";
 import VideoCallRequestModal from "@/components/VideoCallRequestModal";
+import WhatsAppEnquiryButton from "@/components/WhatsAppEnquiryButton";
 import ProductCard from "@/components/ProductCard";
 import { Video } from "lucide-react";
 import { SmartImage } from "@/components/ui/smart-image";
@@ -103,8 +105,14 @@ const ProductDetail = () => {
     }
   };
 
-  // Fetch product and related products
+  // Fetch product and related products.
+  // The shared catalog (no Firestore reads) renders the page at once; a single
+  // read of this product then refreshes price and stock, which can change
+  // between catalog snapshots. A product missing from the catalog (inactive,
+  // or added moments ago) comes from that read alone.
   useEffect(() => {
+    let cancelled = false;
+
     const fetchProductData = async () => {
       if (!productId) {
         setNotFound(true);
@@ -112,38 +120,58 @@ const ProductDetail = () => {
         return;
       }
 
+      setLoading(true);
+      setNotFound(false);
+
+      let catalog: FirebaseProduct[] = [];
       try {
-        setLoading(true);
-        // Fetch the main product
-        const fbProduct = await getProduct(productId);
-        
-        if (!fbProduct) {
-          setNotFound(true);
-          setLoading(false);
-          return;
-        }
+        catalog = await getActiveProductsCached();
+      } catch (error) {
+        console.warn("Catalog unavailable, loading the product directly:", error);
+      }
+      if (cancelled) return;
 
-        const uiProduct = adaptFirebaseToUIDetail(fbProduct);
-        setProduct(uiProduct);
-
-        // Fetch related products: same-category first, fall back to others to fill 4 slots
-        const allActiveProducts = await getActiveProducts();
-        const otherProducts = allActiveProducts.filter(p => p.id !== productId);
-        const sameCategory = otherProducts.filter(p => p.category === fbProduct.category);
-        const otherCategory = otherProducts.filter(p => p.category !== fbProduct.category);
-        const related = [...sameCategory, ...otherCategory]
+      // Related products: same category first, others to fill 4 slots
+      const showRelated = (category: string) => {
+        const others = catalog.filter(p => p.id !== productId);
+        const related = [
+          ...others.filter(p => p.category === category),
+          ...others.filter(p => p.category !== category),
+        ]
           .slice(0, 4)
           .map(adaptFirebaseToUIDetail);
         setRelatedProducts(related);
+      };
+
+      const cached = catalog.find(p => p.id === productId) ?? null;
+      if (cached) {
+        setProduct(adaptFirebaseToUIDetail(cached));
+        showRelated(cached.category);
+        setLoading(false);
+      }
+
+      try {
+        const fresh = await getProduct(productId);
+        if (cancelled) return;
+        if (fresh) {
+          setProduct(adaptFirebaseToUIDetail(fresh));
+          if (!cached) showRelated(fresh.category);
+        } else if (!cached) {
+          setNotFound(true);
+        }
       } catch (error) {
         console.error("Error fetching product:", error);
-        setNotFound(true);
+        // Already showing the catalog copy: keep it rather than blanking the page.
+        if (!cached && !cancelled) setNotFound(true);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchProductData();
+    return () => {
+      cancelled = true;
+    };
   }, [productId]);
 
   // Fetch reviews and check if user can review
@@ -866,6 +894,9 @@ const ProductDetail = () => {
                   Book a Demo Video Call
                 </motion.button>
 
+                {/* WhatsApp enquiry */}
+                <WhatsAppEnquiryButton product={product} className="mt-2" />
+
                 {/* Share Popup */}
                 <AnimatePresence>
                   {showShareMenu && (
@@ -1147,6 +1178,7 @@ const ProductDetail = () => {
       {!showShareMenu && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-3 z-50">
           <div className="flex gap-3">
+          <WhatsAppEnquiryButton product={product} variant="icon" />
           <motion.button
             onClick={handleAddToCart}
             whileTap={{ scale: 0.95 }}

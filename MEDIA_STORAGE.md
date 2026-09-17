@@ -19,6 +19,7 @@ Rules:
 - PDFs (refund receipts only): 1 MB max.
 - Products: **5 photos max**. The product form and `firestore.rules` both enforce this.
 - Each photo is stored with a 600px preview next to it (`m<id>.jpg` + `m<id>__w600.webp`). Product cards load the preview.
+- Product photos also get a small JPEG for link previews (`m<id>__og.jpg`, 800px, ~70 KB). WhatsApp drops preview images much above 300 KB and doesn't reliably accept WebP. `scripts/backfill-og-images.mjs` makes these for photos uploaded before this existed.
 - Review videos are turned off. A few phone videos would use up the free 10 GB.
 
 Free-tier guard: before each upload the server checks usage for the current billing month.
@@ -28,6 +29,27 @@ Free-tier guard: before each upload the server checks usage for the current bill
 Limits are 10 GB storage, 1M Class A operations, and 10M Class B operations. The numbers come from the Cloudflare GraphQL analytics API when `CLOUDFLARE_ANALYTICS_TOKEN` is set. Without it, storage is measured by listing the bucket, and Class B can't be measured.
 
 Deletes are free on R2. Deleting a product, or removing a photo and saving, deletes the file if no other product uses it.
+
+## Catalog snapshot (keeps Firestore on the free plan)
+
+The storefront does not query Firestore for the product list. It downloads `catalog/products.json` from R2, served same-origin at `/catalog/products.json` (rewrite in `vercel.json`; `vite.config.ts` does the same in dev).
+
+Why: the Spark plan allows 50,000 Firestore reads a day, and the catalog is ~600 documents. Reading it once per visitor caps the site at about 80 visitors a day. Before this change, the header, two homepage sections and the product page each read the whole catalog, so a single visitor used several thousand reads.
+
+| Piece | File |
+| --- | --- |
+| Loads the snapshot, falls back to Firestore if it's missing | `src/services/productCache.ts` |
+| Builds and refreshes the snapshot | `publish-catalog` in `api/media.ts` |
+| Asks for a refresh after a product write | `src/services/catalogPublisher.ts` |
+| Full rebuild from the command line | `scripts/publish-catalog.mjs` |
+
+How it stays current: admin create/edit/delete, order stock changes, cancellations and review-count updates each ask the server to refresh just those products (one Firestore read per product). Concurrent refreshes can't overwrite each other: the write is conditional on the file's ETag. Visitors may see a change up to about a minute later. Checkout still checks stock against Firestore, so a stale stock count can't cause overselling. The product page also reads its own product once to show current price and stock.
+
+Run `node scripts/publish-catalog.mjs` (~600 reads) once to create the snapshot, and again after anything that edits products outside the app: bulk scripts or the Firebase console. If the snapshot is missing, the site keeps working by reading Firestore, and the browser console warns `catalog snapshot unavailable`.
+
+## Link previews (WhatsApp, Facebook, Telegram)
+
+Crawlers never run JavaScript, so they would only see the generic tags in `index.html`. `vercel.json` sends link-preview bots requesting `/product/:id` to `/api/media?og=product&id=...`, which returns the product's title, price and `__og.jpg` photo as Open Graph tags. Everyone else, including Googlebot, gets the normal app. The "Enquire on WhatsApp" button (`src/components/WhatsAppEnquiryButton.tsx`) puts the product link on the last line of the message, so WhatsApp shows that preview card.
 
 ## Keys
 

@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { readFile } from "node:fs/promises";
 
 async function readJsonBody(req: NodeJS.ReadableStream) {
   const chunks: Buffer[] = [];
@@ -86,6 +87,31 @@ function razorpayApiDevMiddleware() {
   };
 }
 
+// Mirrors the vercel.json rewrite that serves the catalog snapshot same-origin.
+// CATALOG_DEV_FILE=<path> serves a local JSON file instead, for testing offline.
+function catalogDevProxy() {
+  return {
+    name: "catalog-dev-proxy",
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use("/catalog/products.json", async (_req, res, next) => {
+        try {
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          if (process.env.CATALOG_DEV_FILE) {
+            res.end(await readFile(process.env.CATALOG_DEV_FILE));
+            return;
+          }
+          const base = (process.env.R2_PUBLIC_URL || "").replace(/\/+$/, "");
+          const upstream = base ? await fetch(`${base}/catalog/products.json`) : null;
+          res.statusCode = upstream?.status ?? 404;
+          res.end(upstream?.ok ? Buffer.from(await upstream.arrayBuffer()) : "");
+        } catch (error) {
+          next(error);
+        }
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -101,7 +127,7 @@ export default defineConfig(({ mode }) => {
       host: "localhost",
       port: 5173,
     },
-    plugins: [react(), geminiApiDevMiddleware(), razorpayApiDevMiddleware()].filter(Boolean),
+    plugins: [react(), geminiApiDevMiddleware(), razorpayApiDevMiddleware(), catalogDevProxy()].filter(Boolean),
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

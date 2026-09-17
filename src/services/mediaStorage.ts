@@ -44,6 +44,8 @@ export interface UploadedMedia {
   bytes: number;
   contentType: string;
   previewUrl?: string;
+  /** Small JPEG used as the link-preview image when the product is shared (products only). */
+  ogUrl?: string;
 }
 
 export interface UploadProgress {
@@ -135,6 +137,41 @@ const createPreview = async (file: File): Promise<Blob | null> => {
     const bitmap = await decode(file, file.name);
     try {
       return await encodeScaled(bitmap, PREVIEW_MAX_EDGE, 0.8);
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    return null;
+  }
+};
+
+const OG_MAX_EDGE = 800;
+const MAX_OG_BYTES = 250 * 1024;
+
+/**
+ * JPEG shown when a product link is shared on WhatsApp. It has to be JPEG and
+ * small: WhatsApp drops preview images above roughly 300 KB and doesn't reliably
+ * take WebP, so neither the full photo nor the WebP card preview will do.
+ * Best effort - without it the share preview falls back to the full photo.
+ */
+const createOgImage = async (file: File): Promise<Blob | null> => {
+  try {
+    const bitmap = await decode(file, file.name);
+    try {
+      const scale = Math.min(1, OG_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.fillStyle = '#ffffff'; // JPEG has no alpha - transparent pixels would turn black
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.82, 0.7, 0.55]) {
+        const jpeg = await canvasToBlob(canvas, 'image/jpeg', quality);
+        if (jpeg && jpeg.size <= MAX_OG_BYTES) return jpeg;
+      }
+      return null;
     } finally {
       bitmap.close();
     }
@@ -247,15 +284,35 @@ export const uploadImage = async (file: File, options: UploadImageOptions): Prom
   assertUploadableImage(ready);
 
   const preview = await createPreview(ready);
+  const og = options.category === 'products' ? await createOgImage(ready) : null;
   return postJson<UploadedMedia>(
     {
       action: 'upload',
       category: options.category,
       file: { name: ready.name, data: await toBase64(ready) },
       ...(preview ? { preview: { data: await toBase64(preview) } } : {}),
+      ...(og ? { og: { data: await toBase64(og) } } : {}),
     },
     options.onProgress,
   );
+};
+
+/** A JSON action on /api/media that isn't a file transfer (e.g. refreshing the catalog). */
+export const callMediaApi = async <T extends object>(body: object, init: { keepalive?: boolean } = {}): Promise<T> => {
+  const resp = await fetch('/api/media', {
+    method: 'POST',
+    keepalive: init.keepalive,
+    headers: { 'Content-Type': 'application/json', Authorization: await authHeader() },
+    body: JSON.stringify(body),
+  });
+  let payload: ApiPayload | null = null;
+  try {
+    payload = await resp.json();
+  } catch {
+    /* non-JSON (e.g. a proxy error page) */
+  }
+  if (!resp.ok || !payload?.ok) throw toMediaError(resp.status, payload);
+  return payload as unknown as T;
 };
 
 /** Image (≤500 KB) or PDF (≤1 MB). Used for refund receipts. */

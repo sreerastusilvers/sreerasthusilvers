@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { subscribeToUserOrders, Order } from '@/services/orderService';
-import { getAllProducts } from '@/services/productService';
+import { getActiveProductsCached } from '@/services/productCache';
 import { adaptFirebaseToUI } from '@/lib/productAdapter';
 import ProductCard from '@/components/ProductCard';
 import Header from '@/components/Header';
@@ -86,7 +86,7 @@ const BuyAgain = () => {
 
   const fetchSuggestedProducts = async () => {
     try {
-      const products = await getAllProducts();
+      const products = await getActiveProductsCached();
       const adaptedProducts = products.map(adaptFirebaseToUI);
       // Shuffle and take random products for suggestions
       const shuffled = [...adaptedProducts].sort(() => Math.random() - 0.5);

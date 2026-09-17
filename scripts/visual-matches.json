@@ -1,0 +1,4034 @@
+{
+  "ladies rings/Ring_005": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T15:59:06.542Z"
+  },
+  "ladies rings/Ring_007": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T15:59:06.544Z"
+  },
+  "ladies rings/Ring_010_Rainbow Baguette 92.5 Pure Silver Multi-Layer Band Ring": {
+    "productIds": [
+      "AN9hpO4m2rcFWCVoJZbV"
+    ],
+    "productName": "Mosaic Brilliance Tri-Color Baguette 925 Silver Cocktail Ring",
+    "infoPiece": "Rings/IMG_20260625_160701605",
+    "confidence": "m",
+    "excludeKinds": [
+      "original"
+    ],
+    "decidedAt": "2026-09-17T15:59:06.544Z"
+  },
+  "ladies rings/Ring_013": {
+    "productIds": [
+      "Xoe0kZIhkQlHWnz0TjW0"
+    ],
+    "productName": "Blooming Cross Multi-Gold Polish Textured 925 Silver Statement Ring",
+    "infoPiece": "Rings/IMG_20260625_160918579",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T15:59:39.081Z"
+  },
+  "ladies rings/Ring_015_Tri-Color Rose Gold and Yellow Gold Polish 92.5 Sterling Silver Abstract Clover Ring": {
+    "productIds": [
+      "ei68V0zBA0rh6eHgbP8H"
+    ],
+    "productName": "Multi-Tone Rose Gold and Yellow Gold Polish 92.5 Sterling Silver Flower Cocktail Ring",
+    "infoPiece": "Rings/IMG_20260625_160420748",
+    "confidence": "m",
+    "excludeKinds": [
+      "original"
+    ],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_020": {
+    "productIds": [
+      "QpIRKMGoxDU0M5KxVPFz"
+    ],
+    "productName": "Marquise-Cut Zirconia Leaf Multi-Row Stacked Ring in 92.5 Sterling Silver",
+    "infoPiece": "Rings/IMG_20260625_162040360",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T15:59:39.083Z"
+  },
+  "ladies rings/Ring_021": {
+    "productIds": [
+      "L34byUugtoODDGqwTBzk"
+    ],
+    "productName": "Multi-Tone Rose Gold Polish 92.5 Sterling Silver Intricate Floral Filigree Dome Ring",
+    "infoPiece": "Rings/IMG_20260625_161745149",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.908Z"
+  },
+  "ladies rings/Ring_023": {
+    "productIds": [
+      "QpIRKMGoxDU0M5KxVPFz"
+    ],
+    "productName": "Marquise-Cut Zirconia Leaf Multi-Row Stacked Ring in 92.5 Sterling Silver",
+    "infoPiece": "Rings/IMG_20260625_162040360",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_035": {
+    "productIds": [
+      "pk3d31TFdilno48CU7p0"
+    ],
+    "productName": "Majestic Peacock Tail Geometric Pavé 925 Silver Architectural Ring",
+    "infoPiece": "Rings/IMG_20260625_163721034",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_046": {
+    "productIds": [
+      "aDBoqOvFHwFHOYDqmMYa"
+    ],
+    "productName": "pastel Azure Blue Cabochon Pavé Shank 925 Silver ring",
+    "infoPiece": "Rings/IMG_20260625_165050766",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_052": {
+    "productIds": [
+      "h4Cggdwu8PLVH5cg5yuQ"
+    ],
+    "productName": "Imperial Grand Radiant Solitaire 92.5 Pure Silver Royal Bridal Ring",
+    "infoPiece": "Rings/IMG_20260625_165659229",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_062": {
+    "productIds": [
+      "VLP0Zzs4kk6Gmg49UJQk"
+    ],
+    "productName": "Royal Heritage Majesty Crown 92.5 Pure Silver Dainty Promise Ring",
+    "infoPiece": "Rings/IMG_20260625_170324512",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_063": {
+    "productIds": [
+      "3k8Uf96avSylmLEMKUwG"
+    ],
+    "productName": "Cosmic Spiral Cluster 92.5 Pure Silver Dainty Statement Ring",
+    "infoPiece": "Rings/IMG_20260625_170410715",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_070": {
+    "productIds": [
+      "lY7WIw9WTr4iU0gePCde"
+    ],
+    "productName": "Ruby Red Square Solitaire Cocktail Ring in Gold-Plated 92.5 Sterling Silver",
+    "infoPiece": "Rings/IMG_20260625_171847166",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_071": {
+    "productIds": [
+      "L5olvjIKfOKIA8spdZIa"
+    ],
+    "productName": "Royal Gold-Plated Floral Peacock-Inspired 92.5 Pure Silver Statement Ring",
+    "infoPiece": "Rings/IMG_20260625_172117608",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_026": {
+    "productIds": [
+      "mheWW5QoTmOMVp5psett"
+    ],
+    "productName": "Geometric Brick Pavé Flat-Top Signet Ring in 92.5 Sterling Silver",
+    "infoPiece": "Rings/IMG_20260625_165241224",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_038_Pear-Cut Solitaire Pear Halo Engagement Ring in 92.5 Sterling Silver": {
+    "none": true,
+    "deferred": false,
+    "decidedAt": "2026-09-17T16:01:39.910Z"
+  },
+  "ladies rings/Ring_072": {
+    "productIds": [
+      "ZG4twEYXwz4ghcHvkueL"
+    ],
+    "productName": "Royal Gold-Plated Vintage Filigree Medallion 92.5 Pure Silver Cocktail Ring",
+    "infoPiece": "Rings/IMG_20260625_172212962",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:02:05.895Z"
+  },
+  "ladies rings/Ring_074": {
+    "productIds": [
+      "ArBF1MUpuPI8xLMZiKJd"
+    ],
+    "productName": "92.5 Sterling Silver Ring with Black Enamel Inlay",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:47.521Z"
+  },
+  "ladies rings/Ring_054": {
+    "productIds": [
+      "CX6XXAaIuPowqnnx7Jk5"
+    ],
+    "productName": "Dual-Royal Crimson Blossom Solitaire 92.5 Pure Silver Textured Engagement Ring",
+    "infoPiece": "Rings/IMG_20260625_165821197",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:02:22.699Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_02": {
+    "productIds": [
+      "y66T4RKafSbg6OQKqxMp",
+      "2xEEE4plGoJ1HerLHAeV"
+    ],
+    "productName": "Classic 92.5 Sterling Silver Men's Signet Ring with Brilliant Zirconia Grid",
+    "infoPiece": "Rings/IMG_20260625_190412990",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.523Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_09": {
+    "productIds": [
+      "4CcV2a9JLA0XpGlzNGk7"
+    ],
+    "productName": "Royal Square Cluster 92.5 Sterling Silver Gold-Plated Ring",
+    "infoPiece": "Rings/IMG_20260625_191855641",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_10": {
+    "productIds": [
+      "rUZpXPFX1o7XbU78tSjl"
+    ],
+    "productName": "Majestic 9-Stone Cluster 92.5 Sterling Silver Lattice Ring",
+    "infoPiece": "Rings/IMG_20260625_192528407",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_15": {
+    "productIds": [
+      "0NQYRHbh4HMGQ2z9B5AA"
+    ],
+    "productName": "Imperial 9-Stone Cluster 92.5 Sterling Silver Statement Ring",
+    "infoPiece": "Rings/IMG_20260625_193440777",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_03": {
+    "productIds": [
+      "0NQYRHbh4HMGQ2z9B5AA"
+    ],
+    "productName": "Imperial 9-Stone Cluster 92.5 Sterling Silver Statement Ring",
+    "infoPiece": "Rings/IMG_20260625_193534555",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_08": {
+    "productIds": [
+      "QVNkbpGV6n0nSqCjKpYB"
+    ],
+    "productName": "Elegant 92.5 Sterling Silver Gold-Plated Textured Cluster Ring",
+    "infoPiece": "Rings/IMG_20260625_191719605",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_19": {
+    "productIds": [
+      "0NQYRHbh4HMGQ2z9B5AA"
+    ],
+    "productName": "Imperial 9-Stone Cluster 92.5 Sterling Silver Statement Ring",
+    "infoPiece": "Rings/IMG_20260625_193900928",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_13": {
+    "productIds": [
+      "HuMlz7yeChCD5TEefoMd"
+    ],
+    "productName": "Timeless Three-Stone 92.5 Sterling Silver Gold-Plated Ring",
+    "infoPiece": "Rings/IMG_20260625_193107850",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_14": {
+    "productIds": [
+      "HuMlz7yeChCD5TEefoMd"
+    ],
+    "productName": "Timeless Three-Stone 92.5 Sterling Silver Gold-Plated Ring",
+    "infoPiece": "Rings/IMG_20260625_193733338",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_04": {
+    "productIds": [
+      "6TkPvcyi6gEVK9vmVc65",
+      "yfndBG264ML4pGHV1c5h"
+    ],
+    "productName": "Gold-Plated 92.5 Sterling Silver Men's Solitaire Signet Ring",
+    "infoPiece": "Rings/IMG_20260625_194044870",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_17": {
+    "productIds": [
+      "NgZ25OVmicMADcPNkt0x"
+    ],
+    "productName": "Elegant Diamond-Frame Solitaire 92.5 Sterling Silver Gold-Plated Ring",
+    "infoPiece": "Rings/IMG_20260625_193634919",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_05": {
+    "productIds": [
+      "2tfrqg49ESksOjK1JFdx",
+      "j85JN6HgOQO6gGFbnyvR"
+    ],
+    "productName": "92.5 Sterling Silver Textured Gold-Polish Multi-Band Ring",
+    "infoPiece": "Rings/IMG_20260625_191126482",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:05:17.524Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_07": {
+    "productIds": [
+      "HDC9RfgmwJ8869h6WGyE"
+    ],
+    "productName": "Abstract Wave 92.5 Sterling Silver Ring with Black Enamel Inlay",
+    "infoPiece": "Rings/p67",
+    "confidence": "h",
+    "excludeKinds": [],
+    "supersedes": "ladies rings/Ring_074",
+    "decidedAt": "2026-09-17T16:05:29.059Z"
+  },
+  "ss/earrings/Earring_006_92.5 Silver Ombre Heart Studs Blue": {
+    "productIds": [
+      "K9RP61mfCJ1IfDUtwqWT"
+    ],
+    "productName": "92.5 Silver Ombré Heart Studs\"",
+    "infoPiece": "Earrings/IMG_20260625_105351170",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:09:31.474Z"
+  },
+  "ss/earrings/Earring_023": {
+    "productIds": [
+      "KTfMvWGi2C3qbOacTd9O",
+      "Mc2IXsJ0fNqMDEeSOTJa"
+    ],
+    "productName": "Traditional Kemp & Pearl Floral Square Tops – 92.5 Sterling Silver",
+    "infoPiece": "Earrings/IMG_20260625_110614501",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:09:31.478Z"
+  },
+  "ss/earrings/Earring_024": {
+    "productIds": [
+      "GoglsZFdBTq9WbA33243"
+    ],
+    "productName": "Heritage Emerald & CZ Filigree Ear Studs with Pearl Droplets",
+    "infoPiece": "Earrings/IMG_20260625_110705211",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:09:31.478Z"
+  },
+  "ss/earrings/Earring_026": {
+    "productIds": [
+      "N4XUnrARBZsFgyQKYNNJ"
+    ],
+    "productName": "Heritage Antique Circular Gold Polish Studs with Emerald Green Stone",
+    "infoPiece": "Earrings/IMG_20260625_110737203",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:09:31.478Z"
+  },
+  "ss/earrings/Earring_002_92.5 Silver Baguette Hoop Drops": {
+    "none": true,
+    "deferred": false,
+    "decidedAt": "2026-09-17T16:09:31.478Z"
+  },
+  "ss/earrings/Earring_007_92.5 Silver Ombre Heart Studs": {
+    "none": true,
+    "deferred": false,
+    "decidedAt": "2026-09-17T16:09:31.478Z"
+  },
+  "ss/earrings/Earring_014_92.5 Silver Ombre Heart Studs Pink": {
+    "productIds": [
+      "3G8IJi2SYosiraLmfabB"
+    ],
+    "productName": "Silver Ombré Heart Studs",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:09:31.874Z"
+  },
+  "ss/earrings/Earring_017_EiffelTower": {
+    "productIds": [
+      "ljJ4tHTJJHI044JZEXNj"
+    ],
+    "productName": "Crystal-Crusted Eiffel Tower Earrings ✨",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:09:32.218Z"
+  },
+  "ss/earrings/Earring_003_Rose Gold Polish Butterfly and Star Earrings": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.133Z"
+  },
+  "ss/earrings/Earring_005": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.134Z"
+  },
+  "ss/earrings/Earring_008": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.134Z"
+  },
+  "ss/earrings/Earring_010": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.134Z"
+  },
+  "ss/earrings/Earring_012": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.134Z"
+  },
+  "ss/earrings/Earring_013": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.134Z"
+  },
+  "ss/earrings/Earring_016": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.134Z"
+  },
+  "ss/earrings/Earring_020": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.134Z"
+  },
+  "ss/earrings/Earring_022": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.135Z"
+  },
+  "ss/earrings/Earring_025": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.135Z"
+  },
+  "ss/earrings/Earring_027": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.135Z"
+  },
+  "ss/earrings/Earring_028": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:09:44.135Z"
+  },
+  "ss/earrings/Earring_032": {
+    "productIds": [
+      "7z4NSIFNpyygkoRw6tUr"
+    ],
+    "productName": "Heritage Emerald & Pearl Floral Chakra Tops – 92.5 Sterling Silver",
+    "infoPiece": "Earrings/IMG_20260625_111049915",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.111Z"
+  },
+  "ss/earrings/Earring_036": {
+    "productIds": [
+      "NX9eJd5YSWrgUYeF5ptm"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Floral Drop Stud Earrings | CZ Stone Designer Earrings for Women",
+    "infoPiece": "Earrings/IMG_20260625_112356896",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.112Z"
+  },
+  "ss/earrings/Earring_037": {
+    "productIds": [
+      "aM6tZUm20zdWIDqbVlFE"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Floral Drop Earrings | CZ Stone Elegant Designer Earrings for Women",
+    "infoPiece": "Earrings/IMG_20260625_112425144",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.112Z"
+  },
+  "ss/earrings/Earring_038": {
+    "productIds": [
+      "OjdAPFOa1KxQ0elt0wy6"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Geometric Drop Stud Earrings | CZ & Emerald Stone Designer Earrings for Women",
+    "infoPiece": "Earrings/IMG_20260625_112531298",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.112Z"
+  },
+  "ss/earrings/Earring_040": {
+    "productIds": [
+      "qQQdmY83qAeYKLYvfE0I"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Ruby CZ Jhumka Earrings | Traditional Designer Jhumkas for Women",
+    "infoPiece": "Earrings/IMG_20260625_112636789",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.112Z"
+  },
+  "ss/earrings/Earring_041": {
+    "productIds": [
+      "oSGrhJGIwaoKPqqA4gsx"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Star Tassel Stud Earrings | CZ Stone Celestial Designer Earrings for Women",
+    "infoPiece": "Earrings/IMG_20260625_112729901",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_049": {
+    "productIds": [
+      "bXMetv3MQOC0GDRqSlZF"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Crystal Heart Stud Earrings",
+    "infoPiece": "Earrings/IMG_20260625_114623293",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_050": {
+    "productIds": [
+      "NTOF67PWNgr3hYP59gk0"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Temple Bell Drop Earrings",
+    "infoPiece": "Earrings/IMG_20260625_114719703",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_051": {
+    "productIds": [
+      "C7BBkxfTbJgZWRdFS7Sp"
+    ],
+    "productName": "92.5 Pure Silver Rose Gold Designer Stud Earrings with Sparkling CZ Stones",
+    "infoPiece": "Earrings/IMG_20260625_114844975",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_052": {
+    "productIds": [
+      "EqF1mDsxC6c1UASHeSEo"
+    ],
+    "productName": "Vintage Floral Halo Princess-Cut Zirconia Studs in 92.5 Sterling Silver",
+    "infoPiece": "Earrings/IMG_20260625_114955955",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_054": {
+    "productIds": [
+      "mWUEXOB63i5VOdFo2kCA"
+    ],
+    "productName": "Serpentine Shimmer 925 Silver Contemporary Drop Earrings",
+    "infoPiece": "Earrings/IMG_20260625_115049496",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_055": {
+    "productIds": [
+      "Tq10mUs7NXS137WeyTvG"
+    ],
+    "productName": "Royal Blue Sapphire Oval Halo Stud Earrings in 92.5 Sterling Silver",
+    "infoPiece": "Earrings/IMG_20260625_115150842",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_035": {
+    "none": true,
+    "deferred": true,
+    "note": "p67 name fits Earring_060 better",
+    "decidedAt": "2026-09-17T16:10:55.204Z"
+  },
+  "ss/earrings/Earring_033_Heritage Three-Stone Emerald Matte Gold Chakra Tops": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_034": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_039": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_042": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_045": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_048": {
+    "productIds": [
+      "Jfm9RRGQHgr4aWblHLH4"
+    ],
+    "productName": "92.5 Sterling Silver Dual-Tone Beaded Drop Earrings",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.698Z"
+  },
+  "ss/earrings/Earring_053": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:14.113Z"
+  },
+  "ss/earrings/Earring_056": {
+    "productIds": [
+      "71MpAifXJUfHaiWK8nYc"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Flower Studs with Shimmering CZ Stoness",
+    "infoPiece": "Earrings/IMG_20260629_171137628",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:55.125Z"
+  },
+  "ss/earrings/Earring_057": {
+    "productIds": [
+      "DOxS9BxILAOmQFegnUk3"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Goddess Lakshmi Studs with Kemp Ruby Stones",
+    "infoPiece": "Earrings/IMG_20260629_171304361 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:55.126Z"
+  },
+  "ss/earrings/Earring_058": {
+    "productIds": [
+      "Rjk6rPO29qItc88v0hE6"
+    ],
+    "productName": "92.5 Pure Silver Antique Gold-Plated Laxmi Kasu Drops with CZ Peacock Studs",
+    "infoPiece": "Earrings/IMG_20260629_171405976",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:55.126Z"
+  },
+  "ss/earrings/Earring_068": {
+    "productIds": [
+      "NP8JoGVeGsJ1uXUsmDgt"
+    ],
+    "productName": "92.5 Pure Silver Flower Branch Studs with Sky Blue and Bright Yellow Enamel Blossoms",
+    "infoPiece": "Earrings/IMG_20260629_174554780",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:55.126Z"
+  },
+  "ss/earrings/Earring_069": {
+    "productIds": [
+      "vrqJyOabYqKZ2rDdOQf5"
+    ],
+    "productName": "92.5 Pure Silver Antique Gold-Plated Round Studs with Kemp Ruby Accents",
+    "infoPiece": "Earrings/IMG_20260629_174828940",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:55.126Z"
+  },
+  "ss/earrings/Earring_070": {
+    "productIds": [
+      "L6AmlBrgmvEPp7N829qV"
+    ],
+    "productName": "92.5 Pure Silver Antique Gold-Plated Lakshmi Earrings with Emerald Green Beads and Ruby Accents",
+    "infoPiece": "Earrings/IMG_20260629_175048671",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:55.126Z"
+  },
+  "ss/earrings/Earring_071": {
+    "productIds": [
+      "7J5G6xdLqLUvD7u9awQn"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Goddess Lakshmi Studs with Shimmering CZ Halo",
+    "infoPiece": "Earrings/IMG_20260629_175134183",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:55.126Z"
+  },
+  "ss/earrings/Earring_059": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.126Z"
+  },
+  "ss/earrings/Earring_061": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.126Z"
+  },
+  "ss/earrings/Earring_065": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.127Z"
+  },
+  "ss/earrings/Earring_066": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.127Z"
+  },
+  "ss/earrings/Earring_067": {
+    "productIds": [
+      "IIYztznqkvzypqlx25t0"
+    ],
+    "productName": "92.5 Pure Silver  Flower Studs with Carved Pastel Blossom, CZ Halo, and Pearl Drops",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.893Z"
+  },
+  "ss/earrings/Earring_072": {
+    "productIds": [
+      "cTaryIpEWSBPUxf4VV1N"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Clover Studs with Ruby Pink Kemp and CZ Accents",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:11:49.740Z"
+  },
+  "ss/earrings/Earring_073": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.127Z"
+  },
+  "ss/earrings/Earring_074_92.5 Sterling Silver Rose Gold Swan Stud Earrings with Cubic Zirconia": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.127Z"
+  },
+  "ss/earrings/Earring_075": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.127Z"
+  },
+  "ss/earrings/Earring_076": {
+    "productIds": [
+      "GmuDRtERhdhso4FTYQtU"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Rhombus Dangle Earrings with Emerald Green and White CZ Stones",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:11:49.926Z"
+  },
+  "ss/earrings/Earring_078": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.127Z"
+  },
+  "ss/earrings/Earring_079": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:10:55.127Z"
+  },
+  "ss/earrings/Earring_060": {
+    "productIds": [
+      "M71Nclnv4GV8wTTYNbhz"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Curved Leaf Studs with Shimmering CZ Accent Stones",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:10:55.389Z"
+  },
+  "ss/earrings/Earring_081": {
+    "productIds": [
+      "HLpQnfvtgkKyMwTlEPAt"
+    ],
+    "productName": "92.5 Pure Silver Antique Gold-Plated Round Studs with Ruby and Emerald Kemp Stones",
+    "infoPiece": "Earrings/IMG_20260629_180222896",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:11:49.544Z"
+  },
+  "ss/earrings/Earring_082": {
+    "productIds": [
+      "l7wz5sfyaIbct0QoCYsw"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Dangle Earrings with Shimmering White CZ and Pink Bead Drops",
+    "infoPiece": "Earrings/IMG_20260629_180022748",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_083": {
+    "productIds": [
+      "a1VHJuials1pnffEnkrB"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Traditional Drops with Ruby Pink Kemp and CZ Cluster Stones",
+    "infoPiece": "Earrings/IMG_20260629_180101066",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_084": {
+    "productIds": [
+      "9XWRdOxcPnEIhtCvFGFP"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Round Flower Studs with Emerald Green and CZ Stones",
+    "infoPiece": "Earrings/IMG_20260629_175707472",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_085": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_086": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_088": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_089": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_090": {
+    "productIds": [
+      "YDoy9dTqIAdZ0fijj0QZ"
+    ],
+    "productName": "Royal Temple Style Emerald Bead & Pearl Cluster Hanging Jhumkis",
+    "infoPiece": "Buttalu/IMG_20260620_174008366",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.498Z"
+  },
+  "ss/earrings/Earring_091": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_092": {
+    "productIds": [
+      "nthua0SX3bew2CqnxIPT"
+    ],
+    "productName": "Divine Goddess Lakshmi Carved Nakshi Silver Jhumka Earrings",
+    "infoPiece": "Buttalu/IMG_20260620_174346437",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_093": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_094": {
+    "productIds": [
+      "OxI9zm46DRcPbEvS9P5f"
+    ],
+    "productName": "Divine Teardrop Ruby Stud Nakshi Silver Jhumka Earrings",
+    "infoPiece": "Buttalu/IMG_20260620_174712242",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_095": {
+    "productIds": [
+      "tiGFxJ0Pl30uBnAHrq81"
+    ],
+    "productName": "Divine Teardrop Ruby Stud Nakshi Silver Jhumka Earrings",
+    "infoPiece": "Buttalu/IMG_20260620_174923442",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_096": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.545Z"
+  },
+  "ss/earrings/Earring_097": {
+    "productIds": [
+      "xvfmD2vOIBlScvOefsZj"
+    ],
+    "productName": "Silver Gold Polish Antique Teardrop Emerald Nakshi Jhumkas",
+    "infoPiece": "Buttalu/IMG_20260620_175028437",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_098": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.546Z"
+  },
+  "ss/earrings/Earring_099": {
+    "productIds": [
+      "BoTi7Yd8YT14JycJR06k"
+    ],
+    "productName": "Divine Leaf Motif Carved Nakshi Silver Jhumka Earrings",
+    "infoPiece": "Buttalu/IMG_20260620_175121105",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_100": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:11:49.546Z"
+  },
+  "ss/earrings/Earring_101": {
+    "productIds": [
+      "ZjrmLc3GQoHsGWtgi7Co"
+    ],
+    "productName": "Divine Peacock Motif Carved Nakshi Silver Jhumka Earrings",
+    "infoPiece": "Buttalu/IMG_20260620_175228011",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_102": {
+    "productIds": [
+      "i7cahMlcbdFOMBSr3Rsm"
+    ],
+    "productName": "Silver Gold Polish Lakshmi Stud Ruby & CZ Jhumkas",
+    "infoPiece": "Buttalu/IMG_20260620_175427716",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_103": {
+    "productIds": [
+      "Hvw7LULeH4EmDSUXLlvt"
+    ],
+    "productName": "Silver Gold Polish Antique Floral Nakshi Jhumkas with Ruby Beads",
+    "infoPiece": "Buttalu/IMG_20260620_175517474",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_104": {
+    "productIds": [
+      "mNoMeWWzrXueKbkvQAjo"
+    ],
+    "productName": "Classic Goddess Lakshmi Carved Nakshi Silver Jhumka Earrings",
+    "infoPiece": "Buttalu/IMG_20260620_175653115",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_105": {
+    "productIds": [
+      "VEFzxj1En0fRy32a4qOm"
+    ],
+    "productName": "Silver Gold Polish Lakshmi CZ Stud Jhumkas with Ruby Drops",
+    "infoPiece": "Buttalu/IMG_20260620_175751394",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "pendants/Pendant_024": {
+    "productIds": [
+      "IOzgZ4kmTCVrb9JrRvcY"
+    ],
+    "productName": "Majestic CZ & Polki Encrusted Ram Parivar Temple Pendant with Emerald Accent",
+    "infoPiece": "pendent/IMG_20260620_183646905",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:13:23.601Z"
+  },
+  "pendants/Pendant_028": {
+    "none": true,
+    "deferred": true,
+    "note": "exact match found for its product elsewhere",
+    "decidedAt": "2026-09-17T16:14:19.254Z"
+  },
+  "pendants/Pendant_029": {
+    "none": true,
+    "deferred": true,
+    "note": "exact match found for its product elsewhere",
+    "decidedAt": "2026-09-17T16:14:19.254Z"
+  },
+  "pendants/Pendant_033": {
+    "none": true,
+    "deferred": true,
+    "note": "exact match found for its product elsewhere",
+    "decidedAt": "2026-09-17T16:14:19.253Z"
+  },
+  "pendants/Pendant_037_KrishnaPendant": {
+    "productIds": [
+      "IFEk4v5RRmqrTfUCG9Fx"
+    ],
+    "productName": "Silver Gold Polish Krishna Flute & Peacock Feather Pendant",
+    "infoPiece": "pendent/IMG_20260620_184636019",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_012": {
+    "productIds": [
+      "v01SH9H0JRrafPjk4Gj4"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Pendant Set with Emerald Green Stones and Asymmetric CZ Loops",
+    "infoPiece": "pendent set/IMG_20260629_173155047",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_001": {
+    "none": true,
+    "deferred": false,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_004": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_007": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_010": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_013": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_014": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_016": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_018": {
+    "productIds": [
+      "VDOxB4YwZAb6XB146tm4"
+    ],
+    "productName": "92.5 Pure Silver Grand Chandelier Pendant Set with Ruby Pink Kemp and Pearl Hangings",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:38:46.242Z"
+  },
+  "pendants/Pendant_019": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_021": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_025": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_030": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_032": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_035": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_038": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_041": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_044_LakshmiPendant": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:13:23.603Z"
+  },
+  "pendants/Pendant_005": {
+    "productIds": [
+      "rNNLQtnb5JYtFnWR20Pk"
+    ],
+    "productName": "92.5 Pure Silver Rose Gold Pendant Set with Icy Blue Stone and CZ Accents",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:13:23.796Z"
+  },
+  "pendants/Pendant_047": {
+    "productIds": [
+      "wSE2lkcod8JrUm4rNZ8f"
+    ],
+    "productName": "Majestic CZ & Ruby Chakra-Style Statement Pendant with Radiating Pearls",
+    "infoPiece": "pendent/IMG_20260620_185747419",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.598Z"
+  },
+  "pendants/Pendant_050_GaneshaPendant": {
+    "productIds": [
+      "wN0zCrDGQoUTSqrccicj"
+    ],
+    "productName": "Polki & CZ Encrusted Vinayaka Motif Pendant with Emerald Drops",
+    "infoPiece": "pendent/IMG_20260620_185843256 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.599Z"
+  },
+  "pendants/Pendant_053_GaneshPendant": {
+    "productIds": [
+      "18Xzi0TAAmnaQ5ZZBptO"
+    ],
+    "productName": "Majestic Polki & CZ Encrusted Vinayaka Motif Pendant with Peacock Borders",
+    "infoPiece": "pendent/IMG_20260620_190239960",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.599Z"
+  },
+  "pendants/Pendant_055_LakshmiPendant": {
+    "productIds": [
+      "oTNLFR6Ny7DasYZnKM5O"
+    ],
+    "productName": "Royal Silver Gold Polish Goddess Lakshmi Circular Temple Pendant with Shimmering White CZ Halo",
+    "infoPiece": "pendent/IMG_20260620_190305540",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.599Z"
+  },
+  "pendants/Pendant_052": {
+    "productIds": [
+      "9y22LBgi0bxDGAn5ijzn"
+    ],
+    "productName": "Classic silver Nakshi Lakshmi Bar gold polish Pendant with Twin Ruby Kemp Motifs",
+    "infoPiece": "pendent/IMG_20260620_190148513",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.599Z"
+  },
+  "pendants/Pendant_054": {
+    "productIds": [
+      "yVS1y16KszJDLSgpkPwc"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Lakshmi Quad-Peacock Pendant",
+    "infoPiece": "pendent/IMG_20260620_191055289",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.599Z"
+  },
+  "pendants/Pendant_071": {
+    "productIds": [
+      "tNg9biDsBbifEfxhjkJa"
+    ],
+    "productName": "Grand Divine Lakshmi Lotus Motif Silver Mugappu silver gold polish Pendant with Ruby Accents",
+    "infoPiece": "pendent/IMG_20260620_191159782",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.599Z"
+  },
+  "pendants/Pendant_076_Royal Silver Gold Polish Lord Venkateswara Perumal Temple Pendant with Ruby Drops": {
+    "none": true,
+    "deferred": false,
+    "decidedAt": "2026-09-17T16:14:18.599Z"
+  },
+  "pendants/Pendant_046": {
+    "productIds": [
+      "ZEDKhkvdIRxkvRuA9yCm"
+    ],
+    "productName": "Majestic Diamond-Cut CZ Encrusted Mayur Motif Pendant with Emerald Drops",
+    "infoPiece": "pendent/IMG_20260620_184730067",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:38:46.051Z"
+  },
+  "pendants/Pendant_048": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_049": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_056": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_057": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_059_Brooch": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_060": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_062": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_064": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_066": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_067": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_069": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_072_LakshmiPendant": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:18.600Z"
+  },
+  "pendants/Pendant_061": {
+    "productIds": [
+      "D9eFcjCYYVdX9MYZweyu"
+    ],
+    "productName": "Classic Silver Gold Polish Nakshi Balaji Bar Pendant with Emerald & CZ Crescent Frame",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.792Z"
+  },
+  "pendants/Pendant_068": {
+    "productIds": [
+      "RxgM6kNlsLNhx0va79JR"
+    ],
+    "productName": "Majestic Diamond-Cut CZ Curved Silver Gold Polish Pendant with Emerald Clusters",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:18.987Z"
+  },
+  "pendants/Pendant_073": {
+    "productIds": [
+      "zAQOlA4EL5IT6SCl3C4q"
+    ],
+    "productName": "Majestic Diamond-Cut CZ Curved silver gold polish Pendant with Ruby Clusters",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:19.181Z"
+  },
+  "pendants/Pendant_084_GaneshaPendant": {
+    "productIds": [
+      "1L1pkMjc9LS66Z3Qki9M"
+    ],
+    "productName": "Antique Oxidized Sterling Silver Lord Ganesha Lotus Pendant",
+    "infoPiece": "pendent/IMG_20260621_122850988",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:54.500Z"
+  },
+  "pendants/Pendant_086_GaneshaPendant": {
+    "productIds": [
+      "Dsv1zH4VivhUwKn1i3vN"
+    ],
+    "productName": "Solid Oxidized Silver Lord Ganesha Throne Blessing Pendant",
+    "infoPiece": "pendent/IMG_20260621_123047676",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:54.501Z"
+  },
+  "pendants/Pendant_088_GaneshaPendant": {
+    "productIds": [
+      "XunySPPgxPcGMJcIGKpR"
+    ],
+    "productName": "Antique Oxidized Sterling Silver Ganesha Peepal Leaf Medallion Pendant",
+    "infoPiece": "pendent/IMG_20260621_123417013",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:54.501Z"
+  },
+  "pendants/Pendant_091": {
+    "productIds": [
+      "25hgTvFfQCSdsJhI7xjD"
+    ],
+    "productName": "Antique Silver Mahadev Tripundra Spear Statement Talisman Pendant",
+    "infoPiece": "pendent/IMG_20260621_124002861",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:54.501Z"
+  },
+  "pendants/Pendant_095": {
+    "productIds": [
+      "98PAkP50lNrT2mm9AKMh"
+    ],
+    "productName": "Solid Oxidized Silver Divine Lord Venkateswara Lakshmi Balaji Pendant",
+    "infoPiece": "pendent/IMG_20260621_124053331",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:14:54.501Z"
+  },
+  "pendants/Pendant_077": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:54.501Z"
+  },
+  "pendants/Pendant_081": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:54.501Z"
+  },
+  "pendants/Pendant_092": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:54.501Z"
+  },
+  "pendants/Pendant_093": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:54.501Z"
+  },
+  "pendants/Pendant_096": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:54.502Z"
+  },
+  "pendants/Pendant_098": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:54.502Z"
+  },
+  "pendants/Pendant_100_Brooch": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:14:54.502Z"
+  },
+  "ss/bangles/Bangle_Product_10": {
+    "productIds": [
+      "4uEYvRiot5YWytOnjzKo",
+      "DRDKbOWNSCV4AjtPWi0P",
+      "RLV9QZDamc1xKHkbPIox"
+    ],
+    "productName": "Detailed 92.5 Sterling Silver Rose Gold Polish CZ Filigree Bangles",
+    "infoPiece": "Bangles/IMG_20260624_183343681",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:15:29.154Z"
+  },
+  "ss/bangles/Bangle_Product_18": {
+    "productIds": [
+      "cCdB6eXUoYZjROCimUzy"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold Polish Bangles with Sparkling American Diamonds",
+    "infoPiece": "Bangles/IMG_20260624_185428685",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:15:29.156Z"
+  },
+  "ss/bangles/Bangle_Product_15": {
+    "productIds": [
+      "MHNo749y7SaqRiopH87h"
+    ],
+    "productName": "92.5 Pure Silver Gold Polish Antique Lakshmi Kada bangles | Traditional Temple Design with Ruby Stones",
+    "infoPiece": "Bangles/IMG_20260903_192940",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:15:29.156Z"
+  },
+  "ss/bangles/Bangle_Product_32": {
+    "productIds": [
+      "kFWcRJfi1wIICF8rRxqH"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Open Heart & Halo CZ Ladies Kada | Adjustable Designer Bracelet",
+    "infoPiece": "ladies kadas/IMG_20260626_174035085",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:15:29.156Z"
+  },
+  "ss/bangles/Bangle_Product_11": {
+    "productIds": [
+      "0nwNyEDUk8k1Bx5QswkO"
+    ],
+    "productName": "Antique Gold-Plated Botanical Leaf Filigree Bangles with Ruby Kemp Accents",
+    "infoPiece": "Bangles/IMG_20260903_193905",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:15:29.156Z"
+  },
+  "ss/bangles/Bangle_Product_13": {
+    "productIds": [
+      "j6Kys8vDWozZYXK4T9Gx"
+    ],
+    "productName": "92.5 Pure Silver Gold Polish Antique Designer bangles | Intricate Floral & Beaded Work Bangle",
+    "infoPiece": "Bangles/IMG_20260903_192739",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:15:29.156Z"
+  },
+  "ss/bangles/Bangle_Product_19": {
+    "productIds": [
+      "v2Aifc0YDAAIh96inghn"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Royal Ruby Floral Bangles",
+    "infoPiece": "Bangles/IMG_20260624_191641070",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:15:29.156Z"
+  },
+  "ss/bangles/Bangle_Product_04_Golden Radiance Golden Stripes - 92.5 Pure Silver Gold Polished Diagonal Cut Bangles": {
+    "none": true,
+    "deferred": false,
+    "decidedAt": "2026-09-17T16:35:49.420Z"
+  },
+  "ss/bangles/Bangle_Product_20": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:15:29.156Z"
+  },
+  "ss/bangles/Bangle_Product_26": {
+    "productIds": [
+      "UMdEEnw4p7Isc56Kfz8n"
+    ],
+    "productName": "Handcrafted 92.5 Sterling Silver Geometric Emerald Glass & White Stone Bangles",
+    "infoPiece": "Bangles/IMG_20260624_191326091",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:49.418Z"
+  },
+  "ss/bangles/Bangle_Product_27": {
+    "productIds": [
+      "dpzTtJHVSxhlRFpB7FKh"
+    ],
+    "productName": "Handcrafted 92.5 Sterling Silver Gold Polish Divine Peacock Kemp Bangle Set",
+    "infoPiece": "Bangles/IMG_20260624_185751940",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:49.420Z"
+  },
+  "ss/bangles/Bangle_Product_33": {
+    "productIds": [
+      "q6Ks5wU0zbYGzPOcowzi"
+    ],
+    "productName": "Antique Gold-Plated Lakshmi & Kalash Temple Bangles with Ruby Kemp Stone",
+    "infoPiece": "Bangles/IMG_20260903_193650",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:49.420Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_05": {
+    "productIds": [
+      "ilC7T440GTrsHLySCzQb"
+    ],
+    "productName": "92.5 Pure Silver Sparkling Heart Statement Bracelet with Magnetic Gold Clasp",
+    "infoPiece": "Bands/IMG_20260625_153656391",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.602Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_06": {
+    "productIds": [
+      "yyRymzT2yerhJ8mkMl4N"
+    ],
+    "productName": "92.5 Pure Silver Grey Belt Band Bracelet for Men | Rose Gold CZ Designer Bracelet",
+    "infoPiece": "Bands/IMG_20260627_185548125",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_07": {
+    "productIds": [
+      "XJ6c2QEHHf6hMRZSszjU"
+    ],
+    "productName": "92.5 Pure Silver Olive Green Belt Band Bracelet for Men | Rose Gold CZ Designer Bracelet",
+    "infoPiece": "Bands/IMG_20260627_185608161",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_18": {
+    "productIds": [
+      "AIm4ExVBx5XGt4C67P1o"
+    ],
+    "productName": "92.5 Pure Silver Rose Gold Panther Lock Kada for Women | Designer CZ Bracelet",
+    "infoPiece": "ladies kadas/IMG_20260626_173736514",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_20": {
+    "productIds": [
+      "ZfhtnBQjmem2dT1FuuWG"
+    ],
+    "productName": "92.5 Pure Silver Rose Gold Floral Ruby CZ Open Kada for Women | Adjustable Designer Bracelet",
+    "infoPiece": "ladies kadas/IMG_20260626_174219186",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_13": {
+    "productIds": [
+      "dzVvf9tLiRtudpUEhpgG"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Plated Micro-Pave Butterfly Bracelet",
+    "infoPiece": "Bracelates/IMG_20260629_152905999",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_16": {
+    "productIds": [
+      "PR5fh9JDV6m04I3IQZwB",
+      "Zru8eKMffPKaem18Z9Ss"
+    ],
+    "productName": "Premium 925 Pure Silver Rose Gold Mesh Band Bracelet with Shimmering Butterflies",
+    "infoPiece": "Bracelates/IMG_20260630_200041166",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_14_92.5 Sterling Silver Men's Geometric Pyramid Link Bracelet with Stone Accents": {
+    "productIds": [
+      "ssDDKuIxXT7QsTKiaNpb"
+    ],
+    "productName": "92.5 Sterling Silver Men's Geometric Pyramid Link Bracelet with Stone Accents",
+    "infoPiece": "Bracelates/IMG_20260629_154149921",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_12": {
+    "productIds": [
+      "QNaFT40MqAUkUpY35RKd"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Plated Paisley Solitaire Bracelet",
+    "infoPiece": "Bracelates/IMG_20260629_152752787",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_03_92.5 Pure Silver Rose Gold Geometric CZ Designer Cuff Band Bracelet": {
+    "productIds": [
+      "wlYcylH0M5rwvc1F1Xrz"
+    ],
+    "productName": "92.5 Pure Silver Floral purple and CZ Designer Cuff Band Bracelet",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:18:28.458Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_08": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_11": {
+    "productIds": [
+      "WecLaCQSIGqHzvFAZU0n"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Plated Micro-Pave  heart Bracelet",
+    "infoPiece": null,
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:55.296Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_15": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_17": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/l bracelets/L_Bracelet_Product_19": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:16:03.603Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_05_92.5 Pure Silver Royal Lion Antique Gold Finish Stretch Bracelet Cord Style": {
+    "productIds": [
+      "x18sjdQj7HUuayYLGdhH"
+    ],
+    "productName": "92.5 Pure Silver Royal Lion Antique Gold Finish Stretch Bracelet",
+    "infoPiece": "Bands/IMG_20260624_115434622",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.972Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_20": {
+    "productIds": [
+      "bbm7UYsnh8m5GVfCpFYU"
+    ],
+    "productName": "92.5 Sterling Silver Checkerboard Micro-Pave Men's Link Bracelet",
+    "infoPiece": "Bracelates/IMG_20260629_153241910",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.973Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_19": {
+    "productIds": [
+      "plKxxxeqlU2dQStNLlIU"
+    ],
+    "productName": "92.5 Sterling Silver Iced Out Micro-Pave Cuban Link Bracelet",
+    "infoPiece": "Bracelates/IMG_20260629_153837043",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.973Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_25": {
+    "productIds": [
+      "mbv6eslLaV3eFIEqguQL"
+    ],
+    "productName": "Premium 92.5 Pure Silver Interlocking V-Link Bracelet - Sree Rastu Silvers",
+    "infoPiece": "Bracelates/IMG_20260630_195919153",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.973Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_26": {
+    "productIds": [
+      "ZOeQOPQ51t7hSe9tlCAU"
+    ],
+    "productName": "92.5 Sterling Silver Men's Jubilee Watch-Link Bracelet",
+    "infoPiece": "Bracelates/IMG_20260629_154024250",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.973Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_23": {
+    "productIds": [
+      "K8RFg3XIAaRnzYvydQWb"
+    ],
+    "productName": "92.5 Sterling Silver Leaping Jaguar ID Link Bracelet with Stone Borders",
+    "infoPiece": "Bracelates/IMG_20260629_154509380",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.973Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_15": {
+    "productIds": [
+      "bkNJWiKNEsdUIutaBBnI"
+    ],
+    "productName": "92.5 Sterling Silver Dual-Tone Men's Link Bracelet with Gold Accents",
+    "infoPiece": "Bracelates/IMG_20260629_153655224",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.973Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_17": {
+    "productIds": [
+      "5jjd0xhr3HPMxMLcnbxM"
+    ],
+    "productName": "Premium 925 Pure Silver Gold-Plated & Diamond-Cut CZ Luxury Gents Bracelet",
+    "infoPiece": "Bracelates/IMG_20260630_200148037",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.973Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_24": {
+    "productIds": [
+      "beCYpD1XQ717qOOSeS15"
+    ],
+    "productName": "92.5 Sterling Silver Multi-Tone Men's Link Bracelet – Textured Gold & Silver Mesh",
+    "infoPiece": "Bracelates/IMG_20260629_154644336",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.973Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_14": {
+    "productIds": [
+      "Ot9CfQvfRgxIhFsMy5D7"
+    ],
+    "productName": "92.5 Pure Silver Rose Gold Designer Belt Band Bracelet for Men | Premium CZ Stone Bracelet",
+    "infoPiece": "Bands/IMG_20260627_185446239",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.974Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_08": {
+    "productIds": [
+      "LfEAOw721KohPVJCjXR6"
+    ],
+    "productName": "92.5 Pure Sterling Silver Black Stone Belt Bracelet for Men",
+    "infoPiece": "Bands/IMG_20260627_182111777",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.974Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_12": {
+    "productIds": [
+      "gFbByc3HdKM6z15Dh65H"
+    ],
+    "productName": "92.5 Pure Silver Diamond-Cut Designer Belt Band Bracelet with Gold Accents",
+    "infoPiece": "Bands/IMG_20260627_185319631",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:16:50.974Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_06": {
+    "none": true,
+    "deferred": false,
+    "decidedAt": "2026-09-17T16:16:50.974Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_07": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:16:50.974Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_11": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:16:50.974Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_13": {
+    "productIds": [
+      "LFuzY6Y41DHMhYnVugKj"
+    ],
+    "productName": "92.5 Pure Sterling Silver Premium Belt Bracelet with Sparkling CZ Stones for Men",
+    "infoPiece": null,
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:55.115Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_16": {
+    "productIds": [
+      "Bww3yPesX2lJShSvlnyw"
+    ],
+    "productName": "92.5 Sterling Silver Multi-Tone Luxury Link Bracelet with Stone Accents",
+    "infoPiece": null,
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:54.932Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_18": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:16:50.974Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_21": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:16:50.974Z"
+  },
+  "ss/g bracelet/G_Bracelet_Product_27": {
+    "productIds": [
+      "vaiaBoJh5GxVmmKhIdK5"
+    ],
+    "productName": "92.5 Sterling Silver Multi-Tone Men's Link Bracelet",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:54.744Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_10": {
+    "productIds": [
+      "DuVcXcWsa9vIwe58KyuN"
+    ],
+    "productName": "92.5 Pure Silver LOVE Heart Charm Drop Chain Necklace",
+    "infoPiece": "chainss/IMG_20260627_173236753",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:17:37.126Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_21": {
+    "productIds": [
+      "MJMUhzQwyf8N7oNgLTAq"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Plated Multi-Charm Heart Necklace",
+    "infoPiece": "chainss/IMG_20260629_150537760",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:17:37.127Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_22": {
+    "productIds": [
+      "l5KAL7bfpsKrQCPlYNsn"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Plating Crown Multi-Charm Necklace",
+    "infoPiece": "chainss/IMG_20260629_150728528",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:17:37.127Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_23": {
+    "productIds": [
+      "XdOReUv9RuvHsrLSffrd"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Plating Crown Multi-Charm Necklace",
+    "infoPiece": "chainss/IMG_20260629_150842983",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:17:37.127Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_18": {
+    "productIds": [
+      "cqpYgzpkPxCR579DZTX2"
+    ],
+    "productName": "92.5 Pure Sterling Silver Rose Gold Pendant Charm Chain with Matching Earrings",
+    "infoPiece": "chainss/IMG_20260627_181237940",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:17:37.127Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_04": {
+    "productIds": [
+      "r61se06vMvKvqeB8pRUY"
+    ],
+    "productName": "92.5 Sterling Silver Rose Gold Plated White Enamel Flower Bracelet",
+    "infoPiece": "chainss/IMG_20260629_151038859",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:27.046Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_06_92.5 Pure Sterling Silver Rose Gold Plated Romantic Promise Pendant Chain with Premium CZ": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:17:37.127Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_11": {
+    "productIds": [
+      "CmOfSGyhecKVxLiCtr2u"
+    ],
+    "productName": "92.5 Pure Silver Heartbeat Heart Charm Chain Necklace",
+    "infoPiece": "chainss/IMG_20260627_173032912",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:27.044Z"
+  },
+  "ss/charm chains/Charm_Chain_Product_17": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:17:37.128Z"
+  },
+  "ss/g chains/G_Chain_Product_17_Classic Heavy Rounded Textured Box 92.5 Pure Silver Statement Chain": {
+    "productIds": [
+      "vooOJomOih2rDNPrlh0q"
+    ],
+    "productName": "Classic Heavy Rounded Textured Box 92.5 Pure Silver Statement Chain",
+    "infoPiece": "chainss/IMG_20260627_123811050",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:18:09.951Z"
+  },
+  "ss/g chains/G_Chain_Product_18_92.5 Pure Sterling Silver Gold-Plated Traditional Mugappu Neck Chain": {
+    "productIds": [
+      "ECW8SpEWNEOcBqK2Fmmk"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Traditional Mugappu Neck Chain for Women",
+    "infoPiece": "chainss/IMG_20260627_123924116",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:18:09.952Z"
+  },
+  "ss/g chains/G_Chain_Product_06": {
+    "productIds": [
+      "4dbdqWxXngDAJUSYVJ2j"
+    ],
+    "productName": "Dual-Tone Textured Rice-Grain Weave 92.5 Sterling Silver Luxury Chain",
+    "infoPiece": "chainss/IMG_20260627_123156727",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:18:09.952Z"
+  },
+  "ss/g chains/G_Chain_Product_16": {
+    "productIds": [
+      "zKIX3lcU9CFM6k3FZqKN"
+    ],
+    "productName": "Classic Heavy Four-Sided Chevron 92.5 Pure Silver Statement Chain",
+    "infoPiece": "chainss/IMG_20260627_124133886",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:18:09.952Z"
+  },
+  "ss/g chains/G_Chain_Product_07_Shimmering Faceted Micro-Bead 92.5 Pure Silver Unisex Neck Chain": {
+    "productIds": [
+      "zMUdLOdJrTApXWNDSMRf"
+    ],
+    "productName": "92.5 Pure Sterling Silver Precision Diamond-Cut Neck Chain with Premium Rhodium Finish",
+    "infoPiece": "chainss/IMG_20260627_121324324",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:20.708Z"
+  },
+  "ss/g chains/G_Chain_Product_08_92.5 Pure Sterling Silver Woven Rope Chain with Interspersed Accent Beads and Rhodium Finish": {
+    "productIds": [
+      "DgAejGOb5quqCQ7VRqWa"
+    ],
+    "productName": "92.5 Pure Sterling Silver Precision Diamond-Cut Neck Chain with Premium Rhodium Finish",
+    "infoPiece": "chainss/IMG_20260627_120943251",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:20.710Z"
+  },
+  "ss/g chains/G_Chain_Product_13": {
+    "productIds": [
+      "3yYwF9Wqc7HXPlEw3MZ9"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Designer Link Chain with Precision Star Cutouts",
+    "infoPiece": "chainss/IMG_20260627_123622963 (1)",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:20.710Z"
+  },
+  "ss/g chains/G_Chain_Product_19_Shimmering Liquid-Gold Sari Chain with Ruby and CZ Peacock Side-Brooch": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:18:09.952Z"
+  },
+  "ss/g chains/G_Chain_Product_20": {
+    "productIds": [
+      "PuXqbnSXU5DLLYIdsOSf"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Designer Link Chain with Fine Filigree Detailing",
+    "infoPiece": "chainss/IMG_20260627_123339091",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:20.710Z"
+  },
+  "ss/g chains/G_Chain_Product_21_High-Finish Woven Foxtail Franco 92.5 Sterling Silver Luxury Chain": {
+    "productIds": [
+      "GNa71Sgl4UdlbYRz5PjN"
+    ],
+    "productName": "92.5 Pure Silver Premium Braided Charm Chain Necklace for Women",
+    "infoPiece": "chainss/IMG_20260627_180941880",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:20.710Z"
+  },
+  "ss/g chains/G_Chain_Product_22": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:18:09.953Z"
+  },
+  "ss/beads mala/Beads_Mala_Product_04_Grand Layered Pearl Mala with Antique Gold-Plated Silver Spacer Beads Variant": {
+    "productIds": [
+      "icevyox1GaqLzg8sBduV"
+    ],
+    "productName": "Grand Layered Pearl Mala with Antique Gold-Plated Silver Spacer Beads",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:18:28.283Z"
+  },
+  "ss/anklets/Anklet_Product_01": {
+    "productIds": [
+      "Rz5kpbGZ7ZOkH0W8I3WE"
+    ],
+    "productName": "Sterling Silver 92.5 Sparkling Green Charm Anklets – Pair",
+    "infoPiece": "pattilu/IMG_20260701_112208169",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.494Z"
+  },
+  "ss/anklets/Anklet_Product_02": {
+    "productIds": [
+      "5AFhm1l29MNQzVoQjYYH"
+    ],
+    "productName": "92.5 Pure Silver Sparkling Eye Charm Anklets with Dual-Tone Rose Gold Polish",
+    "infoPiece": "pattilu/IMG_20260701_112416935 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.495Z"
+  },
+  "ss/anklets/Anklet_Product_03": {
+    "productIds": [
+      "uDkZ573MbEXIjzXN4sfR",
+      "1VmWsViQVZNo6CSFzPwK"
+    ],
+    "productName": "92.5 Pure Silver Delicate Chain Anklets with Faceted Accent Beads",
+    "infoPiece": "pattilu/IMG_20260701_112529308",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.495Z"
+  },
+  "ss/anklets/Anklet_Product_06": {
+    "productIds": [
+      "sKdoluPcKHKITkhgYDkr",
+      "YwxhLXlfUTScN98z1e3P"
+    ],
+    "productName": "92.5 pure Sterling Silver Textured Rope-Style Payal with Minimalist Star Charms",
+    "infoPiece": "pattilu/IMG_20260701_113103869",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.495Z"
+  },
+  "ss/anklets/Anklet_Product_08": {
+    "productIds": [
+      "7yyvYr9wlYrTw6A4dPCc"
+    ],
+    "productName": "Royal Pavé CZ Silver Anklets with Rose Pink Teardrop Drops (92.5 Pure Silver)",
+    "infoPiece": "pattilu/IMG_20260701_113516778",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.495Z"
+  },
+  "ss/anklets/Anklet_Product_09": {
+    "productIds": [
+      "CWqIoVc4ivxDXYo4WflH"
+    ],
+    "productName": "92.5 Pure Silver Antique-Inspired Filigree Bead Payal Anklets Pair",
+    "infoPiece": "pattilu/IMG_20260701_113625267",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.495Z"
+  },
+  "ss/anklets/Anklet_Product_10": {
+    "productIds": [
+      "FOuj1UjqYcoHR6fTkmI4"
+    ],
+    "productName": "92.5 Pure Silver Cobalt Blue Evil Eye Station Chain Charms – Pair with Adjustable Slider",
+    "infoPiece": "pattilu/IMG_20260701_113719144",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.495Z"
+  },
+  "ss/anklets/Anklet_Product_11": {
+    "productIds": [
+      "O7h2ag4UYAUi00ieUU6k"
+    ],
+    "productName": "92.5 Pure Sterling Silver Shimmering Infinity Payal Pair with Micro-Set Accents",
+    "infoPiece": "pattilu/IMG_20260701_114221248",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.495Z"
+  },
+  "ss/anklets/Anklet_Product_12": {
+    "productIds": [
+      "HvqWbQ6tHQcB8DJfIslj"
+    ],
+    "productName": "Whimsical Multi-Strand Silver Anklet Pair with Heart and Butterfly Charms",
+    "infoPiece": "pattilu/IMG_20260701_114437171",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.495Z"
+  },
+  "ss/anklets/Anklet_Product_15": {
+    "productIds": [
+      "xUZyuslLRvO2fijko226"
+    ],
+    "productName": "92.5 Pure Sterling Silver Geometric Clover Payal Pair with Elegant Rose Gold Polish",
+    "infoPiece": "pattilu/IMG_20260701_114654125",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_18": {
+    "productIds": [
+      "BN0DKWQauTsVhZPpM5er"
+    ],
+    "productName": "Luxurious Sterling Silver Snake-Chain Anklets with CZ Encircled Gemstone Stations",
+    "infoPiece": "pattilu/IMG_20260701_115930369",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_19": {
+    "productIds": [
+      "N75t6fgSXGE6nH7o3wWr"
+    ],
+    "productName": "Minimalist Sterling Silver Station Anklets featuring Textured Tubes & Paisley Drops",
+    "infoPiece": "pattilu/IMG_20260701_120513776",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_20": {
+    "productIds": [
+      "8wt09sWx17ZaTHveDLgW"
+    ],
+    "productName": "92.5 Pure Sterling Silver Shimmering CZ Bridal Payal Pair with Pink Accents",
+    "infoPiece": "pattilu/IMG_20260701_120647025",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_21": {
+    "productIds": [
+      "nDQMdOOvunUnPB9rVZgL"
+    ],
+    "productName": "Shimmering Heart Cluster Rose Gold Silver Anklets (92.5 Pure Silver)",
+    "infoPiece": "pattilu/IMG_20260701_122256846",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_22": {
+    "productIds": [
+      "6x8Zbj3Atrw8qCG0aV3y"
+    ],
+    "productName": "92.5 Pure Sterling Silver Solitaire Square Crystal Payal Pair with Heart Drops",
+    "infoPiece": "pattilu/IMG_20260701_122510146",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_23": {
+    "productIds": [
+      "4ZHMsiwMjbxFE14KPBFg"
+    ],
+    "productName": "92.5 Pure Sterling Silver Multi-Shape Station Payal Pair",
+    "infoPiece": "pattilu/IMG_20260701_122750791",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_31": {
+    "productIds": [
+      "s3P79Aifbg2aetHkrAp4"
+    ],
+    "productName": "Premium 92.5 Pure Silver Dainty Rose Gold Box Chain Teardrop Anklet Set",
+    "infoPiece": "pattilu/IMG_20260701_175519639",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_32": {
+    "productIds": [
+      "0FEOGIqJewTD6b0rO70V"
+    ],
+    "productName": "Premium 92.5 Pure Silver Dainty Rose Gold Box Chain Charm Anklet Set",
+    "infoPiece": "pattilu/IMG_20260701_175739182",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_33": {
+    "productIds": [
+      "3Efsaju7YJCF0m7FPQ0B"
+    ],
+    "productName": "Premium 92.5 Pure Silver Dainty Clover & Ball Chain Anklet",
+    "infoPiece": "pattilu/IMG_20260701_180032888",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_34": {
+    "productIds": [
+      "0sLwDZ4rdAxw4XRQRxBM"
+    ],
+    "productName": "Premium 92.5 Pure Silver Traditional Stone-Studded Bridal Anklets",
+    "infoPiece": "pattilu/IMG_20260701_180246856",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_05": {
+    "productIds": [
+      "QRyfXuwwdZsDKWum6NBp"
+    ],
+    "productName": "92.5 Pure Silver Vibrant Heart Drop Payal Pair with Pink & Green Accents",
+    "infoPiece": "pattilu/IMG_20260701_112734636",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_13": {
+    "productIds": [
+      "7Eok62JuO2CWwU1nYf7Y"
+    ],
+    "productName": "92.5 Pure Sterling Silver Mixed Motif Payal Pair featuring Butterfly, Floral, & Leaf Beads",
+    "infoPiece": "pattilu/IMG_20260701_115716032",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_24": {
+    "productIds": [
+      "iZQfs3N1IkG71vOclT7E"
+    ],
+    "productName": "Two-Tone Rose Gold polish 92.5 Pure Sterling Silver Geometric Clover & Disc Payal Pair",
+    "infoPiece": "pattilu/IMG_20260701_123341376",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_29": {
+    "productIds": [
+      "ReOwSODXeWljcR4WvzAV"
+    ],
+    "productName": "Premium 92.5 Pure Silver Rose Gold Plated Box Chain Anklets Set",
+    "infoPiece": "pattilu/IMG_20260701_173534735",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_30": {
+    "productIds": [
+      "RdDPMHEYWexhCAmPCc0x"
+    ],
+    "productName": "Premium 92.5 Pure Silver Dainty Geometric Charm Anklet Set",
+    "infoPiece": "pattilu/IMG_20260701_174907233",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_35": {
+    "productIds": [
+      "lWWZyhJkt0m7JvnszGUU"
+    ],
+    "productName": "Premium 92.5 Pure Silver Dainty Patterned Bead Anklet Set",
+    "infoPiece": "pattilu/IMG_20260701_180434584",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_36": {
+    "productIds": [
+      "LymSDftWflj1CHEfQ395"
+    ],
+    "productName": "Premium 92.5 Pure Silver Dainty Charm Anklet Set",
+    "infoPiece": "pattilu/IMG_20260701_180805643",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_37": {
+    "productIds": [
+      "7TWRHh28pAbHUHAGqLL8"
+    ],
+    "productName": "Premium 92.5 Pure Silver Dainty Abstract Statement Anklet Set",
+    "infoPiece": "pattilu/IMG_20260701_181019669",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_04": {
+    "productIds": [
+      "3DXUzTZhnqOkZ8PT9xBi"
+    ],
+    "productName": "Authentic 92.5 Pure Silver Traditional Layered Step Anklets Set",
+    "infoPiece": "pattilu/IMG_20260701_174024318",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:09.879Z"
+  },
+  "ss/anklets/Anklet_Product_07": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_14": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_16": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_17": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_25": {
+    "productIds": [
+      "pP87FoSAC2cdh6jnOhgR"
+    ],
+    "productName": "92.5 Pure Sterling Silver Contemporary Textured Bead Payal Pair",
+    "infoPiece": "pattilu/IMG_20260701_115208658",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:09.879Z"
+  },
+  "ss/anklets/Anklet_Product_26": {
+    "productIds": [
+      "gHjG5OmjEK7aWiGKFCxE"
+    ],
+    "productName": "Sree Rastu Silvers 92.5 Pure Silver Floral CZ Payal / Bridal Anklets",
+    "infoPiece": "pattilu/IMG_20260701_123444858",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:09.877Z"
+  },
+  "ss/anklets/Anklet_Product_27": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "ss/anklets/Anklet_Product_28": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:19:41.496Z"
+  },
+  "mangalsutra/Mangalsutra_003_GaneshPendantRuby": {
+    "productIds": [
+      "TcUuYXaXDYBBfOIdvqQH"
+    ],
+    "productName": "Divine Goddess Lakshmi Temple Pendant 92.5 Sterling Silver Gold-Polished Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260627_112001950",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.313Z"
+  },
+  "mangalsutra/Mangalsutra_007": {
+    "productIds": [
+      "YZXPK5xJgFkg9YJ33VaQ"
+    ],
+    "productName": "Shimmering Twin-Heart \"Love\" Black Beads 92.5 Pure Silver Necklace",
+    "infoPiece": "black beeds/IMG_20260627_112210447",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.314Z"
+  },
+  "mangalsutra/Mangalsutra_008_TraditionalSet": {
+    "productIds": [
+      "aBnyNUC2CSqUs4X6Ir05"
+    ],
+    "productName": "Shimmering Heart & Oval Crystal Black Beads 92.5 Pure Silver",
+    "infoPiece": "black beeds/IMG_20260627_112317994 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.314Z"
+  },
+  "mangalsutra/Mangalsutra_009": {
+    "productIds": [
+      "HzfVB64a3Q2AT8jGpXCB"
+    ],
+    "productName": "Enchanted Butterfly Multi-Color 92.5 Sterling Silver Gold-Polished Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260627_112434061",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.314Z"
+  },
+  "mangalsutra/Mangalsutra_010_TraditionalSet": {
+    "productIds": [
+      "Bd6kJQ1vXAlWv1yacX5j"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Mangalsutra Chain with Open Rectangular Pendant and Pearls",
+    "infoPiece": "black beeds/IMG_20260627_112514733",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.314Z"
+  },
+  "mangalsutra/Mangalsutra_012": {
+    "productIds": [
+      "EFuS0pPi2I0zbEFsH4tS"
+    ],
+    "productName": "Antique Lakshmi Motif Double Layer Black Beads 92.5 Pure Silver Festive Necklace",
+    "infoPiece": "black beeds/IMG_20260627_112731663",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.314Z"
+  },
+  "mangalsutra/Mangalsutra_013": {
+    "productIds": [
+      "BVKgmyoI1CPR7N50kjmc"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Mangalsutra with Three-Stone Heart Pendant",
+    "infoPiece": "black beeds/IMG_20260627_113042633",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.314Z"
+  },
+  "mangalsutra/Mangalsutra_015": {
+    "productIds": [
+      "YBMU0YaGciIn2Lrm1tGV"
+    ],
+    "productName": "Enchanted Nature Twin-Bird Black Beads 92.5 Pure Silver Gold-polish Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260627_114532096",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.314Z"
+  },
+  "mangalsutra/Mangalsutra_019_StarburstPendantMangalsutra": {
+    "productIds": [
+      "y1YvTxt75X4h1Mkz7XAS"
+    ],
+    "productName": "Sunburst CZ Floral Pendant 92.5 Sterling Silver Gold-polish Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260627_113634897",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.314Z"
+  },
+  "mangalsutra/Mangalsutra_022": {
+    "productIds": [
+      "3NVWnLnaeDVIa3dZzo95"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Mangalsutra Set with Pink Teardrop Stone Pendant and Earrings",
+    "infoPiece": "black beeds/IMG_20260627_114040412 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_023": {
+    "productIds": [
+      "0ef5NCQqQtmQaiDuSgLD"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Fringe Mangalsutra with Hanging Yellow Stones",
+    "infoPiece": "black beeds/IMG_20260627_114353431",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_026": {
+    "productIds": [
+      "lJz14FgSLnMPenDcv3St"
+    ],
+    "productName": "Shimmering Pear-Cut Double Layer Black Beads 92.5 Pure Silver mangalsutra",
+    "infoPiece": "black beeds/IMG_20260627_114704591",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_028": {
+    "productIds": [
+      "IiN9SB56JxUgjNQBdQDs"
+    ],
+    "productName": "Shimmering Crown & Hoop Double-Circle Black Beads 92.5 Pure Silver Gold-Polished Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260627_114816416",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_030_BeadedMangalsutra": {
+    "productIds": [
+      "QCVmch87oC0eQn8jDvzK"
+    ],
+    "productName": "92.5 Pure Sterling Silver Mangalsutra Chain with White Crystal Bar Pendant",
+    "infoPiece": "black beeds/IMG_20260627_114947517",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_001": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_002": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_004": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_005": {
+    "productIds": [
+      "OLSxc7UvWlTsV2GGtRZR"
+    ],
+    "productName": "92.5 Pure Silver Black Beads Mangalsutra for Women | Traditional Gold Finish Designer",
+    "infoPiece": null,
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:36:29.765Z"
+  },
+  "mangalsutra/Mangalsutra_006_LuxuryMangalsutra": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_011": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_014": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_018": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_021": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_024": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_025": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_027": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_029": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:20:48.315Z"
+  },
+  "mangalsutra/Mangalsutra_031": {
+    "productIds": [
+      "1Yn0HB9VuvQ4MEKm08tc"
+    ],
+    "productName": "Shimmering Pear-Cut Charm Black Beads 92.5 Pure Silver gold polish Festive Necklace",
+    "infoPiece": "black beeds/IMG_20260627_113859378",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:36:29.382Z"
+  },
+  "mangalsutra/Mangalsutra_035": {
+    "productIds": [
+      "HWvsqUm4CL2huKnLYI2Y"
+    ],
+    "productName": "Vibrant Coral-Red Oval Garland 92.5 Sterling Silver Gold-Polished Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260627_115246091 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.738Z"
+  },
+  "mangalsutra/Mangalsutra_037": {
+    "productIds": [
+      "mTgFQYHHE9t0kKX9UT5p",
+      "mCObLrDwpur7V9tdhasa"
+    ],
+    "productName": "Shimmering Graduating Silver Globes Black Beads 92.5 Pure Silver",
+    "infoPiece": "black beeds/IMG_20260627_115336294",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.739Z"
+  },
+  "mangalsutra/Mangalsutra_038": {
+    "productIds": [
+      "JeziUPRJMRxgtBr7rXvW"
+    ],
+    "productName": "shimmering Double-Strand Crystal Teardrop 92.5 Pure Silver Multi-Layer mangalsutra",
+    "infoPiece": "black beeds/IMG_20260627_115502873",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.739Z"
+  },
+  "mangalsutra/Mangalsutra_040_BlackBeadedNecklace": {
+    "productIds": [
+      "1qGkTTHhlZtpBolAZg9U"
+    ],
+    "productName": "92.5 Pure Silver Black Beads Mangalsutra Chain with CZ Diamond Pendant for Women",
+    "infoPiece": "black beeds/IMG_20260630_192720688",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_047": {
+    "productIds": [
+      "JT3f22fceCc8fe4TlcXd"
+    ],
+    "productName": "92.5 Pure Silver Designer Black Beads Mangalsutra Necklace with Heart Pendant for Women",
+    "infoPiece": "black beeds/IMG_20260630_193011718",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_051": {
+    "productIds": [
+      "iVm33dIUxxEQt7zd4fOi"
+    ],
+    "productName": "92.5 Pure Silver Rose Gold Tree of Life Black Beads Mangalsutra Set with Matching Earrings",
+    "infoPiece": "black beeds/IMG_20260630_193254021",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_053_RoseGoldHexagonSet": {
+    "productIds": [
+      "nurrv46585aDnhVo956Y"
+    ],
+    "productName": "92.5 Pure Silver Rose Gold Black Beads Mangalsutra Set with Geometric Pendant & Matching Earrings",
+    "infoPiece": "black beeds/IMG_20260630_193648126",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_054": {
+    "productIds": [
+      "T1pmgVy9iAsdaQZqvMnT"
+    ],
+    "productName": "92.5 Pure Silver Rose Gold Black Beads Mangalsutra Set with Floral CZ Pendant & Matching Earrings",
+    "infoPiece": "black beeds/IMG_20260630_194232497",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_056_SilverPaveBarMangalsutra": {
+    "productIds": [
+      "nkLosPWX0VS6lqZJ9TGt"
+    ],
+    "productName": "92.5 Pure Silver Black Beads Mangalsutra Necklace for Women | Crescent Moon CZ Designer Daily Wear Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260630_194554896",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_033": {
+    "productIds": [
+      "KYRfOFCupRf6iSHKBBPy"
+    ],
+    "productName": "92.5 Pure Sterling Silver Gold-Plated Mangalsutra with Curved Crystal Circle Pendant",
+    "infoPiece": "black beeds/IMG_20260627_115139298",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_044": {
+    "productIds": [
+      "ZNqeJybHKFYfGWCJTOff"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Mangalsutra Necklace with Textured Metal Beads",
+    "infoPiece": "black beeds/IMG_20260627_113422626",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_055": {
+    "productIds": [
+      "IMtSbRKG4E5FtPiqT1to"
+    ],
+    "productName": "92.5 Pure Silver Black Beads Mangalsutra Necklace for Women | Elegant CZ Designer Daily Wear Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260630_194406928",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_032_TraditionalSet": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_034": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_036": {
+    "productIds": [
+      "t1BRbgyTmjWjd21Z8ONM"
+    ],
+    "productName": "92.5 Pure Silver Black Beads Mangalsutra for Women | Gold Finish Pearl Bead Designer Daily Wear Mangalsutra",
+    "infoPiece": null,
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:36:29.575Z"
+  },
+  "mangalsutra/Mangalsutra_039_BlackBeadedNecklace": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_041": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_042": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_043": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_045": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_046_SilverLayeredBeadMangalsutra": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_048": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.740Z"
+  },
+  "mangalsutra/Mangalsutra_049": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.741Z"
+  },
+  "mangalsutra/Mangalsutra_050": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.741Z"
+  },
+  "mangalsutra/Mangalsutra_052": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.741Z"
+  },
+  "mangalsutra/Mangalsutra_057": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.741Z"
+  },
+  "mangalsutra/Mangalsutra_058_BridalSet": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.741Z"
+  },
+  "mangalsutra/Mangalsutra_059_TraditionalSet": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:16.741Z"
+  },
+  "mangalsutra/Mangalsutra_060": {
+    "productIds": [
+      "IzyFSTXhz8gCopP8YpZQ"
+    ],
+    "productName": "92.5 Pure Silver Black Beads Mangalsutra Necklace for Women | Ruby Drop Gold Finish Designer Mangalsutra",
+    "infoPiece": "black beeds/IMG_20260630_194710755",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:32.081Z"
+  },
+  "mangalsutra/Mangalsutra_066": {
+    "productIds": [
+      "GOJZ0efviRa8OQrZPAco"
+    ],
+    "productName": "92.5 Pure Silver Black Beads Mangalsutra Set with Floral Enamel Pendant & Matching Earrings | Gold Polish",
+    "infoPiece": "black beeds/IMG_20260630_195434860",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:21:32.083Z"
+  },
+  "mangalsutra/Mangalsutra_061_FestiveSet": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:32.083Z"
+  },
+  "mangalsutra/Mangalsutra_062": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:32.083Z"
+  },
+  "mangalsutra/Mangalsutra_063": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:32.083Z"
+  },
+  "mangalsutra/Mangalsutra_064": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:32.083Z"
+  },
+  "mangalsutra/Mangalsutra_065": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:21:32.083Z"
+  },
+  "temple necklaces/Necklace_005": {
+    "productIds": [
+      "n6krItlBEGMt7dDP2Gd3"
+    ],
+    "productName": "Divine Lakshmi CZ Silver gold polish Necklace with Emerald Green Beads",
+    "infoPiece": "Temple Necklace/IMG_20260618_194016659 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.575Z"
+  },
+  "temple necklaces/Necklace_016": {
+    "productIds": [
+      "sWxBdMEyqRGHCZkjFbZj"
+    ],
+    "productName": "Divine Murali Krishna CZ Studded Silver Long Festive Chain",
+    "infoPiece": "Temple Necklace/IMG_20260619_115347346",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_019": {
+    "productIds": [
+      "HddtJhrnmyyZysTzZwh2"
+    ],
+    "productName": "Royal Mayura Motif CZ Studded Long Festive Silver nacklace",
+    "infoPiece": "Temple Necklace/IMG_20260619_165319901",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_020": {
+    "productIds": [
+      "q8OqgbJP0lHaJCyqRMHw"
+    ],
+    "productName": "Elegant Gold-Polished Silver Twin-Strand Ruby Step Necklace",
+    "infoPiece": "Temple Necklace/IMG_20260619_173137969",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_015_GreenEnamelLakshmiPendant": {
+    "productIds": [
+      "vgNY08FjhfO5Cqpidq1h"
+    ],
+    "productName": "Royal Goddess Lakshmi Motif Antique Silver Festive Necklace",
+    "infoPiece": "Temple Necklace/IMG_20260619_114123706",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_033": {
+    "productIds": [
+      "mbl2n1SDRqWagokhKQch"
+    ],
+    "productName": "Electroforming light weight Royal Lakshmi Motif Silver Kante",
+    "infoPiece": "Temple Necklace/IMG_20260618_183446186",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_011": {
+    "productIds": [
+      "KzLfSTvE4lg3Xfa9tkG9"
+    ],
+    "productName": "Royal Peacock Antique Necklace in 92.5 Sterling Silver with Gold Polish",
+    "infoPiece": "Temple Necklace/IMG_20260618_183718987",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_017_PaveePaisleyClusterLakshmi": {
+    "productIds": [
+      "q84hGPsOcFp7OUuMZSMf"
+    ],
+    "productName": "Heritage Gold-Polished Silver Peacock Pendant Choker in Ruby & Emerald",
+    "infoPiece": "Temple Necklace/IMG_20260619_123458124",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_022": {
+    "productIds": [
+      "bG54gAkPJjkdTFIdEQEX"
+    ],
+    "productName": "Floral CZ Medallion Silver Gold Polish Necklace",
+    "infoPiece": "Temple Necklace/IMG_20260618_195649107",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_027_SimpleMangoDropNecklace": {
+    "productIds": [
+      "FQsXfaIBQqNNnEPAKRSR"
+    ],
+    "productName": "Divine Grace in 92.5 Pure Silver Temple Jewelry",
+    "infoPiece": "Temple Necklace/IMG_20260618_184220314",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_001_RealPhotoLakshmiFaceRubyDrops": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_003": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_010": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_013": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_014_ShellPaisleyCZTeardrop": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_021": {
+    "productIds": [
+      "MZS2I1MB8I3l5Td4Mn0i"
+    ],
+    "productName": "Gold-Polished Silver Grand Antique Nakshi Lakshmi Temple Necklace with Ruby Beads",
+    "infoPiece": "Temple Necklace/IMG_20260622_182258854",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:29.066Z"
+  },
+  "temple necklaces/Necklace_023": {
+    "productIds": [
+      "Bwe8D9g1CYGwTet5kZPE"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Peacock & CZ Floral Rosette Temple Necklace with Coral Drop.",
+    "infoPiece": "Temple Necklace/IMG_20260622_182654427",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:29.066Z"
+  },
+  "temple necklaces/Necklace_025": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_026_RubyEmeraldMangoLeafNecklace": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_028_FloralMedallionEmeraldTeardropLakshmi": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_029": {
+    "productIds": [
+      "VJdg2WvPMv69ELTHwPyH"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Seated Lakshmi Pendant Necklace with CZ Emerald Rosettes.",
+    "infoPiece": "Temple Necklace/IMG_20260622_185454560",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:29.066Z"
+  },
+  "temple necklaces/Necklace_030": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_031": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_032": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.577Z"
+  },
+  "temple necklaces/Necklace_034": {
+    "productIds": [
+      "F6ChA7RgrGEJ5cw5a4eZ"
+    ],
+    "productName": "Gold-Polished Silver Grand Antique Nakshi Peacock Necklace",
+    "infoPiece": "Temple Necklace/IMG_20260622_190000892",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:29.066Z"
+  },
+  "temple necklaces/Necklace_035": {
+    "productIds": [
+      "mVqLHwWte5gnSnQ9O9FE"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Ram Parivar & Lakshmi Kasu necklace",
+    "infoPiece": "Temple Necklace/IMG_20260622_185740281",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:29.064Z"
+  },
+  "temple necklaces/Necklace_036": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.578Z"
+  },
+  "temple necklaces/Necklace_037": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:22:21.578Z"
+  },
+  "temple necklaces/Necklace_043_Grand Handcrafted Goddess Lakshmi Kasu Mala Sterling Silver Long Necklace": {
+    "productIds": [
+      "A7SQmdIJnBjPmPvBugV5"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Lakshmi Kasulaperu Haram for Bridal Layering",
+    "infoPiece": "Temple Haram/IMG_20260622_114544419",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.255Z"
+  },
+  "temple necklaces/Necklace_045_PeacockKrishnaPendant": {
+    "productIds": [
+      "x6f5IcFOXVcCjGmg5aYs"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Murali Krishna Temple Long Haram",
+    "infoPiece": "Temple Haram/IMG_20260622_115200174",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.257Z"
+  },
+  "temple necklaces/Necklace_046_FloralLakshmiPendantPearlFringe": {
+    "productIds": [
+      "2a3UpNnkU0K24fbIIIiu"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Nakshi Lakshmi Floral Haram with Pearl & Emerald Drops",
+    "infoPiece": "Temple Haram/IMG_20260622_115458197",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.257Z"
+  },
+  "temple necklaces/Necklace_047": {
+    "productIds": [
+      "odHKJs8B1tTj7CjBJfV7"
+    ],
+    "productName": "92.5 Pure Silver Gold Polish Haram Divine Lord Venkateshwara Gold Plated Haram",
+    "infoPiece": "Temple Haram/IMG_20260622_115657967",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.257Z"
+  },
+  "temple necklaces/Necklace_044_SwirlCoinRubyDots": {
+    "productIds": [
+      "7qKhdnqPCuLjUPYzTXYf"
+    ],
+    "productName": "Grand Imperial gold polish Peacock Nakshi Kasu Long haram for Bridal Layering",
+    "infoPiece": "Temple Haram/IMG_20260622_114759905",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.257Z"
+  },
+  "temple necklaces/Necklace_041": {
+    "productIds": [
+      "haMoyE7pWMAJjZsBfzFo"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Nakshi Lakshmi Temple Haram",
+    "infoPiece": "Temple Haram/IMG_20260622_113717240",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.257Z"
+  },
+  "temple necklaces/Necklace_048": {
+    "productIds": [
+      "TNdd22vwStKO3XwbUnt2"
+    ],
+    "productName": "Grand sliver gold polish Continuous Rosette Link Lakshmi Haram with Pearl & Emerald Beads",
+    "infoPiece": "Temple Haram/IMG_20260622_115846307",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.257Z"
+  },
+  "temple necklaces/Necklace_049": {
+    "productIds": [
+      "7MnDj1phfy8RCaW2pe1S"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Nakshi Seated Lakshmi Haram with Ruby Wheel Accents",
+    "infoPiece": "Temple Haram/IMG_20260622_171427783",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.257Z"
+  },
+  "temple necklaces/Necklace_039_ParrotsPaveLakshmiPendant": {
+    "productIds": [
+      "t0opBnC7hqELFnUKJFTj"
+    ],
+    "productName": "Divine Lakshmi Circular Motif CZ Silver Kante Necklace",
+    "infoPiece": "Temple Necklace/IMG_20260619_182622111",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.257Z"
+  },
+  "temple necklaces/Necklace_038": {
+    "productIds": [
+      "O0170E5X1rYO4rvnmFEx"
+    ],
+    "productName": "Royal Antique Silver Gold Polish Kemp Studded Bud Motif Necklace",
+    "infoPiece": "Temple Necklace/IMG_20260622_185338677",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.258Z"
+  },
+  "temple necklaces/Necklace_051": {
+    "productIds": [
+      "fVstODuth5SzdQz7KX8O"
+    ],
+    "productName": "Silver Gold Polish Grand Peacock Emblem Temple Choker with Ghungroo Drops",
+    "infoPiece": "Temple Necklace/IMG_20260622_185626693",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.258Z"
+  },
+  "temple necklaces/Necklace_050": {
+    "productIds": [
+      "ftQTppP9CuJpfkWkX3Zd"
+    ],
+    "productName": "Grand Divine Lakshmi Ghungroo Drop Silver Gold-Plated Long Haram",
+    "infoPiece": "Temple Haram/IMG_20260622_172157257",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:35:29.066Z"
+  },
+  "temple necklaces/Necklace_052": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:23:02.258Z"
+  },
+  "temple necklaces/Necklace_053": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:23:02.258Z"
+  },
+  "temple necklaces/Necklace_042_LakshmiDeityFaceMedallion": {
+    "productIds": [
+      "Au8j7snxy8dWhJnAt85q"
+    ],
+    "productName": "Royal Goddess Lakshmi Medallion Antique Silver Bridal Necklace",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:23:02.588Z"
+  },
+  "rose gold and fancy necklaces/Necklace_003": {
+    "productIds": [
+      "f2w4UuUe7jjM7tNd2cmc"
+    ],
+    "productName": "Contemporary Rose Pink Quartz Style CZ Silver Choker Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_120219749",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.673Z"
+  },
+  "rose gold and fancy necklaces/Necklace_005": {
+    "productIds": [
+      "7jZU6SRjOXduuLFWuHFk"
+    ],
+    "productName": "Elegant Diamond-Cut Cubic Zirconia Riviera Chain and Stud Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_172134296",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_006": {
+    "productIds": [
+      "QBMPy1D4yijLXXHAMfEN"
+    ],
+    "productName": "Shimmering Cubic Zirconia Double Step Necklace with Royal Blue Accents",
+    "infoPiece": "Temple Necklace/IMG_20260619_173411307",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_008": {
+    "productIds": [
+      "1KANAskVy4S7V71jk7hB"
+    ],
+    "productName": "Elite Rose Gold Silver Choker Set with Mint CZ Accents",
+    "infoPiece": "Temple Necklace/IMG_20260619_173904590",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_012": {
+    "productIds": [
+      "nCrQkcSwpwBAfq0Ia32B"
+    ],
+    "productName": "Elite Rose Gold Polish Marquise CZ Leafy Vine Necklace Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_174627777 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_021": {
+    "productIds": [
+      "fHOeI3cMenYG1xNJTNbo"
+    ],
+    "productName": "Shimmering White & Blue CZ Blossom Chain Festive Silver Necklace",
+    "infoPiece": "Temple Necklace/IMG_20260619_175130614",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_022": {
+    "productIds": [
+      "r4tJujI4Huj6idwPeVhS"
+    ],
+    "productName": "Elite Rose Gold Polish Matte & Magenta Textured Enamel Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_180044985",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_025": {
+    "productIds": [
+      "ssYmzQoAfGqOUVE3JGS1"
+    ],
+    "productName": "Enchanted Garden Multi-Color Rose & CZ Silver Necklace Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_181132045",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_009": {
+    "productIds": [
+      "suotL3qN0Ond52YygFIE"
+    ],
+    "productName": "Elegant Teardrop Halo CZ Rose Gold Polish Necklace Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_173949657",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_016": {
+    "productIds": [
+      "8PsJUSliGbW9aMqF1KR9"
+    ],
+    "productName": "Elegant Shell Flower Blossom Rose Gold Silver Choker Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_175638549",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_029": {
+    "none": true,
+    "deferred": true,
+    "note": "p49 fits Necklace_031 better",
+    "decidedAt": "2026-09-17T16:25:12.491Z"
+  },
+  "rose gold and fancy necklaces/Necklace_001": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_002": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_004": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_007": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_010": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_011": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_013": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.675Z"
+  },
+  "rose gold and fancy necklaces/Necklace_014": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_015": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_017": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_018": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_020": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_024_DiamondGold": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_026": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_027": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_028": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_030": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:24:16.676Z"
+  },
+  "rose gold and fancy necklaces/Necklace_046": {
+    "productIds": [
+      "PNWHzVtqgToHtoWEzxuA",
+      "InFRQZR0DaNXqaOV9W9p"
+    ],
+    "productName": "Radiant Floral Pendant Necklace Set in 92.5 Sterling Silver with Rose Gold Polish",
+    "infoPiece": "rose gold naklace/IMG_20260624_121124347",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.408Z"
+  },
+  "rose gold and fancy necklaces/Necklace_049": {
+    "productIds": [
+      "KEK5TFwVV5BzyfchxFgk"
+    ],
+    "productName": "Modern Enamel Disc Necklace Set in 92.5 Sterling Silver with Rose Gold Polish",
+    "infoPiece": "rose gold naklace/IMG_20260624_121629684",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.410Z"
+  },
+  "rose gold and fancy necklaces/Necklace_050": {
+    "productIds": [
+      "PUaMHtJz0dYoC3pxBIr7"
+    ],
+    "productName": "Floral Elegance Necklace Set in 92.5 Sterling Silver with Rose Gold Polish",
+    "infoPiece": "rose gold naklace/IMG_20260624_121844361",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.410Z"
+  },
+  "rose gold and fancy necklaces/Necklace_053": {
+    "productIds": [
+      "jRmJIgObLoJ1vsseQQeN"
+    ],
+    "productName": "Pastel Blossom Necklace Set in 92.5 Sterling Silver with Rose Gold Polish",
+    "infoPiece": "rose gold naklace/IMG_20260624_122206054",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.410Z"
+  },
+  "rose gold and fancy necklaces/Necklace_059": {
+    "productIds": [
+      "uhmaK3jurSkIexrHeNsF"
+    ],
+    "productName": "Gulabi Blossom 925 Silver Choker Set (Rose Gold Polish)",
+    "infoPiece": "rose gold naklace/IMG_20260624_155632446",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.410Z"
+  },
+  "rose gold and fancy necklaces/Necklace_062": {
+    "productIds": [
+      "3bbYANoEVRf5iLJkAb3c"
+    ],
+    "productName": "Enamelled Butterfly Dreams 925 Pure Silver Necklace & Earrings Set",
+    "infoPiece": "rose gold naklace/IMG_20260624_160114523",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.410Z"
+  },
+  "rose gold and fancy necklaces/Necklace_047_PurpleOrchidEnamelNecklace": {
+    "productIds": [
+      "KspTJgXyh1xcfwOZdvrz"
+    ],
+    "productName": "Blooming Petals Necklace Set in 92.5 Sterling Silver with Rose Gold Polish",
+    "infoPiece": "rose gold naklace/IMG_20260624_121246631 -",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_035": {
+    "productIds": [
+      "BwNa90YnPEvlImxwx1dL"
+    ],
+    "productName": "Whimsical Maroon Enamel Floral Vine Festive Rose Gold Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_184227673",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_036": {
+    "productIds": [
+      "9BJEJRalw0cjJZ9swQrR"
+    ],
+    "productName": "Avant-Garde Diamond-Cut White CZ Abstract Festive Silver Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_184419498",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_037": {
+    "productIds": [
+      "5y4Fp4ygvoKDDjT3gfET"
+    ],
+    "productName": "Elite Rose Gold Interlocking Infinity Scroll CZ Choker Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_184649162",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_038": {
+    "productIds": [
+      "ucm9FesWttTxwP54qn01"
+    ],
+    "productName": "Elite Rose Gold Silver Honeycomb Teardrop Pendant Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_184939291",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_031": {
+    "productIds": [
+      "6Njdaf8akhRu6DmADaxy"
+    ],
+    "productName": "Elegant Rose Pink Stone & Pearl Floral Vine Silver Haram Set",
+    "infoPiece": "Temple Necklace/IMG_20260619_182957452",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_042": {
+    "productIds": [
+      "RsltL9g012Zrq4vF6KVp",
+      "8GXI2xvwweUxKUN4DChc"
+    ],
+    "productName": "CZ Clover Silver neclace Set with Hanging Pearl Drops",
+    "infoPiece": "Temple Necklace/IMG_20260619_174906091",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_041": {
+    "productIds": [
+      "cASFGNfWZBsRxymgAleS"
+    ],
+    "productName": "Infinity Pearl Necklace Set in 92.5 Sterling Silver with Rose Gold Polish",
+    "infoPiece": "rose gold naklace/IMG_20260624_122002950",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_054": {
+    "none": true,
+    "deferred": true,
+    "note": "Double Teardrop Emerald Diamond Style fits Dia_Replica_Product_06",
+    "decidedAt": "2026-09-17T16:29:21.746Z"
+  },
+  "rose gold and fancy necklaces/Necklace_032": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_033": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_034": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_039": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_043": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_044": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_045": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_051": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_052": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_055": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_056": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_057": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_060": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:12.411Z"
+  },
+  "rose gold and fancy necklaces/Necklace_065": {
+    "productIds": [
+      "7MCvylrq7ojGG7JRA7js",
+      "hBFVcejFaXGoAc7YY7rW"
+    ],
+    "productName": "Flora Aura Rose Gold Plated Pure Silver Stud & Necklace Set",
+    "infoPiece": "rose gold naklace/IMG_20260624_160942425",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:31.419Z"
+  },
+  "rose gold and fancy necklaces/Necklace_066": {
+    "productIds": [
+      "k3nijNmo4xaF0JlLXmlt"
+    ],
+    "productName": "Pastel Flora Rose Gold Plated Pure Silver Choker & Earring Set",
+    "infoPiece": "rose gold naklace/IMG_20260624_161150389",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:31.420Z"
+  },
+  "rose gold and fancy necklaces/Necklace_067_RoseGold": {
+    "productIds": [
+      "cqkxiUmk2ovDB0cWBB46"
+    ],
+    "productName": "Eternal Radiance – 92.5 Sterling Silver Rose Gold Graduated Tennis Set",
+    "infoPiece": "rose gold naklace/IMG_20260624_161344653",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:25:31.420Z"
+  },
+  "rose gold and fancy necklaces/Necklace_071": {
+    "none": true,
+    "deferred": false,
+    "decidedAt": "2026-09-17T16:25:31.420Z"
+  },
+  "rose gold and fancy necklaces/Necklace_063": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:31.420Z"
+  },
+  "rose gold and fancy necklaces/Necklace_064": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:31.421Z"
+  },
+  "rose gold and fancy necklaces/Necklace_069": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:31.421Z"
+  },
+  "rose gold and fancy necklaces/Necklace_072": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:31.421Z"
+  },
+  "rose gold and fancy necklaces/Necklace_073": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:25:31.421Z"
+  },
+  "watches/Watch_001_WhitePaveSunburstDial": {
+    "productIds": [
+      "6HKtPgkZRrDrlMahwmjy"
+    ],
+    "productName": "92.5 Sterling Silver Full Iced Baguette Halo Watch with Mother-of-Pearl Dial",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:26:39.808Z"
+  },
+  "watches/Watch_004_92.5 Sterling Silver Clover Jewelry Watch with Green Malachite Style Inlay": {
+    "productIds": [
+      "QlSmxmccy9S2UlSWreWu"
+    ],
+    "productName": "92.5 Sterling Silver Clover Jewelry Watch with Multi-Texture Inlay Strap",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:26:39.998Z"
+  },
+  "watches/Watch_009_RoseGoldFullyPavedWatch": {
+    "productIds": [
+      "tClnH2ELSk0uwEtYyTwE"
+    ],
+    "productName": "Roxerina 92.5 Sterling Silver Full Iced Out Watch – Gold Plated Pave Link Design",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:26:40.182Z"
+  },
+  "watches/Watch_010_RoseGoldHexagonSapphireBirdDial": {
+    "productIds": [
+      "apSNgnCgtux1LAfjLKlU"
+    ],
+    "productName": "Enchanted Pixie 92.5 Silver Luxury Jewelry Watch – Rose Gold Edition",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:26:40.365Z"
+  },
+  "watches/Watch_011_PeacockPaintedRoseGoldWatch": {
+    "productIds": [
+      "fRlbdbpefCjJYn1yjPe6"
+    ],
+    "productName": "Enchanted Pixie 92.5 Silver Luxury Jewelry Watch – Rose Gold Edition",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:26:40.545Z"
+  },
+  "watches/Watch_014_92.5 Sterling Silver Antique Temple-Style Watch with Seafoam Green Dial": {
+    "productIds": [
+      "efIWeTAw2U4Qo7QeIwj2"
+    ],
+    "productName": "Royal Gajra 92.5 Silver Ethnic Luxury Jewelry Watch – Rose Gold Finish",
+    "infoPiece": null,
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:26:40.730Z"
+  },
+  "ss/kante/Kante_Product_01": {
+    "productIds": [
+      "rhbohIQQkqbrulHWFaJn"
+    ],
+    "productName": "92.5 Pure Silver Gold Polish Premium Designer Kante Necklace | Elegant Traditional Silver Choker",
+    "infoPiece": "KANTE/IMG_20260704_194527361",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:27:10.342Z"
+  },
+  "ss/kante/Kante_Product_02": {
+    "productIds": [
+      "0HAIf8pvJBBTFFYboZWK"
+    ],
+    "productName": "92.5 Pure Silver Gold Polish Minimalist Designer Kante Necklace | Elegant Daily Wear Silver Choker",
+    "infoPiece": "KANTE/IMG_20260704_194647661",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:27:10.344Z"
+  },
+  "ss/kante/Kante_Product_03": {
+    "productIds": [
+      "UVFS2bpglxxYHEsyZOyB"
+    ],
+    "productName": "92.5 Pure Silver Gold Polish Dual Layer Kante Necklace with Grey Crystal Beads",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:36:29.951Z"
+  },
+  "ss/kante/Kante_Product_04": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:27:10.344Z"
+  },
+  "ss/kante/Kante_Product_05": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:27:10.344Z"
+  },
+  "ss/kante/Kante_Product_06": {
+    "none": true,
+    "deferred": true,
+    "decidedAt": "2026-09-17T16:27:10.344Z"
+  },
+  "set2/Set_004_EmeraldCutCollarKundanNecklace": {
+    "productIds": [
+      "kXTr199g3mHIvxPF0mD4"
+    ],
+    "productName": "Imperial Emerald and CZ Silver Choker with Mint Green Drop Beads",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:27:53.630Z"
+  },
+  "set2/Set_005_RainbowGemstoneNecklace": {
+    "productIds": [
+      "UgpGxiJiugwEqnO8FNn0"
+    ],
+    "productName": "Royal Navaratna Inspired Multi-Gem Silver Choker with Pearl Clusters",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:27:53.831Z"
+  },
+  "set2/Set_002_PaisleyMedallionEmeraldPearlNecklace": {
+    "productIds": [
+      "OTUlpxAyVdgZPphaShhW"
+    ],
+    "productName": "Majestic Regal CZ Silver necklace with Emerald Medallion",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:27:54.064Z"
+  },
+  "set2/Set_006_RubyTennisChainNecklace": {
+    "productIds": [
+      "JYfaA6T5RCtmhB5tRrzY"
+    ],
+    "productName": "Elegant Gold-Polished Silver Twin-Strand Ruby Step Necklace",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:27:54.267Z"
+  },
+  "ss/czs/CZ_Product_05": {
+    "productIds": [
+      "3kmuy9ez1t9GrmCywhdV"
+    ],
+    "productName": "Royal Gold Polish Silver Shimmering Diamond CZ & Ruby Haram Set with Teardrop Rubies",
+    "infoPiece": "Temple Haram/IMG_20260622_120708187",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:28:17.484Z"
+  },
+  "ss/czs/CZ_Product_01": {
+    "productIds": [
+      "ETyq56t0EpNhVtTkRzOw"
+    ],
+    "productName": "Brilliant Pear-Drop CZ Silver Gold Polish Necklace",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:28:35.932Z"
+  },
+  "ss/czs/CZ_Product_02": {
+    "productIds": [
+      "LLvqHfMcWgiORxEdUjBN"
+    ],
+    "productName": "Royal Imperial Diamond-Cut CZ & Emerald Geometric Silver Choker Set",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:28:36.112Z"
+  },
+  "ss/czs/CZ_Product_03": {
+    "productIds": [
+      "rjT7oYCnI7UBHe4EndhM"
+    ],
+    "productName": "Majestic Regal CZ Silver necklace with Emerald Medallion",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:28:36.312Z"
+  },
+  "ss/dia replica/Dia_Replica_Product_02": {
+    "productIds": [
+      "DacsRqWyxoYnqqQhta7x"
+    ],
+    "productName": "Gold-Polished Silver Shimmering CZ Diamond & Emerald Scalloped necklace",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:29:20.922Z"
+  },
+  "ss/dia replica/Dia_Replica_Product_04": {
+    "productIds": [
+      "W0zwz9ksFdxildSpXKT4"
+    ],
+    "productName": "Royal Gold Polish Silver Dainty Ruby Center Floral Scallop Diamond Style Long Necklace",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:29:21.111Z"
+  },
+  "ss/dia replica/Dia_Replica_Product_01": {
+    "productIds": [
+      "rib5fQLTkWvogNYxs49Y"
+    ],
+    "productName": "Elegant Single Line CZ Infinity Scroll Chain Silver Gold-Plated necklace",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:29:21.304Z"
+  },
+  "ss/dia replica/Dia_Replica_Product_06": {
+    "productIds": [
+      "kG8tU5E1g7vxzqmWNBNF"
+    ],
+    "productName": "Double Teardrop Emerald Diamond Style Delicate Long Necklace",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:29:21.490Z"
+  },
+  "ss/dia replica/Dia_Replica_Product_07": {
+    "productIds": [
+      "ZmTB09kQcPkYqHQywY74"
+    ],
+    "productName": "Elegant Single Line CZ Floral Cluster Chain Silver Gold-Polish necklace",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:29:21.670Z"
+  },
+  "ss/earrings/Earring_106": {
+    "productIds": [
+      "lqd9PjiWwzYNr8Q8ELfH"
+    ],
+    "productName": "Silver Gold Polish Antique Mango Nakshi Jhumkas with Ruby Beads",
+    "infoPiece": "Buttalu/IMG_20260620_180419551",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_107": {
+    "productIds": [
+      "JLgCBrUuAH9rOuJxvnNv"
+    ],
+    "productName": "Royal Temple Style Gaja Motif & Faceted Ruby Bead Hanging Jhumkis",
+    "infoPiece": "Buttalu/IMG_20260620_180536406",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_108": {
+    "productIds": [
+      "oulk264XhgOzWla2XZ5a"
+    ],
+    "productName": "Silver Gold Polish Royal CZ Chandbali Earrings with Ruby Drops",
+    "infoPiece": "Buttalu/IMG_20260620_180959392",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_109": {
+    "productIds": [
+      "13kdOi4DKtBjpxGNV0XZ"
+    ],
+    "productName": "Silver Gold Polish Lakshmi Temple Earrings with CZ Frame",
+    "infoPiece": "Buttalu/IMG_20260620_181247280 (1)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_111": {
+    "productIds": [
+      "Sy849UvChlZCRqdGZGiB"
+    ],
+    "productName": "Royal Pagadam (Coral) Style Shimmering Cubic Zirconia Drop Earrings",
+    "infoPiece": "Buttalu/IMG_20260620_181351671 (2)",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_114": {
+    "productIds": [
+      "0CE04VRgLZOT9dSpf7CL",
+      "x0WTHanEQxUbRAcSy9OJ"
+    ],
+    "productName": "Gold Polish Twin Peacock Silver Earrings with Pearl Clusters",
+    "infoPiece": "Buttalu/IMG_20260620_182244257",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_112": {
+    "productIds": [
+      "lZIHRinNQbq0VIH4kMxg"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Lakshmi Chandelier Drops with Ruby Kemp and CZ Borders",
+    "infoPiece": "Earrings/IMG_20260629_180325496",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ss/earrings/Earring_113": {
+    "productIds": [
+      "WJXJ73rLvRSQK5SCqycU"
+    ],
+    "productName": "92.5 Pure Silver Gold-Plated Lakshmi Chandelier Drops with Ruby Kemp and CZ Borders",
+    "infoPiece": "Earrings/IMG_20260629_180412559 (1)",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:31:51.500Z"
+  },
+  "ladies rings/Ring_042": {
+    "productIds": [
+      "QYQKfKNpIxu7tYDNKRDg"
+    ],
+    "productName": "Royal Heritage Dual-Tone Etched Blossom 92.5 Pure Silver Button Ring",
+    "infoPiece": "Rings/IMG_20260625_163939071",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:47.153Z"
+  },
+  "ladies rings/Ring_075": {
+    "productIds": [
+      "B37hy2F8QzSks9uguah9"
+    ],
+    "productName": "Imperial Grace Oval Cut American Diamond Broad Band 925 Silver Statement Ring",
+    "infoPiece": "Rings/IMG_20260625_170929330",
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:47.154Z"
+  },
+  "ladies rings/Ring_040": {
+    "productIds": [
+      "bEiXetRNMSTJKsThhU7U"
+    ],
+    "productName": "Royal Sapphire red Floral Cluster Cocktail Ring in 92.5 Sterling Silver",
+    "infoPiece": null,
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:37:47.338Z"
+  },
+  "ladies rings/Ring_060": {
+    "none": true,
+    "deferred": true,
+    "note": "Gents_Ring_Product_11 is the better black enamel match",
+    "decidedAt": "2026-09-17T16:38:11.937Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_11": {
+    "productIds": [
+      "u1XftQ9xg2hL1OMGrGLo"
+    ],
+    "productName": "92.5 Sterling Silver Ring with Black Enamel Inlay",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:38:10.882Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_01": {
+    "productIds": [
+      "AJJBa6yVKPm4yI5FMFiy"
+    ],
+    "productName": "Imperial Stone Cluster 92.5 Sterling Silver Statement Ring",
+    "infoPiece": null,
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:38:11.199Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_16": {
+    "productIds": [
+      "bA6mG3R6cQn4o6noCN2V"
+    ],
+    "productName": "Imperial Stone Cluster 92.5 Sterling Silver Statement Ring",
+    "infoPiece": null,
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:38:11.502Z"
+  },
+  "ss/gents rings/Gents_Ring_Product_06": {
+    "productIds": [
+      "Pai6Vh0lnap3E2MjpuCN"
+    ],
+    "productName": "Modern Geometric 92.5 Sterling Silver Men's Band Ring with Baguette Accents",
+    "infoPiece": null,
+    "confidence": "l",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:38:11.811Z"
+  },
+  "ss/kaan/Kaan_Product_13": {
+    "productIds": [
+      "TW4P4U8l2FUM0jB8sDqM"
+    ],
+    "productName": "92.5 Pure Sterling Silver Floral Square Stud Earrings | CZ Stone Designer Studs for Women",
+    "infoPiece": "Kaans/IMG_20260625_111458195",
+    "confidence": "h",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:54.557Z"
+  },
+  "ss/kaan/Kaan_Product_11_S-Curve Shimmering Vine 92.5 Sterling Silver Gold-Plated Kaans": {
+    "productIds": [
+      "Jg0HitZ2c2viZPzYDtbi",
+      "Hbt8Rw6FAsxt6LgI6qn0"
+    ],
+    "productName": "Shimmering Marquise Leaf Branch 92.5 Pure Silver Ear Cuffs",
+    "infoPiece": "Kaans/IMG_20260625_154048823",
+    "confidence": "m",
+    "excludeKinds": [],
+    "decidedAt": "2026-09-17T16:39:54.558Z"
+  }
+}

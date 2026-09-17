@@ -35,6 +35,7 @@ import {
 } from '@/services/whatsappService';
 import { notifyOrder } from '@/services/pushNotificationService';
 import { incrementCouponUsage } from '@/services/couponService';
+import { requestCatalogRefresh } from '@/services/catalogPublisher';
 
 /**
  * Fetches the admin's WhatsApp notification number.
@@ -457,6 +458,9 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
       lowStockTransitions = transitions;
     });
 
+    // Stock changed: update these products in the storefront catalog snapshot.
+    requestCatalogRefresh([...groupedItems.keys()]);
+
     // Atomically bump coupon usage counter so admin limits (maxUses) and
     // visibility ("used X / Y") stay in sync with reality. We do this AFTER
     // the order doc is committed so a failed Firestore write never bumps the
@@ -794,6 +798,7 @@ export const updateOrderStatus = async (
           )
         );
         await updateDoc(docRef, { stockDecremented: false });
+        requestCatalogRefresh(items.map((item) => item.productId));
       } catch (err) {
         console.warn('[orderService] stock restore failed:', err);
       }

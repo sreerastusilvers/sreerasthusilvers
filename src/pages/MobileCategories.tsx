@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Search, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MobileBottomNav from '@/components/MobileBottomNav';
-import { getAllProducts, Product } from '@/services/productService';
+import type { Product } from '@/services/productService';
+import { getActiveProductsCached } from '@/services/productCache';
 import logo from '@/assets/dark.png';
 import { SmartImage } from "@/components/ui/smart-image";
 
@@ -117,7 +118,7 @@ const MobileCategories = () => {
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const allProducts = await getAllProducts();
+        const allProducts = await getActiveProductsCached();
         setProducts(allProducts);
       } catch (error) {
         console.error('Error loading products:', error);

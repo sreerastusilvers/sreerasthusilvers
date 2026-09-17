@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Mic, ArrowLeft, X, Clock, TrendingUp, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getAllProducts } from "@/services/productService";
+import { getActiveProductsCached } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import { SmartImage } from "@/components/ui/smart-image";
 
@@ -92,7 +92,7 @@ const MobileSearch = () => {
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const products = await getAllProducts();
+        const products = await getActiveProductsCached();
         const uiProducts = products.map((p) => adaptFirebaseToUI(p as any));
         setAllProducts(uiProducts);
       } catch (error) {
