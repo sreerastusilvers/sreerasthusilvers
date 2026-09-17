@@ -11,16 +11,19 @@
  *
  *   node scripts/stock-build-manifest.mjs
  *   node scripts/stock-build-manifest.mjs --stock="C:/path/to/ss web stock,"
+ *   node scripts/stock-build-manifest.mjs --firestore    read products from
+ *       Firestore (~600 reads) instead of the free catalog snapshot - only
+ *       needed if the snapshot is stale or a product is hidden from the store
  *
  * Photo order follows the storefront rule: product shot first (it becomes the
  * thumbnail), then model shot, then the original reference photo. A folder with
  * no product shot leads with its model shot instead.
  */
 import 'dotenv/config';
-import admin from 'firebase-admin';
 import { readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadCatalogProducts } from './lib/catalog.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const arg = (n) => process.argv.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -31,16 +34,6 @@ if (!existsSync(STOCK)) {
   console.error('Pass --stock="<path to ss web stock,>"');
   process.exit(1);
 }
-
-const b64 = process.env.FIREBASE_ADMIN_SDK_BASE64;
-if (!b64) {
-  console.error('FIREBASE_ADMIN_SDK_BASE64 missing from .env');
-  process.exit(1);
-}
-admin.initializeApp({
-  credential: admin.credential.cert(JSON.parse(Buffer.from(b64, 'base64').toString('utf8'))),
-});
-const db = admin.firestore();
 
 // -- Name matching ----------------------------------------------------------
 
@@ -175,13 +168,12 @@ function collectFolders(root) {
 
 const folders = collectFolders(STOCK);
 
-const snap = await db.collection('products').get();
+const { products: catalog } = await loadCatalogProducts({ firestore: process.argv.includes('--firestore') });
 const products = [];
-snap.forEach((d) => {
-  const p = d.data();
+catalog.forEach((p) => {
   const images = p.media?.images || [];
   products.push({
-    id: d.id,
+    id: p.id,
     name: p.name || '',
     tokens: tokens(p.name || ''),
     ssc: String(p.subSubcategory || '').toLowerCase().trim(),

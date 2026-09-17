@@ -47,6 +47,8 @@ How it stays current: admin create/edit/delete, order stock changes, cancellatio
 
 Run `node scripts/publish-catalog.mjs` (~600 reads) once to create the snapshot, and again after anything that edits products outside the app: bulk scripts or the Firebase console. If the snapshot is missing, the site keeps working by reading Firestore, and the browser console warns `catalog snapshot unavailable`.
 
+Scripts that only read the catalog use the snapshot too, through `scripts/lib/catalog.mjs` - `stock-build-manifest.mjs` and `stock-visual-match.mjs --refresh` now cost nothing. Pass `--firestore` to read the collection instead, which is needed only when the snapshot is stale or a product is hidden from the storefront. Scripts that write products (`stock-upload.mjs`, `stock-duplicates.mjs`, `sync-product-ratings.mjs`, `migrate-categories.mjs`) still read Firestore, so run those when the day's read budget allows.
+
 ## Link previews (WhatsApp, Facebook, Telegram)
 
 Crawlers never run JavaScript, so they would only see the generic tags in `index.html`. `vercel.json` sends link-preview bots requesting `/product/:id` to `/api/media?og=product&id=...`, which returns the product's title, price and `__og.jpg` photo as Open Graph tags. Everyone else, including Googlebot, gets the normal app. The "Enquire on WhatsApp" button (`src/components/WhatsAppEnquiryButton.tsx`) puts the product link on the last line of the message, so WhatsApp shows that preview card.

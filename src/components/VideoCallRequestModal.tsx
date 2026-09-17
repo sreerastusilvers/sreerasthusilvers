@@ -52,10 +52,8 @@ const VideoCallRequestModal = ({
       return;
     }
     const productLine = productTitle ? `Product: *${productTitle}*` : '';
-    const productLink =
-      productId
-        ? `\nhttps://sreerasthusilvers-kkd.vercel.app/product/${productId}`
-        : '';
+    // The site's own address, so the link is right on every domain (and in dev).
+    const productLink = productId ? `\n${window.location.origin}/product/${productId}` : '';
     const customerLine = name.trim() ? `\nRequested by: ${name.trim()}` : '';
     const message = `Hi Sreerasthu Silvers! I'd like a WhatsApp video call demo.${productLine ? '\n' + productLine : ''}${productLink}${customerLine}`;
     window.open(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`, '_blank');

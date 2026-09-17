@@ -6,6 +6,7 @@ import {
   policySectionClassName,
 } from "@/components/PolicyPageLayout";
 import PolicyPageLayout from "@/components/PolicyPageLayout";
+import { SITE_HOST, SITE_URL } from "@/lib/siteUrl";
 
 const TermsConditions = () => {
   return (
@@ -14,7 +15,7 @@ const TermsConditions = () => {
             {/* Introduction */}
             <section className={policySectionClassName}>
               <p className={policyBodyClassName}>
-                By accessing <a href="https://sreerasthusilvers.vercel.app/" className={policyLinkClassName}>https://sreerasthusilvers.vercel.app/</a>, you agree to be bound by these terms.
+                By accessing <a href={SITE_URL} className={policyLinkClassName}>{SITE_HOST}</a>, you agree to be bound by these terms.
               </p>
             </section>
 

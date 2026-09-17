@@ -878,24 +878,27 @@ const ProductDetail = () => {
                   </motion.button>
                 </div>
 
-                {/* Demo Video Call CTA */}
-                <motion.button
-                  onClick={() => {
-                    if (!user) {
-                      navigate('/login', { state: { from: location } });
-                      return;
-                    }
-                    setShowVideoCallModal(true);
-                  }}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full mt-2 px-6 py-3 font-medium text-sm rounded-full border-2 border-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all flex items-center justify-center gap-2"
-                >
-                  <Video className="w-4 h-4" />
-                  Book a Demo Video Call
-                </motion.button>
+                {/* Talk to us: video call demo and WhatsApp, side by side.
+                    Labels shorten on narrow screens so both stay on one line. */}
+                <div className="mt-2 flex items-stretch gap-2 sm:gap-3">
+                  <motion.button
+                    onClick={() => {
+                      if (!user) {
+                        navigate('/login', { state: { from: location } });
+                        return;
+                      }
+                      setShowVideoCallModal(true);
+                    }}
+                    whileTap={{ scale: 0.97 }}
+                    className="flex-1 min-w-0 px-3 sm:px-5 py-3 font-medium text-xs sm:text-sm rounded-full border-2 border-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
+                  >
+                    <Video className="w-4 h-4 shrink-0" />
+                    <span className="hidden sm:inline">Book a Demo Video Call</span>
+                    <span className="sm:hidden">Video Call</span>
+                  </motion.button>
 
-                {/* WhatsApp enquiry */}
-                <WhatsAppEnquiryButton product={product} className="mt-2" />
+                  <WhatsAppEnquiryButton product={product} className="flex-1 min-w-0" />
+                </div>
 
                 {/* Share Popup */}
                 <AnimatePresence>
@@ -990,7 +993,7 @@ const ProductDetail = () => {
                   </AnimatePresence>
 
                 {/* Features */}
-                <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6 md:mb-8">
+                <div className="grid grid-cols-3 gap-2 md:gap-4 mt-4 md:mt-5 mb-6 md:mb-8">
                   <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 bg-secondary/50 rounded-lg md:rounded-xl text-center md:text-left">
                     <Truck className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
                     <span className="text-[10px] md:text-sm leading-tight">Free Shipping</span>
@@ -1178,7 +1181,6 @@ const ProductDetail = () => {
       {!showShareMenu && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-3 z-50">
           <div className="flex gap-3">
-          <WhatsAppEnquiryButton product={product} variant="icon" />
           <motion.button
             onClick={handleAddToCart}
             whileTap={{ scale: 0.95 }}
@@ -1212,7 +1214,7 @@ const ProductDetail = () => {
         open={showVideoCallModal}
         onClose={() => setShowVideoCallModal(false)}
         productId={product?.id}
-        productTitle={product?.name}
+        productTitle={product?.title}
         productImage={product?.images?.[0]}
       />
 

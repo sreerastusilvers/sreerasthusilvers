@@ -52,12 +52,11 @@ export const WhatsAppIcon = ({ className }: { className?: string }) => (
 
 interface Props {
   product: EnquiryProduct;
-  /** `full`: labelled full-width button. `icon`: round button for the mobile sticky bar. */
-  variant?: "full" | "icon";
+  /** Layout is the caller's: pass `flex-1` in a row, or `w-full` on its own. */
   className?: string;
 }
 
-const WhatsAppEnquiryButton = ({ product, variant = "full", className = "" }: Props) => {
+const WhatsAppEnquiryButton = ({ product, className = "" }: Props) => {
   const [phone, setPhone] = useState(DEFAULT_SUPPORT.whatsapp);
 
   useEffect(() => {
@@ -74,31 +73,17 @@ const WhatsAppEnquiryButton = ({ product, variant = "full", className = "" }: Pr
 
   const href = buildEnquiryUrl(phone, product, window.location.origin);
 
-  if (variant === "icon") {
-    return (
-      <motion.a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        whileTap={{ scale: 0.95 }}
-        aria-label="Enquire on WhatsApp"
-        className={`shrink-0 w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center ${className}`}
-      >
-        <WhatsAppIcon className="w-6 h-6" />
-      </motion.a>
-    );
-  }
-
   return (
     <motion.a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       whileTap={{ scale: 0.97 }}
-      className={`w-full px-6 py-3 font-medium text-sm rounded-full border-2 border-[#25D366] text-[#128C7E] dark:text-[#25D366] hover:bg-[#25D366]/10 transition-all flex items-center justify-center gap-2 ${className}`}
+      className={`px-3 sm:px-5 py-3 font-medium text-xs sm:text-sm rounded-full border-2 border-[#25D366] text-[#128C7E] dark:text-[#25D366] hover:bg-[#25D366]/10 transition-all flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap ${className}`}
     >
-      <WhatsAppIcon className="w-4 h-4" />
-      Enquire on WhatsApp
+      <WhatsAppIcon className="w-4 h-4 shrink-0" />
+      <span className="hidden sm:inline">Enquire on WhatsApp</span>
+      <span className="sm:hidden">WhatsApp</span>
     </motion.a>
   );
 };

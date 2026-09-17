@@ -77,6 +77,15 @@ const persist = (entry: CacheEntry) => {
   }
 };
 
+/** Newest first. Snapshot and Firestore timestamps carry `seconds`; a locally built product may hold a Date. */
+const createdMillis = (p: Product) => {
+  const value = p.createdAt;
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+  const seconds = (value as { seconds?: number }).seconds;
+  return typeof seconds === 'number' ? seconds * 1000 : 0;
+};
+
 const fetchSnapshot = async (): Promise<Product[]> => {
   const resp = await fetch(CATALOG_URL, { headers: { Accept: 'application/json' } });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -98,12 +107,7 @@ const fetchActiveProducts = async (): Promise<Product[]> => {
     products = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Product);
   }
 
-  products.sort((a, b) => {
-    const aTime = a.createdAt as any;
-    const bTime = b.createdAt as any;
-    if (!aTime || !bTime) return 0;
-    return bTime.seconds - aTime.seconds;
-  });
+  products.sort((a, b) => createdMillis(b) - createdMillis(a));
 
   return products;
 };

@@ -14,7 +14,7 @@
  *   --collections=products,banners   limit to these root collections (default: all)
  *   --deep                           also walk subcollections (more document reads)
  *
- * Credentials: FIREBASE_ADMIN Carde charge nicosmate ethlete marathons in that free develop shot near shell_SDK_BASE64 in .env, or ./serviceAccount.json,
+ * Credentials: FIREBASE_ADMIN_SDK_BASE64 in .env, or ./serviceAccount.json,
  * or GOOGLE_APPLICATION_CREDENTIALS. Safe to re-run: already-rewritten URLs no
  * longer match --from.
  */

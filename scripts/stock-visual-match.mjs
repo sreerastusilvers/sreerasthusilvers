@@ -21,8 +21,9 @@
  *       (h = high, m = medium, l = low confidence)
  *   node scripts/stock-visual-match.mjs --status
  *
- * Products are cached in scripts/.products-cache.json (Firestore reads are
- * metered); pass --refresh to re-read.
+ * Products are cached in scripts/.products-cache.json; pass --refresh to re-read
+ * them (free - from the catalog snapshot), or --refresh --firestore to re-read
+ * from Firestore itself (~600 metered reads).
  */
 import 'dotenv/config';
 import sharp from 'sharp';
@@ -83,16 +84,13 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 async function loadProducts() {
   if (existsSync(CACHE) && !flag('refresh')) return JSON.parse(readFileSync(CACHE, 'utf8'));
-  const { default: admin } = await import('firebase-admin');
-  const b64 = process.env.FIREBASE_ADMIN_SDK_BASE64;
-  admin.initializeApp({ credential: admin.credential.cert(JSON.parse(Buffer.from(b64, 'base64').toString('utf8'))) });
-  const snap = await admin.firestore().collection('products').get();
+  const { loadCatalogProducts } = await import('./lib/catalog.mjs');
+  const { products: catalog } = await loadCatalogProducts({ firestore: flag('firestore') });
   const list = [];
-  snap.forEach((d) => {
-    const p = d.data();
+  catalog.forEach((p) => {
     const imgs = p.media?.images || [];
     list.push({
-      id: d.id,
+      id: p.id,
       name: (p.name || '').trim(),
       ssc: String(p.subSubcategory || '').toLowerCase().trim(),
       sub: String(p.subcategory || '').toLowerCase().trim(),

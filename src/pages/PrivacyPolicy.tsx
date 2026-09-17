@@ -8,6 +8,7 @@ import {
   policySectionClassName,
 } from "@/components/PolicyPageLayout";
 import PolicyPageLayout from "@/components/PolicyPageLayout";
+import { SITE_HOST, SITE_URL } from "@/lib/siteUrl";
 
 const PrivacyPolicy = () => {
   return (
@@ -16,7 +17,7 @@ const PrivacyPolicy = () => {
             {/* Introduction */}
             <section className={policySectionClassName}>
               <p className={policyBodyClassName}>
-                Sreerasthu Silvers ("we", "our", "us") operates the website <a href="https://sreerasthusilvers.vercel.app/" className={policyLinkClassName}>https://sreerasthusilvers.vercel.app/</a>. 
+                Sreerasthu Silvers ("we", "our", "us") operates the website <a href={SITE_URL} className={policyLinkClassName}>{SITE_HOST}</a>.
                 We value your privacy and are committed to protecting your personal information.
               </p>
             </section>
