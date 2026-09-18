@@ -4,10 +4,18 @@ import { Upload, X, Loader2, FileText, CheckCircle2, RotateCcw } from 'lucide-re
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { SmartImage } from "@/components/ui/smart-image";
-import { assertUploadableImage, formatBytes, MAX_PDF_BYTES } from '@/services/mediaStorage';
+import {
+  assertUploadableImage,
+  formatBytes,
+  maxImageBytesFor,
+  MAX_PDF_BYTES,
+  type MediaCategory,
+} from '@/services/mediaStorage';
 
 interface ImageUploaderProps {
   onImageSelected: (file: File) => void;
+  /** Where the file is headed - decides the size limit (banners may be 1 MB). */
+  category?: MediaCategory;
   existingImageUrl?: string;
   existingFileName?: string;
   existingFileType?: 'pdf' | 'image';
@@ -30,6 +38,7 @@ interface ImageUploaderProps {
 
 const ImageUploader = ({
   onImageSelected,
+  category,
   existingImageUrl,
   existingFileName,
   existingFileType,
@@ -93,7 +102,7 @@ const ImageUploader = ({
       }
     } else {
       try {
-        assertUploadableImage(file);
+        assertUploadableImage(file, category);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'File rejected');
         return;
@@ -108,7 +117,7 @@ const ImageUploader = ({
     } else {
       onImageSelected(file);
     }
-  }, [onImageSelected, confirmBeforeUpload, acceptPdf]);
+  }, [onImageSelected, confirmBeforeUpload, acceptPdf, category]);
 
   const imageAccept = { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'] };
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
@@ -263,7 +272,9 @@ const ImageUploader = ({
               </p>
               <p className="text-xs text-gray-500 dark:text-zinc-500">or click to browse</p>
               <p className="text-xs text-gray-400 dark:text-zinc-500 mt-2">
-                {acceptPdf ? 'JPG, PNG, WebP up to 500 KB • PDF up to 1 MB' : 'JPG, PNG or WebP • max 500 KB'}
+                {acceptPdf
+                  ? `JPG, PNG, WebP up to ${formatBytes(maxImageBytesFor(category))} • PDF up to 1 MB`
+                  : `JPG, PNG or WebP • max ${formatBytes(maxImageBytesFor(category))}`}
               </p>
             </div>
           </motion.div>

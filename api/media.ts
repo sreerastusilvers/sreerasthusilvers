@@ -61,6 +61,8 @@ const WARN_AT = 0.8;
 const BLOCK_AT = 0.95;
 
 const MAX_IMAGE_BYTES = 500 * 1024;
+/** Hero banners only - see CATEGORIES below. */
+const MAX_BANNER_BYTES = 1024 * 1024;
 const MAX_PREVIEW_BYTES = 200 * 1024;
 const MAX_PDF_BYTES = 1024 * 1024;
 const PREVIEW_SUFFIX = '__w600.webp';
@@ -83,10 +85,14 @@ type Category =
   | 'products' | 'banners' | 'home' | 'gallery' | 'showcases' | 'testimonials'
   | 'media' | 'receipts' | 'avatars' | 'reviews';
 
-/** `perUser` categories are open to any signed-in user and keyed by their uid. */
-const CATEGORIES: Record<Category, { perUser: boolean; allowPdf: boolean }> = {
+/**
+ * `perUser` categories are open to any signed-in user and keyed by their uid.
+ * `maxImageBytes` overrides the 500 KB default: hero banners are a handful of
+ * full-width images that carry the shop front, so they are allowed 1 MB.
+ */
+const CATEGORIES: Record<Category, { perUser: boolean; allowPdf: boolean; maxImageBytes?: number }> = {
   products: { perUser: false, allowPdf: false },
-  banners: { perUser: false, allowPdf: false },
+  banners: { perUser: false, allowPdf: false, maxImageBytes: MAX_BANNER_BYTES },
   home: { perUser: false, allowPdf: false },
   gallery: { perUser: false, allowPdf: false },
   showcases: { perUser: false, allowPdf: false },
@@ -554,7 +560,7 @@ async function handleUpload(req: VercelRequest, caller: Caller) {
   if (!type || (type.ext === 'pdf' && !rules.allowPdf)) {
     throw new HttpError(415, 'BAD_TYPE', rules.allowPdf ? 'Only JPG, PNG, WebP or PDF files are allowed.' : 'Only JPG, PNG or WebP images are allowed.');
   }
-  const limit = type.ext === 'pdf' ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
+  const limit = type.ext === 'pdf' ? MAX_PDF_BYTES : rules.maxImageBytes ?? MAX_IMAGE_BYTES;
   if (file.length > limit) {
     throw new HttpError(413, 'TOO_LARGE', `File is ${kb(file.length)}. The limit is ${kb(limit)}.`, { bytes: file.length, limit });
   }

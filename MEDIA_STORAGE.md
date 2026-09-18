@@ -15,7 +15,8 @@ Every image upload goes through one server endpoint, `api/media.ts`. The browser
 
 Rules:
 
-- Images: JPG, PNG, WebP, **500 KB max**. Admin screens reject bigger files. Customer screens (review photos, profile picture) shrink photos in the browser first.
+- Images: JPG, PNG, WebP, **500 KB max**, except **hero banners, which may be 1 MB** (`banners` category - there are only a few and they run the full width). Admin screens reject bigger files. Customer screens (review photos, profile picture) shrink photos in the browser first.
+- Hero banners: upload a **16:9** desktop image (1920 × 1080 is ideal) and an optional 4:5 mobile crop. The hero frame is 16:9 on desktop and 4:5 on phones, so a 16:9 upload is shown whole.
 - PDFs (refund receipts only): 1 MB max.
 - Products: **5 photos max**. The product form and `firestore.rules` both enforce this.
 - Each photo is stored with a 600px preview next to it (`m<id>.jpg` + `m<id>__w600.webp`). Product cards load the preview.

@@ -162,7 +162,7 @@ const HeroBanner = () => {
 
   if (loading || !imagesReady) {
     return (
-      <section className="relative aspect-[4/5] lg:aspect-auto lg:h-[520px] flex items-center justify-center bg-muted">
+      <section className="relative aspect-[4/5] lg:aspect-[16/9] lg:h-auto lg:mx-auto lg:max-w-[1120px] flex items-center justify-center bg-muted">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
           <span className="text-xs text-muted-foreground font-light tracking-wider">Loading</span>
@@ -173,7 +173,7 @@ const HeroBanner = () => {
 
   if (banners.length === 0) {
     return (
-      <section className="relative aspect-[4/5] lg:aspect-auto lg:h-[520px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
+      <section className="relative aspect-[4/5] lg:aspect-[16/9] lg:h-auto lg:mx-auto lg:max-w-[1120px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <div className="flex flex-col items-center gap-4 px-6 text-center">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="text-3xl">✨</span>
@@ -198,7 +198,10 @@ const HeroBanner = () => {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="relative px-3 pt-1 lg:px-4">
+      {/* Desktop frame is 16:9, the shape the banners are made in, so nothing is
+          cropped. Capped at 1120px so a 16:9 box stays a hero and not a whole
+          screenful on a wide monitor. Phones keep their own 4:5 crop. */}
+      <div className="relative px-3 pt-1 lg:mx-auto lg:max-w-[1120px] lg:px-4">
         <div
           className="relative overflow-hidden rounded-[28px] shadow-[0_30px_80px_-55px_rgba(0,0,0,0.55)]"
           onTouchStart={(e) => {
@@ -232,7 +235,7 @@ const HeroBanner = () => {
                 type="button"
                 key={`${banner.id || banner.imageUrl}-${idx}`}
                 onClick={() => handleBannerClick(banner)}
-                className="relative aspect-[4/5] w-full flex-shrink-0 cursor-pointer overflow-hidden bg-black text-left lg:aspect-auto lg:h-[500px] xl:h-[560px]"
+                className="relative aspect-[4/5] w-full flex-shrink-0 cursor-pointer overflow-hidden bg-black text-left lg:aspect-[16/9] lg:h-auto"
                 aria-label={`Hero banner ${((idx % banners.length) || 0) + 1}`}
               >
                 <picture>

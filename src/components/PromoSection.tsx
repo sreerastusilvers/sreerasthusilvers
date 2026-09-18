@@ -86,9 +86,11 @@ const PromoSection = () => {
             >
               Our Collections
             </h2>
+            {/* Deliberately not a count: collections are switched on and off in
+                Admin > Home Collections as stock arrives. */}
             <p className="hidden md:block text-sm text-muted-foreground mt-2 max-w-xl font-light">
-              Five worlds, one atelier. Glide through each story — jewellery,
-              furniture, articles, gifts, and sacred pooja silverware.
+              One atelier, many stories. Glide through the collections we are
+              hand-finishing right now.
             </p>
           </motion.div>
 
@@ -119,7 +121,11 @@ const PromoSection = () => {
         <div className="relative">
           <div
             ref={scrollerRef}
-            className="collections-scroller flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide pb-3 px-1 md:px-2"
+            className={`collections-scroller flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide pb-3 px-1 md:px-2 ${
+              // Two or three collections don't fill the row; centred they look
+              // composed rather than left over.
+              cards.length <= 3 ? "md:justify-center" : ""
+            }`}
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {loopingCards.map((card, idx) => (

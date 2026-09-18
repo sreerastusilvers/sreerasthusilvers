@@ -14,6 +14,12 @@ import { PREVIEW_MAX_EDGE } from '@/lib/mediaUrl';
  */
 
 export const MAX_IMAGE_BYTES = 500 * 1024;
+/**
+ * Hero banners are allowed 1 MB: there are only a few of them, they fill the
+ * whole width of the shop front, and squeezing them to 500 KB shows.
+ * The server applies the same per-category limit.
+ */
+export const MAX_BANNER_BYTES = 1024 * 1024;
 export const MAX_PDF_BYTES = 1024 * 1024;
 export const MAX_PRODUCT_IMAGES = 5;
 export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -80,15 +86,20 @@ export const formatBytes = (bytes: number): string => {
 
 // ── Validation ──────────────────────────────────────────────────────────────
 
-/** Throws a readable error unless `file` is an allowed image within 500 KB. */
-export const assertUploadableImage = (file: File): void => {
+/** The image size limit for a destination: 1 MB for hero banners, 500 KB elsewhere. */
+export const maxImageBytesFor = (category?: MediaCategory) =>
+  category === 'banners' ? MAX_BANNER_BYTES : MAX_IMAGE_BYTES;
+
+/** Throws a readable error unless `file` is an allowed image within the limit for `category`. */
+export const assertUploadableImage = (file: File, category?: MediaCategory): void => {
   if (!IMAGE_TYPES.includes(file.type)) {
     throw new MediaUploadError('BAD_TYPE', `"${file.name}" is not a JPG, PNG or WebP image.`);
   }
-  if (file.size > MAX_IMAGE_BYTES) {
+  const limit = maxImageBytesFor(category);
+  if (file.size > limit) {
     throw new MediaUploadError(
       'TOO_LARGE',
-      `"${file.name}" is ${formatBytes(file.size)}. Please compress it to 500 KB or less and upload again.`,
+      `"${file.name}" is ${formatBytes(file.size)}. Please compress it to ${formatBytes(limit)} or less and upload again.`,
     );
   }
 };

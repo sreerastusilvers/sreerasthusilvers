@@ -1,84 +1,61 @@
-import { useRef, useState, useEffect } from "react";
-import { motion, useInView } from "framer-motion";
-import { Star } from "lucide-react";
-import avatar1 from "@/assets/avatars/avatar-1.jpg";
-import avatar2 from "@/assets/avatars/avatar-2.jpg";
-import avatar3 from "@/assets/avatars/avatar-3.jpg";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useInView } from "framer-motion";
+import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { subscribeToTestimonials, Testimonial } from "@/services/testimonialService";
 import { SmartImage } from "@/components/ui/smart-image";
 
-const AVATAR_MAP: Record<string, string> = {
-  "avatar-1": avatar1,
-  "avatar-2": avatar2,
-  "avatar-3": avatar3,
-  "real-1": "https://randomuser.me/api/portraits/women/44.jpg",
-  "real-2": "https://randomuser.me/api/portraits/women/68.jpg",
-  "real-3": "https://randomuser.me/api/portraits/men/32.jpg",
-  "real-4": "https://randomuser.me/api/portraits/women/90.jpg",
-  "real-5": "https://randomuser.me/api/portraits/men/75.jpg",
-  "real-6": "https://randomuser.me/api/portraits/women/21.jpg",
-  "anim-1": "https://api.dicebear.com/9.x/lorelei/svg?seed=Priya&backgroundColor=ffd5dc",
-  "anim-2": "https://api.dicebear.com/9.x/lorelei/svg?seed=Ananya&backgroundColor=d1f4e0",
-  "anim-3": "https://api.dicebear.com/9.x/lorelei/svg?seed=Ravi&backgroundColor=dbeafe",
-  "anim-4": "https://api.dicebear.com/9.x/lorelei/svg?seed=Meera&backgroundColor=fef9c3",
-  "anim-5": "https://api.dicebear.com/9.x/notionists/svg?seed=Diya&backgroundColor=ede9fe",
-  "anim-6": "https://api.dicebear.com/9.x/notionists/svg?seed=Arjun&backgroundColor=fce7f3",
-};
+/**
+ * "What our clients say" - one dark chapter in an otherwise cream page.
+ *
+ * Built to look finished with a single quote, because a young shop has a
+ * single quote: one large editorial testimonial on the left, and on the right
+ * the promises the shop can actually prove. Extra testimonials turn it into a
+ * slow carousel rather than changing the layout.
+ *
+ * People are shown as a gold monogram unless a real photo was uploaded for
+ * them. The stock-face presets that used to fill this space belong to
+ * strangers, not to customers.
+ */
 
-const resolveAvatar = (t: Testimonial): string => {
-  if (t.avatarType === "avatar") return AVATAR_MAP[t.avatarUrl] || avatar1;
-  return t.avatarUrl;
-};
+const ROTATE_MS = 7000;
 
-const CARD_WIDTH = 340;
-const CARD_GAP = 24;
+/**
+ * Only claims the shop already makes elsewhere: the purity in the logo, the
+ * warranty badge on every product page, and the two windows written into the
+ * shipping and refund policies. Shipping is not free by default, so it is the
+ * delivery time that is promised here.
+ */
+const PROMISES: Array<{ value: string; label: string }> = [
+  { value: "92.5", label: "Hallmarked sterling silver" },
+  { value: "2 yrs", label: "Warranty on every piece" },
+  { value: "7 days", label: "Returns from delivery" },
+  { value: "3–7 days", label: "Delivery across India" },
+];
 
-const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
-  <div
-    className="relative overflow-hidden rounded-[28px] p-6 md:p-8 border border-[#d4af37]/15 bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,0)_35%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,0)_55%)] bg-card flex-shrink-0 shadow-[0_24px_70px_-48px_rgba(0,0,0,0.5)] hover:shadow-[0_30px_80px_-44px_rgba(0,0,0,0.55)] transition-shadow duration-300"
-    style={{ width: `${CARD_WIDTH}px` }}
-  >
-    <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/60 to-transparent" />
-    <div className="flex items-center gap-1 mb-4">
-      {[...Array(5)].map((_, i) => (
-        <Star
-          key={i}
-          className={`w-4 h-4 ${
-            i < testimonial.rating
-              ? "fill-amber-400 text-amber-400"
-              : "fill-muted text-muted"
-          }`}
-        />
-      ))}
-    </div>
-    <h4 className="text-base font-semibold mb-3 text-foreground font-serif leading-snug">
-      " {testimonial.title} "
-    </h4>
-    <p className="text-sm text-muted-foreground mb-6 leading-relaxed line-clamp-4 font-light">
-      {testimonial.quote}
-    </p>
-    <div className="flex items-center gap-3 pt-4 border-t border-[#d4af37]/10">
-      <SmartImage
-        src={resolveAvatar(testimonial)}
-        alt={testimonial.author}
-        className="w-11 h-11 rounded-full object-cover ring-2 ring-[#d4af37]/20" preset="thumb" />
-      <div>
-        <p className="font-medium text-sm text-foreground">{testimonial.author}</p>
-        <p className="text-xs text-muted-foreground">{testimonial.role}</p>
-      </div>
-    </div>
+const initialOf = (name: string) => (name || "").trim().charAt(0).toUpperCase() || "S";
+
+/** A real uploaded photo is shown; the stock-face presets are not people we know. */
+const realPhoto = (t: Testimonial) =>
+  t.avatarType !== "avatar" && t.avatarUrl && /^https?:\/\//.test(t.avatarUrl) ? t.avatarUrl : null;
+
+const Stars = ({ rating }: { rating: number }) => (
+  <div className="flex items-center gap-1" aria-label={`${rating} out of 5`}>
+    {[...Array(5)].map((_, i) => (
+      <Star
+        key={i}
+        className={`w-3.5 h-3.5 ${i < rating ? "fill-[#e8c56a] text-[#e8c56a]" : "fill-white/10 text-white/10"}`}
+      />
+    ))}
   </div>
 );
 
 const TestimonialsCarousel = () => {
   const ref = useRef(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.1 });
+  const isInView = useInView(ref, { once: true, amount: 0.15 });
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const animationRef = useRef<number>();
-  const scrollPos = useRef(0);
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToTestimonials((data) => {
@@ -88,105 +65,181 @@ const TestimonialsCarousel = () => {
     return unsub;
   }, []);
 
-  // JS-based smooth scroll animation for reliable marquee (only for 4+ testimonials)
+  const count = testimonials.length;
+  const go = useCallback(
+    (step: number) => setIndex((i) => (count ? (i + step + count) % count : 0)),
+    [count],
+  );
+
   useEffect(() => {
-    if (testimonials.length <= 3 || !scrollRef.current) return;
+    if (count < 2 || paused) return;
+    const timer = window.setInterval(() => go(1), ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [count, paused, isInView, go]);
 
-    const el = scrollRef.current;
-    const singleSetWidth = testimonials.length * (CARD_WIDTH + CARD_GAP);
-    const speed = 0.5; // pixels per frame
+  if (!count) return null;
 
-    const animate = () => {
-      if (!isPaused) {
-        scrollPos.current += speed;
-        // Reset when we've scrolled past one full set (seamless loop with 3 copies)
-        if (scrollPos.current >= singleSetWidth) {
-          scrollPos.current = 0;
-          el.style.transform = `translateX(0px)`;
-        }
-        el.style.transform = `translateX(-${scrollPos.current}px)`;
-      }
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    // Reset position on testimonial data change
-    scrollPos.current = 0;
-    el.style.transform = `translateX(0px)`;
-
-    animationRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [testimonials, isPaused]);
-
-  const shouldAnimate = isInView || hasLoaded;
-  const useMarquee = testimonials.length > 3;
-
-  if (hasLoaded && testimonials.length === 0) return null;
-
-  // Only duplicate for marquee mode (4+ items) - 3 copies for seamless loop
-  const marqueeItems = useMarquee ? [...testimonials, ...testimonials, ...testimonials] : testimonials;
+  // The section renders nothing until the testimonials arrive, so the in-view
+  // observer has no element to watch at mount and never fires. Once the data is
+  // here the section is on screen anyway, so that is the cue to reveal it.
+  const shown = isInView || hasLoaded;
+  const active = testimonials[Math.min(index, count - 1)];
+  const photo = realPhoto(active);
 
   return (
-    <section ref={ref} className="py-14 md:py-20 bg-[linear-gradient(180deg,rgba(131,39,41,0.04)_0%,rgba(212,175,55,0.06)_100%)] overflow-hidden">
-      {testimonials.length > 0 && (
-        <>
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={shouldAnimate ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-10 px-4"
-          >
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <span className="h-px w-8 bg-primary/50" />
-              <span className="text-[10px] uppercase tracking-[0.32em] text-primary/80 font-medium">Testimonials</span>
-              <span className="h-px w-8 bg-primary/50" />
-            </div>
-            <h2 className="text-2xl md:text-3xl font-semibold text-foreground mb-2 font-serif">
-              What Our Clients Say
-            </h2>
-            <p className="text-sm text-muted-foreground font-light">
-              Hear from our happy customers across India
-            </p>
-          </motion.div>
+    <section
+      ref={ref}
+      className="relative overflow-hidden bg-[#2a1216] py-16 md:py-24"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {/* gold light from the top-left, deep shadow bottom-right */}
+      <div className="pointer-events-none absolute -left-40 -top-40 h-[560px] w-[560px] rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.22)_0%,transparent_62%)] blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-52 -right-24 h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle,rgba(0,0,0,0.55)_0%,transparent_65%)] blur-2xl" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/60 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/40 to-transparent" />
 
-          {useMarquee ? (
-            /* Marquee Container - for 4+ testimonials */
-            <div
-              className="relative overflow-hidden"
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}
-              onTouchStart={() => setIsPaused(true)}
-              onTouchEnd={() => setIsPaused(false)}
+      <div className="container-custom relative">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={shown ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+          className="mb-10 md:mb-14"
+        >
+          <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-[#d4af37]">
+            <span className="h-px w-8 bg-[#d4af37]/60" /> Testimonials
+          </span>
+          <h2 className="mt-3 font-serif text-3xl leading-tight text-white md:text-[2.75rem]">
+            What our clients say
+          </h2>
+          <p className="mt-2 max-w-md text-sm font-light text-white/55">
+            Hear from our happy customers across India.
+          </p>
+        </motion.div>
+
+        <div className="grid gap-10 lg:grid-cols-12 lg:gap-14">
+          {/* ── the quote ── */}
+          <motion.figure
+            initial={{ opacity: 0, y: 24 }}
+            animate={shown ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="relative lg:col-span-7"
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -top-16 -left-5 z-0 select-none font-serif text-[9rem] leading-none text-[#d4af37]/12 md:-top-24 md:-left-8 md:text-[13rem]"
             >
-              <div
-                ref={scrollRef}
-                className="flex will-change-transform"
-                style={{ gap: `${CARD_GAP}px`, paddingLeft: `${CARD_GAP}px` }}
+              &ldquo;
+            </span>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={active.id || `t-${index}`}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.45 }}
+                className="relative z-10"
               >
-                {marqueeItems.map((testimonial, index) => (
-                  <TestimonialCard key={`t-${index}`} testimonial={testimonial} />
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* Static centered grid - for 1-3 testimonials */
-            <div className="flex justify-center gap-6 px-4 flex-wrap">
-              {testimonials.map((testimonial, index) => (
-                <motion.div
-                  key={testimonial.id || `t-${index}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={shouldAnimate ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.5, delay: index * 0.15 }}
+                <Stars rating={active.rating} />
+
+                <blockquote className="mt-5 font-serif text-2xl font-light leading-[1.45] text-white md:text-[2rem] md:leading-[1.4]">
+                  {active.title}
+                </blockquote>
+
+                {active.quote && (
+                  <p className="mt-4 max-w-xl text-sm font-light leading-relaxed text-white/60 md:text-base">
+                    {active.quote}
+                  </p>
+                )}
+
+                <figcaption className="mt-8 flex items-center gap-4">
+                  {photo ? (
+                    <SmartImage
+                      src={photo}
+                      alt={active.author}
+                      preset="thumb"
+                      className="h-12 w-12 rounded-full object-cover ring-1 ring-[#d4af37]/50"
+                    />
+                  ) : (
+                    <span className="grid h-12 w-12 place-items-center rounded-full border border-[#d4af37]/45 bg-[#d4af37]/10 font-serif text-lg text-[#e8c56a]">
+                      {initialOf(active.author)}
+                    </span>
+                  )}
+                  <span>
+                    <span className="block text-sm font-medium tracking-wide text-white">{active.author}</span>
+                    <span className="block text-[11px] uppercase tracking-[0.22em] text-white/40">{active.role}</span>
+                  </span>
+                </figcaption>
+              </motion.div>
+            </AnimatePresence>
+
+            {count > 1 && (
+              <div className="mt-9 flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => go(-1)}
+                  aria-label="Previous testimonial"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/15 text-white/70 transition hover:border-[#d4af37]/60 hover:text-[#e8c56a]"
                 >
-                  <TestimonialCard testimonial={testimonial} />
-                </motion.div>
-              ))}
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => go(1)}
+                  aria-label="Next testimonial"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/15 text-white/70 transition hover:border-[#d4af37]/60 hover:text-[#e8c56a]"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <span className="flex items-center gap-1.5" role="tablist" aria-label="Testimonials">
+                  {testimonials.map((t, i) => (
+                    <button
+                      key={t.id || `dot-${i}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === index}
+                      aria-label={`Testimonial ${i + 1}`}
+                      onClick={() => setIndex(i)}
+                      className={`h-1 rounded-full transition-all duration-300 ${
+                        i === index ? "w-7 bg-[#d4af37]" : "w-1.5 bg-white/25 hover:bg-white/50"
+                      }`}
+                    />
+                  ))}
+                </span>
+                <span className="ml-auto font-serif text-xs text-white/35">
+                  {String(index + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}
+                </span>
+              </div>
+            )}
+          </motion.figure>
+
+          {/* ── what we promise, next to what they said ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={shown ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="lg:col-span-5"
+          >
+            <div className="rounded-[26px] border border-[#d4af37]/20 bg-white/[0.03] p-6 backdrop-blur-sm md:p-8">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-[#d4af37]/80">Why they come back</p>
+              <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-7">
+                {PROMISES.map((p) => (
+                  <div key={p.label}>
+                    <dt className="font-serif text-2xl text-white md:text-[1.75rem]">{p.value}</dt>
+                    <dd className="mt-1 text-[11px] uppercase tracking-[0.16em] leading-relaxed text-white/45">
+                      {p.label}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-7 border-t border-white/10 pt-5 text-xs font-light leading-relaxed text-white/45">
+                Every piece is hand-finished in our own workshop and checked for purity before it is packed.
+              </p>
             </div>
-          )}
-        </>
-      )}
+          </motion.div>
+        </div>
+      </div>
     </section>
   );
 };

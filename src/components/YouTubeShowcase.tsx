@@ -104,14 +104,16 @@ const YouTubeShowcase = () => {
   );
 
   // Featured slot picks the explicitly-featured video the user last clicked,
-  // falling back to the first featured one. If none are flagged, hide spotlight.
+  // falling back to the first featured one. With nothing flagged, the newest
+  // video takes the spotlight anyway - a lone film shown as a thumbnail in a
+  // half-empty strip reads as an afterthought, especially on a phone.
   const featured = useMemo(() => {
-    if (featuredVideos.length === 0) return null;
+    if (featuredVideos.length === 0) return videos[0] || null;
     const matched = featuredVideos.find(
       (v) => (v.id || v.videoId) === activeId
     );
     return matched || featuredVideos[0];
-  }, [featuredVideos, activeId]);
+  }, [featuredVideos, activeId, videos]);
 
   if (videos.length === 0) return null;
 
@@ -176,8 +178,8 @@ const YouTubeShowcase = () => {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className={`relative mx-auto ${
-              featured.aspectRatio === "9:16" ? "max-w-[24rem] md:max-w-[30rem]" : "max-w-[72rem]"
+            className={`relative mx-auto w-full ${
+              featured.aspectRatio === "9:16" ? "max-w-[22rem] md:max-w-[26rem]" : "max-w-[72rem]"
             }`}
           >
             <div className="absolute -inset-[2px] rounded-[26px] bg-gradient-to-br from-[#d4af37] via-[#f5d76e] to-[#a07a1f] opacity-90 blur-[1px]" />
@@ -226,7 +228,10 @@ const YouTubeShowcase = () => {
           </motion.div>
         )}
 
-        {/* Horizontal playlist strip — every active video, plays inline */}
+        {/* Horizontal playlist strip — every active video, plays inline.
+            With a single film there is nothing to browse: the spotlight above
+            is the whole reel. */}
+        {videos.length > 1 && (
         <div className={featured ? "mt-8 md:mt-12" : ""}>
           <div className="flex items-center justify-between mb-4 px-1">
             <h4 className="text-xs md:text-sm uppercase tracking-[0.28em] text-muted-foreground font-medium">
@@ -260,7 +265,7 @@ const YouTubeShowcase = () => {
 
             <div
               ref={scrollerRef}
-              className="flex items-stretch gap-3 md:gap-4 overflow-x-auto scrollbar-hide pb-2 px-1"
+              className="flex items-stretch gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 px-1"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               {stripVideos.map((v, i) => {
@@ -275,8 +280,12 @@ const YouTubeShowcase = () => {
                     key={cardKey}
                     whileHover={{ y: -4 }}
                     transition={{ duration: 0.25 }}
-                    className={`group flex-shrink-0 text-left rounded-2xl overflow-hidden border-2 transition-all bg-card ${
-                      isPortrait ? "w-[176px] md:w-[216px]" : "w-[248px] md:w-[320px]"
+                    className={`group flex-shrink-0 snap-center text-left rounded-2xl overflow-hidden border-2 transition-all bg-card ${
+                      // Phone cards are sized off the viewport so a reel is
+                      // watchable, with the next one peeking to invite a swipe.
+                      isPortrait
+                        ? "w-[62vw] max-w-[260px] md:w-[216px]"
+                        : "w-[82vw] max-w-[340px] md:w-[320px]"
                     } ${
                       isFeaturedActive
                         ? "border-primary shadow-[0_18px_36px_-18px_rgba(212,175,55,0.6)]"
@@ -319,6 +328,7 @@ const YouTubeShowcase = () => {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       <Dialog open={!!selectedVideo} onOpenChange={(open) => !open && setSelectedVideo(null)}>

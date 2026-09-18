@@ -208,9 +208,12 @@ const AdminBanners = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Desktop Banner Image
                   </label>
-                  <p className="mb-3 text-xs text-gray-500">Use the wide desktop hero asset.</p>
+                  <p className="mb-3 text-xs text-gray-500">
+                    Use a 16:9 desktop asset (1920 × 1080 is ideal) - the hero shows it whole, uncropped.
+                  </p>
                   <ImageUploader
                     key={`${editingBanner?.id || 'new'}-desktop`}
+                    category="banners"
                     onImageSelected={setSelectedDesktopFile}
                     existingImageUrl={formData.imageUrl || undefined}
                     onRemove={() => {
@@ -228,6 +231,7 @@ const AdminBanners = () => {
                   <p className="mb-3 text-xs text-gray-500">Use a taller 4:5 mobile crop. If omitted, desktop image is used on mobile.</p>
                   <ImageUploader
                     key={`${editingBanner?.id || 'new'}-mobile`}
+                    category="banners"
                     onImageSelected={setSelectedMobileFile}
                     existingImageUrl={formData.mobileImageUrl || undefined}
                     onRemove={() => {
