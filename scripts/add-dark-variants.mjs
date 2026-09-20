@@ -10,7 +10,7 @@ import { execSync } from 'node:child_process';
 const SKIP = new Set([
   'AdminBanners.tsx',
   'AdminOrders.tsx',
-]);
+]); 
 
 const TARGETS = ['src/pages', 'src/components'];
 const list = TARGETS.flatMap((dir) =>
