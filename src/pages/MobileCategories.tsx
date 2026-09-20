@@ -4,7 +4,7 @@ import { Search, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import type { Product } from '@/services/productService';
-import { getActiveProductsCached } from '@/services/productCache';
+import { getActiveProductsCached, useCatalogRevision } from '@/services/productCache';
 import logo from '@/assets/dark.png';
 import { SmartImage } from "@/components/ui/smart-image";
 
@@ -98,6 +98,9 @@ const mainCategories = [
 ];
 
 const MobileCategories = () => {
+  /** Changes when an admin publishes; re-reads the catalog below. */
+  const catalogRevision = useCatalogRevision();
+
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState(() => {
     const savedId = sessionStorage.getItem('selectedCategoryId');
@@ -125,7 +128,9 @@ const MobileCategories = () => {
       }
     };
     loadProducts();
-  }, []);
+      // Re-runs when an admin publishes a new catalog, so a price change
+      // reaches this screen without the visitor reloading it.
+  }, [catalogRevision]);
 
   // Get product image for subcategory if available
   const getSubcategoryImage = (subcategoryName: string, defaultImage: string) => {

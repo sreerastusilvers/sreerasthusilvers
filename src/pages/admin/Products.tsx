@@ -49,6 +49,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { SmartImage } from "@/components/ui/smart-image";
 import BarcodeScannerDialog from '@/components/admin/BarcodeScannerDialog';
+import { useHardwareScanner } from '@/hooks/useHardwareScanner';
 import { describeError } from '@/lib/errorMessage';
 import { matchesTaxon } from '@/lib/taxonomy';
 
@@ -85,6 +86,25 @@ const Products = () => {
   const [subSubcategoryFilter, setSubSubcategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [scannerOpen, setScannerOpen] = useState(false);
+
+  /**
+   * Find a product by scanning, with no dialog and no camera.
+   *
+   * The counter has a corded scanner, so the fastest possible flow is: stand on
+   * this page, scan the tag, see the product. Disabled while the camera dialog
+   * is open, which does its own listening.
+   */
+  const handleScannedCode = (code: string) => {
+    setSearchQuery(code);
+    const hit = products.find((p) => (p.barcode || '').trim() === code.trim());
+    toast({
+      title: hit ? 'Product found' : 'No product with that barcode',
+      description: hit ? hit.name : code,
+      variant: hit ? undefined : 'destructive',
+    });
+  };
+
+  useHardwareScanner({ onScan: handleScannedCode, enabled: !scannerOpen });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -679,15 +699,7 @@ const Products = () => {
       <BarcodeScannerDialog
         open={scannerOpen}
         onOpenChange={setScannerOpen}
-        onDetected={(code) => {
-          setSearchQuery(code);
-          const hit = products.find((p) => (p.barcode || '').trim() === code.trim());
-          toast({
-            title: hit ? 'Product found' : 'No product with that barcode',
-            description: hit ? hit.name : code,
-            variant: hit ? undefined : 'destructive',
-          });
-        }}
+        onDetected={handleScannedCode}
         title="Scan to find a product"
         description="Scanning fills the search box with the barcode."
       />

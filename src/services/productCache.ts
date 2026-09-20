@@ -1,4 +1,5 @@
-import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { collection, doc, getDocs, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import type { Product } from './productService';
 
@@ -55,7 +56,7 @@ const reviveTimestamps = (_key: string, value: unknown) => {
 /** Above this, skip sessionStorage rather than risk a QuotaExceededError. */
 const MAX_PERSIST_BYTES = 2_000_000;
 
-type CacheEntry = { data: Product[]; at: number };
+type CacheEntry = { data: Product[]; at: number; generatedAt?: string };
 
 let memory: CacheEntry | null = null;
 /** Dedupes concurrent callers so a page with 5 sections issues 1 query, not 5. */
@@ -97,12 +98,23 @@ const createdMillis = (p: Product) => {
 /** 1 when the product has at least one photo, 0 when it has none - used to sort, so it is a number. */
 const hasPhoto = (p: Product) => (p.media?.images?.length ? 1 : 0);
 
+/** `generatedAt` of the snapshot currently in `memory`, for staleness checks. */
+let loadedGeneratedAt = '';
+
 const fetchSnapshot = async (): Promise<Product[]> => {
-  const resp = await fetch(CATALOG_URL, { headers: { Accept: 'application/json' } });
+  // `cache: 'no-cache'` still uses the HTTP cache but always revalidates, so an
+  // unchanged catalog costs a 304 with no body while a changed one is never
+  // served stale from the browser's own copy.
+  const resp = await fetch(CATALOG_URL, { headers: { Accept: 'application/json' }, cache: 'no-cache' });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   // A missing rewrite serves index.html with a 200, which fails to parse here - also a fallback case.
-  const file = JSON.parse(await resp.text(), reviveTimestamps) as { version?: number; products?: Product[] };
+  const file = JSON.parse(await resp.text(), reviveTimestamps) as {
+    version?: number;
+    products?: Product[];
+    generatedAt?: string;
+  };
   if (file.version !== 1 || !Array.isArray(file.products)) throw new Error('unexpected snapshot format');
+  loadedGeneratedAt = file.generatedAt || '';
   return file.products.filter((p) => p.flags?.isActive === true);
 };
 
@@ -138,6 +150,7 @@ const fetchActiveProducts = async (): Promise<Product[]> => {
 export const invalidateCatalogCache = () => {
   memory = null;
   inFlight = null;
+  loadedGeneratedAt = '';
   try {
     sessionStorage.removeItem(STORAGE_KEY);
   } catch {
@@ -152,6 +165,7 @@ export const getActiveProductsCached = async (): Promise<Product[]> => {
   const persisted = readPersisted();
   if (persisted) {
     memory = persisted;
+    loadedGeneratedAt = persisted.generatedAt || '';
     return persisted.data;
   }
 
@@ -159,7 +173,7 @@ export const getActiveProductsCached = async (): Promise<Product[]> => {
 
   inFlight = fetchActiveProducts()
     .then((data) => {
-      const entry = { data, at: Date.now() };
+      const entry: CacheEntry = { data, at: Date.now(), generatedAt: loadedGeneratedAt };
       memory = entry;
       persist(entry);
       return data;
@@ -178,20 +192,124 @@ export const getActiveProductsCached = async (): Promise<Product[]> => {
  * but resolves from cache and never opens a Firestore listener. The returned
  * function cancels delivery to a unmounted component.
  */
+// ── Live catalog updates ────────────────────────────────────────────────────
+//
+// `siteSettings/catalogVersion` is a single tiny document the server stamps
+// every time it republishes the snapshot. Every listing surface shares ONE
+// listener on it, so an admin price change reaches open pages within a second
+// for the cost of one document read per visitor - instead of the ~600 reads a
+// realtime listener on the products collection itself would bill for.
+//
+// This is what makes the storefront genuinely live. `subscribeToActiveProducts`
+// used to resolve a promise once and never speak again, so a page that had
+// already rendered kept its prices until someone reloaded it: the admin edited
+// a price, the snapshot updated within seconds, and the shopper still saw the
+// old figure indefinitely.
+
+const subscribers = new Set<(products: Product[]) => void>();
+/** Listeners that only want to know *that* the catalog changed. */
+const revisionListeners = new Set<(revision: number) => void>();
+let revision = 0;
+let versionUnsub: (() => void) | null = null;
+
+/** Re-read the catalog and push it to every live surface. */
+const refreshAllSubscribers = async () => {
+  invalidateCatalogCache();
+  try {
+    const products = await getActiveProductsCached();
+    revision += 1;
+    for (const cb of subscribers) cb(products);
+    for (const cb of revisionListeners) cb(revision);
+  } catch (error) {
+    console.error('[productCache] live refresh failed:', error);
+  }
+};
+
+/** The publish this tab has already reacted to. */
+let lastSeenVersion = '';
+
+const watchCatalogVersion = () => {
+  if (versionUnsub) return;
+  versionUnsub = onSnapshot(
+    doc(db, 'siteSettings', 'catalogVersion'),
+    (snap) => {
+      const generatedAt = snap.exists() ? String((snap.data() as any).generatedAt || '') : '';
+      if (!generatedAt) return; // nothing published yet
+
+      // onSnapshot fires once on attach with the current value. Record it, and
+      // only refresh then if what we are displaying is demonstrably older.
+      if (!lastSeenVersion) {
+        lastSeenVersion = generatedAt;
+        if (loadedGeneratedAt && generatedAt !== loadedGeneratedAt) void refreshAllSubscribers();
+        return;
+      }
+
+      // Any later change is a new publish, whatever we think we are holding.
+      // Keyed off this document rather than off the loaded snapshot's own
+      // `generatedAt`, which is blank whenever the catalog came from
+      // sessionStorage - that left a reloaded tab permanently deaf to updates.
+      if (generatedAt === lastSeenVersion) return;
+      lastSeenVersion = generatedAt;
+      void refreshAllSubscribers();
+    },
+    (err) => {
+      // Without the marker the catalog still refreshes on its normal TTL.
+      console.warn('[productCache] catalog version listener unavailable:', err);
+    },
+  );
+};
+
+const stopWatchingIfIdle = () => {
+  if (subscribers.size === 0 && revisionListeners.size === 0 && versionUnsub) {
+    versionUnsub();
+    versionUnsub = null;
+  }
+};
+
+/**
+ * A number that changes whenever a newly published catalog has been loaded.
+ *
+ * For screens that read the catalog with a plain `await` inside an effect
+ * rather than through {@link subscribeToActiveProducts}: add this to the
+ * effect's dependencies and the screen re-reads itself when an admin publishes,
+ * instead of showing whatever it loaded with until someone reloads the page.
+ */
+export const useCatalogRevision = (): number => {
+  const [value, setValue] = useState(revision);
+
+  useEffect(() => {
+    const listener = (n: number) => setValue(n);
+    revisionListeners.add(listener);
+    watchCatalogVersion();
+    return () => {
+      revisionListeners.delete(listener);
+      stopWatchingIfIdle();
+    };
+  }, []);
+
+  return value;
+};
+
 export const subscribeToActiveProducts = (callback: (products: Product[]) => void) => {
   let cancelled = false;
+  const deliver = (products: Product[]) => {
+    if (!cancelled) callback(products);
+  };
+
+  subscribers.add(deliver);
+  watchCatalogVersion();
 
   getActiveProductsCached()
-    .then((products) => {
-      if (!cancelled) callback(products);
-    })
+    .then(deliver)
     .catch((error) => {
       console.error('[productCache] catalog load failed:', error);
-      if (!cancelled) callback([]);
+      deliver([]);
     });
 
   return () => {
     cancelled = true;
+    subscribers.delete(deliver);
+    stopWatchingIfIdle();
   };
 };
 
@@ -230,13 +348,8 @@ export const subscribeToActiveProductsByFlag = (
     callback(products.filter((p) => p.flags?.[flag] === true && hasPhoto(p)).slice(0, limitCount)),
   );
 
-/** Call after any admin write so the next read reflects it immediately. */
-export const invalidateProductCache = () => {
-  memory = null;
-  inFlight = null;
-  try {
-    sessionStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-};
+/**
+ * Call after any admin write so the next read reflects it immediately.
+ * Alias of {@link invalidateCatalogCache}, kept for existing call sites.
+ */
+export const invalidateProductCache = invalidateCatalogCache;

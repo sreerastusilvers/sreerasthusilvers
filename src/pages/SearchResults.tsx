@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, ArrowLeft, SlidersHorizontal, ShoppingBag, X } from "lucide-react";
-import { getActiveProductsCached } from "@/services/productCache";
+import { getActiveProductsCached, useCatalogRevision } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import ProductCard from "@/components/ProductCard";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -12,6 +12,9 @@ import ProductPagination from "@/components/ProductPagination";
 const PAGE_SIZE = 24;
 
 const SearchResults = () => {
+  /** Changes when an admin publishes; re-reads the catalog below. */
+  const catalogRevision = useCatalogRevision();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,7 +40,9 @@ const SearchResults = () => {
       }
     };
     loadProducts();
-  }, []);
+      // Re-runs when an admin publishes a new catalog, so a price change
+      // reaches this screen without the visitor reloading it.
+  }, [catalogRevision]);
 
   // Filter products based on search query
   const filteredProducts = useMemo(() => {

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Mic, ArrowLeft, X, Clock, TrendingUp, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getActiveProductsCached } from "@/services/productCache";
+import { getActiveProductsCached, useCatalogRevision } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import { SmartImage } from "@/components/ui/smart-image";
 
@@ -69,6 +69,9 @@ const addToSearchHistory = (term: string) => {
 };
 
 const MobileSearch = () => {
+  /** Changes when an admin publishes; re-reads the catalog below. */
+  const catalogRevision = useCatalogRevision();
+
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,7 +103,9 @@ const MobileSearch = () => {
       }
     };
     loadProducts();
-  }, []);
+      // Re-runs when an admin publishes a new catalog, so a price change
+      // reaches this screen without the visitor reloading it.
+  }, [catalogRevision]);
 
   // Clear silence timeout helper
   const clearSilenceTimeout = useCallback(() => {

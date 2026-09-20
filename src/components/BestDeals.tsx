@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { getActiveProductsCached } from "@/services/productCache";
+import { getActiveProductsCached, useCatalogRevision } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import { useNavigate } from "react-router-dom";
 import { SmartImage } from "@/components/ui/smart-image";
 
 const BestDeals = () => {
+  /** Changes when an admin publishes; re-reads the catalog below. */
+  const catalogRevision = useCatalogRevision();
+
   const navigate = useNavigate();
   const [products, setProducts] = useState<UIProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +33,9 @@ const BestDeals = () => {
     };
 
     loadProducts();
-  }, []);
+      // Re-runs when an admin publishes a new catalog, so a price change
+      // reaches this screen without the visitor reloading it.
+  }, [catalogRevision]);
 
   const scroll = (direction: 'left' | 'right') => {
     const container = document.getElementById('deals-scroll');

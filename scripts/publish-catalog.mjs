@@ -51,7 +51,8 @@ function toJsonSafe(value) {
 const snap = await db.collection('products').where('flags.isActive', '==', true).get();
 const products = snap.docs.map((d) => ({ id: d.id, ...toJsonSafe(d.data()) }));
 products.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-const body = JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), count: products.length, products });
+const generatedAt = new Date().toISOString();
+const body = JSON.stringify({ version: 1, generatedAt, count: products.length, products });
 
 console.log(`active products : ${products.length}`);
 console.log(`snapshot size   : ${(body.length / 1024).toFixed(0)} KB`);
@@ -69,6 +70,20 @@ const put = await aws.fetch(`https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/$
 if (!put.ok) {
   console.error(`upload failed: HTTP ${put.status} ${(await put.text()).slice(0, 300)}`);
   process.exit(1);
+}
+
+// Tell open browsers a new snapshot exists. Storefront pages share one
+// listener on this document, so a bulk rebuild reaches them straight away
+// instead of waiting for each visitor's cache to expire. Mirrors
+// stampCatalogVersion() in api/media.ts.
+try {
+  await db.collection('siteSettings').doc('catalogVersion').set(
+    { generatedAt, updatedAt: new Date().toISOString() },
+    { merge: true },
+  );
+  console.log('version stamped : catalogVersion ->', generatedAt);
+} catch (err) {
+  console.warn('version stamp failed (pages refresh on their own TTL):', err?.message || err);
 }
 
 // Read it back through the public domain the site proxies to.

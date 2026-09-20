@@ -770,7 +770,38 @@ async function writeCatalog(body: Buffer, ifMatch?: string): Promise<boolean> {
   const publicBase = (process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '');
   if (publicBase) await purgeCache([`${publicBase}/${CATALOG_KEY}`]);
 
+  await stampCatalogVersion(body);
   return true;
+}
+
+/**
+ * Tell open browsers a new snapshot exists.
+ *
+ * Every storefront listing shares one Firestore listener on this document (see
+ * `watchCatalogVersion` in src/services/productCache.ts), so stamping it makes
+ * an admin price change appear on pages that are already open. Without it a
+ * shopper sitting on a category page keeps the prices they loaded with, however
+ * fresh the snapshot itself is.
+ *
+ * One tiny document rather than a listener on `products`: the same liveness for
+ * one read per visitor instead of ~600.
+ *
+ * Best-effort - the snapshot is already saved, and failing to stamp only costs
+ * liveness, so it must never turn a successful publish into an error.
+ */
+async function stampCatalogVersion(body: Buffer): Promise<void> {
+  try {
+    const { generatedAt } = JSON.parse(body.toString('utf8')) as { generatedAt?: string };
+    if (!generatedAt) return;
+    initAdmin();
+    await admin
+      .firestore()
+      .collection('siteSettings')
+      .doc('catalogVersion')
+      .set({ generatedAt, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (err) {
+    console.warn('[media] could not stamp catalogVersion; open pages refresh on their own TTL:', err);
+  }
 }
 
 /** Full rebuild: one read per active product (~600). Admin only. */

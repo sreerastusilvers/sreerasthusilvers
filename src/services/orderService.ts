@@ -363,26 +363,77 @@ const CANONICAL_FLOW: Order['status'][] = [
 ];
 
 /**
+ * The return / refund path, in the order it happens.
+ *
+ * Kept apart from CANONICAL_FLOW because an order only enters it once the
+ * customer already has the goods, and because `picked` means something
+ * different here: on the way out it is "the partner collected the parcel from
+ * the store", on the way back it is "the partner collected the return from the
+ * customer". `normalizeOrderStatus` only knows the outbound meaning.
+ */
+const RETURN_FLOW: Order['status'][] = [
+  'returnRequested',
+  'returnScheduled',
+  'picked',
+  'returned',
+  'refunded',
+];
+
+/** Nothing moves on from these. */
+const TERMINAL: Order['status'][] = ['cancelled', 'refunded'];
+
+/**
  * Returns true when transitioning from `from` to `to` is allowed.
+ *
  * Rules:
- *   - Cancelled / return statuses are always allowed (exception flow).
- *   - Otherwise, only forward movement on the canonical flow is allowed.
+ *   - Inside the return path, only forward movement along RETURN_FLOW.
+ *   - The return path can only be entered from `delivered` (or from
+ *     `deliveryFailed`, where the goods never left the courier).
+ *   - Otherwise, only forward movement along CANONICAL_FLOW.
+ *   - An order can be cancelled while it is still in progress, never after it
+ *     has been delivered or already finished.
+ *
+ * The return path is matched on the RAW values, never the normalised ones.
+ * Normalising first turned a request for `picked` into `outForDelivery`, which
+ * matches nothing in the return path - so "Return Picked Up" was permanently
+ * greyed out in the admin dropdown, even standing on `returnScheduled` where it
+ * is the only sensible next step. That is the one step a shop has to tick by
+ * hand when the courier brings goods back.
  */
 export const isValidStatusTransition = (
   from: Order['status'],
   to: Order['status'],
 ): boolean => {
+  if (from === to) return false;
+
+  const fromReturn = RETURN_FLOW.indexOf(from);
+  const toReturn = RETURN_FLOW.indexOf(to);
+
+  // Already on the way back: forward along the return path only.
+  if (fromReturn !== -1) return toReturn > fromReturn;
+
+  // Entering the return path.
+  if (toReturn !== -1) {
+    // A failed delivery never reached the customer, so there is nothing to
+    // request or collect - the goods are simply back, and may be refunded.
+    if (from === 'deliveryFailed') return to === 'returned' || to === 'refunded';
+    // Otherwise the customer must have the goods first. Any entry point is
+    // allowed from there, because a walk-in return skips the request and the
+    // pickup entirely.
+    return normalizeOrderStatus(from) === 'delivered';
+  }
+
   const fromN = normalizeOrderStatus(from);
   const toN = normalizeOrderStatus(to);
   if (fromN === toN) return false;
-  // Exception flow always allowed.
-  if (['cancelled', 'returnRequested', 'returnScheduled', 'returned', 'refunded', 'deliveryFailed'].includes(toN)) {
-    return true;
-  }
-  // deliveryFailed can only move forward to returned.
-  if (fromN === 'deliveryFailed') {
-    return toN === 'returned';
-  }
+  if (TERMINAL.includes(fromN) || fromN === 'returned') return false;
+
+  // Cancelling is for orders still in progress; a delivered one is returned
+  // and refunded instead.
+  if (toN === 'cancelled') return fromN !== 'delivered';
+  if (toN === 'deliveryFailed') return fromN === 'packed' || fromN === 'outForDelivery';
+  if (fromN === 'deliveryFailed') return false;
+
   const fromIdx = CANONICAL_FLOW.indexOf(fromN);
   const toIdx = CANONICAL_FLOW.indexOf(toN);
   if (fromIdx === -1 || toIdx === -1) return false;

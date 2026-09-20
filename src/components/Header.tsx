@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getActiveProductsCached } from "@/services/productCache";
+import { getActiveProductsCached, useCatalogRevision } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import MobileHeader from "./MobileHeader";
 import ThemeToggle from "./ThemeToggle";
@@ -13,6 +13,9 @@ import SilverRateWidget from "./SilverRateWidget";
 import { SmartImage } from "@/components/ui/smart-image";
 
 const Header = () => {
+  /** Changes when an admin publishes; re-reads the catalog below. */
+  const catalogRevision = useCatalogRevision();
+
   const lightModeLogo = "/black_logo.png";
   const darkModeLogo = "/white_logo.png";
   const navigate = useNavigate();
@@ -45,7 +48,9 @@ const Header = () => {
       }
     };
     loadProducts();
-  }, []);
+      // Re-runs when an admin publishes a new catalog, so a price change
+      // reaches this screen without the visitor reloading it.
+  }, [catalogRevision]);
 
   // Handle click outside search results
   useEffect(() => {

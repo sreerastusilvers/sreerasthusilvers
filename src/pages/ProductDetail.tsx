@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Truck, Shield, RotateCcw, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
 import { getProduct, type Product as FirebaseProduct } from "@/services/productService";
-import { getActiveProductsCached } from "@/services/productCache";
+import { getActiveProductsCached, useCatalogRevision } from "@/services/productCache";
 import { UIProductDetail, adaptFirebaseToUIDetail, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
 import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 import { useCart } from "@/contexts/CartContext";
@@ -34,6 +34,8 @@ const ProductDetail = () => {
   const { user } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { ratePerGram } = useSilverRate();
+  /** Changes when an admin publishes, so the catalog copy below is re-read. */
+  const catalogRevision = useCatalogRevision();
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const [showVideoCallModal, setShowVideoCallModal] = useState(false);
@@ -172,7 +174,9 @@ const ProductDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [productId]);
+    // `catalogRevision` re-runs this when an admin publishes, so the price
+    // painted from the catalog matches the one the product page settles on.
+  }, [productId, catalogRevision]);
 
   // Fetch reviews and check if user can review
   useEffect(() => {

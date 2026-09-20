@@ -53,6 +53,7 @@ import {
   Category,
 } from '@/services/categoryService';
 import BarcodeScannerDialog from '@/components/admin/BarcodeScannerDialog';
+import { useHardwareScanner } from '@/hooks/useHardwareScanner';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { SmartImage } from "@/components/ui/smart-image";
@@ -218,6 +219,20 @@ const ProductForm = () => {
   });
 
   const [scannerOpen, setScannerOpen] = useState(false);
+
+  /**
+   * Scanning anywhere on this form fills the barcode field.
+   *
+   * Tagging a new piece is: type the details, point the scanner at the tag,
+   * save. Reaching for the camera button between every product would undo the
+   * point of having a corded scanner on the counter.
+   */
+  const handleScannedCode = (code: string) => {
+    setFormData((prev) => ({ ...prev, barcode: code }));
+    toast({ title: 'Barcode scanned', description: code });
+  };
+
+  useHardwareScanner({ onScan: handleScannedCode, enabled: !scannerOpen });
 
   /**
    * Per-field validation messages, keyed by field name.
@@ -1470,10 +1485,7 @@ const ProductForm = () => {
       <BarcodeScannerDialog
         open={scannerOpen}
         onOpenChange={setScannerOpen}
-        onDetected={(code) => {
-          setFormData((prev) => ({ ...prev, barcode: code }));
-          toast({ title: 'Barcode scanned', description: code });
-        }}
+        onDetected={handleScannedCode}
         description="Point the camera at the product barcode. It is saved with the product."
       />
     </div>

@@ -162,7 +162,7 @@ const HeroBanner = () => {
 
   if (loading || !imagesReady) {
     return (
-      <section className="relative aspect-[4/5] lg:aspect-[16/9] lg:h-auto lg:mx-auto lg:max-w-[1120px] flex items-center justify-center bg-muted">
+      <section className="relative aspect-[4/5] lg:aspect-[16/9] lg:h-auto lg:mx-auto lg:max-w-[1400px] flex items-center justify-center bg-muted">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
           <span className="text-xs text-muted-foreground font-light tracking-wider">Loading</span>
@@ -173,7 +173,7 @@ const HeroBanner = () => {
 
   if (banners.length === 0) {
     return (
-      <section className="relative aspect-[4/5] lg:aspect-[16/9] lg:h-auto lg:mx-auto lg:max-w-[1120px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
+      <section className="relative aspect-[4/5] lg:aspect-[16/9] lg:h-auto lg:mx-auto lg:max-w-[1400px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <div className="flex flex-col items-center gap-4 px-6 text-center">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="text-3xl">✨</span>
@@ -198,10 +198,19 @@ const HeroBanner = () => {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Desktop frame is 16:9, the shape the banners are made in, so nothing is
-          cropped. Capped at 1120px so a 16:9 box stays a hero and not a whole
-          screenful on a wide monitor. Phones keep their own 4:5 crop. */}
-      <div className="relative px-3 pt-1 lg:mx-auto lg:max-w-[1120px] lg:px-4">
+      {/*
+        Desktop frame keeps the banners' own 16:9 shape, so nothing is ever
+        cropped - the offer strip and the call-to-action sit near the bottom
+        edge of the artwork and a wider frame eats them.
+
+        1400px rather than the old 1120px: at 1120 the banner sat as a small
+        island in the middle of anything above ~1500px wide. Going wider than
+        this means cropping, so widen the artwork first - upload 2400x1000
+        (desktop) and this frame can go edge to edge without losing anything.
+
+        Phones keep their own 4:5 portrait crop from the mobile artwork.
+      */}
+      <div className="relative px-3 pt-1 lg:mx-auto lg:max-w-[1400px] lg:px-4">
         <div
           className="relative overflow-hidden rounded-[28px] shadow-[0_30px_80px_-55px_rgba(0,0,0,0.55)]"
           onTouchStart={(e) => {
