@@ -15,7 +15,7 @@ import { ArrowLeft, Tag, Gift, ChevronDown, Shield, ChevronRight, Plus, Minus, Z
 import { getActiveProductsCached } from '@/services/productCache';
 import { adaptFirebaseToUI, UIProduct } from '@/lib/productAdapter';
 import { getUserAddresses, getDefaultAddress, Address, addAddress, AddressFormData } from '@/services/addressService';
-import { createOrder, generateOrderNumber, OrderFormData, OrderItem } from '@/services/orderService';
+import { createPaidOrder, preflightCart, generateOrderNumber, OrderFormData, OrderItem } from '@/services/orderService';
 import { payWithRazorpay, PaymentCancelledError, type VerifiedPayment } from '@/services/razorpayService';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,54 @@ import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
 import { SmartImage } from "@/components/ui/smart-image";
 
 // ─── Slide to Pay Button Component ───
+/**
+ * Best-effort coordinates for a shipping address, used by the delivery map.
+ *
+ * Runs against OpenStreetMap's Nominatim, which is a third-party service that
+ * can be slow or unavailable, so it is called BEFORE the payment is taken and
+ * never allowed to fail an order: any error resolves to no coordinates.
+ *
+ * A candidate is only accepted when it lands within 20 km of the city centre,
+ * so a stray match on a same-named locality elsewhere in India is discarded.
+ */
+async function geocodeShippingAddress(address: {
+  city?: string; state?: string; locality?: string; pinCode?: string;
+}): Promise<{ latitude: number; longitude: number } | null> {
+  try {
+    const tryGeo = async (q: string) => {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&countrycodes=in`);
+      const d = await r.json();
+      return d?.length > 0 ? { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) } : null;
+    };
+    const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371, dLat = ((lat2-lat1)*Math.PI)/180, dLon = ((lon2-lon1)*Math.PI)/180;
+      const a = Math.sin(dLat/2)**2 + Math.cos((lat1*Math.PI)/180)*Math.cos((lat2*Math.PI)/180)*Math.sin(dLon/2)**2;
+      return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    };
+
+    const cityRef = await tryGeo(`${address.city}, ${address.state}, India`);
+    if (!cityRef) return null;
+
+    const geoQueries = [
+      address.locality ? `${address.locality}, ${address.city}, ${address.state}, India` : '',
+      address.locality && address.pinCode ? `${address.locality}, ${address.pinCode}, India` : '',
+      address.pinCode ? `${address.pinCode}, ${address.city}, India` : '',
+      address.pinCode ? `${address.pinCode}, India` : '',
+    ].filter(Boolean);
+
+    for (const q of geoQueries) {
+      const result = await tryGeo(q);
+      if (result && haversineKm(cityRef.lat, cityRef.lon, result.lat, result.lon) <= 20) {
+        return { latitude: result.lat, longitude: result.lon };
+      }
+    }
+    return { latitude: cityRef.lat, longitude: cityRef.lon };
+  } catch (geoErr) {
+    console.warn('Geocoding failed at checkout, order will still be placed:', geoErr);
+    return null;
+  }
+}
+
 const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
   const constraintsRef = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
@@ -102,7 +150,7 @@ const MobileCheckout = () => {
   };
   const { user, userProfile } = useAuth();
   const { resolvedTheme } = useTheme();
-  const { items, subtotal, updateQuantity, removeFromCart, totalItems, addToCart, clearCart, openCart, loading: cartLoading } = useCart();
+  const { items, subtotal, updateQuantity, updateCartPrice, removeFromCart, totalItems, addToCart, clearCart, openCart, loading: cartLoading } = useCart();
   const [currentStep, setCurrentStep] = useState(1); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
   const { toast } = useToast();
   const [suggestedProducts, setSuggestedProducts] = useState<UIProduct[]>([]);
@@ -293,6 +341,10 @@ const MobileCheckout = () => {
   const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod, {
     productIds: items.map((i) => i.id),
     destinationState: selectedAddress?.state,
+    // Needed for category-restricted coupons and for `perUserLimit` /
+    // `firstOrderOnly`, which the admin panel stores but nothing used to check.
+    cartCategories: items.map((i) => i.category || '').filter(Boolean),
+    userId: user?.uid,
   });
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
@@ -342,7 +394,44 @@ const MobileCheckout = () => {
         quantity: item.quantity,
       }));
 
-      // ── Collect online payment up-front ──
+      // ── Re-check the cart against live data BEFORE charging anyone ──
+      // Stock used to be validated only inside createOrder, which runs *after*
+      // Razorpay has captured the money - so buying the last piece of something
+      // could charge the customer and then leave them with no order at all.
+      // Price drift had the same shape: it surfaced as a bare
+      // "Order total mismatch" at the payment step. Both are now caught here,
+      // before the modal opens, and explained in plain words.
+      const preflight = await preflightCart(
+        items.map((i) => ({ productId: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+      );
+      if (preflight.blockers.length > 0) {
+        toast({
+          title: 'Please update your cart',
+          description: preflight.blockers.map((b) => b.blocker).join(' '),
+          variant: 'destructive',
+        });
+        setIsPlacingOrder(false);
+        return;
+      }
+      if (preflight.repriced.length > 0) {
+        // Bring the cart in line with the live catalogue and let the customer
+        // look at the new total before we take payment.
+        for (const line of preflight.repriced) updateCartPrice(line.productId, line.livePrice);
+        toast({
+          title: 'Prices have changed',
+          description: `${preflight.repriced.map((l) => l.name).join(', ')} ${preflight.repriced.length === 1 ? 'is' : 'are'} now priced differently. Your total has been updated - please review it and pay again.`,
+        });
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      // ── Geocode the address BEFORE payment ──
+      // This calls a third-party service that can be slow or down. Running it
+      // after the charge would leave a captured payment waiting on it; running
+      // it here costs nothing if the customer then abandons the modal.
+      const geo = await geocodeShippingAddress(selectedAddress);
+
+      // ── Collect online payment ──
       // Opens Razorpay Standard Checkout and waits for a server-verified payment.
       // The order is only written to Firestore AFTER the signature is verified,
       // so cancelled/failed payments never create an order. Throws
@@ -373,41 +462,6 @@ const MobileCheckout = () => {
         });
       }
 
-      // Geocode address to get coordinates for delivery map
-      let addressLat: number | undefined;
-      let addressLon: number | undefined;
-      try {
-        const tryGeo = async (q: string) => {
-          const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&countrycodes=in`);
-          const d = await r.json();
-          return d?.length > 0 ? { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) } : null;
-        };
-        const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-          const R = 6371, dLat = ((lat2-lat1)*Math.PI)/180, dLon = ((lon2-lon1)*Math.PI)/180;
-          const a = Math.sin(dLat/2)**2 + Math.cos((lat1*Math.PI)/180)*Math.cos((lat2*Math.PI)/180)*Math.sin(dLon/2)**2;
-          return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        };
-        const cityRef = await tryGeo(`${selectedAddress.city}, ${selectedAddress.state}, India`);
-        if (cityRef) {
-          const geoQueries = [
-            selectedAddress.locality ? `${selectedAddress.locality}, ${selectedAddress.city}, ${selectedAddress.state}, India` : '',
-            selectedAddress.locality && selectedAddress.pinCode ? `${selectedAddress.locality}, ${selectedAddress.pinCode}, India` : '',
-            selectedAddress.pinCode ? `${selectedAddress.pinCode}, ${selectedAddress.city}, India` : '',
-            selectedAddress.pinCode ? `${selectedAddress.pinCode}, India` : '',
-          ].filter(Boolean);
-          for (const q of geoQueries) {
-            const result = await tryGeo(q);
-            if (result && haversineKm(cityRef.lat, cityRef.lon, result.lat, result.lon) <= 20) {
-              addressLat = result.lat; addressLon = result.lon;
-              console.log('Geocoded at checkout (validated):', q, '->', addressLat, addressLon);
-              break;
-            }
-          }
-          if (!addressLat) { addressLat = cityRef.lat; addressLon = cityRef.lon; }
-        }
-      } catch (geoErr) {
-        console.warn('Geocoding failed at checkout, order will still be placed:', geoErr);
-      }
 
       // Prepare order data
       const orderData: OrderFormData = {
@@ -443,7 +497,7 @@ const MobileCheckout = () => {
           landmark: '',
           alternativePhone: '',
           addressType: 'home',
-          ...(addressLat && addressLon ? { latitude: addressLat, longitude: addressLon } : {}),
+          ...(geo ? { latitude: geo.latitude, longitude: geo.longitude } : {}),
         },
         paymentMethod: selectedPaymentMethod,
         ...(verifiedPayment ? {
@@ -454,9 +508,19 @@ const MobileCheckout = () => {
         status: 'pending',
       };
 
-      // Create order in Firestore
-      const docId = await createOrder(orderData);
+      // Create order in Firestore.
+      // The payment is already captured at this point, so createPaidOrder falls
+      // back to a flagged order rather than throwing - a customer must never be
+      // charged and left without a record of it.
+      const created = await createPaidOrder(orderData);
+      const docId = created.id;
       setFirestoreOrderId(docId);
+      if (created.needsReview) {
+        toast({
+          title: 'Order received - needs a quick check',
+          description: 'Your payment went through and we have your order. Our team will confirm it shortly.',
+        });
+      }
 
       // Snapshot items BEFORE clearing the cart
       const snapshotItems = [...items];
@@ -995,8 +1059,8 @@ const MobileCheckout = () => {
             </div>
 
             {/* Available Offers */}
-            {pricing.coupons.filter((c) => c.active).length > 0 && (() => {
-              const activeOffers = pricing.coupons.filter((c) => c.active);
+            {pricing.redeemableCoupons.length > 0 && (() => {
+              const activeOffers = pricing.redeemableCoupons;
               const visibleMobileOffers = showAllOffers ? activeOffers : activeOffers.slice(0, 2);
               return (
                 <div className="mx-4 mb-4">
@@ -1793,7 +1857,7 @@ const Checkout = () => {
     else navigate('/');
   };
   const { user, userProfile } = useAuth();
-  const { items, subtotal, clearCart, removeFromCart, closeCart, loading: cartLoading } = useCart();
+  const { items, subtotal, clearCart, updateCartPrice, removeFromCart, closeCart, loading: cartLoading } = useCart();
   const { toast } = useToast();
   const { toggleWishlist } = useWishlist();
   const [couponCode, setCouponCode] = useState('');
@@ -1961,6 +2025,10 @@ const Checkout = () => {
   const pricing = useCheckoutPricing(subtotal, items.length === 0, selectedPaymentMethod, {
     productIds: items.map((i) => i.id),
     destinationState: selectedAddress?.state,
+    // Needed for category-restricted coupons and for `perUserLimit` /
+    // `firstOrderOnly`, which the admin panel stores but nothing used to check.
+    cartCategories: items.map((i) => i.category || '').filter(Boolean),
+    userId: user?.uid,
   });
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
@@ -2008,7 +2076,44 @@ const Checkout = () => {
         quantity: item.quantity,
       }));
 
-      // ── Collect online payment up-front ──
+      // ── Re-check the cart against live data BEFORE charging anyone ──
+      // Stock used to be validated only inside createOrder, which runs *after*
+      // Razorpay has captured the money - so buying the last piece of something
+      // could charge the customer and then leave them with no order at all.
+      // Price drift had the same shape: it surfaced as a bare
+      // "Order total mismatch" at the payment step. Both are now caught here,
+      // before the modal opens, and explained in plain words.
+      const preflight = await preflightCart(
+        items.map((i) => ({ productId: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+      );
+      if (preflight.blockers.length > 0) {
+        toast({
+          title: 'Please update your cart',
+          description: preflight.blockers.map((b) => b.blocker).join(' '),
+          variant: 'destructive',
+        });
+        setIsPlacingOrder(false);
+        return;
+      }
+      if (preflight.repriced.length > 0) {
+        // Bring the cart in line with the live catalogue and let the customer
+        // look at the new total before we take payment.
+        for (const line of preflight.repriced) updateCartPrice(line.productId, line.livePrice);
+        toast({
+          title: 'Prices have changed',
+          description: `${preflight.repriced.map((l) => l.name).join(', ')} ${preflight.repriced.length === 1 ? 'is' : 'are'} now priced differently. Your total has been updated - please review it and pay again.`,
+        });
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      // ── Geocode the address BEFORE payment ──
+      // This calls a third-party service that can be slow or down. Running it
+      // after the charge would leave a captured payment waiting on it; running
+      // it here costs nothing if the customer then abandons the modal.
+      const geo = await geocodeShippingAddress(selectedAddress);
+
+      // ── Collect online payment ──
       // Opens Razorpay Standard Checkout and waits for a server-verified payment.
       // The order is only written to Firestore AFTER the signature is verified,
       // so cancelled/failed payments never create an order. Throws
@@ -2039,41 +2144,6 @@ const Checkout = () => {
         });
       }
 
-      // Geocode address to get coordinates for delivery map
-      let addressLat: number | undefined;
-      let addressLon: number | undefined;
-      try {
-        const tryGeo = async (q: string) => {
-          const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&countrycodes=in`);
-          const d = await r.json();
-          return d?.length > 0 ? { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) } : null;
-        };
-        const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-          const R = 6371, dLat = ((lat2-lat1)*Math.PI)/180, dLon = ((lon2-lon1)*Math.PI)/180;
-          const a = Math.sin(dLat/2)**2 + Math.cos((lat1*Math.PI)/180)*Math.cos((lat2*Math.PI)/180)*Math.sin(dLon/2)**2;
-          return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        };
-        const cityRef = await tryGeo(`${selectedAddress.city}, ${selectedAddress.state}, India`);
-        if (cityRef) {
-          const geoQueries = [
-            selectedAddress.locality ? `${selectedAddress.locality}, ${selectedAddress.city}, ${selectedAddress.state}, India` : '',
-            selectedAddress.locality && selectedAddress.pinCode ? `${selectedAddress.locality}, ${selectedAddress.pinCode}, India` : '',
-            selectedAddress.pinCode ? `${selectedAddress.pinCode}, ${selectedAddress.city}, India` : '',
-            selectedAddress.pinCode ? `${selectedAddress.pinCode}, India` : '',
-          ].filter(Boolean);
-          for (const q of geoQueries) {
-            const result = await tryGeo(q);
-            if (result && haversineKm(cityRef.lat, cityRef.lon, result.lat, result.lon) <= 20) {
-              addressLat = result.lat; addressLon = result.lon;
-              console.log('Geocoded at checkout (validated):', q, '->', addressLat, addressLon);
-              break;
-            }
-          }
-          if (!addressLat) { addressLat = cityRef.lat; addressLon = cityRef.lon; }
-        }
-      } catch (geoErr) {
-        console.warn('Geocoding failed at checkout, order will still be placed:', geoErr);
-      }
 
       // Prepare order data
       const orderData: OrderFormData = {
@@ -2109,7 +2179,7 @@ const Checkout = () => {
           landmark: '',
           alternativePhone: '',
           addressType: 'home',
-          ...(addressLat && addressLon ? { latitude: addressLat, longitude: addressLon } : {}),
+          ...(geo ? { latitude: geo.latitude, longitude: geo.longitude } : {}),
         },
         paymentMethod: selectedPaymentMethod,
         ...(verifiedPayment ? {
@@ -2120,9 +2190,19 @@ const Checkout = () => {
         status: 'pending',
       };
 
-      // Create order in Firestore
-      const docId = await createOrder(orderData);
+      // Create order in Firestore.
+      // The payment is already captured at this point, so createPaidOrder falls
+      // back to a flagged order rather than throwing - a customer must never be
+      // charged and left without a record of it.
+      const created = await createPaidOrder(orderData);
+      const docId = created.id;
       setFirestoreOrderId(docId);
+      if (created.needsReview) {
+        toast({
+          title: 'Order received - needs a quick check',
+          description: 'Your payment went through and we have your order. Our team will confirm it shortly.',
+        });
+      }
 
       // Capture first product id BEFORE clearing the cart so DONE can return to it
       setLastOrderedProductId(items[0]?.id || null);
@@ -2155,7 +2235,7 @@ const Checkout = () => {
   };
   const total = pricing.total;
 
-  const offers = pricing.coupons.filter((c) => c.active);
+  const offers = pricing.redeemableCoupons;
   const visibleOffers = showAllOffers ? offers : offers.slice(0, 2);
 
   const donationAmounts: number[] = [];
@@ -2513,7 +2593,7 @@ const Checkout = () => {
             </AnimatePresence>
 
             {/* Available Offers */}
-            {pricing.coupons.filter((c) => c.active).length > 0 && (
+            {pricing.redeemableCoupons.length > 0 && (
             <div className="bg-card border border-border rounded-lg p-6">
               <button
                 onClick={() => setShowOffers(!showOffers)}
@@ -2581,14 +2661,23 @@ const Checkout = () => {
                   {items.length}/{items.length} ITEMS SELECTED
                 </h2>
                 <div className="flex gap-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  {/*
+                    Both of these empty the WHOLE cart. They used to do it on a
+                    single click with no confirmation, so one mis-click on the
+                    way to paying wiped everything the customer had chosen.
+                  */}
                   <button
-                    onClick={() => items.forEach(item => removeFromCart(item.id))}
+                    onClick={() => {
+                      if (!window.confirm(`Remove all ${items.length} item${items.length === 1 ? '' : 's'} from your cart?`)) return;
+                      items.forEach(item => removeFromCart(item.id));
+                    }}
                     className="text-sm text-muted-foreground hover:text-foreground"
                   >
                     REMOVE
                   </button>
                   <button
                     onClick={() => {
+                      if (!window.confirm(`Move all ${items.length} item${items.length === 1 ? '' : 's'} to your wishlist and empty the cart?`)) return;
                       items.forEach(item => {
                         toggleWishlist(item.id, item.name);
                         removeFromCart(item.id);
@@ -2631,12 +2720,25 @@ const Checkout = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
-                        <select className="border border-border rounded px-2 py-1 text-sm">
-                          <option>Qty: {item.quantity}</option>
-                        </select>
-                        <span className="text-sm text-muted-foreground">
-                          1 left
+                        {/*
+                          Plain text, not a <select>: this was a dropdown with a
+                          single option, so it looked editable and did nothing.
+                          Quantities are changed in the cart, not at checkout.
+                        */}
+                        <span className="border border-border rounded px-2 py-1 text-sm">
+                          Qty: {item.quantity}
                         </span>
+                        {/*
+                          Real stock, and only when it is genuinely low. This
+                          used to be the literal string "1 left" on every line,
+                          so a product with 40 in stock still told the customer
+                          it was the last one.
+                        */}
+                        {typeof item.stock === 'number' && item.stock > 0 && item.stock <= 5 && (
+                          <span className="text-sm text-amber-600">
+                            {item.stock === 1 ? 'Last one left' : `Only ${item.stock} left`}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-2 text-sm">
                         <div className="flex items-center gap-1">

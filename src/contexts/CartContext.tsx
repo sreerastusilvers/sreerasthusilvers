@@ -4,6 +4,7 @@ import { db, auth } from '@/config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { getProduct } from '@/services/productService';
+import { fetchLiveProductInfo } from '@/services/livePricing';
 
 // Cart Item Interface
 export interface CartItem {
@@ -27,6 +28,8 @@ interface CartContextType {
   addToCart: (item: Omit<CartItem, 'quantity'>, quantity?: number) => boolean;
   removeFromCart: (id: string) => Promise<void>;
   updateQuantity: (id: string, quantity: number) => boolean;
+  /** Re-price a line against the live catalogue (see `preflightCart`). */
+  updateCartPrice: (id: string, price: number) => void;
   clearCart: () => Promise<void>;
   openCart: () => void;
   closeCart: () => void;
@@ -162,6 +165,60 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       cancelled = true;
     };
   }, [items, currentUserId]);
+
+  /**
+   * Keep cart prices honest.
+   *
+   * Every `addToCart` call site passes the product's *stored* price, which is
+   * the wrong number for a silver-priced item: the product card quotes the live
+   * rate per gram, and /api/create-order charges that same live figure. The
+   * cart sat in between with a third, stale value, and the payment was then
+   * refused for "Order total mismatch". Admin price edits drifted the same way.
+   *
+   * Re-pricing here - once per distinct set of products in the cart, not on
+   * every quantity tweak - means the cart, the product page and the server all
+   * quote the same number, whatever the call site passed in.
+   */
+  const idsKey = items.map((i) => i.id).sort().join(',');
+  useEffect(() => {
+    if (!idsKey) return;
+    let cancelled = false;
+
+    void (async () => {
+      const live = await fetchLiveProductInfo(idsKey.split(','));
+      if (cancelled || live.size === 0) return;
+
+      setItems((prev) => {
+        let changed = false;
+        const next = prev.map((item) => {
+          const info = live.get(item.id);
+          // A rupee of drift is rounding; more is a real change worth showing.
+          if (!info || !info.exists || Math.abs(info.price - item.price) <= 1) return item;
+          changed = true;
+          return { ...item, price: info.price };
+        });
+        if (!changed) return prev;
+
+        // Persist so the corrected price survives a reload, and so the figure
+        // the customer agreed to is the one stored against their cart.
+        if (currentUserId) {
+          const cartRef = doc(db, 'carts', currentUserId);
+          const itemsRecord = Object.fromEntries(next.map((item) => [item.id, item]));
+          void setDoc(cartRef, {
+            items: itemsRecord,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true }).catch((error) => {
+            console.error('Failed to persist re-priced cart:', error);
+          });
+        } else {
+          saveToLocalStorage(next);
+        }
+        return next;
+      });
+    })();
+
+    return () => { cancelled = true; };
+  }, [idsKey, currentUserId]);
 
   // Listen to auth state changes
   useEffect(() => {
@@ -363,6 +420,49 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
+  // ─── UPDATE PRICE ───
+  /**
+   * Bring a line's price back in line with the live product.
+   *
+   * Cart lines store the price from the moment the item was added, so an admin
+   * price edit (or a move in the silver rate) left the cart quoting a figure the
+   * server would never charge - /api/create-order re-prices from Firestore and
+   * refused the payment with "Order total mismatch". Checkout now re-checks
+   * before taking payment and calls this so the customer sees the real total.
+   */
+  const updateCartPrice = (id: string, price: number) => {
+    pendingOpRef.current = true;
+
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, price } : item))
+    );
+
+    if (currentUserId) {
+      void (async () => {
+        try {
+          const cartRef = doc(db, 'carts', currentUserId);
+          const cartSnap = await getDoc(cartRef);
+          if (cartSnap.exists()) {
+            const updatedItems = { ...cartSnap.data().items };
+            if (updatedItems[id]) {
+              updatedItems[id].price = price;
+              await setDoc(cartRef, {
+                items: updatedItems,
+                updatedAt: new Date().toISOString(),
+              }, { merge: true });
+            }
+          }
+        } catch (error) {
+          console.error('Firebase sync failed for updateCartPrice:', error);
+        } finally {
+          pendingOpRef.current = false;
+        }
+      })();
+    } else {
+      pendingOpRef.current = false;
+    }
+  };
+
   // ─── CLEAR CART ───
   const clearCart = async () => {
     setItems([]);
@@ -395,6 +495,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToCart,
     removeFromCart,
     updateQuantity,
+    updateCartPrice,
     clearCart,
     openCart,
     closeCart,

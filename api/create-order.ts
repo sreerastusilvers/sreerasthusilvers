@@ -86,7 +86,8 @@ const DEFAULT_DELIVERY = {
   stateRates: [] as Array<{ state: string; charge: number }>,
   freeDeliveryAbove: 999,
 };
-const DEFAULT_GST = { enabled: false, rate: 0, inclusive: false };
+/** Must mirror DEFAULT_GST in src/services/siteSettingsService.ts. */
+const DEFAULT_GST = { enabled: false, rate: 3, inclusive: false };
 
 const normState = (v: unknown) => String(v || '').trim().toLowerCase();
 
@@ -172,6 +173,20 @@ function computeSilverPrice(sp: any, ratePerGram: number): number {
   return Math.ceil(x + y + (sp.makingCharges || 0));
 }
 
+/**
+ * Does the cart contain anything this coupon applies to?
+ *
+ * Mirrors the same check in src/services/couponService.ts. An empty or absent
+ * list means "all categories". Compared case-insensitively because the admin
+ * stores category names, not ids.
+ */
+function couponCoversCart(coupon: any, products: any[]): boolean {
+  const allowed = Array.isArray(coupon.applicableCategories) ? coupon.applicableCategories : [];
+  if (allowed.length === 0) return true;
+  const normalized = allowed.map((c: unknown) => String(c).trim().toLowerCase());
+  return products.some((p) => normalized.includes(String(p?.category || '').trim().toLowerCase()));
+}
+
 function couponDiscount(coupon: any, subtotal: number): number {
   if (coupon.type === 'percent') {
     let d = Math.floor((subtotal * coupon.value) / 100);
@@ -252,6 +267,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: `Product ${productId} is no longer available` });
       }
 
+      // Stock was previously checked only when the order document was written,
+      // which happens AFTER this payment is captured. Refusing here means an
+      // oversold item costs the customer nothing instead of leaving them
+      // charged with no order.
+      const stock = Number(p.inventory?.stock ?? 0);
+      if (stock < Number(items[i].quantity)) {
+        return res.status(400).json({
+          error:
+            stock <= 0
+              ? `${p.name || 'An item in your cart'} is out of stock`
+              : `Only ${stock} left in stock for ${p.name || 'an item in your cart'}`,
+        });
+      }
+
       const sp = p.silverPricing;
       const unit =
         sp?.enabled && ratePerGram > 0 ? computeSilverPrice(sp, ratePerGram) : Number(p.price);
@@ -292,7 +321,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         (!coupon.validFrom || coupon.validFrom <= now) &&
         (!coupon.validTo || coupon.validTo >= now) &&
         !(coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) &&
-        subtotal >= (coupon.minOrderValue || 0);
+        subtotal >= (coupon.minOrderValue || 0) &&
+        couponCoversCart(coupon, products);
       if (usable) discount = couponDiscount(coupon, subtotal);
     }
 

@@ -13,6 +13,7 @@ import {
 import {
   validateCoupon,
   subscribeCoupons,
+  computeCouponDiscount,
   type Coupon,
 } from '@/services/couponService';
 import { getActiveProductsCached } from '@/services/productCache';
@@ -36,6 +37,8 @@ export interface CheckoutPricing {
   appliedCoupon: Coupon | null;
   couponError: string | null;
   coupons: Coupon[];
+  /** Coupons a customer could actually redeem right now - what to advertise. */
+  redeemableCoupons: Coupon[];
   delivery: DeliverySettings;
   gst: GstSettings;
   applyCoupon: (code: string) => Promise<{ ok: boolean; reason?: string }>;
@@ -48,6 +51,10 @@ export interface CheckoutPricingOptions {
   productIds?: string[];
   /** Destination state from the selected address; unknown on the cart page. */
   destinationState?: string;
+  /** Categories present in the cart, for coupons restricted to some of them. */
+  cartCategories?: string[];
+  /** Signed-in customer, for `perUserLimit` / `firstOrderOnly` coupons. */
+  userId?: string;
 }
 
 /**
@@ -64,15 +71,31 @@ export function useCheckoutPricing(
   paymentMethod: string,
   options: CheckoutPricingOptions = {}
 ): CheckoutPricing {
-  const { productIds, destinationState } = options;
+  const { productIds, destinationState, cartCategories, userId } = options;
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [delivery, setDelivery] = useState<DeliverySettings>(DEFAULT_DELIVERY);
   const [gst, setGst] = useState<GstSettings>(DEFAULT_GST);
 
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [couponError, setCouponError] = useState<string | null>(null);
+
+  /**
+   * The discount is DERIVED from the current subtotal, never stored.
+   *
+   * It used to be captured once, when the code was applied. Editing the cart
+   * afterwards (changing a quantity, removing a line) left a percent coupon
+   * holding the discount for the old, larger subtotal - so the client total and the
+   * server's independent re-price diverged and /api/create-order rejected the
+   * payment outright with "Order total mismatch. Please refresh your cart".
+   *
+   * Recomputing here uses exactly the helper the server mirrors, so the two
+   * totals agree for any cart the customer can reach.
+   */
+  const appliedDiscount = useMemo(
+    () => (appliedCoupon ? computeCouponDiscount(appliedCoupon, subtotal) : 0),
+    [appliedCoupon, subtotal],
+  );
 
   useEffect(() => {
     const u1 = subscribeCoupons(setCoupons);
@@ -86,10 +109,56 @@ export function useCheckoutPricing(
     if (!appliedCoupon) return;
     if (appliedCoupon.minOrderValue && subtotal < appliedCoupon.minOrderValue) {
       setAppliedCoupon(null);
-      setAppliedDiscount(0);
       setCouponError(`Coupon removed: minimum order of ₹${appliedCoupon.minOrderValue.toLocaleString('en-IN')} required`);
     }
   }, [subtotal, appliedCoupon]);
+
+  /**
+   * Coupons worth showing in "Available Offers".
+   *
+   * The storefront filtered on `active` alone, which is only the admin's
+   * on/off switch - so a coupon that had run past its `validTo`, or used up its
+   * `maxUses`, was still advertised on the checkout page. Tapping it produced
+   * "Coupon has expired", which looks like a broken site rather than a finished
+   * promotion. The date window and the usage cap are part of "available".
+   */
+  const redeemableCoupons = useMemo(() => {
+    const now = new Date();
+    return coupons.filter(
+      (c) =>
+        c.active &&
+        !(c.validFrom && c.validFrom.toDate() > now) &&
+        !(c.validTo && c.validTo.toDate() < now) &&
+        !(c.maxUses > 0 && c.usedCount >= c.maxUses),
+    );
+  }, [coupons]);
+
+  /**
+   * Keep the applied coupon in step with admin edits.
+   *
+   * `coupons` is a live subscription, so if the shop owner deactivates or
+   * expires a code while someone is on the checkout page, the stale object held
+   * here would keep discounting - and the server, which re-reads the coupon,
+   * would price the order without it. Re-checking against the live document
+   * drops the coupon instead of letting the two totals diverge.
+   */
+  useEffect(() => {
+    if (!appliedCoupon) return;
+    const live = coupons.find((c) => c.id === appliedCoupon.id);
+    if (!live) return; // list not loaded yet - leave the coupon alone
+    const now = new Date();
+    const expired =
+      !live.active ||
+      (live.validTo && live.validTo.toDate() < now) ||
+      (live.validFrom && live.validFrom.toDate() > now) ||
+      (live.maxUses > 0 && live.usedCount >= live.maxUses);
+    if (expired) {
+      setAppliedCoupon(null);
+      setCouponError('This coupon is no longer available');
+    } else if (live.value !== appliedCoupon.value || live.type !== appliedCoupon.type || live.maxDiscount !== appliedCoupon.maxDiscount) {
+      setAppliedCoupon(live);
+    }
+  }, [coupons, appliedCoupon]);
 
   /**
    * Per-product delivery overrides, resolved from the shared catalog cache.
@@ -178,24 +247,22 @@ export function useCheckoutPricing(
     appliedCoupon,
     couponError,
     coupons,
+    redeemableCoupons,
     delivery,
     gst,
     applyCoupon: async (code: string) => {
-      const r = await validateCoupon(code, subtotal);
+      const r = await validateCoupon(code, subtotal, cartCategories || [], userId);
       if (r.valid && r.coupon) {
         setAppliedCoupon(r.coupon);
-        setAppliedDiscount(r.discount || 0);
         setCouponError(null);
         return { ok: true };
       }
       setAppliedCoupon(null);
-      setAppliedDiscount(0);
       setCouponError(r.reason || 'Invalid coupon');
       return { ok: false, reason: r.reason };
     },
     removeCoupon: () => {
       setAppliedCoupon(null);
-      setAppliedDiscount(0);
       setCouponError(null);
     },
     setIsCod: () => {}, // Cash on Delivery was retired; kept so callers still compile

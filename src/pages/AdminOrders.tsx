@@ -448,9 +448,21 @@ const AdminOrders = () => {
               >
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-semibold text-gray-900">ORD-{order.orderId}</span>
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${getStatusBadgeClass(order.status)}`}>
-                    {getStatusLabel(order.status)}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {/*
+                      A paid order whose stock could not be decremented (see
+                      createPaidOrder). The money is in, but the order needs a
+                      human to reconcile stock before it is fulfilled.
+                    */}
+                    {order.needsManualReview && (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-red-50 text-red-700 border border-red-200">
+                        NEEDS REVIEW
+                      </span>
+                    )}
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${getStatusBadgeClass(order.status)}`}>
+                      {getStatusLabel(order.status)}
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2">
@@ -530,6 +542,11 @@ const AdminOrders = () => {
                         <div className="text-sm font-medium text-gray-900">
                           ORD-{order.orderId}
                         </div>
+                        {order.needsManualReview && (
+                          <div className="mt-1 inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">
+                            NEEDS REVIEW
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div>

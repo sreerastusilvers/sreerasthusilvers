@@ -14,6 +14,7 @@ import {
   DocumentData,
   increment,
   runTransaction,
+  setDoc,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import {
@@ -36,6 +37,7 @@ import {
 import { notifyOrder } from '@/services/pushNotificationService';
 import { incrementCouponUsage } from '@/services/couponService';
 import { requestCatalogRefresh } from '@/services/catalogPublisher';
+import { fetchLiveProductInfo } from '@/services/livePricing';
 
 /**
  * Fetches the admin's WhatsApp notification number.
@@ -295,6 +297,11 @@ export interface Order {
   refundReceiptUploadedAt?: Timestamp;
   refundReceiptType?: 'pdf' | 'image';
   refundReceiptName?: string;
+  /** False when the order was written without the stock transaction. */
+  stockDecremented?: boolean;
+  /** Set on a paid order the shop must reconcile by hand. */
+  needsManualReview?: boolean;
+  manualReviewReason?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -389,6 +396,145 @@ export const getNextStatus = (current: Order['status']): Order['status'] | null 
   const idx = CANONICAL_FLOW.indexOf(normalizeOrderStatus(current));
   if (idx === -1 || idx >= CANONICAL_FLOW.length - 1) return null;
   return CANONICAL_FLOW[idx + 1];
+};
+
+export interface CartLineCheck {
+  productId: string;
+  name: string;
+  quantity: number;
+  /** Price the cart is currently showing for one unit. */
+  cartPrice: number;
+  /** Price the server will actually charge for one unit. */
+  livePrice: number;
+  stock: number;
+  /** Set when this line cannot be ordered at all. */
+  blocker?: string;
+}
+
+export interface CartPreflightResult {
+  ok: boolean;
+  /** Lines that cannot be ordered (gone, deactivated, or not enough stock). */
+  blockers: CartLineCheck[];
+  /** Lines whose price moved since they were added to the cart. */
+  repriced: CartLineCheck[];
+  lines: CartLineCheck[];
+  /** Subtotal the server will compute for this cart. */
+  liveSubtotal: number;
+}
+
+/**
+ * Check a cart against live Firestore data BEFORE any money is taken.
+ *
+ * Previously checkout opened Razorpay first and only validated stock inside
+ * `createOrder`, which runs after the payment is captured. A customer buying
+ * the last piece of something could therefore be charged in full and then see
+ * "Only 1 left in stock" with no order created and no refund path. The same
+ * ordering also hid price drift: the cart stores the price from the moment an
+ * item was added, while /api/create-order re-prices from Firestore, so an admin
+ * price edit (or a silver-rate change) surfaced only as a flat
+ * "Order total mismatch" at the payment step.
+ *
+ * Running this first turns both into an honest, pre-payment message.
+ *
+ * Note this is advisory, not a reservation - `createOrder`'s transaction is
+ * still the authority on stock. It closes the window from minutes to
+ * milliseconds; it cannot close it entirely.
+ */
+export const preflightCart = async (
+  items: Array<{ productId: string; name: string; quantity: number; price: number }>,
+): Promise<CartPreflightResult> => {
+  const live = await fetchLiveProductInfo(items.map((i) => i.productId));
+
+  const lines: CartLineCheck[] = items.map((item) => {
+    const base: CartLineCheck = {
+      productId: item.productId,
+      name: item.name,
+      quantity: item.quantity,
+      cartPrice: item.price,
+      livePrice: item.price,
+      stock: 0,
+    };
+
+    const info = live.get(item.productId);
+    // Unreadable product: not proof it is gone. Let the order transaction be
+    // the judge rather than blocking a valid checkout on a network blip.
+    if (!info) return base;
+
+    if (!info.exists || !info.isActive) {
+      return { ...base, blocker: `${item.name} is no longer available.` };
+    }
+
+    const checked: CartLineCheck = { ...base, livePrice: info.price, stock: info.stock };
+    if (info.stock < item.quantity) {
+      return { ...checked, blocker: buildStockValidationMessage(item.name, info.stock) };
+    }
+    return checked;
+  });
+
+  const blockers = lines.filter((l) => l.blocker);
+  // A rupee of rounding drift is tolerated on both sides; anything larger is a
+  // genuine price change the customer must see before paying.
+  const repriced = lines.filter((l) => !l.blocker && Math.abs(l.livePrice - l.cartPrice) > 1);
+  const liveSubtotal = lines.reduce((sum, l) => sum + l.livePrice * l.quantity, 0);
+
+  return { ok: blockers.length === 0 && repriced.length === 0, blockers, repriced, lines, liveSubtotal };
+};
+
+/**
+ * Record an order whose payment has already been captured but whose normal
+ * creation failed.
+ *
+ * Reaching here means Razorpay has the customer's money. Throwing would leave
+ * them charged with nothing to show for it, so the order is written without the
+ * stock transaction and flagged for a human: the shop reconciles stock by hand,
+ * and the customer still sees their order and their payment id.
+ */
+const createPaidOrderFallback = async (
+  orderData: OrderFormData,
+  reason: string,
+): Promise<string> => {
+  const now = Timestamp.now();
+  const docRef = doc(collection(db, ORDERS_COLLECTION));
+  await setDoc(docRef, {
+    ...orderData,
+    paymentStatus: 'paid',
+    status: 'pending',
+    createdAt: now,
+    updatedAt: now,
+    stockDecremented: false,
+    needsManualReview: true,
+    manualReviewReason: reason,
+  });
+
+  void notifyOrder({
+    orderId: docRef.id,
+    audience: 'admins',
+    title: 'Paid order needs review',
+    body: `Order ${shortOrderRef(docRef.id)} was paid but could not be completed automatically: ${reason}`,
+    url: `/admin/orders/${docRef.id}`,
+    data: { type: 'order-needs-review' },
+  });
+
+  return docRef.id;
+};
+
+/**
+ * Create an order for a payment that has ALREADY been captured.
+ *
+ * Tries the normal path first (which decrements stock atomically) and falls
+ * back to {@link createPaidOrderFallback} if it throws, so a captured payment
+ * can never end up without an order.
+ */
+export const createPaidOrder = async (
+  orderData: OrderFormData,
+): Promise<{ id: string; needsReview: boolean; reason?: string }> => {
+  try {
+    return { id: await createOrder(orderData), needsReview: false };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Order creation failed';
+    console.error('[orderService] paid order fell back to manual review:', reason);
+    return { id: await createPaidOrderFallback(orderData, reason), needsReview: true, reason };
+  }
 };
 
 /**
