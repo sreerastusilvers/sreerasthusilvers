@@ -25,7 +25,15 @@ import type { Product } from './productService';
  */
 
 const PRODUCTS_COLLECTION = 'products';
-const TTL_MS = 5 * 60 * 1000;
+/**
+ * Matches the snapshot's own `Cache-Control: max-age=60`.
+ *
+ * At five minutes this was the slowest step between an admin saving a price and
+ * a shopper seeing it. Re-reading costs nothing: past 60s the browser
+ * revalidates with If-None-Match and the CDN answers 304 with no body unless
+ * the catalog actually changed.
+ */
+const TTL_MS = 60 * 1000;
 const STORAGE_KEY = 'ss:catalog:v2';
 /** Same-origin; vercel.json (production) and vite.config.ts (dev) proxy it to object storage. */
 const CATALOG_URL = import.meta.env.VITE_CATALOG_URL || '/catalog/products.json';
@@ -117,6 +125,24 @@ const fetchActiveProducts = async (): Promise<Product[]> => {
   products.sort((a, b) => hasPhoto(b) - hasPhoto(a) || createdMillis(b) - createdMillis(a));
 
   return products;
+};
+
+/**
+ * Forget the cached catalog so the next read fetches a fresh snapshot.
+ *
+ * Called after an admin write: the server-side snapshot has just been rebuilt,
+ * but this tab is still holding the copy it read before the edit, so without
+ * this the admin saves a price and then sees their own old figure on the
+ * storefront and assumes the save failed.
+ */
+export const invalidateCatalogCache = () => {
+  memory = null;
+  inFlight = null;
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Private mode - the memory cache is already cleared, which is enough.
+  }
 };
 
 /** All active products, from cache when possible. */

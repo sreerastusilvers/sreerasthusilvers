@@ -58,11 +58,64 @@ const toInputDate = (t?: Timestamp | null) => {
   return `${d.getFullYear()}-${m(d.getMonth() + 1)}-${m(d.getDate())}`;
 };
 
-const fromInputDate = (s: string): Timestamp | null => {
+/**
+ * Turn a `<input type="date">` value into a Timestamp at the shop's own
+ * midnight, not UTC's.
+ *
+ * `new Date('2026-09-30')` is parsed as UTC midnight, which in IST is 05:30 on
+ * the 30th. So a coupon the owner set to run "until 30 September" actually died
+ * at half past five that morning, and one starting "on the 21st" did not work
+ * for the first five and a half hours of the day it was meant to launch.
+ *
+ * `bound` picks which edge of the day is meant: a start date begins at 00:00
+ * local, an end date runs through 23:59:59.999 local, so both dates the admin
+ * typed are days the customer can actually use the code.
+ */
+const fromInputDate = (s: string, bound: 'start' | 'end'): Timestamp | null => {
   if (!s) return null;
-  const d = new Date(s);
+  const [year, month, day] = s.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  const d =
+    bound === 'start'
+      ? new Date(year, month - 1, day, 0, 0, 0, 0)
+      : new Date(year, month - 1, day, 23, 59, 59, 999);
   if (isNaN(d.getTime())) return null;
   return Timestamp.fromDate(d);
+};
+
+/**
+ * What a customer would experience if they typed this code right now.
+ *
+ * The badge used to read straight off `c.active`, which is only the admin's
+ * show/hide switch. A coupon dated to start tomorrow therefore displayed
+ * "Active" while checkout answered "Coupon is not yet active", and a coupon
+ * that had used up its `maxUses` also still read "Active". Both look like the
+ * site is broken rather than like the coupon doing what it was configured to.
+ */
+type CouponState = 'expired' | 'scheduled' | 'usedUp' | 'hidden' | 'live';
+
+const couponState = (c: Coupon, now = new Date()): CouponState => {
+  if (c.validTo && c.validTo.toDate() < now) return 'expired';
+  if (!c.active) return 'hidden';
+  if (c.validFrom && c.validFrom.toDate() > now) return 'scheduled';
+  if (c.maxUses > 0 && c.usedCount >= c.maxUses) return 'usedUp';
+  return 'live';
+};
+
+const STATE_LABEL: Record<CouponState, string> = {
+  expired: 'Expired',
+  scheduled: 'Starts later',
+  usedUp: 'Fully used',
+  hidden: 'Hidden',
+  live: 'Live now',
+};
+
+const STATE_CLASS: Record<CouponState, string> = {
+  expired: 'bg-gray-100 text-gray-500',
+  scheduled: 'bg-blue-50 text-blue-700',
+  usedUp: 'bg-orange-50 text-orange-700',
+  hidden: 'bg-gray-100 text-gray-500',
+  live: 'bg-emerald-50 text-emerald-700',
 };
 
 const AdminCoupons = () => {
@@ -99,7 +152,9 @@ const AdminCoupons = () => {
     const now = new Date();
     return {
       total: items.length,
-      active: items.filter((c) => c.active && (!c.validTo || c.validTo.toDate() > now)).length,
+      // Only coupons a customer could redeem this minute - a scheduled or
+      // fully-used code is not one the shop can point people at today.
+      active: items.filter((c) => couponState(c, now) === 'live').length,
       uses: items.reduce((sum, c) => sum + (c.usedCount || 0), 0),
     };
   }, [items]);
@@ -143,8 +198,8 @@ const AdminCoupons = () => {
         maxDiscount: Number(draft.maxDiscount) || 0,
         maxUses: Number(draft.maxUses) || 0,
         perUserLimit: Number(draft.perUserLimit) || 0,
-        validFrom: fromInputDate(draft.validFrom),
-        validTo: fromInputDate(draft.validTo),
+        validFrom: fromInputDate(draft.validFrom, 'start'),
+        validTo: fromInputDate(draft.validTo, 'end'),
         active: draft.active,
         firstOrderOnly: draft.firstOrderOnly,
       };
@@ -245,7 +300,8 @@ const AdminCoupons = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {list.map((c) => {
-            const expired = c.validTo && c.validTo.toDate() < new Date();
+            const state = couponState(c);
+            const expired = state === 'expired';
             const usagePct = c.maxUses > 0 ? Math.min(100, Math.round((c.usedCount / c.maxUses) * 100)) : 0;
             return (
               <motion.div
@@ -269,11 +325,8 @@ const AdminCoupons = () => {
                       </button>
                       {c.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{c.description}</p>}
                     </div>
-                    <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                      expired ? 'bg-gray-100 text-gray-500' :
-                      c.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {expired ? 'Expired' : c.active ? 'Active' : 'Hidden'}
+                    <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${STATE_CLASS[state]}`}>
+                      {STATE_LABEL[state]}
                     </span>
                   </div>
 

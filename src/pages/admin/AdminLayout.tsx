@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { onCatalogPublishFailure } from '@/services/catalogPublisher';
 import { DELIVERY_PARTNERS_ENABLED } from '@/config/features';
 import {
   LayoutDashboard,
@@ -53,6 +55,23 @@ const AdminLayout = () => {
   const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
+
+  /**
+   * Say so when a change does not reach the storefront.
+   *
+   * The snapshot that feeds every listing page is published in the background
+   * after a product write. When that silently failed, the admin saw the new
+   * price on the product page (which reads Firestore) and had no idea the grid
+   * shoppers see was still serving the old one.
+   */
+  React.useEffect(
+    () =>
+      onCatalogPublishFailure((message) =>
+        toast({ title: 'Storefront not updated', description: message, variant: 'destructive' }),
+      ),
+    [toast],
+  );
 
   const handleLogout = async () => {
     await logout();

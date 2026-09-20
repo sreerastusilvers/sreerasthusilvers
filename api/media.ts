@@ -721,12 +721,32 @@ function serializeCatalog(products: CatalogProduct[]): Buffer {
   return Buffer.from(JSON.stringify(file));
 }
 
+/**
+ * Strip the weak-validator prefix from an ETag.
+ *
+ * R2 hands back `W/"abc..."` for this object, and a weak validator is not
+ * allowed in `If-Match` (RFC 9110 §13.1.1) - R2 answers such a request with
+ * 412 every single time, whether or not the object actually changed.
+ *
+ * Passing that value straight back meant `writeCatalog` always returned false,
+ * the retry loop burned all five attempts, and `publish-catalog` ended in a 409
+ * that catalogPublisher only logged. The net effect: no product edit ever
+ * reached the storefront snapshot. The listing pages kept serving whatever the
+ * last full rebuild produced, while product and checkout pages - which read
+ * Firestore directly - showed the new price. That is exactly the "price is old
+ * in the grid but correct inside the product" report.
+ */
+const strongETag = (value: string | null): string => {
+  const tag = (value || '').trim();
+  return tag.startsWith('W/') ? tag.slice(2) : tag;
+};
+
 async function readCatalog(): Promise<{ file: CatalogFile; etag: string } | null> {
   const { client, bucketUrl } = r2();
   const resp = await client.fetch(`${bucketUrl}/${encodeKey(CATALOG_KEY)}`);
   if (resp.status === 404) return null;
   if (!resp.ok) throw new HttpError(502, 'SERVER', `Could not read the catalog snapshot (HTTP ${resp.status}).`);
-  return { file: (await resp.json()) as CatalogFile, etag: resp.headers.get('etag') || '' };
+  return { file: (await resp.json()) as CatalogFile, etag: strongETag(resp.headers.get('etag')) };
 }
 
 /** Returns false when `ifMatch` no longer matches, i.e. someone else saved first. */
@@ -743,6 +763,13 @@ async function writeCatalog(body: Buffer, ifMatch?: string): Promise<boolean> {
   });
   if (resp.status === 412) return false;
   if (!resp.ok) throw new HttpError(502, 'SERVER', `Could not save the catalog snapshot (HTTP ${resp.status}).`);
+
+  // Drop the edge copy so a price change is visible now rather than whenever
+  // the 60-second CDN cache happens to expire. Best-effort: without a Cache
+  // Purge token the snapshot simply ages out on its own, as before.
+  const publicBase = (process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '');
+  if (publicBase) await purgeCache([`${publicBase}/${CATALOG_KEY}`]);
+
   return true;
 }
 
