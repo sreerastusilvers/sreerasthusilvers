@@ -109,6 +109,23 @@ export const couponTerms = (c: Coupon, { includeScope = true }: { includeScope?:
   return parts.join(' · ');
 };
 
+/**
+ * The one condition a customer must know, in as few words as possible:
+ * where it applies and the minimum spend - "on Jewellery above ₹5,000". The
+ * discount cap is left out; it only matters once they are at checkout, where
+ * the exact saving is shown. For narrow screens where `couponTerms` won't fit.
+ */
+export const couponTermsShort = (c: Coupon): string => {
+  const scope =
+    c.applicableSubcategories && c.applicableSubcategories.length > 0
+      ? c.applicableSubcategories
+      : c.applicableCategories || [];
+  const where =
+    scope.length === 0 ? '' : scope.length <= 2 ? `on ${scope.join(' & ')}` : 'on selected items';
+  const min = c.minOrderValue > 0 ? `above ₹${c.minOrderValue.toLocaleString('en-IN')}` : '';
+  return [where, min].filter(Boolean).join(' ');
+};
+
 /** Does this coupon apply to a product in this category/subcategory? */
 export const couponAppliesTo = (c: Coupon, category?: string, subcategory?: string): boolean => {
   const norm = (v?: string) => String(v ?? '').trim().toLowerCase();
