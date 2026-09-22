@@ -592,3 +592,49 @@
 .dark .admin-panel .shadow-md,
 .dark .admin-panel .shadow-lg { box-shadow: 0 4px 16px -4px rgb(0 0 0 / 0.5); }
 
+
+/* ── Offer ribbon (src/components/offers/OfferRibbon.tsx) ─────────────────────
+   House maroon, deepened towards the edges so the centre reads as lit. The
+   engraving is a fine diagonal line, the kind cut into a hallmarked tray,
+   kept faint enough to be felt rather than seen. */
+.offer-ribbon {
+  background:
+    radial-gradient(120% 180% at 50% 50%, #8e2a2e 0%, #6e1a20 45%, #3f0d11 100%);
+}
+.offer-ribbon__engraving {
+  background-image: repeating-linear-gradient(
+    115deg,
+    rgba(232, 197, 106, 0.07) 0 1px,
+    transparent 1px 7px
+  );
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+
+/* A slow sweep of light across the code, like foil catching it. Once every few
+   seconds - enough to draw the eye to the one thing worth tapping. */
+.offer-ticket__foil {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 244, 214, 0.55) 48%,
+    transparent 66%
+  );
+  transform: translateX(-120%);
+  animation: offer-foil 4.2s ease-in-out 1.2s infinite;
+}
+@keyframes offer-foil {
+  0%, 62% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .offer-ticket__foil { animation: none; opacity: 0; }
+}
+
+/* ── Product offer ticket (src/components/offers/ProductOfferTag.tsx) ──────── */
+.product-offer {
+  background: linear-gradient(100deg, #fdf5e4 0%, #fffaf0 55%, #fffdf8 100%);
+}
+.dark .product-offer {
+  background: linear-gradient(100deg, #2b1714 0%, #1f1715 60%, #1a1716 100%);
+}

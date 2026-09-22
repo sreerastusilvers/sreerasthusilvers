@@ -32,6 +32,7 @@ interface DraftCoupon {
   firstOrderOnly: boolean;
   applicableCategories: string[];
   applicableSubcategories: string[];
+  showInBanner: boolean;
 }
 
 const empty = (): DraftCoupon => ({
@@ -49,6 +50,7 @@ const empty = (): DraftCoupon => ({
   firstOrderOnly: false,
   applicableCategories: [],
   applicableSubcategories: [],
+  showInBanner: false,
 });
 
 const fmtDate = (t?: Timestamp | null) => {
@@ -228,6 +230,7 @@ const AdminCoupons = () => {
       firstOrderOnly: c.firstOrderOnly || false,
       applicableCategories: c.applicableCategories || [],
       applicableSubcategories: c.applicableSubcategories || [],
+      showInBanner: c.showInBanner === true,
     });
     setShowForm(true);
   };
@@ -261,6 +264,7 @@ const AdminCoupons = () => {
         applicableSubcategories: draft.applicableCategories.length
           ? draft.applicableSubcategories
           : [],
+        showInBanner: draft.showInBanner,
       };
       if (draft.id) {
         await updateCoupon(draft.id, payload);
@@ -384,9 +388,23 @@ const AdminCoupons = () => {
                       </button>
                       {c.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{c.description}</p>}
                     </div>
-                    <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${STATE_CLASS[state]}`}>
-                      {STATE_LABEL[state]}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${STATE_CLASS[state]}`}>
+                        {STATE_LABEL[state]}
+                      </span>
+                      {c.showInBanner && (
+                        // Switched on is not the same as showing: say which, so
+                        // the owner is not left wondering why the ribbon is empty.
+                        <span
+                          className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            state === 'live' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-500'
+                          }`}
+                          title={state === 'live' ? 'Shown in the offer banner' : 'Will show in the banner once it is live'}
+                        >
+                          {state === 'live' ? '✦ In banner' : 'Banner · waiting'}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-baseline gap-2 mb-4">
@@ -596,6 +614,30 @@ const AdminCoupons = () => {
                   </div>
                 )}
               </div>
+
+              {/*
+                Advertising is opt-in per coupon: a private code for one
+                customer should never appear in the site-wide ribbon.
+              */}
+              <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+                <span>
+                  <span className="block text-sm font-medium text-gray-900">Show in offer banner</span>
+                  <span className="mt-0.5 block text-xs text-gray-500">
+                    Advertise this code in the strip at the top of every page and under product prices.
+                    It only appears while the coupon is active, within its dates and not used up.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className="peer sr-only"
+                  checked={draft.showInBanner}
+                  onChange={(e) => setDraft({ ...draft, showInBanner: e.target.checked })}
+                />
+                <span
+                  aria-hidden
+                  className="relative mt-0.5 h-6 w-11 flex-shrink-0 rounded-full bg-gray-300 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-amber-600 peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-400"
+                />
+              </label>
 
               <div className="flex flex-wrap gap-4">
                 <label className="inline-flex items-center gap-2 text-sm">

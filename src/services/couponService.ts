@@ -34,6 +34,8 @@ export interface Coupon {
   validFrom?: Timestamp | null;
   validTo?: Timestamp | null;
   active: boolean;
+  /** Advertise this code in the storefront offer ribbon and product labels. */
+  showInBanner?: boolean;
   applicableCategories?: string[];    // empty = every category
   /** Optional narrowing within the chosen categories. Empty = the whole category. */
   applicableSubcategories?: string[];
@@ -49,6 +51,98 @@ export const subscribeCoupons = (cb: (items: Coupon[]) => void) => {
   return onSnapshot(q, (snap) => {
     cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
   });
+};
+
+/**
+ * Coupons the admin chose to advertise, live.
+ *
+ * Only `showInBanner` coupons are sent to every visitor's browser - the
+ * storefront has no business downloading the full list of codes just to
+ * advertise one of them. Realtime, so switching an offer on in the admin panel
+ * shows it on open pages at once.
+ */
+export const subscribeBannerCoupons = (cb: (items: Coupon[]) => void) =>
+  onSnapshot(
+    query(collection(db, COUPONS), where('showInBanner', '==', true)),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Coupon, 'id'>) }))),
+    (err) => {
+      // Advertising is optional; a failure must never break the page.
+      console.warn('[couponService] banner coupons unavailable:', err);
+      cb([]);
+    },
+  );
+
+/**
+ * Could a customer redeem this coupon right now?
+ *
+ * `active` is only the admin's on/off switch - a code past its end date, not
+ * yet started, or used up is not an offer and must not be advertised.
+ */
+export const isCouponLive = (c: Coupon, now = new Date()): boolean =>
+  !!c.active &&
+  !(c.validFrom && c.validFrom.toDate() > now) &&
+  !(c.validTo && c.validTo.toDate() < now) &&
+  !(c.maxUses > 0 && c.usedCount >= c.maxUses);
+
+/** "50% OFF" / "₹500 OFF" - the headline figure for an offer. */
+export const couponHeadline = (c: Coupon): string =>
+  c.type === 'percent' ? `${c.value}% OFF` : `₹${Number(c.value).toLocaleString('en-IN')} OFF`;
+
+/**
+ * The small print: minimum order and any cap, in plain words.
+ *
+ * `includeScope: false` leaves out "on Jewellery" - pointless on a product page,
+ * which only ever shows the offers that apply to that product.
+ */
+export const couponTerms = (c: Coupon, { includeScope = true }: { includeScope?: boolean } = {}): string => {
+  const parts: string[] = [];
+  if (c.minOrderValue > 0) parts.push(`on orders above ₹${c.minOrderValue.toLocaleString('en-IN')}`);
+  if (c.type === 'percent' && c.maxDiscount && c.maxDiscount > 0) {
+    parts.push(`up to ₹${c.maxDiscount.toLocaleString('en-IN')}`);
+  }
+  if (includeScope && c.applicableCategories && c.applicableCategories.length > 0) {
+    const where = c.applicableSubcategories && c.applicableSubcategories.length > 0
+      ? c.applicableSubcategories.join(', ')
+      : c.applicableCategories.join(', ');
+    parts.push(`on ${where}`);
+  }
+  return parts.join(' · ');
+};
+
+/** Does this coupon apply to a product in this category/subcategory? */
+export const couponAppliesTo = (c: Coupon, category?: string, subcategory?: string): boolean => {
+  const norm = (v?: string) => String(v ?? '').trim().toLowerCase();
+  const cats = (c.applicableCategories || []).map(norm);
+  const subs = (c.applicableSubcategories || []).map(norm);
+  if (cats.length > 0 && !cats.includes(norm(category))) return false;
+  if (subs.length > 0 && !subs.includes(norm(subcategory))) return false;
+  return true;
+};
+
+// ── Remembered code ────────────────────────────────────────────────────────
+// Tapping an advertised code copies it AND remembers it for this visit, so
+// checkout can apply it without the customer having to paste anything. The
+// ribbon's whole job is getting people to checkout with the offer in hand.
+
+const REMEMBERED_KEY = 'ss:offerCode';
+
+export const rememberCouponCode = (code: string) => {
+  try {
+    sessionStorage.setItem(REMEMBERED_KEY, code.trim().toUpperCase());
+  } catch {
+    // Private mode: the copy to the clipboard still happened.
+  }
+};
+
+/** Read and forget the remembered code, so it is applied at most once. */
+export const takeRememberedCouponCode = (): string | null => {
+  try {
+    const code = sessionStorage.getItem(REMEMBERED_KEY);
+    if (code) sessionStorage.removeItem(REMEMBERED_KEY);
+    return code;
+  } catch {
+    return null;
+  }
 };
 
 export const getCoupons = async (): Promise<Coupon[]> => {
@@ -148,7 +242,7 @@ const countUserOrders = async (userId: string, couponCode?: string): Promise<num
       const snap = await getDocs(query(collection(db, 'orders'), where('userId', '==', userId)));
       if (!couponCode) return snap.size;
       const wanted = couponCode.toUpperCase();
-      return snap.docs.filter((d) => String((d.data() as any).couponCode || '').toUpperCase() === wanted).length;
+      return snap.docs.filter((d) => String((d.data() as { couponCode?: string }).couponCode || '').toUpperCase() === wanted).length;
     } catch {
       return null;
     }

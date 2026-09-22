@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   subscribeDeliverySettings,
   subscribeGstSettings,
@@ -14,6 +14,8 @@ import {
   validateCoupon,
   subscribeCoupons,
   computeCouponDiscount,
+  isCouponLive,
+  takeRememberedCouponCode,
   type Coupon,
 } from '@/services/couponService';
 import { getActiveProductsCached } from '@/services/productCache';
@@ -64,6 +66,12 @@ export interface CheckoutPricingOptions {
   cartCategories?: string[];
   /** Signed-in customer, for `perUserLimit` / `firstOrderOnly` coupons. */
   userId?: string;
+  /**
+   * Apply a code the customer tapped in the offer ribbon or on a product page.
+   * Checkout only: the cart drawer runs this same hook, and letting it consume
+   * the remembered code would leave nothing for checkout to apply.
+   */
+  applyRememberedCode?: boolean;
 }
 
 /**
@@ -80,7 +88,7 @@ export function useCheckoutPricing(
   paymentMethod: string,
   options: CheckoutPricingOptions = {}
 ): CheckoutPricing {
-  const { productIds, destinationState, cartCategories, userId } = options;
+  const { productIds, destinationState, cartCategories, userId, applyRememberedCode } = options;
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [delivery, setDelivery] = useState<DeliverySettings>(DEFAULT_DELIVERY);
@@ -132,16 +140,7 @@ export function useCheckoutPricing(
    * "Coupon has expired", which looks like a broken site rather than a finished
    * promotion. The date window and the usage cap are part of "available".
    */
-  const redeemableCoupons = useMemo(() => {
-    const now = new Date();
-    return coupons.filter(
-      (c) =>
-        c.active &&
-        !(c.validFrom && c.validFrom.toDate() > now) &&
-        !(c.validTo && c.validTo.toDate() < now) &&
-        !(c.maxUses > 0 && c.usedCount >= c.maxUses),
-    );
-  }, [coupons]);
+  const redeemableCoupons = useMemo(() => coupons.filter((c) => isCouponLive(c)), [coupons]);
 
   /**
    * Keep the applied coupon in step with admin edits.
@@ -274,6 +273,46 @@ export function useCheckoutPricing(
     };
   }, [subtotal, isEmpty, delivery, gst, appliedDiscount, deliveryItems, destinationState]);
 
+  const applyCoupon = async (code: string) => {
+    setCouponLoading(true);
+    try {
+      // Prefer what the catalog says over the cart line's stored category.
+      const categories = cartTaxonomy.categories.length ? cartTaxonomy.categories : cartCategories || [];
+      const r = await validateCoupon(code, subtotal, categories, userId, cartTaxonomy.subcategories);
+      if (r.valid && r.coupon) {
+        setAppliedCoupon(r.coupon);
+        setCouponError(null);
+        return { ok: true };
+      }
+      setAppliedCoupon(null);
+      setCouponError(r.reason || 'Invalid coupon');
+      return { ok: false, reason: r.reason };
+    } catch (error) {
+      // A network failure must not leave the button spinning forever.
+      console.error('[useCheckoutPricing] coupon check failed:', error);
+      setCouponError('Could not check that coupon. Please try again.');
+      return { ok: false, reason: 'Could not check that coupon. Please try again.' };
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  /**
+   * Apply the code the customer tapped on an offer, once, when they reach
+   * checkout with something in the cart. If it does not qualify yet the normal
+   * message shows ("Add ₹800 more to use this coupon"), which is itself a
+   * nudge; either way the code is used up so it is never re-applied.
+   */
+  const rememberedTriedRef = useRef(false);
+  useEffect(() => {
+    if (!applyRememberedCode || rememberedTriedRef.current) return;
+    if (isEmpty || subtotal <= 0 || appliedCoupon || !userId) return;
+    rememberedTriedRef.current = true;
+    const code = takeRememberedCouponCode();
+    if (code) void applyCoupon(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyRememberedCode, isEmpty, subtotal, appliedCoupon, userId]);
+
   return {
     subtotal,
     ...pricing,
@@ -285,29 +324,7 @@ export function useCheckoutPricing(
     delivery,
     gst,
     couponLoading,
-    applyCoupon: async (code: string) => {
-      setCouponLoading(true);
-      try {
-        // Prefer what the catalog says over the cart line's stored category.
-      const categories = cartTaxonomy.categories.length ? cartTaxonomy.categories : cartCategories || [];
-      const r = await validateCoupon(code, subtotal, categories, userId, cartTaxonomy.subcategories);
-        if (r.valid && r.coupon) {
-          setAppliedCoupon(r.coupon);
-          setCouponError(null);
-          return { ok: true };
-        }
-        setAppliedCoupon(null);
-        setCouponError(r.reason || 'Invalid coupon');
-        return { ok: false, reason: r.reason };
-      } catch (error) {
-        // A network failure must not leave the button spinning forever.
-        console.error('[useCheckoutPricing] coupon check failed:', error);
-        setCouponError('Could not check that coupon. Please try again.');
-        return { ok: false, reason: 'Could not check that coupon. Please try again.' };
-      } finally {
-        setCouponLoading(false);
-      }
-    },
+    applyCoupon,
     removeCoupon: () => {
       setAppliedCoupon(null);
       setCouponError(null);

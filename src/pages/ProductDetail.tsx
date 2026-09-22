@@ -22,6 +22,7 @@ import VideoCallRequestModal from "@/components/VideoCallRequestModal";
 import WhatsAppEnquiryButton from "@/components/WhatsAppEnquiryButton";
 import ProductCard from "@/components/ProductCard";
 import { Video, Maximize2 } from "lucide-react";
+import ProductOfferTag from "@/components/offers/ProductOfferTag";
 import { SmartImage } from "@/components/ui/smart-image";
 import { cldUrl } from "@/lib/cloudinaryUrl";
 
@@ -858,6 +859,19 @@ const ProductDetail = () => {
                   <p className="text-xs md:text-sm text-muted-foreground mt-1">
                     (MRP Inclusive of all taxes)
                   </p>
+                  {!isUnavailable(product) && (
+                    <ProductOfferTag
+                      // The same figure the price above shows: the live silver
+                      // price for silver-priced pieces, the stored price otherwise.
+                      price={
+                        product.silverPricing?.enabled && ratePerGram > 0
+                          ? computeSilverOriginalPrice(product.silverPricing, ratePerGram)
+                          : product.price
+                      }
+                      category={product.category}
+                      subcategory={product.subcategory}
+                    />
+                  )}
                 </div>
 
                 {/* Description */}

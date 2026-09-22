@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getActiveProductsCached, useCatalogRevision } from "@/services/productCache";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import MobileHeader from "./MobileHeader";
+import OfferRibbon from "./offers/OfferRibbon";
 import ThemeToggle from "./ThemeToggle";
 import SilverRateWidget from "./SilverRateWidget";
 import { SmartImage } from "@/components/ui/smart-image";
@@ -105,6 +106,10 @@ const Header = () => {
 
   return (
     <>
+      {/* Offers the admin marked "Show in offer banner". Sits above both headers
+          and scrolls away with the page, so it never eats space once browsing. */}
+      {!isAuthPage && <OfferRibbon />}
+
       {/* Mobile Header - Only on Mobile, hidden on auth pages */}
       {!isAuthPage && <MobileHeader />}
 

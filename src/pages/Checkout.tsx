@@ -386,6 +386,8 @@ const MobileCheckout = () => {
     // `firstOrderOnly`, which the admin panel stores but nothing used to check.
     cartCategories: items.map((i) => i.category || '').filter(Boolean),
     userId: user?.uid,
+    // Apply the code the customer tapped in the offer ribbon.
+    applyRememberedCode: true,
   });
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
@@ -2072,6 +2074,8 @@ const Checkout = () => {
     // `firstOrderOnly`, which the admin panel stores but nothing used to check.
     cartCategories: items.map((i) => i.category || '').filter(Boolean),
     userId: user?.uid,
+    // Apply the code the customer tapped in the offer ribbon.
+    applyRememberedCode: true,
   });
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
