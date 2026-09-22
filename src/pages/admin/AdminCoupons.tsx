@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Timestamp } from 'firebase/firestore';
+import { subscribeToCategories, type Category } from '@/services/categoryService';
 import {
   Coupon,
   CouponType,
@@ -29,6 +30,8 @@ interface DraftCoupon {
   validTo: string;
   active: boolean;
   firstOrderOnly: boolean;
+  applicableCategories: string[];
+  applicableSubcategories: string[];
 }
 
 const empty = (): DraftCoupon => ({
@@ -44,6 +47,8 @@ const empty = (): DraftCoupon => ({
   validTo: '',
   active: true,
   firstOrderOnly: false,
+  applicableCategories: [],
+  applicableSubcategories: [],
 });
 
 const fmtDate = (t?: Timestamp | null) => {
@@ -128,6 +133,8 @@ const AdminCoupons = () => {
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'expired'>('all');
   const [copied, setCopied] = useState<string | null>(null);
 
+  const [categories, setCategories] = useState<Category[]>([]);
+
   useEffect(() => {
     const unsub = subscribeCoupons((data) => {
       setItems(data);
@@ -135,6 +142,50 @@ const AdminCoupons = () => {
     });
     return unsub;
   }, []);
+
+  useEffect(() => subscribeToCategories(setCategories), []);
+
+  /** Subcategories of the categories this coupon is limited to. */
+  const subcategoryChoices = useMemo(() => {
+    const picked = draft.applicableCategories.map((c) => c.trim().toLowerCase());
+    if (picked.length === 0) return [];
+    const names = new Set<string>();
+    for (const cat of categories) {
+      if (!picked.includes(cat.name.trim().toLowerCase())) continue;
+      for (const sub of cat.subcategories || []) names.add(sub.name);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [categories, draft.applicableCategories]);
+
+  const toggleCategory = (name: string) => {
+    setDraft((prev) => {
+      const has = prev.applicableCategories.includes(name);
+      const next = has
+        ? prev.applicableCategories.filter((c) => c !== name)
+        : [...prev.applicableCategories, name];
+      // Dropping a category must drop the subcategories that belonged to it,
+      // or the coupon keeps a narrowing nobody can see any more.
+      const stillValid = new Set<string>();
+      for (const cat of categories) {
+        if (!next.map((c) => c.toLowerCase()).includes(cat.name.toLowerCase())) continue;
+        for (const sub of cat.subcategories || []) stillValid.add(sub.name);
+      }
+      return {
+        ...prev,
+        applicableCategories: next,
+        applicableSubcategories: prev.applicableSubcategories.filter((sn) => stillValid.has(sn)),
+      };
+    });
+  };
+
+  const toggleSubcategory = (name: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      applicableSubcategories: prev.applicableSubcategories.includes(name)
+        ? prev.applicableSubcategories.filter((c) => c !== name)
+        : [...prev.applicableSubcategories, name],
+    }));
+  };
 
   const list = useMemo(() => {
     const now = new Date();
@@ -175,6 +226,8 @@ const AdminCoupons = () => {
       validTo: toInputDate(c.validTo),
       active: c.active,
       firstOrderOnly: c.firstOrderOnly || false,
+      applicableCategories: c.applicableCategories || [],
+      applicableSubcategories: c.applicableSubcategories || [],
     });
     setShowForm(true);
   };
@@ -202,6 +255,12 @@ const AdminCoupons = () => {
         validTo: fromInputDate(draft.validTo, 'end'),
         active: draft.active,
         firstOrderOnly: draft.firstOrderOnly,
+        applicableCategories: draft.applicableCategories,
+        // Subcategories only narrow a category selection; without one they
+        // would silently widen the offer to products the shop did not pick.
+        applicableSubcategories: draft.applicableCategories.length
+          ? draft.applicableSubcategories
+          : [],
       };
       if (draft.id) {
         await updateCoupon(draft.id, payload);
@@ -342,6 +401,17 @@ const AdminCoupons = () => {
                     {c.type === 'percent' && c.maxDiscount > 0 && (
                       <Row label="Max discount" value={`₹${c.maxDiscount.toLocaleString('en-IN')}`} />
                     )}
+                    {/* Only shown when set, so an unrestricted coupon stays uncluttered. */}
+                    {c.applicableCategories && c.applicableCategories.length > 0 && (
+                      <Row
+                        label="Applies to"
+                        value={
+                          c.applicableSubcategories && c.applicableSubcategories.length > 0
+                            ? `${c.applicableCategories.join(', ')} · ${c.applicableSubcategories.join(', ')}`
+                            : c.applicableCategories.join(', ')
+                        }
+                      />
+                    )}
                     <Row
                       label="Validity"
                       value={`${fmtDate(c.validFrom)} → ${fmtDate(c.validTo)}`}
@@ -447,6 +517,86 @@ const AdminCoupons = () => {
                     onChange={(e) => setDraft({ ...draft, validTo: e.target.value })} />
                 </Field>
               </div>
+              {/*
+                Which products the code applies to. Nothing selected means the
+                whole shop, which is what every existing coupon expects, so the
+                default stays "all".
+              */}
+              <div className="rounded-xl border border-gray-200 p-4">
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-medium text-gray-900">Limit to categories</span>
+                  <span className="text-xs text-gray-500">
+                    {draft.applicableCategories.length === 0
+                      ? 'All categories'
+                      : `${draft.applicableCategories.length} selected`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {categories.length === 0 && (
+                    <span className="text-xs text-gray-400">Loading categories…</span>
+                  )}
+                  {categories.map((cat) => {
+                    const on = draft.applicableCategories.includes(cat.name);
+                    return (
+                      <button
+                        key={cat.id || cat.name}
+                        type="button"
+                        onClick={() => toggleCategory(cat.name)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          on
+                            ? 'border-amber-500 bg-amber-50 text-amber-800'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        {on ? '✓ ' : ''}
+                        {cat.name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {draft.applicableCategories.length > 0 && (
+                  <div className="mt-4 border-t border-gray-100 pt-3">
+                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                      <span className="text-sm font-medium text-gray-900">
+                        Narrow to subcategories <span className="font-normal text-gray-400">(optional)</span>
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {draft.applicableSubcategories.length === 0
+                          ? 'Whole category'
+                          : `${draft.applicableSubcategories.length} selected`}
+                      </span>
+                    </div>
+                    {subcategoryChoices.length === 0 ? (
+                      <p className="text-xs text-gray-400">
+                        These categories have no subcategories.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {subcategoryChoices.map((name) => {
+                          const on = draft.applicableSubcategories.includes(name);
+                          return (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() => toggleSubcategory(name)}
+                              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                on
+                                  ? 'border-amber-500 bg-amber-50 text-amber-800'
+                                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              {on ? '✓ ' : ''}
+                              {name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="flex flex-wrap gap-4">
                 <label className="inline-flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={draft.active}

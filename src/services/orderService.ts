@@ -449,6 +449,30 @@ export const getNextStatus = (current: Order['status']): Order['status'] | null 
   return CANONICAL_FLOW[idx + 1];
 };
 
+/**
+ * Put units back on a product, and back on sale if a sell-out hid it.
+ *
+ * A read-then-write transaction rather than a bare `increment`, because the
+ * decision to re-list depends on WHY the product is hidden: only a product the
+ * sell-out rule took down (`inactiveReason: 'outOfStock'`) comes back. One the
+ * owner switched off by hand has no reason recorded and stays off.
+ */
+const restockProduct = async (productId: string, quantity: number) => {
+  const ref = doc(db, 'products', productId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const data = snap.data() as any;
+    const nextStock = Number(data?.inventory?.stock ?? 0) + quantity;
+    const reList = data?.inactiveReason === 'outOfStock' && nextStock > 0;
+    tx.update(ref, {
+      'inventory.stock': nextStock,
+      updatedAt: Timestamp.now(),
+      ...(reList ? { 'flags.isActive': true, inactiveReason: null } : {}),
+    });
+  });
+};
+
 export interface CartLineCheck {
   productId: string;
   name: string;
@@ -611,9 +635,13 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
     }
 
     let lowStockTransitions: Array<{ productId: string; productName: string; stockLeft: number }> = [];
+    /** Products this order sold out, and so just hid from the storefront. */
+    let soldOutProducts: Array<{ productId: string; productName: string }> = [];
 
     await runTransaction(db, async (transaction) => {
       const transitions: Array<{ productId: string; productName: string; stockLeft: number }> = [];
+      // Rebuilt on every attempt: Firestore may re-run this function.
+      const soldOutNow: Array<{ productId: string; productName: string }> = [];
 
       for (const item of groupedItems.values()) {
         const productRef = doc(db, 'products', item.productId);
@@ -630,10 +658,23 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
         }
 
         const nextStock = availableStock - item.quantity;
+        const soldOut = nextStock <= 0;
         transaction.update(productRef, {
           'inventory.stock': nextStock,
           updatedAt: now,
+          // Take a sold-out piece off the storefront in the same write that
+          // sold its last unit. Nothing did this before, so a sold-out product
+          // stayed listed and anyone who reached checkout with it was turned
+          // away there. `inactiveReason` records that a rule hid it, so a
+          // restock brings it back - an item the owner switched off by hand
+          // has no reason set and is never switched back on automatically.
+          ...(soldOut && productData?.flags?.isActive !== false
+            ? { 'flags.isActive': false, inactiveReason: 'outOfStock', outOfStockAt: now }
+            : {}),
         });
+        if (soldOut && productData?.flags?.isActive !== false) {
+          soldOutNow.push({ productId: item.productId, productName: item.name });
+        }
 
         if (availableStock >= LOW_STOCK_THRESHOLD && nextStock < LOW_STOCK_THRESHOLD) {
           transitions.push({
@@ -653,7 +694,21 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
       });
 
       lowStockTransitions = transitions;
+      soldOutProducts = soldOutNow;
     });
+
+    // Tell the shop a product just went off sale. Without this the only sign
+    // was the piece silently vanishing from the storefront.
+    for (const p of soldOutProducts) {
+      void notifyOrder({
+        orderId: docRef.id,
+        audience: 'admins',
+        title: 'Sold out - hidden from the store',
+        body: `${p.productName} sold its last unit and is now hidden. Restock it in Products to put it back on sale.`,
+        url: `/admin/products/${p.productId}`,
+        data: { type: 'product-sold-out', productId: p.productId },
+      });
+    }
 
     // Stock changed: update these products in the storefront catalog snapshot.
     requestCatalogRefresh([...groupedItems.keys()]);
@@ -987,13 +1042,7 @@ export const updateOrderStatus = async (
     ) {
       try {
         const items = (currentData.items as OrderItem[]) || [];
-        await Promise.all(
-          items.map(item =>
-            updateDoc(doc(db, 'products', item.productId), {
-              'inventory.stock': increment(item.quantity),
-            })
-          )
-        );
+        await Promise.all(items.map((item) => restockProduct(item.productId, item.quantity)));
         await updateDoc(docRef, { stockDecremented: false });
         requestCatalogRefresh(items.map((item) => item.productId));
       } catch (err) {
@@ -1883,6 +1932,8 @@ export const cancelOrder = async (
     const now = Timestamp.now();
     const existingHistory = orderData.statusHistory || [];
 
+    const shouldRestock = (orderData as any).stockDecremented === true;
+
     await updateDoc(docRef, {
       status: 'cancelled',
       cancellationReason,
@@ -1890,6 +1941,10 @@ export const cancelOrder = async (
       cancelledBy: 'user',
       updatedAt: now,
       lastUpdated: now,
+      // Cleared in the same write as the cancellation, so a retry - or the
+      // admin later moving it to "cancelled" as well - can never put the same
+      // units back twice.
+      ...(shouldRestock ? { stockDecremented: false } : {}),
       statusHistory: [
         ...existingHistory,
         {
@@ -1899,6 +1954,21 @@ export const cancelOrder = async (
         },
       ],
     });
+
+    // Put the units back. Only an admin-side cancellation did this before, so
+    // a piece a customer cancelled stayed counted as sold - and now that
+    // selling the last unit hides a product, cancelling it would have left the
+    // product off the store for good. Best-effort: the cancellation itself has
+    // already been recorded and must not be reported as failed.
+    if (shouldRestock) {
+      const items = (orderData.items as OrderItem[]) || [];
+      try {
+        await Promise.all(items.map((item) => restockProduct(item.productId, item.quantity)));
+        requestCatalogRefresh(items.map((item) => item.productId));
+      } catch (err) {
+        console.warn('[orderService] stock restore after customer cancel failed:', err);
+      }
+    }
   } catch (error) {
     console.error('Error cancelling order:', error);
     throw error;

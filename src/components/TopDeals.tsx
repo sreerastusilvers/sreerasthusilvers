@@ -275,7 +275,18 @@ const TopDeals = () => {
             >
               <div
                 ref={desktopScrollRef}
-                className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory pb-1"
+                /*
+                  No `scroll-smooth` and no mandatory snap here.
+
+                  `scroll-behavior: smooth` animates EVERY scroll, including the
+                  user's own wheel and trackpad, which is what made this row
+                  feel heavy and laggy to drag - the arrows pass
+                  `behavior: 'smooth'` themselves, so nothing is lost. Mandatory
+                  snapping then pulled the row back to the nearest card after
+                  each programmatic page, producing a visible tug. Proximity
+                  snapping still tidies the resting position without fighting.
+                */
+                className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-proximity pb-1"
                 style={{ WebkitOverflowScrolling: 'touch' }}
               >
                 {desktopProducts.map((product) => (

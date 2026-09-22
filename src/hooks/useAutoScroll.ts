@@ -48,6 +48,19 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
   } = opts;
 
   const scrollerRef = useRef<HTMLDivElement>(null);
+  /**
+   * The position we intend, kept as a float.
+   *
+   * `scrollLeft` is read back rounded, so `el.scrollLeft += 0.5` every frame
+   * threw the fraction away each time: the row advanced 0px, then 1px, then
+   * 0px, which is exactly the stutter this carousel had. Keeping the true
+   * position here and assigning it outright makes the motion continuous.
+   */
+  const posRef = useRef(0);
+  /** Last value we wrote, so a change we did not make is the user scrolling. */
+  const appliedRef = useRef(0);
+  /** Layout metrics, refreshed on resize/mutation instead of every frame. */
+  const metricsRef = useRef({ hasLoopCopies: false, logicalMax: 0, max: 0, resetPoint: 0 });
   const [isPaused, setIsPaused] = useState(false);
   const dirRef = useRef<1 | -1>(direction);
   const rafRef = useRef<number | null>(null);
@@ -56,6 +69,8 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
   const pausedRef = useRef(false);
   const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null);
   const [canScroll, setCanScroll] = useState(false);
+  /** Mirror of `canScroll` for the animation loop, which must not re-bind. */
+  const canScrollRef = useRef(false);
 
   const getScrollMetrics = useCallback(
     (el: HTMLDivElement) => {
@@ -102,8 +117,10 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
       return false;
     }
 
-    const { logicalMax } = getScrollMetrics(el);
-    const nextCanScroll = logicalMax > 2;
+    const metrics = getScrollMetrics(el);
+    metricsRef.current = metrics;
+    const nextCanScroll = metrics.logicalMax > 2;
+    canScrollRef.current = nextCanScroll;
     setCanScroll((prev) => (prev === nextCanScroll ? prev : nextCanScroll));
 
     if (!nextCanScroll) {
@@ -221,59 +238,63 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
   useEffect(() => {
     if (!enabled || !scrollerEl) return;
 
-    const syncScrollability = (el: HTMLDivElement) => {
-      const { logicalMax } = getScrollMetrics(el);
-      const nextCanScroll = logicalMax > 2;
-      setCanScroll((prev) => (prev === nextCanScroll ? prev : nextCanScroll));
-      if (!nextCanScroll) {
-        dirRef.current = direction;
-        if (Math.abs(el.scrollLeft) > 0.5) {
-          el.scrollLeft = 0;
-        }
-      }
-      return nextCanScroll;
-    };
-
+    /**
+     * Re-measure only when the layout could actually have changed.
+     *
+     * This used to run on every frame, and it reads `scrollWidth` and
+     * `clientWidth` - two forced synchronous layouts per frame, on top of the
+     * one the scroll write already costs. The ResizeObserver and
+     * MutationObserver above already tell us when the row changes, so the loop
+     * can just read the cached numbers.
+     */
     let lastTs = performance.now();
     dirRef.current = direction;
+    posRef.current = scrollerEl.scrollLeft;
+    appliedRef.current = scrollerEl.scrollLeft;
 
     const tick = (ts: number) => {
       const el = scrollerEl;
-      const dt = ts - lastTs;
+      const dt = Math.min(ts - lastTs, 50); // a backgrounded tab must not lurch
       lastTs = ts;
-      const nextCanScroll = syncScrollability(el);
 
-      if (!pausedRef.current && nextCanScroll) {
-        // ~60fps baseline, scale by elapsed time so motion stays steady.
-        const delta = speed * (dt / 16.67) * dirRef.current;
-        el.scrollLeft += delta;
+      if (!pausedRef.current && canScrollRef.current) {
+        // The user (wheel, touch, a smooth scrollByPage) moved it since our
+        // last write, so follow them rather than yanking it back.
+        if (Math.abs(el.scrollLeft - appliedRef.current) > 1.5) {
+          posRef.current = el.scrollLeft;
+        }
 
-        const { hasLoopCopies, max, resetPoint } = getScrollMetrics(el);
+        // ~60fps baseline, scaled by elapsed time so motion stays steady.
+        posRef.current += speed * (dt / 16.67) * dirRef.current;
+
+        const { hasLoopCopies, max, resetPoint } = metricsRef.current;
         if (loop) {
           if (hasLoopCopies && resetPoint > 0) {
             // Seamless infinite loop: consumer renders a second copy of the content.
-            if (el.scrollLeft >= resetPoint) {
-              el.scrollLeft -= resetPoint;
-            } else if (el.scrollLeft <= 0) {
-              el.scrollLeft += resetPoint;
+            if (posRef.current >= resetPoint) {
+              posRef.current -= resetPoint;
+            } else if (posRef.current <= 0) {
+              posRef.current += resetPoint;
             }
-          } else if (dirRef.current >= 0 && el.scrollLeft >= max - 0.5) {
-            el.scrollLeft = 0;
-          } else if (dirRef.current < 0 && el.scrollLeft <= 0.5) {
-            el.scrollLeft = max;
+          } else if (dirRef.current >= 0 && posRef.current >= max - 0.5) {
+            posRef.current = 0;
+          } else if (dirRef.current < 0 && posRef.current <= 0.5) {
+            posRef.current = max;
           }
         } else if (pingPong) {
-          if (el.scrollLeft >= max - 0.5) {
-            el.scrollLeft = max;
+          if (posRef.current >= max - 0.5) {
+            posRef.current = max;
             dirRef.current = -1;
-          } else if (el.scrollLeft <= 0.5) {
-            el.scrollLeft = 0;
+          } else if (posRef.current <= 0.5) {
+            posRef.current = 0;
             dirRef.current = 1;
           }
-        } else {
-          // wrap
-          if (el.scrollLeft >= max - 0.5) el.scrollLeft = 0;
+        } else if (posRef.current >= max - 0.5) {
+          posRef.current = 0;
         }
+
+        el.scrollLeft = posRef.current;
+        appliedRef.current = el.scrollLeft;
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -311,7 +332,7 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
       scrollerEl.removeEventListener("mouseenter", handleMouseEnter);
       scrollerEl.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [direction, enabled, getScrollMetrics, loop, pause, resume, scrollerEl, speed, pingPong]);
+  }, [direction, enabled, loop, pause, resume, scrollerEl, speed, pingPong]);
 
   return { scrollerRef, pause, resume, scrollByPage, isPaused, canScroll };
 }

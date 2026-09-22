@@ -57,6 +57,44 @@ import { matchesTaxon } from '@/lib/taxonomy';
  * One dropdown row: name on the left, how many products it holds on the right -
  * the same "name + count" read the storefront category filters give.
  */
+type StatusFilter = 'all' | 'active' | 'inactive' | 'soldOut' | 'noImages';
+
+const stockOf = (p: Product) => Number(p.inventory?.stock ?? 0);
+const hasImages = (p: Product) => (p.media?.images?.length ?? 0) > 0;
+
+/**
+ * Which filter tab a product belongs to. The tabs overlap on purpose: a
+ * sold-out product is also hidden, and both views should list it.
+ */
+const inStatus = (p: Product, f: StatusFilter): boolean => {
+  switch (f) {
+    case 'active': return Boolean(p.flags?.isActive);
+    case 'inactive': return !p.flags?.isActive;
+    case 'soldOut': return stockOf(p) <= 0;
+    case 'noImages': return !hasImages(p);
+    default: return true;
+  }
+};
+
+/**
+ * What the card badge says. "Inactive" alone gave no clue whether the owner
+ * hid a piece, it sold out, or it had no photo - three very different to-dos.
+ */
+const statusBadge = (p: Product): { label: string; className: string } => {
+  if (p.flags?.isActive && stockOf(p) > 0) return { label: 'Live', className: 'bg-green-50 text-green-600' };
+  if (stockOf(p) <= 0) return { label: 'Sold out · hidden', className: 'bg-orange-50 text-orange-700' };
+  if (!hasImages(p)) return { label: 'No photo · hidden', className: 'bg-amber-50 text-amber-700' };
+  return { label: 'Hidden', className: 'bg-red-50 text-red-600' };
+};
+
+const STATUS_TABS: Array<{ value: StatusFilter; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Live' },
+  { value: 'inactive', label: 'Hidden' },
+  { value: 'soldOut', label: 'Sold out' },
+  { value: 'noImages', label: 'No photos' },
+];
+
 const FilterOption = ({ label, count }: { label: string; count: number }) => (
   <span className="flex w-full items-center justify-between gap-3">
     <span className={count === 0 ? 'text-gray-400' : undefined}>{label}</span>
@@ -84,7 +122,7 @@ const Products = () => {
   // Sub levels are held as slugs, matched with matchesTaxon - see the filter effect.
   const [subcategoryFilter, setSubcategoryFilter] = useState('all');
   const [subSubcategoryFilter, setSubSubcategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [scannerOpen, setScannerOpen] = useState(false);
 
   /**
@@ -135,11 +173,17 @@ const Products = () => {
     );
   };
 
-  const matchesStatus = (product: Product) => {
-    if (statusFilter === 'active') return Boolean(product.flags?.isActive);
-    if (statusFilter === 'inactive') return !product.flags?.isActive;
-    return true;
-  };
+  const matchesStatus = (product: Product) => inStatus(product, statusFilter);
+
+  /** Tab counts, over everything that matches the search box. */
+  const statusCounts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const pool = products.filter((p) => matchesSearch(p, q));
+    return Object.fromEntries(
+      STATUS_TABS.map((t) => [t.value, pool.filter((p) => inStatus(p, t.value)).length]),
+    ) as Record<StatusFilter, number>;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, searchQuery]);
 
   /** Subcategories of the selected category, for the second filter dropdown. */
   const subcategoryOptions = useMemo(() => {
@@ -262,15 +306,28 @@ const Products = () => {
   };
 
   const handleToggleVisibility = async (product: Product) => {
+    const showing = !product.flags.isActive;
+    // Putting a sold-out piece back on the storefront only lets customers get
+    // as far as checkout and be refused there. Say why instead of doing it.
+    if (showing && stockOf(product) <= 0) {
+      toast({
+        title: 'Out of stock - not shown',
+        description: `${product.name} has 0 in stock. Edit it and add stock; it goes live again on save.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       await updateProduct(product.id!, {
-        flags: { ...product.flags, isActive: !product.flags.isActive },
-      });
-      
+        flags: { ...product.flags, isActive: showing },
+        // A hand-made show or hide replaces whatever rule set the old state.
+        inactiveReason: null,
+      } as any);
+
       setProducts((prev) =>
         prev.map((p) =>
           p.id === product.id
-            ? { ...p, flags: { ...p.flags, isActive: !p.flags.isActive } }
+            ? { ...p, flags: { ...p.flags, isActive: showing }, inactiveReason: null }
             : p
         )
       );
@@ -395,6 +452,64 @@ const Products = () => {
         </div>
       </div>
 
+      {/*
+        Always visible, unlike the Filters panel below it. The status filter
+        used to live only inside that collapsed panel, so there was no obvious
+        way to find the products that were hidden - or to see how many had sold
+        out or were still waiting for photos.
+      */}
+      {/*
+        The warning that matters most: sold-out pieces are hidden from shoppers
+        by the order that sold their last unit. The admin push notification only
+        reaches a browser that allowed notifications, so the page says it too.
+      */}
+      {statusCounts.soldOut > 0 && statusFilter !== 'soldOut' && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+          <p className="text-sm text-orange-800">
+            <span className="font-semibold">
+              {statusCounts.soldOut} product{statusCounts.soldOut === 1 ? ' is' : 's are'} out of stock
+            </span>{' '}
+            and hidden from the store. Add stock to put {statusCounts.soldOut === 1 ? 'it' : 'them'} back on sale.
+          </p>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('soldOut')}
+            className="rounded-full bg-orange-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-orange-700"
+          >
+            Review sold-out items
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {STATUS_TABS.map((tab) => {
+          const on = statusFilter === tab.value;
+          const count = statusCounts[tab.value] ?? 0;
+          const warn = (tab.value === 'soldOut' || tab.value === 'noImages') && count > 0;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setStatusFilter(tab.value)}
+              className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                on
+                  ? 'border-amber-600 bg-amber-600 text-white'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {tab.label}
+              <span
+                className={`rounded-full px-1.5 text-[11px] font-semibold ${
+                  on ? 'bg-white/25 text-white' : warn ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {showFilters && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
@@ -481,15 +596,17 @@ const Products = () => {
             <label className="text-xs font-medium text-gray-600">Status</label>
             <Select
               value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}
+              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
             >
               <SelectTrigger className="mt-1.5 bg-white border-gray-300 text-gray-900">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="active">Active only</SelectItem>
-                <SelectItem value="inactive">Inactive only</SelectItem>
+                <SelectItem value="active">Live only</SelectItem>
+                <SelectItem value="inactive">Hidden only</SelectItem>
+                <SelectItem value="soldOut">Sold out</SelectItem>
+                <SelectItem value="noImages">No photos</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -549,13 +666,9 @@ const Products = () => {
                   alt={product.name}
                   className="w-full h-full object-cover" preset="tile" />
                 <span
-                  className={`absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    product.flags?.isActive
-                      ? 'bg-green-50 text-green-600'
-                      : 'bg-red-50 text-red-600'
-                  }`}
+                  className={`absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(product).className}`}
                 >
-                  {product.flags?.isActive ? 'Active' : 'Inactive'}
+                  {statusBadge(product).label}
                 </span>
                 <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
@@ -638,8 +751,8 @@ const Products = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${product.flags?.isActive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                        {product.flags?.isActive ? 'Active' : 'Inactive'}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge(product).className}`}>
+                        {statusBadge(product).label}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>

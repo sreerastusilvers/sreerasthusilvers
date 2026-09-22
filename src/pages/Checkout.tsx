@@ -72,6 +72,47 @@ async function geocodeShippingAddress(address: {
   }
 }
 
+/**
+ * Warns about cart lines that can no longer be bought and removes them in one
+ * tap. A sold-out or withdrawn product stays in any cart it was already in, and
+ * the customer used to learn that only when the pre-payment check refused them.
+ */
+const UnavailableItemsNotice = ({
+  items,
+  unavailable,
+  onRemove,
+}: {
+  items: { id: string; name: string }[];
+  unavailable: Record<string, string>;
+  onRemove: (id: string) => void;
+}) => {
+  const affected = items.filter((i) => unavailable[i.id]);
+  if (affected.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-200">
+      <p className="font-semibold">
+        {affected.length === 1 ? '1 item in your cart' : `${affected.length} items in your cart`} can no longer be ordered
+      </p>
+      <p className="mt-0.5 text-xs opacity-90">Remove {affected.length === 1 ? 'it' : 'them'} to continue to payment.</p>
+      <button
+        type="button"
+        onClick={() => affected.forEach((i) => onRemove(i.id))}
+        className="mt-2 rounded-full bg-orange-600 px-3 py-1 text-xs font-semibold text-white hover:bg-orange-700"
+      >
+        Remove {affected.length === 1 ? 'it' : `all ${affected.length}`}
+      </button>
+    </div>
+  );
+};
+
+/** Small tag on a cart line that cannot be bought any more. */
+const UnavailableTag = ({ reason }: { reason?: string }) =>
+  reason ? (
+    <span className="mt-1 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">
+      {reason}
+    </span>
+  ) : null;
+
 const SlideToPayButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
   const constraintsRef = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
@@ -150,7 +191,7 @@ const MobileCheckout = () => {
   };
   const { user, userProfile } = useAuth();
   const { resolvedTheme } = useTheme();
-  const { items, subtotal, updateQuantity, updateCartPrice, removeFromCart, totalItems, addToCart, clearCart, openCart, loading: cartLoading } = useCart();
+  const { items, unavailable, subtotal, updateQuantity, updateCartPrice, removeFromCart, totalItems, addToCart, clearCart, openCart, loading: cartLoading } = useCart();
   const [currentStep, setCurrentStep] = useState(1); // 1: Cart, 2: Checkout, 3: Payment, 4: Confirmation
   const { toast } = useToast();
   const [suggestedProducts, setSuggestedProducts] = useState<UIProduct[]>([]);
@@ -976,8 +1017,9 @@ const MobileCheckout = () => {
             )}
             {/* Cart Items */}
             {items.length > 0 && (<>
-            <div className="px-4 pt-4 pb-2">
+            <div className="px-4 pt-4 pb-2 space-y-3">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>Your Cart</h2>
+              <UnavailableItemsNotice items={items} unavailable={unavailable} onRemove={removeFromCart} />
             </div>
             <div className="mx-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden mb-4">
               <div className="divide-y divide-gray-50 dark:divide-zinc-800">
@@ -999,6 +1041,7 @@ const MobileCheckout = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-base font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2 leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>{item.name}</h4>
+                          <UnavailableTag reason={unavailable[item.id]} />
                           <div className="mt-1.5">
                             <span className="text-base font-bold text-gray-900 dark:text-zinc-100 whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(item.price)}</span>
                             {origPrice && (
@@ -1105,11 +1148,11 @@ const MobileCheckout = () => {
                                 </div>
                                 <button
                                   onClick={() => { if (!isApplied) pricing.applyCoupon(c.code); }}
-                                  disabled={isApplied || couponLoading}
+                                  disabled={isApplied || pricing.couponLoading}
                                   className={`flex-shrink-0 h-8 px-3 rounded-lg text-xs font-bold transition-colors ${isApplied ? 'bg-green-600 text-white' : 'bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-gray-800 dark:hover:bg-white'}`}
                                   style={{ fontFamily: "'Poppins', sans-serif" }}
                                 >
-                                  {isApplied ? '✓ Applied' : 'APPLY'}
+                                  {isApplied ? '✓ Applied' : pricing.couponLoading ? 'Checking…' : 'APPLY'}
                                 </button>
                               </div>
                             </div>
@@ -1163,11 +1206,11 @@ const MobileCheckout = () => {
                     />
                     <button
                       onClick={handleApplyCoupon}
-                      disabled={couponLoading || !couponInput.trim()}
+                      disabled={pricing.couponLoading || !couponInput.trim()}
                       className="h-10 px-4 text-sm font-semibold text-white bg-gray-900 dark:bg-zinc-100 dark:text-zinc-900 rounded-xl disabled:opacity-50 transition-colors flex-shrink-0 whitespace-nowrap"
                       style={{ fontFamily: "'Poppins', sans-serif" }}
                     >
-                      {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                      {pricing.couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
                     </button>
                   </div>
                 )}
@@ -1857,7 +1900,7 @@ const Checkout = () => {
     else navigate('/');
   };
   const { user, userProfile } = useAuth();
-  const { items, subtotal, clearCart, updateCartPrice, removeFromCart, closeCart, loading: cartLoading } = useCart();
+  const { items, unavailable, subtotal, clearCart, updateCartPrice, updateQuantity, removeFromCart, closeCart, loading: cartLoading } = useCart();
   const { toast } = useToast();
   const { toggleWishlist } = useWishlist();
   const [couponCode, setCouponCode] = useState('');
@@ -2631,10 +2674,10 @@ const Checkout = () => {
                         </div>
                         <button
                           onClick={() => { if (!isApplied) pricing.applyCoupon(c.code); }}
-                          disabled={isApplied}
+                          disabled={isApplied || pricing.couponLoading}
                           className={`flex-shrink-0 h-9 px-4 rounded-lg text-sm font-bold transition-colors ${isApplied ? 'bg-green-600 text-white' : 'bg-foreground text-background hover:opacity-90'}`}
                         >
-                          {isApplied ? '✓ Applied' : 'APPLY'}
+                          {isApplied ? '✓ Applied' : pricing.couponLoading ? 'Checking…' : 'APPLY'}
                         </button>
                       </div>
                     );
@@ -2656,6 +2699,11 @@ const Checkout = () => {
 
             {/* Cart Items */}
             <div className="bg-card border border-border rounded-lg p-6">
+              {items.some((i) => unavailable[i.id]) && (
+                <div className="mb-4">
+                  <UnavailableItemsNotice items={items} unavailable={unavailable} onRemove={removeFromCart} />
+                </div>
+              )}
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   {items.length}/{items.length} ITEMS SELECTED
@@ -2701,6 +2749,7 @@ const Checkout = () => {
                     </div>
                     <div className="flex-1" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       <h3 className="font-medium mb-1">{item.name}</h3>
+                      <UnavailableTag reason={unavailable[item.id]} />
                       {item.category && (
                         <p className="text-sm text-muted-foreground mb-2">
                           Sold by: Sreerasthu Silvers
@@ -2721,13 +2770,49 @@ const Checkout = () => {
                       </div>
                       <div className="flex items-center gap-2 mt-2">
                         {/*
-                          Plain text, not a <select>: this was a dropdown with a
-                          single option, so it looked editable and did nothing.
-                          Quantities are changed in the cart, not at checkout.
+                          Real controls, matching the cart drawer.
+                          
+                          This was a <select> with a single option and no remove
+                          button, so the only way to change your mind at checkout
+                          was to navigate back to the cart - and the one visible
+                          "REMOVE" control emptied the entire basket. Changing a
+                          quantity to zero removes just that line, as it does
+                          everywhere else in the app.
                         */}
-                        <span className="border border-border rounded px-2 py-1 text-sm">
-                          Qty: {item.quantity}
-                        </span>
+                        <div className="flex items-center h-8 rounded-full border border-border bg-muted/50">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (item.quantity === 1) removeFromCart(item.id);
+                              else updateQuantity(item.id, item.quantity - 1);
+                            }}
+                            className="w-8 h-8 flex items-center justify-center rounded-l-full hover:bg-muted transition-colors"
+                            aria-label={item.quantity === 1 ? `Remove ${item.name}` : `Decrease quantity of ${item.name}`}
+                          >
+                            <Minus className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-semibold select-none">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            disabled={typeof item.stock === 'number' && item.quantity >= item.stock}
+                            className="w-8 h-8 flex items-center justify-center rounded-r-full hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label={`Increase quantity of ${item.name}`}
+                          >
+                            <Plus className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.id)}
+                          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-destructive transition-colors"
+                          aria-label={`Remove ${item.name} from cart`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Remove
+                        </button>
                         {/*
                           Real stock, and only when it is genuinely low. This
                           used to be the literal string "1 left" on every line,
@@ -2784,8 +2869,9 @@ const Checkout = () => {
                     />
                     <Button
                       variant="outline"
-                      className="text-primary border-primary"
+                      className="text-primary border-primary min-w-[104px]"
                       style={{ fontFamily: "'Poppins', sans-serif" }}
+                      disabled={pricing.couponLoading || !couponCode.trim()}
                       onClick={async () => {
                         const r = await pricing.applyCoupon(couponCode);
                         if (r.ok) {
@@ -2795,7 +2881,14 @@ const Checkout = () => {
                         }
                       }}
                     >
-                      APPLY
+                      {pricing.couponLoading ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Checking…
+                        </>
+                      ) : (
+                        'APPLY'
+                      )}
                     </Button>
                   </div>
                   {pricing.couponError && (

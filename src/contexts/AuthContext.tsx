@@ -222,13 +222,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let profile = await fetchUserProfile(uid);
 
     if (!profile) {
-      // No Firestore document yet — create admin profile automatically.
-      // This covers admins created directly in Firebase Auth console.
+      // No Firestore document yet - create an ordinary CUSTOMER profile.
+      //
+      // This used to create an ADMIN profile, "for admins added in the Firebase
+      // console". But anyone can create a bare Firebase Auth account with the
+      // site's public API key in a single request, and this login is shared by
+      // the storefront and the admin panel - so signing in with such an account
+      // handed out full admin rights. Admin is now granted only by setting
+      // `role: 'admin'` on the user's document, which the security rules
+      // restrict to existing admins.
       const newProfile: UserProfile = {
         uid,
         email: userCredential.user.email,
         username: userCredential.user.displayName || email.split('@')[0],
-        role: 'admin',
+        role: 'user',
         createdAt: new Date(),
         updatedAt: new Date(),
       };

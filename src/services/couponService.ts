@@ -34,7 +34,9 @@ export interface Coupon {
   validFrom?: Timestamp | null;
   validTo?: Timestamp | null;
   active: boolean;
-  applicableCategories?: string[]; // empty = all
+  applicableCategories?: string[];    // empty = every category
+  /** Optional narrowing within the chosen categories. Empty = the whole category. */
+  applicableSubcategories?: string[];
   firstOrderOnly?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
@@ -158,6 +160,7 @@ export const validateCoupon = async (
   cartTotal: number,
   cartCategoryIds: string[] = [],
   userId?: string,
+  cartSubcategories: string[] = [],
 ): Promise<CouponValidationResult> => {
   const coupon = await getCouponByCode(code);
   if (!coupon) return { valid: false, reason: 'Coupon code does not exist' };
@@ -179,13 +182,20 @@ export const validateCoupon = async (
       reason: `Add ₹${(coupon.minOrderValue - cartTotal).toLocaleString('en-IN')} more to use this coupon`,
     };
   }
-  // Category restriction. `cartCategoryIds` is compared case-insensitively
-  // because the admin stores category *names* while cart lines carry whatever
-  // casing the product document used.
+  // Category restriction. Compared case-insensitively because the admin stores
+  // category *names* while product documents carry whatever casing was typed.
+  const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();
   if (coupon.applicableCategories && coupon.applicableCategories.length > 0) {
-    const allowed = coupon.applicableCategories.map((c) => String(c).trim().toLowerCase());
-    const inCart = cartCategoryIds.map((c) => String(c).trim().toLowerCase());
-    if (!inCart.some((c) => allowed.includes(c))) {
+    const allowed = coupon.applicableCategories.map(norm);
+    if (!cartCategoryIds.map(norm).some((c) => allowed.includes(c))) {
+      return { valid: false, reason: 'Coupon not valid for the items in your cart' };
+    }
+  }
+  // Optional narrowing within those categories, e.g. "Jewellery, but only
+  // Necklaces". Left empty the whole category qualifies.
+  if (coupon.applicableSubcategories && coupon.applicableSubcategories.length > 0) {
+    const allowedSubs = coupon.applicableSubcategories.map(norm);
+    if (!cartSubcategories.map(norm).some((c) => allowedSubs.includes(c))) {
       return { valid: false, reason: 'Coupon not valid for the items in your cart' };
     }
   }

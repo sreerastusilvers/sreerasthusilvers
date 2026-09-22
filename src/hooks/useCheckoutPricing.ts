@@ -36,6 +36,15 @@ export interface CheckoutPricing {
   total: number;
   appliedCoupon: Coupon | null;
   couponError: string | null;
+  /**
+   * True while a code is being checked.
+   *
+   * Lives here rather than in each screen's own state: validating a coupon hits
+   * Firestore two or three times (the code, then the customer's order history
+   * for per-user limits), which is slow enough to look broken. Every Apply
+   * button reads this, so none of them can forget to show it.
+   */
+  couponLoading: boolean;
   coupons: Coupon[];
   /** Coupons a customer could actually redeem right now - what to advertise. */
   redeemableCoupons: Coupon[];
@@ -79,6 +88,7 @@ export function useCheckoutPricing(
 
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   /**
    * The discount is DERIVED from the current subtotal, never stored.
@@ -169,11 +179,25 @@ export function useCheckoutPricing(
    */
   const idsKey = (productIds || []).join(',');
   const [deliveryByProduct, setDeliveryByProduct] = useState<Record<string, DeliverableItem>>({});
+  /**
+   * Categories and subcategories actually in the cart, read from the catalog.
+   *
+   * Taken from the product documents rather than from the cart line's own
+   * `category` string: cart lines are written once, at add-to-cart, and carry
+   * no subcategory at all, so a coupon limited to "Jewellery -> Necklaces"
+   * could never match. Resolving here uses the catalog the delivery lookup
+   * below already loaded, so it costs nothing extra.
+   */
+  const [cartTaxonomy, setCartTaxonomy] = useState<{ categories: string[]; subcategories: string[] }>({
+    categories: [],
+    subcategories: [],
+  });
 
   useEffect(() => {
     let cancelled = false;
     if (!idsKey) {
       setDeliveryByProduct({});
+      setCartTaxonomy({ categories: [], subcategories: [] });
       return;
     }
     getActiveProductsCached()
@@ -184,6 +208,16 @@ export function useCheckoutPricing(
           if (p.id && p.delivery) map[p.id] = { delivery: p.delivery };
         }
         setDeliveryByProduct(map);
+
+        const wanted = new Set(idsKey.split(','));
+        const categories = new Set<string>();
+        const subcategories = new Set<string>();
+        for (const p of products) {
+          if (!p.id || !wanted.has(p.id)) continue;
+          if (p.category) categories.add(p.category);
+          if (p.subcategory) subcategories.add(p.subcategory);
+        }
+        setCartTaxonomy({ categories: [...categories], subcategories: [...subcategories] });
       })
       .catch(() => {
         // Falls back to the universal charge - never blocks checkout.
@@ -250,16 +284,29 @@ export function useCheckoutPricing(
     redeemableCoupons,
     delivery,
     gst,
+    couponLoading,
     applyCoupon: async (code: string) => {
-      const r = await validateCoupon(code, subtotal, cartCategories || [], userId);
-      if (r.valid && r.coupon) {
-        setAppliedCoupon(r.coupon);
-        setCouponError(null);
-        return { ok: true };
+      setCouponLoading(true);
+      try {
+        // Prefer what the catalog says over the cart line's stored category.
+      const categories = cartTaxonomy.categories.length ? cartTaxonomy.categories : cartCategories || [];
+      const r = await validateCoupon(code, subtotal, categories, userId, cartTaxonomy.subcategories);
+        if (r.valid && r.coupon) {
+          setAppliedCoupon(r.coupon);
+          setCouponError(null);
+          return { ok: true };
+        }
+        setAppliedCoupon(null);
+        setCouponError(r.reason || 'Invalid coupon');
+        return { ok: false, reason: r.reason };
+      } catch (error) {
+        // A network failure must not leave the button spinning forever.
+        console.error('[useCheckoutPricing] coupon check failed:', error);
+        setCouponError('Could not check that coupon. Please try again.');
+        return { ok: false, reason: 'Could not check that coupon. Please try again.' };
+      } finally {
+        setCouponLoading(false);
       }
-      setAppliedCoupon(null);
-      setCouponError(r.reason || 'Invalid coupon');
-      return { ok: false, reason: r.reason };
     },
     removeCoupon: () => {
       setAppliedCoupon(null);

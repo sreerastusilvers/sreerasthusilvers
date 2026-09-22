@@ -91,7 +91,7 @@ const FeaturedDeals = () => {
 
             <div
               id="featured-deals-scroll"
-              className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
+              className="flex gap-4 overflow-x-auto scrollbar-hide pb-2"
             >
               {products.map((product, index) => (
                 <motion.div

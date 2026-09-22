@@ -219,6 +219,10 @@ const ProductForm = () => {
   });
 
   const [scannerOpen, setScannerOpen] = useState(false);
+  /** Why the loaded product is hidden, when a rule hid it (see InactiveReason). */
+  const [inactiveReason, setInactiveReason] = useState<'outOfStock' | 'noImages' | null>(null);
+  /** Shown under the Active switch when a rule changed it for the admin. */
+  const [statusNote, setStatusNote] = useState<string | null>(null);
 
   /**
    * Scanning anywhere on this form fills the barcode field.
@@ -339,6 +343,7 @@ const ProductForm = () => {
           isTrendProduct: (product.flags as any)?.isTrendProduct ?? false,
         });
         setImages(product.media?.images || []);
+        setInactiveReason(((product as any).inactiveReason as 'outOfStock' | 'noImages' | null) || null);
         loadedImagesRef.current = product.media?.images || [];
         setVideos(product.media?.videos || []);
         setThumbnail(product.media?.thumbnail || '');
@@ -452,6 +457,20 @@ const ProductForm = () => {
     const { name, value } = e.target;
     if (['price', 'originalPrice', 'discount'].includes(name)) {
       recalcPricing(name as any, value);
+    } else if (name === 'stock') {
+      const units = parseInt(value, 10) || 0;
+      // A product hidden because it sold out goes back on sale when it is
+      // restocked. Done here, on the visible switch, rather than silently at
+      // save time - so the admin sees it and can still turn it off.
+      const reList = units > 0 && inactiveReason === 'outOfStock' && !formData.isActive;
+      setFormData((prev) => ({ ...prev, stock: value, ...(reList ? { isActive: true } : {}) }));
+      if (reList) {
+        setStatusNote('Back in stock - this product will go live again when you save.');
+      } else if (units <= 0 && formData.isActive) {
+        setStatusNote('Stock is 0 - this product will be hidden from the store when you save.');
+      } else if (units > 0) {
+        setStatusNote(null);
+      }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -659,6 +678,12 @@ const ProductForm = () => {
         if (spec.label.trim()) specsObj[spec.label.trim().toLowerCase()] = spec.value.trim();
       });
 
+      // Nothing sells with no stock, so a product saved at 0 is hidden even if
+      // the Active switch was left on. It comes back by itself on restock.
+      const stockUnits = parseInt(formData.stock) || 0;
+      const goesLive = formData.isActive && stockUnits > 0;
+      const hiddenForStock = formData.isActive && stockUnits <= 0;
+
       const productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'> = {
         name: formData.name,
         slug: generateSlug(formData.name),
@@ -677,7 +702,16 @@ const ProductForm = () => {
         media: { images, videos, thumbnail: thumbnail || images[0] },
         inventory: { stock: parseInt(formData.stock) || 0, sku: '', weight: formData.weight, weightUnit: formData.weightUnit },
         specifications: specsObj as any,
-        flags: { isActive: formData.isActive, isFeatured: formData.isFeatured, isNewArrival: formData.isNewArrival, isBestSeller: formData.isBestSeller, isTopDeal: formData.isTopDeal, isTrendProduct: formData.isTrendProduct },
+        flags: { isActive: goesLive, isFeatured: formData.isFeatured, isNewArrival: formData.isNewArrival, isBestSeller: formData.isBestSeller, isTopDeal: formData.isTopDeal, isTrendProduct: formData.isTrendProduct },
+        // Recorded only when a rule hid it; a hand-made hide carries none, so
+        // it is never switched back on automatically.
+        inactiveReason: goesLive
+          ? null
+          : stockUnits <= 0
+            ? 'outOfStock'
+            : inactiveReason === 'noImages' && images.length === 0
+              ? 'noImages'
+              : null,
         // Delivery: only written when the admin explicitly overrides the
         // universal charge, so an untouched product keeps following Commerce.
         // `null` (not undefined) so switching the override off actually clears
@@ -701,10 +735,19 @@ const ProductForm = () => {
 
       if (isEditing) {
         await updateProduct(productId!, productData);
-        toast({ title: 'Success', description: 'Product updated successfully' });
       } else {
         await createProduct(productData, user!.uid);
-        toast({ title: 'Success', description: 'Product created successfully' });
+      }
+      if (hiddenForStock) {
+        // Say so plainly - a product that "saved" but no longer shows on the
+        // storefront otherwise looks like a failed save.
+        toast({
+          title: 'Saved, but hidden: out of stock',
+          description: `${formData.name} has 0 in stock, so it is hidden from the store. It goes live again as soon as you add stock.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Success', description: isEditing ? 'Product updated successfully' : 'Product created successfully' });
       }
       savedRef.current = true;
       const dropped = [...loadedImagesRef.current, ...sessionUploadsRef.current].filter((url) => !images.includes(url));
@@ -1433,8 +1476,18 @@ const ProductForm = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-gray-700">Active</Label>
-                <Switch checked={formData.isActive} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isActive: checked }))} />
+                <Switch checked={formData.isActive} onCheckedChange={(checked) => { setStatusNote(null); setFormData((prev) => ({ ...prev, isActive: checked })); }} />
               </div>
+              {!formData.isActive && inactiveReason && !statusNote && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {inactiveReason === 'outOfStock'
+                    ? 'Hidden automatically because it sold out. Add stock and it goes live again.'
+                    : 'Hidden because it had no photos. Add a photo, then switch Active on.'}
+                </p>
+              )}
+              {statusNote && (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{statusNote}</p>
+              )}
               <div className="flex items-center justify-between">
                 <Label className="text-gray-700">Featured</Label>
                 <Switch checked={formData.isFeatured} onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, isFeatured: checked }))} />

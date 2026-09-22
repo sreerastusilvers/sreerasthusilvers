@@ -1,13 +1,12 @@
 import {
   collection,
-  addDoc,
+  doc,
+  setDoc,
   query,
   orderBy,
   onSnapshot,
   serverTimestamp,
   Timestamp,
-  where,
-  getDocs,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -20,19 +19,29 @@ export interface NewsletterSubscription {
   subscribedAt: Timestamp;
 }
 
-/** Subscribe an email. Returns 'new' if added, 'exists' if already subscribed. */
+/**
+ * Subscribe an email. Returns 'new' if added, 'exists' if already subscribed.
+ *
+ * The document id IS the email, so a repeat is detected by Firestore refusing
+ * to overwrite it - there is no read. The previous version queried the whole
+ * collection for a matching address before writing, which only worked because
+ * the database allowed anyone to read the full subscriber list; under real
+ * security rules a visitor can create their own entry and read nothing.
+ */
 export async function subscribeEmail(email: string): Promise<'new' | 'exists'> {
   const normalised = email.trim().toLowerCase();
-  // Check for existing subscription
-  const existing = await getDocs(
-    query(collection(db, COL), where('email', '==', normalised))
-  );
-  if (!existing.empty) return 'exists';
-  await addDoc(collection(db, COL), {
-    email: normalised,
-    subscribedAt: serverTimestamp(),
-  });
-  return 'new';
+  try {
+    await setDoc(doc(db, COL, normalised), {
+      email: normalised,
+      subscribedAt: serverTimestamp(),
+    });
+    return 'new';
+  } catch (error) {
+    // The rules allow creating an entry but never changing one, so a second
+    // subscribe with the same address is refused - which means "already in".
+    if ((error as { code?: string })?.code === 'permission-denied') return 'exists';
+    throw error;
+  }
 }
 
 /** Realtime listener for admin — returns all subscriptions newest-first. */

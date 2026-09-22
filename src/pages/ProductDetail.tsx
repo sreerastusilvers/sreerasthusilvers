@@ -21,9 +21,20 @@ import CategoryIconNav from "@/components/CategoryIconNav";
 import VideoCallRequestModal from "@/components/VideoCallRequestModal";
 import WhatsAppEnquiryButton from "@/components/WhatsAppEnquiryButton";
 import ProductCard from "@/components/ProductCard";
-import { Video } from "lucide-react";
+import { Video, Maximize2 } from "lucide-react";
 import { SmartImage } from "@/components/ui/smart-image";
 import { cldUrl } from "@/lib/cloudinaryUrl";
+
+/**
+ * Can this product be bought right now?
+ *
+ * A hidden product's page stays reachable - old WhatsApp shares and search
+ * results still point at it, and a 404 would be worse - but it used to offer
+ * Add to Cart and Buy Now as if nothing had changed, so the customer only found
+ * out at the payment step.
+ */
+const isUnavailable = (p?: { isActive?: boolean; stock?: number } | null) =>
+  !!p && (p.isActive === false || (typeof p.stock === 'number' && p.stock <= 0));
 
 const ProductDetail = () => {
   const { productId } = useParams();
@@ -45,6 +56,43 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showImagePopup, setShowImagePopup] = useState(false);
+
+  /** How many images/videos this product has, for arrow-key paging. */
+  const mediaCountRef = useRef(0);
+
+  /**
+   * Keyboard control for the full-screen viewer.
+   *
+   * Built for phones, where swiping is the only input; on a desktop a viewer
+   * that cannot be closed with Escape or paged with the arrow keys feels
+   * broken. The body is locked meanwhile so the page behind does not scroll
+   * under the overlay.
+   *
+   * Declared here, above the loading/not-found returns, because hooks must run
+   * in the same order every render. The media count comes from a ref, which is
+   * a plain assignment and so may be written after those returns.
+   */
+  useEffect(() => {
+    if (!showImagePopup) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowImagePopup(false);
+      else if (e.key === 'ArrowRight') {
+        setSelectedImage((i) => Math.min(i + 1, Math.max(0, mediaCountRef.current - 1)));
+      } else if (e.key === 'ArrowLeft') {
+        setSelectedImage((i) => Math.max(i - 1, 0));
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showImagePopup]);
+
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -232,6 +280,10 @@ const ProductDetail = () => {
 
   const handleAddToCart = async () => {
     if (!product) return;
+    if (isUnavailable(product)) {
+      toast({ title: 'Sold out', description: `${product.title} is not available right now.`, variant: 'destructive' });
+      return;
+    }
 
     if (!user) {
       navigate('/login', { state: { from: { pathname: `/product/${productId}` } } });
@@ -270,6 +322,10 @@ const ProductDetail = () => {
 
   const handleBuyNow = async () => {
     if (!product) return;
+    if (isUnavailable(product)) {
+      toast({ title: 'Sold out', description: `${product.title} is not available right now.`, variant: 'destructive' });
+      return;
+    }
 
     if (!user) {
       navigate('/login', { state: { from: { pathname: `/product/${productId}` } } });
@@ -515,6 +571,8 @@ const ProductDetail = () => {
       };
     }),
   ];
+  mediaCountRef.current = allMedia.length;
+
 
   return (
     <div className="min-h-screen w-full overflow-x-clip">
@@ -566,7 +624,11 @@ const ProductDetail = () => {
                   className="group relative bg-muted rounded-2xl overflow-hidden aspect-square max-w-lg mx-auto mb-4 cursor-pointer md:cursor-zoom-in"
                   onClick={() => {
                     if (didSwipeRef.current) { didSwipeRef.current = false; return; }
-                    if (window.innerWidth < 768) setShowImagePopup(true);
+                    // Every screen size, not just phones. On desktop the only
+                    // way to look closely was the hover magnifier, which shows
+                    // a fraction of the piece at a time and vanishes the moment
+                    // the pointer leaves.
+                    setShowImagePopup(true);
                   }}
                   onTouchStart={onTouchStart}
                   onTouchMove={onTouchMove}
@@ -581,6 +643,27 @@ const ProductDetail = () => {
                     setZoomPos({ x, y });
                   }}
                 >
+                  {/*
+                    Nothing previously said the image could be opened, so on
+                    desktop the full view was undiscoverable. Fades in on hover
+                    beside the magnifier, and stays out of the way on phones,
+                    where tapping the image already opens it.
+                  */}
+                  {allMedia[selectedImage]?.type !== 'video' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowImagePopup(true);
+                      }}
+                      className="absolute right-3 top-3 z-20 hidden h-9 w-9 place-items-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/65 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
+                      aria-label="View image full screen"
+                      title="View full screen"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </button>
+                  )}
+
                   {/* Live-drag + slide animation wrapper */}
                   <div
                     className="absolute inset-0"
@@ -830,8 +913,8 @@ const ProductDetail = () => {
 
                 {/* Quantity & Actions - Hidden on mobile, shown on desktop */}
                 <div className="hidden md:flex flex-wrap items-center gap-4 mb-6">
-                  {/* Quantity Selector */}
-                  <div className="flex items-center border border-border rounded-full overflow-hidden">
+                  {/* Quantity Selector - pointless for a piece that cannot be bought */}
+                  <div className={`${isUnavailable(product) ? 'hidden' : 'flex'} items-center border border-border rounded-full overflow-hidden`}>
                     <button
                       onClick={decrementQuantity}
                       className="w-12 h-12 flex items-center justify-center hover:bg-muted transition-colors"
@@ -849,6 +932,11 @@ const ProductDetail = () => {
                     </button>
                   </div>
 
+                  {isUnavailable(product) ? (
+                    <div className="flex-1 min-w-[160px] rounded-full border-2 border-orange-200 bg-orange-50 px-6 py-3.5 text-center text-sm font-semibold text-orange-800 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-200">
+                      Sold out · Ask us about similar pieces below
+                    </div>
+                  ) : (<>
                   {/* Add to Cart Button */}
                   <motion.button
                     onClick={handleAddToCart}
@@ -880,6 +968,7 @@ const ProductDetail = () => {
                   >
                     Buy Now
                   </motion.button>
+                  </>)}
                 </div>
 
                 {/* Talk to us: video call demo and WhatsApp, side by side.
@@ -1184,6 +1273,11 @@ const ProductDetail = () => {
       {/* Fixed Bottom Bar for Mobile */}
       {!showShareMenu && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-3 z-50">
+          {isUnavailable(product) ? (
+            <div className="rounded-full border-2 border-orange-200 bg-orange-50 py-3.5 text-center text-sm font-semibold text-orange-800 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-200">
+              Sold out
+            </div>
+          ) : (
           <div className="flex gap-3">
           <motion.button
             onClick={handleAddToCart}
@@ -1210,6 +1304,7 @@ const ProductDetail = () => {
             Buy at ₹{product?.price.toLocaleString("en-IN")}
           </motion.button>
         </div>
+          )}
       </div>
       )}
 
@@ -1222,13 +1317,13 @@ const ProductDetail = () => {
         productImage={product?.images?.[0]}
       />
 
-      {/* Full Screen Image Popup for Mobile */}
+      {/* Full-screen image viewer (all screen sizes) */}
       {showImagePopup && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="md:hidden fixed inset-0 bg-black z-[100] flex flex-col"
+          className="fixed inset-0 bg-black z-[100] flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 bg-black/80">

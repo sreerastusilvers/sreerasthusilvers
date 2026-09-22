@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { getProduct } from '@/services/productService';
 import { fetchLiveProductInfo } from '@/services/livePricing';
+import { useCatalogRevision } from '@/services/productCache';
 
 // Cart Item Interface
 export interface CartItem {
@@ -24,6 +25,11 @@ export interface CartItem {
 // Cart Context Interface
 interface CartContextType {
   items: CartItem[];
+  /**
+   * Lines that can no longer be bought, keyed by product id, with the reason.
+   * Derived from live product data and never saved into the cart itself.
+   */
+  unavailable: Record<string, string>;
   isCartOpen: boolean;
   addToCart: (item: Omit<CartItem, 'quantity'>, quantity?: number) => boolean;
   removeFromCart: (id: string) => Promise<void>;
@@ -180,13 +186,38 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
    * quote the same number, whatever the call site passed in.
    */
   const idsKey = items.map((i) => i.id).sort().join(',');
+  /**
+   * Cart lines that can no longer be bought.
+   *
+   * A product that sold out (and so was hidden) or was taken down stays in any
+   * cart it was already in. Before this the cart kept showing it as normal and
+   * the customer only found out at the very end, when the pre-payment check
+   * refused them. Flagging it as the cart loads lets them remove it first.
+   */
+  const [unavailable, setUnavailable] = useState<Record<string, string>>({});
+  // Re-check whenever the catalog republishes - which every sale does - so a
+  // piece that sells out while it sits in someone's cart is flagged live.
+  const catalogRevision = useCatalogRevision();
+
   useEffect(() => {
-    if (!idsKey) return;
+    if (!idsKey) {
+      setUnavailable({});
+      return;
+    }
     let cancelled = false;
 
     void (async () => {
       const live = await fetchLiveProductInfo(idsKey.split(','));
       if (cancelled || live.size === 0) return;
+
+      const flagged: Record<string, string> = {};
+      for (const [id, info] of live) {
+        // Only definite answers count: an unreadable product is left alone
+        // rather than wrongly flagged on a network blip.
+        if (!info.exists || !info.isActive) flagged[id] = 'No longer available';
+        else if (info.stock <= 0) flagged[id] = 'Out of stock';
+      }
+      setUnavailable(flagged);
 
       setItems((prev) => {
         let changed = false;
@@ -218,7 +249,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     })();
 
     return () => { cancelled = true; };
-  }, [idsKey, currentUserId]);
+  }, [idsKey, currentUserId, catalogRevision]);
 
   // Listen to auth state changes
   useEffect(() => {
@@ -491,6 +522,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const value: CartContextType = {
     items,
+    unavailable,
     isCartOpen,
     addToCart,
     removeFromCart,

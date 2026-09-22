@@ -42,6 +42,15 @@ export interface ProductSpecifications {
   [key: string]: string;
 }
 
+/**
+ * Why a product is hidden from the storefront, when the system hid it.
+ *
+ * Only set by automatic rules, never by the admin's own Active switch, so the
+ * system can tell "sold out, bring it back when restocked" apart from "the
+ * owner took this down on purpose" - and never undo the second one.
+ */
+export type InactiveReason = 'outOfStock' | 'noImages';
+
 export interface ProductFlags {
   isActive: boolean;
   isFeatured: boolean;
@@ -80,6 +89,8 @@ export interface Product {
    * charge in /admin/commerce-settings. See `computeItemDeliveryCharge`.
    */
   delivery?: ProductDeliveryConfig;
+  /** Set only when a rule (not the admin) hid the product. See InactiveReason. */
+  inactiveReason?: InactiveReason | null;
   rating?: number;
   reviewCount?: number;
   createdAt?: Date | Timestamp;

@@ -177,14 +177,24 @@ function computeSilverPrice(sp: any, ratePerGram: number): number {
  * Does the cart contain anything this coupon applies to?
  *
  * Mirrors the same check in src/services/couponService.ts. An empty or absent
- * list means "all categories". Compared case-insensitively because the admin
- * stores category names, not ids.
+ * list means "everything". Compared case-insensitively because the admin stores
+ * category names, not ids.
+ *
+ * Both lists must be satisfied when both are set: `applicableSubcategories`
+ * narrows within `applicableCategories` ("Jewellery, but only Necklaces"),
+ * it does not widen the offer.
  */
 function couponCoversCart(coupon: any, products: any[]): boolean {
-  const allowed = Array.isArray(coupon.applicableCategories) ? coupon.applicableCategories : [];
-  if (allowed.length === 0) return true;
-  const normalized = allowed.map((c: unknown) => String(c).trim().toLowerCase());
-  return products.some((p) => normalized.includes(String(p?.category || '').trim().toLowerCase()));
+  const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();
+  const matches = (list: unknown, field: 'category' | 'subcategory') => {
+    const allowed = Array.isArray(list) ? list.map(norm) : [];
+    if (allowed.length === 0) return true;
+    return products.some((p) => allowed.includes(norm(p?.[field])));
+  };
+  return (
+    matches(coupon.applicableCategories, 'category') &&
+    matches(coupon.applicableSubcategories, 'subcategory')
+  );
 }
 
 function couponDiscount(coupon: any, subtotal: number): number {
