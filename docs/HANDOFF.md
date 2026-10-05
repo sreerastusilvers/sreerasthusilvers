@@ -1,5 +1,18 @@
 # Handoff
 
+## 2026-10-05 (later): desktop category dropdown keyboard fixes
+
+Status: done. Build passes. Tested with Playwright at 1440 px in light and dark mode (26/26 checks). Committed locally, not pushed.
+
+- `src/components/CategoryIconNav.tsx`:
+  - **Tab order:** Tab on an open tab now goes into its dropdown items, and Tab on the last item goes to the next tab. Shift+Tab goes back the same way. After the last tab, the browser's normal order takes over.
+  - **Blur:** the dropdown closes when focus leaves both the tab and its dropdown. This includes tabbing out and clicking elsewhere.
+  - **Escape** inside the dropdown closes it and puts focus back on its tab, without reopening it.
+  - The `role="menu"`/`menuitem` roles are gone, because they promise arrow-key navigation that the dropdown never had. It now follows the disclosure pattern: `aria-expanded` plus `aria-controls` pointing at the dropdown `id`.
+  - Dropdown items show an inset focus ring (`ring-ring`) in place of the faint background they had before.
+- Mouse hover and click on items behave as before (the test checks that a click still opens `/category/jewellery?sub=womens`).
+- Not covered: Safari, where clicking a button doesn't focus it. That case is handled with a `:hover` guard but was not tested.
+
 ## 2026-10-05 — AI prompts for non-jewellery, image compressor, nav dropdown, mobile checkout
 
 Status: done, build passes, browser-tested (Playwright, 390 px and 1440 px, light and dark). Reviewed and **committed locally** (not pushed).
@@ -27,9 +40,7 @@ Status: done, build passes, browser-tested (Playwright, 390 px and 1440 px, ligh
 ### Review (2026-10-05)
 - Fixed: in mobile checkout, `handlePlaceOrder`'s early exits (no address, empty cart) now reset the Slide to Pay control. Before, it stayed in its "done" state with no way to retry. This is a logic-only change; there is no visual change.
 - No secrets in the diff. Type check is clean for every changed file, and lint is clean apart from older warnings.
-- Minor follow-ups, not fixed:
-  - Desktop category dropdown: keyboard focus opens it, but its items come after all the tabs in tab order.
-  - The dropdown doesn't close on blur (Escape works).
+- Minor follow-ups: both dropdown keyboard issues are now fixed (see the entry above).
 
 ### Not verified
 - No real Gemini call was made. The assembled prompts were checked by intercepting the API request. The first real generations per product type should be reviewed by the team.

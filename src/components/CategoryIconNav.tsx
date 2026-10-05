@@ -87,6 +87,10 @@ const CategoryIconNav = () => {
   /** Left offset of the open dropdown, relative to the desktop nav. */
   const [dropdownLeft, setDropdownLeft] = useState(0);
   const desktopNavRef = useRef<HTMLElement>(null);
+  /** Wrapper of the tab whose dropdown is open; keyboard focus returns here. */
+  const triggerRef = useRef<HTMLElement | null>(null);
+  /** Set before focusing a tab from code, so that focus doesn't reopen its dropdown. */
+  const skipFocusOpenRef = useRef(false);
   const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const lastScrollYRef = useRef(0);
@@ -129,6 +133,7 @@ const CategoryIconNav = () => {
   const handleMouseEnter = (categoryName: string, trigger?: HTMLElement | null) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     if (trigger && desktopNavRef.current) {
+      triggerRef.current = trigger;
       const navRect = desktopNavRef.current.getBoundingClientRect();
       const tabRect = trigger.getBoundingClientRect();
       const DROPDOWN_WIDTH = 240;
@@ -143,7 +148,17 @@ const CategoryIconNav = () => {
     if (!hoveredCategory) return;
     const scroller = desktopScrollRef.current;
     const close = () => setHoveredCategory(null);
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Focus inside the dropdown would be lost when it unmounts, so hand it back to the tab.
+      const active = document.activeElement;
+      const tab = triggerRef.current?.querySelector<HTMLElement>('a');
+      if (tab && desktopNavRef.current?.contains(active) && !desktopScrollRef.current?.contains(active)) {
+        skipFocusOpenRef.current = true;
+        tab.focus();
+      }
+      close();
+    };
     scroller?.addEventListener('scroll', close, { passive: true });
     window.addEventListener('keydown', onKey);
     return () => {
@@ -153,6 +168,52 @@ const CategoryIconNav = () => {
   }, [hoveredCategory]);
 
   const openCategory = categories.find((c) => c.name === hoveredCategory && c.subcategories.length > 0);
+
+  const dropdownId = (slug: string) => `category-dropdown-${slug}`;
+
+  // Close once focus leaves both the open tab and its dropdown.
+  const handleFocusOut = (e: React.FocusEvent) => {
+    const next = e.relatedTarget as Node | null;
+    const dropdown = openCategory ? document.getElementById(dropdownId(openCategory.slug)) : null;
+    const trigger = triggerRef.current;
+    if (next && (dropdown?.contains(next) || trigger?.contains(next))) return;
+    // A click that doesn't move focus (e.g. Safari buttons) reports no relatedTarget.
+    if (!next && (dropdown?.matches(':hover') || trigger?.matches(':hover'))) return;
+    setHoveredCategory(null);
+  };
+
+  /**
+   * The dropdown renders after the whole tab row, so the browser's own Tab order
+   * would reach its items only after the last tab. Stitch it in by hand:
+   * tab -> its items -> next tab, and Shift+Tab back the same way.
+   */
+  const handleTabKeyDown = (e: React.KeyboardEvent, category: { name: string; slug: string }) => {
+    if (e.key !== 'Tab' || e.shiftKey || hoveredCategory !== category.name) return;
+    const first = document.getElementById(dropdownId(category.slug))?.querySelector<HTMLElement>('button');
+    if (first) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button'));
+    const tab = triggerRef.current?.querySelector<HTMLElement>('a');
+    if (!tab) return;
+    if (e.shiftKey && document.activeElement === items[0]) {
+      e.preventDefault();
+      tab.focus();
+    } else if (!e.shiftKey && document.activeElement === items[items.length - 1]) {
+      const tabs = Array.from(desktopScrollRef.current?.querySelectorAll<HTMLElement>(':scope > div > a') ?? []);
+      const nextTab = tabs[tabs.indexOf(tab) + 1];
+      // After the last tab, the browser's own order already continues past the nav.
+      if (nextTab) {
+        e.preventDefault();
+        nextTab.focus();
+      }
+    }
+  };
 
   const handleMouseLeave = () => {
     hoverTimeoutRef.current = setTimeout(() => {
@@ -258,7 +319,14 @@ const CategoryIconNav = () => {
                   className="relative"
                   onMouseEnter={(e) => hasSubcategories && handleMouseEnter(category.name, e.currentTarget)}
                   onMouseLeave={handleMouseLeave}
-                  onFocus={(e) => hasSubcategories && handleMouseEnter(category.name, e.currentTarget)}
+                  onFocus={(e) => {
+                    if (skipFocusOpenRef.current) {
+                      skipFocusOpenRef.current = false;
+                      return;
+                    }
+                    if (hasSubcategories) handleMouseEnter(category.name, e.currentTarget);
+                  }}
+                  onBlur={handleFocusOut}
                 >
                   <motion.a
                     href={category.href}
@@ -266,6 +334,7 @@ const CategoryIconNav = () => {
                       e.preventDefault();
                       handleCategoryClick(category.href);
                     }}
+                    onKeyDown={(e) => hasSubcategories && handleTabKeyDown(e, category)}
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
@@ -274,8 +343,8 @@ const CategoryIconNav = () => {
                         ? "text-primary border-primary"
                         : "text-muted-foreground hover:text-foreground border-transparent hover:border-border"
                     }`}
-                    aria-haspopup={hasSubcategories ? 'menu' : undefined}
                     aria-expanded={hasSubcategories ? hoveredCategory === category.name : undefined}
+                    aria-controls={hasSubcategories && hoveredCategory === category.name ? dropdownId(category.slug) : undefined}
                   >
                     <Icon className={`w-4 h-4 transition-colors duration-200 ${
                       isActive ? "text-primary" : "text-muted-foreground/60 group-hover:text-muted-foreground"
@@ -294,7 +363,7 @@ const CategoryIconNav = () => {
           {openCategory && (
             <motion.div
               key={openCategory.name}
-              role="menu"
+              id={dropdownId(openCategory.slug)}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
@@ -303,16 +372,17 @@ const CategoryIconNav = () => {
               className="absolute top-full z-50 w-[240px] max-h-[70vh] overflow-y-auto bg-background border border-border rounded-xl shadow-xl py-2"
               onMouseEnter={() => handleMouseEnter(openCategory.name)}
               onMouseLeave={handleMouseLeave}
+              onKeyDown={handleDropdownKeyDown}
+              onBlur={handleFocusOut}
             >
               {openCategory.subcategories.map((sub) => (
                 <div key={sub.slug}>
                   <button
-                    role="menuitem"
                     onClick={() => {
                       setHoveredCategory(null);
                       navigate(`/category/${openCategory.slug}?sub=${sub.slug}`);
                     }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-foreground hover:bg-muted focus-visible:bg-muted focus-visible:outline-none transition-colors text-left"
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-foreground hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring transition-colors text-left"
                   >
                     <span>{sub.name}</span>
                     {sub.children && sub.children.length > 0 && (
@@ -325,12 +395,11 @@ const CategoryIconNav = () => {
                       {sub.children.map((child) => (
                         <button
                           key={child.slug}
-                          role="menuitem"
-                          onClick={() => {
+                                onClick={() => {
                             setHoveredCategory(null);
                             navigate(`/category/${openCategory.slug}?sub=${sub.slug}&subsub=${child.slug}`);
                           }}
-                          className="w-full px-4 py-2 text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none transition-colors text-left"
+                          className="w-full px-4 py-2 text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring transition-colors text-left"
                         >
                           {child.name}
                         </button>
