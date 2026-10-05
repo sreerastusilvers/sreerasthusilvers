@@ -65,6 +65,14 @@ Status: done. `npm run build` passes and `api/` still has 12 files. The type-che
     - One product is named "Silver Clad Photo Frame" but its purity says "999 pure silver".
     - The home collections show "NECKLACE / GOLD" and "DIAMOND NECKLACE / PURE DIAMOND" with no pictures. They look like placeholders on a silver store.
 
+### Live check (2026-10-05, 14:06 UTC)
+- WhatsApp is connected end to end on production:
+    - all six env vars are set;
+    - the webhook is verified;
+    - a "Hi" from the owner's phone landed in `whatsappThreads`.
+- **Vercel gotcha:** production was pinned (after an Instant Rollback), so the Redeploys built but did not go live until one was **Promoted**. If env changes don't show up on the live site, check that the newest deployment has the blue "Production" label.
+- The announcement template has not been created yet (the owner does this from the admin).
+
 ### Not verified
 - Real Meta was never called:
     - the resumable upload and `GET /app` for picture templates;
