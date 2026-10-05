@@ -50,10 +50,11 @@ Status: done. `npm run build` passes and `api/` still has 12 files. The type-che
 - **About 89 unused files:** **not deleted.** The bulk `git rm` was blocked by the safety check. The list is in `docs/UNUSED_FILES.txt`, made by tracing imports from `src/main.tsx`. To delete them, run this in Git Bash: `git rm $(cat docs/UNUSED_FILES.txt)`, then `npm run build`.
 
 ### 4. Security: a WhatsApp token was committed
-- `scripts/test-templates.mjs` had a real-looking `WHATSAPP_TOKEN` fallback, committed since 2026-04-28 and pushed to GitHub. The fallback is removed. **It is still in git history, so the owner must revoke it and make a new one** (owner step 1).
+- `scripts/test-templates.mjs` had a hardcoded token fallback, committed since 2026-04-28 and pushed to GitHub. The fallback is removed. Checked 2026-10-05: the token belongs to the agency's **"Dream Team Posting"** app and a different phone number, **not** the store's (the store uses app `ssmessages` and the "Sreerasthu Silvers" number). It **still works**, so revoke it in the Dream Team business: Settings → System users → Revoke tokens. The store's token doesn't need replacing.
 
 ### Owner to-do
-1. **Meta:** delete the old system-user token and generate a new one. Put the new one in Vercel `WHATSAPP_TOKEN`, then redeploy.
+1. **Meta (Dream Team business, not the store):** revoke the leaked "Dream Team Posting" system-user token (see section 4).
+1b. **Meta app `ssmessages` is Unpublished.** Sending already works. Publishing (privacy URL `https://www.sreerasthusilvers.com/privacy-policy`) is needed for incoming messages, ticks and STOP. Webhook callback: `https://www.sreerasthusilvers.com/api/whatsapp-webhook`. Use `www`, because the bare domain 307-redirects.
 2. **Vercel and Meta setup:** the setup guide steps (env vars, webhook, Live mode). `WHATSAPP_APP_ID` is optional; it's only needed if a picture template says it can't find the app ID.
 3. **Announcement:** Admin → Marketing → Announcement → "Create announcement template" once, then wait for Approved.
 4. **Firestore rules:** still not deployed (from earlier entries).
