@@ -23,7 +23,7 @@ const TrendProductSection = () => {
     scrollerRef: mobileScrollRef,
     scrollByPage: mobileScrollByPage,
     canScroll: canMobileTrendingScroll,
-  } = useAutoScroll({ speed: 0.55, resumeDelay: 2400, loop: true, direction: -1, loopItemCount: products.length });
+  } = useAutoScroll({ loopItemCount: products.length });
 
   const mobileTrendingProducts =
     canMobileTrendingScroll && products.length > 1 ? [...products, ...products] : products;

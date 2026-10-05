@@ -11,6 +11,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
+import AccountShell from '@/components/account/AccountShell';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
@@ -552,6 +553,7 @@ const SecurityPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <Header />
 
+      <AccountShell>
       {/* Back Button */}
       <div className="border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 dark:bg-zinc-950/90">
         <div className="max-w-4xl mx-auto px-4 flex items-center gap-3">
@@ -1239,6 +1241,7 @@ const SecurityPage: React.FC = () => {
         )}
       </div>
 
+      </AccountShell>
       <Footer />
       <MobileBottomNav />
     </div>

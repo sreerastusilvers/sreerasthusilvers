@@ -10,6 +10,7 @@ import Header from '@/components/Header';
 import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
 import CategoryIconNav from '@/components/CategoryIconNav';
+import AccountShell from '@/components/account/AccountShell';
 import Footer from '@/components/Footer';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -247,6 +248,7 @@ const SavedAddresses = () => {
         <MobileSearchBar />
       </div>
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <AccountShell>
         <div className="container mx-auto max-w-4xl px-4 py-4 pb-24">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -599,6 +601,7 @@ const SavedAddresses = () => {
             </div>
           )}
         </div>
+      </AccountShell>
       </div>
       <Footer />
       <MobileBottomNav />

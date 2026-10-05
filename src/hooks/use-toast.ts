@@ -134,7 +134,22 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">;
 
+/**
+ * "Added to cart" toasts are replaced by the shared cart confirmation panel,
+ * which CartContext.addToCart shows for every add (src/components/cart).
+ * Dozens of older call sites still fire their own toast after adding; dropping
+ * them here keeps the shopper from seeing two confirmations at once.
+ */
+const isAddedToCartToast = (props: Toast) =>
+  typeof props.title === "string" &&
+  props.variant !== "destructive" &&
+  /^added to (your )?cart!?$/i.test(props.title.trim());
+
 function toast({ ...props }: Toast) {
+  if (isAddedToCartToast(props)) {
+    return { id: "", dismiss: () => {}, update: (_props: ToasterToast) => {} };
+  }
+
   const id = genId();
 
   const update = (props: ToasterToast) =>

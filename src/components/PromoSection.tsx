@@ -53,10 +53,6 @@ const PromoSection = () => {
         }));
   const cards = sourceCards;
   const { scrollerRef, scrollByPage, canScroll } = useAutoScroll({
-    speed: 0.45,
-    resumeDelay: 2600,
-    loop: true,
-    direction: 1,
     loopItemCount: cards.length,
   });
   const loopingCards = canScroll && cards.length > 1 ? [...cards, ...cards] : cards;

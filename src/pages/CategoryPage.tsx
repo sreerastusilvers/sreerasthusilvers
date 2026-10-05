@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, memo } from "react";
+import { auth } from "@/config/firebase";
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,6 +18,8 @@ import {
   Home,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Check as CheckIcon } from "lucide-react";
+import { useJustAdded } from "@/components/cart/cartFeedback";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CategoryIconNav from "@/components/CategoryIconNav";
@@ -86,6 +89,7 @@ const CategoryProductCard = memo(function CategoryProductCard({
   onOpen,
 }: CategoryProductCardProps) {
   const { ratePerGram } = useSilverRate();
+  const justAdded = useJustAdded(product.id);
   const sp = product.silverPricing;
   const displayPrice = sp?.enabled && ratePerGram > 0
     ? computeSilverOriginalPrice(sp, ratePerGram)
@@ -168,10 +172,20 @@ const CategoryProductCard = memo(function CategoryProductCard({
           )}
         </div>
         <button
+          type="button"
           onClick={() => onAddToCart(product)}
-          className="w-full mt-2 py-2 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors"
+          className={`w-full mt-2 py-2 text-white text-xs font-medium rounded-lg transition-[background-color,transform] duration-150 active:scale-[0.97] inline-flex items-center justify-center gap-1 ${
+            justAdded ? "bg-emerald-700" : "bg-primary hover:bg-primary/90"
+          }`}
         >
-          Add to Cart
+          {justAdded ? (
+            <>
+              <CheckIcon className="w-3.5 h-3.5" strokeWidth={3} aria-hidden="true" />
+              Added
+            </>
+          ) : (
+            "Add to Cart"
+          )}
         </button>
       </div>
     </div>
@@ -656,7 +670,7 @@ const CategoryPage = () => {
   };
 
   const handleCardAddToCart = async (product: UIProduct) => {
-    if (!user) {
+    if (!user && !auth.currentUser) {
       navigate("/login", { state: { from: location } });
       return;
     }
@@ -665,10 +679,11 @@ const CategoryPage = () => {
       name: product.title,
       price: product.price,
       image: product.image,
+      category: product.category,
       stock: product.stock,
     });
+    // The shared cart confirmation (raised by addToCart) reports the result.
     if (!added) return;
-    toast({ title: "Added to cart" });
   };
 
   const handleCardToggleWishlist = (product: UIProduct, wishlisted: boolean) => {

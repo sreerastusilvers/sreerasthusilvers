@@ -8,6 +8,7 @@ import { getActiveProductsCached } from '@/services/productCache';
 import { adaptFirebaseToUI } from '@/lib/productAdapter';
 import ProductCard from '@/components/ProductCard';
 import Header from '@/components/Header';
+import AccountShell from '@/components/account/AccountShell';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -243,6 +244,7 @@ const BuyAgain = () => {
         </div>
       </div>
 
+      <AccountShell>
       <div className="max-w-7xl mx-auto px-4 py-6 pb-24 lg:py-8 lg:pb-8">
         {/* Desktop Back Button & Title */}
         <div className="hidden lg:flex items-center gap-4 mb-6">
@@ -397,6 +399,7 @@ const BuyAgain = () => {
         )}
       </div>
 
+      </AccountShell>
       <div className="hidden lg:block">
         <Footer />
       </div>

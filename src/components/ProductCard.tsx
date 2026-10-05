@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Star, Heart, Eye, ShoppingBag, Plus, Minus } from "lucide-react";
+import { auth } from "@/config/firebase";
+import { Star, Heart, ShoppingBag, Plus, Minus, Check } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -7,6 +8,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 import { SmartImage } from "@/components/ui/smart-image";
+import { useJustAdded } from "@/components/cart/cartFeedback";
 
 interface Product {
   id: string;
@@ -44,6 +46,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
   const { user } = useAuth();
   const { ratePerGram } = useSilverRate();
 
+  const justAdded = useJustAdded(product.id);
   const cartItem = items.find((i) => i.id === product.id);
   const inCartQty = cartItem?.quantity ?? 0;
 
@@ -75,7 +78,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (!user) {
+    if (!user && !auth.currentUser) {
       navigate('/login', { state: { from: location } });
       return;
     }
@@ -90,12 +93,9 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
         category: product.category,
         stock: product.stock,
       });
+      // Success and refusals (out of stock, quantity limit) are both shown by
+      // the shared cart confirmation that addToCart raises.
       if (!added) return;
-      
-      toast({
-        title: "Added to cart",
-        description: `${product.title} has been added to your cart.`,
-      });
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({
@@ -205,7 +205,16 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
             >
               <Minus className="w-3 h-3" />
             </button>
-            <span className="text-xs lg:text-sm font-semibold">{inCartQty} in cart</span>
+            <span className="text-xs lg:text-sm font-semibold inline-flex items-center gap-1">
+              {justAdded ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={3} aria-hidden="true" />
+                  Added
+                </>
+              ) : (
+                <>{inCartQty} in cart</>
+              )}
+            </span>
             <button
               type="button"
               aria-label="Increase quantity"

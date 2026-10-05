@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { auth } from "@/config/firebase";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Truck, Shield, RotateCcw, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
@@ -24,7 +25,8 @@ import ProductCard from "@/components/ProductCard";
 import { Video, Maximize2 } from "lucide-react";
 import ProductOfferTag from "@/components/offers/ProductOfferTag";
 import { SmartImage } from "@/components/ui/smart-image";
-import { cldUrl } from "@/lib/cloudinaryUrl";
+import { useJustAdded, notifyCartError, dismissCartFeedback } from "@/components/cart/cartFeedback";
+import ProductImageViewer from "@/components/ProductImageViewer";
 
 /**
  * Can this product be bought right now?
@@ -41,7 +43,7 @@ const ProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { addToCart, openCart, closeCart } = useCart();
+  const { addToCart, closeCart, updateQuantity, items: cartItems } = useCart();
   const { toast } = useToast();
   const { user } = useAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -49,7 +51,8 @@ const ProductDetail = () => {
   /** Changes when an admin publishes, so the catalog copy below is re-read. */
   const catalogRevision = useCatalogRevision();
   const [quantity, setQuantity] = useState(1);
-  const [addedToCart, setAddedToCart] = useState(false);
+  /** True for a moment after this product was added: the button says "Added". */
+  const addedToCart = useJustAdded(productId);
   const [showVideoCallModal, setShowVideoCallModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [product, setProduct] = useState<UIProductDetail | null>(null);
@@ -58,41 +61,8 @@ const ProductDetail = () => {
   const [notFound, setNotFound] = useState(false);
   const [showImagePopup, setShowImagePopup] = useState(false);
 
-  /** How many images/videos this product has, for arrow-key paging. */
-  const mediaCountRef = useRef(0);
-
-  /**
-   * Keyboard control for the full-screen viewer.
-   *
-   * Built for phones, where swiping is the only input; on a desktop a viewer
-   * that cannot be closed with Escape or paged with the arrow keys feels
-   * broken. The body is locked meanwhile so the page behind does not scroll
-   * under the overlay.
-   *
-   * Declared here, above the loading/not-found returns, because hooks must run
-   * in the same order every render. The media count comes from a ref, which is
-   * a plain assignment and so may be written after those returns.
-   */
-  useEffect(() => {
-    if (!showImagePopup) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowImagePopup(false);
-      else if (e.key === 'ArrowRight') {
-        setSelectedImage((i) => Math.min(i + 1, Math.max(0, mediaCountRef.current - 1)));
-      } else if (e.key === 'ArrowLeft') {
-        setSelectedImage((i) => Math.max(i - 1, 0));
-      }
-    };
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [showImagePopup]);
+  // Keyboard, focus and scroll locking for the full-screen viewer live in
+  // <ProductImageViewer />.
 
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -155,6 +125,15 @@ const ProductDetail = () => {
       });
     }
   };
+
+  // A new product (e.g. a related piece opened from this page) starts on its
+  // first photo with a quantity of one. Without this the gallery kept the old
+  // index and could point past the new product's last image.
+  useEffect(() => {
+    setSelectedImage(0);
+    setQuantity(1);
+    setShowImagePopup(false);
+  }, [productId]);
 
   // Fetch product and related products.
   // The shared catalog (no Firestore reads) renders the page at once; a single
@@ -276,41 +255,49 @@ const ProductDetail = () => {
   // used to live here and forced the top even when the user pressed Back,
   // fighting restoration.
 
-  const incrementQuantity = () => setQuantity((prev) => prev + 1);
+  // Never offer more than the shop holds; the cart would refuse it anyway.
+  const maxQuantity = typeof product?.stock === 'number' && product.stock > 0 ? product.stock : Infinity;
+  const incrementQuantity = () => setQuantity((prev) => Math.min(prev + 1, maxQuantity));
   const decrementQuantity = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
+
+  /** Live price: silver-priced pieces follow today's rate, as the page shows. */
+  const livePrice = product
+    ? (product.silverPricing?.enabled && ratePerGram > 0
+        ? computeSilverOriginalPrice(product.silverPricing, ratePerGram)
+        : product.price)
+    : 0;
+
+  const cartLineFor = (p: UIProductDetail) => ({
+    id: p.id,
+    name: p.title,
+    price: livePrice || p.price,
+    image: p.image,
+    category: p.category || 'Products',
+    stock: p.stock,
+    ...(p.specifications?.purity ? { purity: p.specifications.purity } : {}),
+    ...(p.silverPricing?.enabled && p.silverPricing.weightGrams > 0
+      ? { weight: `${p.silverPricing.weightGrams} g` }
+      : {}),
+  });
 
   const handleAddToCart = async () => {
     if (!product) return;
     if (isUnavailable(product)) {
-      toast({ title: 'Sold out', description: `${product.title} is not available right now.`, variant: 'destructive' });
+      notifyCartError('Sold out', `${product.title} is not available right now.`, {
+        id: product.id, name: product.title, image: product.image, price: livePrice,
+      });
       return;
     }
 
-    if (!user) {
+    if (!user && !auth.currentUser) {
       navigate('/login', { state: { from: { pathname: `/product/${productId}` } } });
       return;
     }
 
     try {
-      const added = addToCart({
-        id: product.id,
-        name: product.title,
-        price: product.price,
-        image: product.image,
-        category: product.category || 'Products',
-        stock: product.stock,
-      }, quantity);
-      if (!added) return;
-      
-      // Show success state
-      setAddedToCart(true);
-      setTimeout(() => setAddedToCart(false), 2000);
-      
-      // Show toast notification
-      toast({
-        title: "Added to cart",
-        description: `${product.title} (${quantity}) has been added to your cart.`,
-      });
+      // The shared cart confirmation reports success and any refusal (stock,
+      // quantity limit); `addedToCart` flips the button to "Added".
+      addToCart(cartLineFor(product), quantity);
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({
@@ -324,25 +311,31 @@ const ProductDetail = () => {
   const handleBuyNow = async () => {
     if (!product) return;
     if (isUnavailable(product)) {
-      toast({ title: 'Sold out', description: `${product.title} is not available right now.`, variant: 'destructive' });
+      notifyCartError('Sold out', `${product.title} is not available right now.`, {
+        id: product.id, name: product.title, image: product.image, price: livePrice,
+      });
       return;
     }
 
-    if (!user) {
+    if (!user && !auth.currentUser) {
       navigate('/login', { state: { from: { pathname: `/product/${productId}` } } });
       return;
     }
 
     try {
-      const added = addToCart({
-        id: product.id,
-        name: product.title,
-        price: product.price,
-        image: product.image,
-        category: product.category || 'Products',
-        stock: product.stock,
-      }, quantity);
-      if (!added) return;
+      // Buy now on a piece that is already in the cart goes straight to
+      // checkout. It used to add it again, so every Back-and-Buy-now quietly
+      // raised the quantity.
+      const inCart = cartItems.find((i) => i.id === product.id);
+      if (inCart) {
+        // Honour a larger quantity picked here, without stacking on top.
+        if (quantity > inCart.quantity && !updateQuantity(product.id, quantity)) return;
+      } else {
+        const added = addToCart(cartLineFor(product), quantity);
+        if (!added) return;
+        // Heading straight to checkout: no "added" panel needed.
+        dismissCartFeedback();
+      }
       // Close cart drawer and navigate to checkout
       closeCart();
       navigate('/checkout', { state: { from: 'product' } });
@@ -499,7 +492,7 @@ const ProductDetail = () => {
 
   const onTouchEnd = () => {
     setIsDragging(false);
-    if (!touchStart || !touchEnd) {
+    if (touchStart === null || touchEnd === null) {
       setDragX(0);
       return;
     }
@@ -572,7 +565,6 @@ const ProductDetail = () => {
       };
     }),
   ];
-  mediaCountRef.current = allMedia.length;
 
 
   return (
@@ -657,7 +649,7 @@ const ProductDetail = () => {
                         e.stopPropagation();
                         setShowImagePopup(true);
                       }}
-                      className="absolute right-3 top-3 z-20 hidden h-9 w-9 place-items-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/65 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
+                      className="absolute bottom-3 right-3 z-20 hidden h-10 w-10 place-items-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/65 group-hover:opacity-100 focus-visible:opacity-100 md:grid"
                       aria-label="View image full screen"
                       title="View full screen"
                     >
@@ -720,7 +712,7 @@ const ProductDetail = () => {
                             <SmartImage
                               src={allMedia[selectedImage]?.src || product.image}
                               alt={product.alt}
-                              className="w-full h-full object-cover transition-transform duration-200 ease-out hidden md:block"
+                              className="w-full h-full object-contain transition-transform duration-200 ease-out hidden md:block"
                               preset="detail"
                               priority
                               style={{
@@ -732,7 +724,7 @@ const ProductDetail = () => {
                             <SmartImage
                               src={allMedia[selectedImage]?.src || product.image}
                               alt={product.alt}
-                              className="w-full h-full object-cover md:hidden"
+                              className="w-full h-full object-contain md:hidden"
                               preset="detail"
                               priority
                             />
@@ -751,6 +743,8 @@ const ProductDetail = () => {
                         e.stopPropagation();
                         if (product) toggleWishlist(product.id, product.title);
                       }}
+                      aria-label={product && isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                      aria-pressed={!!product && isInWishlist(product.id)}
                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg ${
                         product && isInWishlist(product.id)
                           ? "bg-red-500 text-white"
@@ -768,6 +762,8 @@ const ProductDetail = () => {
                         e.stopPropagation();
                         setShowShareMenu(!showShareMenu);
                       }}
+                      aria-label="Share"
+                      aria-expanded={showShareMenu}
                       className="w-10 h-10 rounded-full bg-background/90 dark:bg-card/90 text-foreground hover:bg-muted flex items-center justify-center transition-all shadow-lg"
                     >
                       <Share2 className="w-5 h-5" />
@@ -782,6 +778,8 @@ const ProductDetail = () => {
                       <button
                         key={index}
                         onClick={() => navigateMedia(index)}
+                        aria-label={`Show ${item.type === 'video' ? 'video' : 'photo'} ${index + 1} of ${allMedia.length}`}
+                        aria-current={selectedImage === index ? 'true' : undefined}
                         className={`aspect-square bg-muted rounded-lg overflow-hidden border-2 transition-all relative ${
                           selectedImage === index
                             ? "border-primary"
@@ -874,15 +872,16 @@ const ProductDetail = () => {
                   )}
                 </div>
 
-                {/* Description */}
+                {/* Description - only the shop's own text. It used to fall back to
+                    a made-up anklet description on every product without one. */}
+                {product.description && (
                 <div className="mb-4 mt-4">
                   <p className={`text-xs md:text-sm text-muted-foreground leading-relaxed ${
                     !showFullDescription ? 'line-clamp-2' : ''
                   }`}>
-                    {product.description ||
-                      `Traditional silver anklet with delicate bells creating a graceful and charming`}
+                    {product.description}
                   </p>
-                  {(product.description || 'Traditional silver anklet with delicate bells creating a graceful and charming').length > 100 && (
+                  {product.description.length > 100 && (
                     <button
                       onClick={() => setShowFullDescription(!showFullDescription)}
                       className="text-blue-600 text-xs md:text-sm font-medium mt-1 hover:underline"
@@ -891,6 +890,7 @@ const ProductDetail = () => {
                     </button>
                   )}
                 </div>
+                )}
 
                 {/* Specifications */}
                 {product.specifications && (product.specifications.material || product.specifications.purity || product.specifications.dimensions) && (
@@ -957,14 +957,14 @@ const ProductDetail = () => {
                     whileTap={{ scale: 0.95 }}
                     className={`flex-1 min-w-[160px] px-6 py-3.5 font-medium text-sm rounded-full transition-all flex items-center justify-center gap-2 border-2 ${
                       addedToCart
-                        ? "bg-green-500 text-white border-green-500"
+                        ? "bg-emerald-700 text-white border-emerald-700"
                         : "bg-background text-foreground border-border hover:bg-muted"
                     }`}
                   >
                     {addedToCart ? (
                       <>
-                        <Check className="w-5 h-5" />
-                        Added to Cart
+                        <Check className="w-5 h-5" aria-hidden="true" />
+                        Added to cart
                       </>
                     ) : (
                       <>
@@ -1296,11 +1296,15 @@ const ProductDetail = () => {
           <motion.button
             onClick={handleAddToCart}
             whileTap={{ scale: 0.95 }}
-            className="flex-1 py-3.5 font-medium text-sm rounded-full border-2 border-border bg-background text-foreground flex items-center justify-center gap-2"
+            className={`flex-1 py-3.5 font-medium text-sm rounded-full border-2 flex items-center justify-center gap-2 transition-colors duration-150 ${
+              addedToCart
+                ? "bg-emerald-700 text-white border-emerald-700"
+                : "border-border bg-background text-foreground"
+            }`}
           >
             {addedToCart ? (
               <>
-                <Check className="w-5 h-5" />
+                <Check className="w-5 h-5" aria-hidden="true" />
                 Added
               </>
             ) : (
@@ -1315,7 +1319,7 @@ const ProductDetail = () => {
             whileTap={{ scale: 0.95 }}
             className="flex-1 py-3.5 font-semibold text-sm rounded-full bg-black text-white flex items-center justify-center"
           >
-            Buy at ₹{product?.price.toLocaleString("en-IN")}
+            Buy at ₹{livePrice.toLocaleString("en-IN")}
           </motion.button>
         </div>
           )}
@@ -1332,93 +1336,18 @@ const ProductDetail = () => {
       />
 
       {/* Full-screen image viewer (all screen sizes) */}
-      {showImagePopup && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black z-[100] flex flex-col"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 bg-black/80">
-            <span className="text-white text-sm">
-              {selectedImage + 1} / {allMedia.length}
-            </span>
-            <button
-              onClick={() => setShowImagePopup(false)}
-              className="text-white p-2"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          {/* Image Container with Swipe */}
-          <div
-            className="flex-1 flex items-center justify-center relative"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-          >
-            {allMedia[selectedImage]?.type === 'video' ? (
-              <iframe
-                key={selectedImage}
-                src={allMedia[selectedImage].src}
-                title="Product video"
-                className="w-full h-full max-w-full max-h-full p-4"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <motion.img
-                key={selectedImage}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2 }}
-                src={cldUrl(allMedia[selectedImage]?.src || product?.image, 'zoom')}
-                alt={product?.alt}
-                className="max-w-full max-h-full object-contain p-4"
-              />
-            )}
-
-            {/* Navigation Arrows */}
-            {allMedia.length > 1 && (
-              <>
-                {selectedImage > 0 && (
-                  <button
-                    onClick={() => setSelectedImage(selectedImage - 1)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/20 rounded-full p-2"
-                  >
-                    <ChevronLeft className="w-6 h-6 text-white" />
-                  </button>
-                )}
-                {selectedImage < allMedia.length - 1 && (
-                  <button
-                    onClick={() => setSelectedImage(selectedImage + 1)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/20 rounded-full p-2"
-                  >
-                    <ChevronRight className="w-6 h-6 text-white" />
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Thumbnail Dots */}
-          {allMedia.length > 1 && (
-            <div className="flex justify-center gap-2 p-4 bg-black/80">
-              {allMedia.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    selectedImage === index ? "bg-white w-4" : "bg-white/50"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {showImagePopup && allMedia.length > 0 && (
+          <ProductImageViewer
+            media={allMedia}
+            index={Math.min(selectedImage, allMedia.length - 1)}
+            onIndexChange={navigateMedia}
+            onClose={() => setShowImagePopup(false)}
+            title={product.title}
+            alt={product.alt}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
       <Footer />

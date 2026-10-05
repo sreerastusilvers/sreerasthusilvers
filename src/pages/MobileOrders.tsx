@@ -7,6 +7,7 @@ import MobileHeader from '@/components/MobileHeader';
 import MobileSearchBar from '@/components/MobileSearchBar';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import CategoryIconNav from '@/components/CategoryIconNav';
+import AccountShell from '@/components/account/AccountShell';
 import Footer from '@/components/Footer';
 import {
   Loader2,
@@ -168,6 +169,7 @@ const MobileOrders = () => {
         <MobileSearchBar />
       </div>
       
+      <AccountShell>
       {/* Page Header */}
       <div className="mx-auto max-w-3xl px-4 pt-4">
         <div className="rounded-[28px] border border-[#d4af37]/15 bg-white/88 px-4 py-4 shadow-[0_30px_80px_-60px_rgba(0,0,0,0.5)] backdrop-blur dark:border-[#d4af37]/20 dark:bg-zinc-900/88 dark:shadow-[0_30px_80px_-60px_rgba(0,0,0,0.88)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -304,6 +306,7 @@ const MobileOrders = () => {
           ))
         )}
       </div>
+      </AccountShell>
       <Footer />
       <MobileBottomNav />
     </div>

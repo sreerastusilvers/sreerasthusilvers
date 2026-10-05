@@ -9,7 +9,8 @@
  * Tabs:
  *  - Compose   : pick audience + channels + content, fire a campaign.
  *  - History   : review past campaigns and per-channel results.
- *  - Templates : manage approved WhatsApp template metadata for the picker.
+ *  - Templates : create WhatsApp templates in Meta, sync their approval status,
+ *                delete them, or add metadata by hand as a fallback.
  */
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -43,6 +44,9 @@ import {
   FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import TemplateCreator from '@/components/admin/whatsapp/TemplateCreator';
+import TemplateLibrary, { StatusBadge } from '@/components/admin/whatsapp/TemplateLibrary';
+import { isSendableTemplate, statusStyle } from '@/components/admin/whatsapp/templateRules';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,6 +68,12 @@ interface WhatsAppTemplate {
   category: 'utility' | 'marketing' | 'authentication';
   paramLabels: string[];
   description?: string;
+  /** Set by "Sync from Meta" / create; absent on hand-entered metadata. */
+  status?: string | null;
+  rejectedReason?: string | null;
+  source?: string | null;
+  metaId?: string | null;
+  bodyText?: string | null;
 }
 
 interface CampaignRow {
@@ -116,6 +126,11 @@ const AdminNotifications = () => {
             category: ((d.data().category as string) || 'utility') as WhatsAppTemplate['category'],
             paramLabels: (d.data().paramLabels as string[]) || [],
             description: d.data().description as string | undefined,
+            status: (d.data().status as string | undefined) ?? null,
+            rejectedReason: (d.data().rejectedReason as string | undefined) ?? null,
+            source: (d.data().source as string | undefined) ?? null,
+            metaId: (d.data().metaId as string | undefined) ?? null,
+            bodyText: (d.data().bodyText as string | undefined) ?? null,
           })),
         );
       },
@@ -126,14 +141,14 @@ const AdminNotifications = () => {
 
   return (
     <div className="space-y-6">
-      <header className="bg-gradient-to-br from-amber-50 via-white to-orange-50/30 border border-amber-200/40 rounded-2xl p-6 shadow-sm">
+      <header className="bg-gradient-to-br from-amber-50 via-white to-orange-50/30 border border-amber-200/40 rounded-2xl p-4 sm:p-6 shadow-sm dark:from-amber-500/10 dark:via-gray-900 dark:to-gray-900 dark:border-amber-500/20">
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-amber-100">
-            <Bell className="h-6 w-6 text-amber-700" />
+          <div className="p-3 rounded-xl bg-amber-100 dark:bg-amber-500/15 flex-none">
+            <Bell className="h-6 w-6 text-amber-700 dark:text-amber-300" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Marketing Center</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Marketing Center</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Run web push and WhatsApp campaigns. Audience resolution and delivery happen
               server-side via the broadcast endpoint.
             </p>
@@ -141,8 +156,16 @@ const AdminNotifications = () => {
         </div>
       </header>
 
+      {/* Shared input styles for every tab (Radix unmounts inactive tabs). */}
+      <style>{`
+        .mc-input { width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid #e5e7eb; background: white; color: #111827; font-size: 0.875rem; }
+        .mc-input:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+        .dark .mc-input { background: #030712; border-color: #374151; color: #f3f4f6; }
+        .mc-counter { position: absolute; right: 0.5rem; bottom: 0.35rem; font-size: 10px; color: #9ca3af; pointer-events: none; }
+      `}</style>
+
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-        <TabsList className="bg-white border border-gray-200 h-11">
+        <TabsList className="bg-white border border-gray-200 h-11 dark:bg-gray-900 dark:border-gray-800">
           <TabsTrigger value="compose" className="gap-2">
             <Send className="h-3.5 w-3.5" /> Compose
           </TabsTrigger>
@@ -307,8 +330,8 @@ const ComposeTab = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
-        <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">Channels</h2>
+        <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Channels</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <ChannelToggle
               icon={<Bell className="h-4 w-4" />}
@@ -330,8 +353,8 @@ const ComposeTab = ({
         </section>
 
         {pushEnabled && (
-          <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-3">
-            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm space-y-3">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <Bell className="h-4 w-4 text-amber-600" /> Push content
             </h2>
             <Field label="Title" required>
@@ -379,8 +402,8 @@ const ComposeTab = ({
         )}
 
         {waEnabled && (
-          <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-3">
-            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm space-y-3">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <MessageCircle className="h-4 w-4 text-emerald-600" /> WhatsApp template
             </h2>
             {templates.length === 0 ? (
@@ -397,8 +420,9 @@ const ComposeTab = ({
                 >
                   <option value="">Pick a template…</option>
                   {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
+                    <option key={t.id} value={t.id} disabled={!isSendableTemplate(t.status)}>
                       {t.name} · {t.language} · {t.category}
+                      {t.status && !isSendableTemplate(t.status) ? ` (${statusStyle(t.status).label})` : ''}
                     </option>
                   ))}
                 </select>
@@ -407,10 +431,10 @@ const ComposeTab = ({
             {selectedTemplate && (
               <div className="space-y-3">
                 {selectedTemplate.description && (
-                  <p className="text-xs text-gray-600">{selectedTemplate.description}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{selectedTemplate.description}</p>
                 )}
                 {selectedTemplate.paramLabels.length === 0 ? (
-                  <p className="text-xs text-gray-500">This template takes no parameters.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">This template takes no parameters.</p>
                 ) : (
                   <div className="space-y-2">
                     {selectedTemplate.paramLabels.map((label, idx) => (
@@ -443,7 +467,7 @@ const ComposeTab = ({
           </section>
         )}
 
-        <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm">
           <button
             onClick={handleSend}
             disabled={sending}
@@ -496,16 +520,16 @@ const ComposeTab = ({
       </div>
 
       <aside className="space-y-6">
-        <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+        <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <Users className="h-4 w-4 text-amber-700" />
-            <h3 className="font-semibold text-gray-900 text-sm">Audience</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Audience</h3>
           </div>
           <div className="space-y-2">
             {AUDIENCE_OPTIONS.map((opt) => (
               <label
                 key={opt.id}
-                className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer"
+                className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
               >
                 <input
                   type="radio"
@@ -517,7 +541,7 @@ const ComposeTab = ({
                 />
                 <span>
                   <span className="font-medium">{opt.label}</span>
-                  <span className="block text-[11px] text-gray-500">{opt.help}</span>
+                  <span className="block text-[11px] text-gray-500 dark:text-gray-400">{opt.help}</span>
                 </span>
               </label>
             ))}
@@ -528,9 +552,9 @@ const ComposeTab = ({
           <SelectedCustomersPicker selected={selectedUsers} onChange={setSelectedUsers} />
         )}
 
-        <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-          <h3 className="font-semibold text-gray-900 text-sm mb-2">Reminder</h3>
-          <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4">
+        <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm mb-2">Reminder</h3>
+          <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-4">
             <li>WhatsApp templates require Meta approval before use.</li>
             <li>Push delivery only reaches customers who granted notification permission.</li>
             <li>Selected audience uses the picker above.</li>
@@ -538,12 +562,6 @@ const ComposeTab = ({
         </section>
       </aside>
 
-      {/* Tailwind doesn't support component-scoped classes — declare ours inline. */}
-      <style>{`
-        .mc-input { width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid #e5e7eb; background: white; font-size: 0.875rem; }
-        .mc-input:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
-        .mc-counter { position: absolute; right: 0.5rem; bottom: 0.35rem; font-size: 10px; color: #9ca3af; pointer-events: none; }
-      `}</style>
     </div>
   );
 };
@@ -598,8 +616,8 @@ const SelectedCustomersPicker = ({
   const removeUser = (uid: string) => onChange(selected.filter((s) => s.uid !== uid));
 
   return (
-    <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-      <h3 className="font-semibold text-gray-900 text-sm mb-3">Pick customers</h3>
+    <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm">
+      <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm mb-3">Pick customers</h3>
       <div className="flex gap-2 mb-3">
         <div className="flex-1 relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
@@ -629,8 +647,8 @@ const SelectedCustomersPicker = ({
               className="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 flex items-center justify-between border-b last:border-b-0 border-gray-100"
             >
               <span>
-                <span className="block font-medium text-gray-900">{r.name || r.email || r.uid}</span>
-                <span className="block text-[10px] text-gray-500">
+                <span className="block font-medium text-gray-900 dark:text-gray-100">{r.name || r.email || r.uid}</span>
+                <span className="block text-[10px] text-gray-500 dark:text-gray-400">
                   {r.email} {r.phone ? `· ${r.phone}` : ''}
                 </span>
               </span>
@@ -640,7 +658,7 @@ const SelectedCustomersPicker = ({
         </div>
       )}
 
-      <div className="text-xs text-gray-500 mb-1">{selected.length} selected</div>
+      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{selected.length} selected</div>
       <div className="flex flex-wrap gap-1.5 max-h-44 overflow-auto">
         {selected.map((s) => (
           <span
@@ -687,23 +705,23 @@ const HistoryTab = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500 py-12 justify-center">
+      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 py-12 justify-center">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading campaign history…
       </div>
     );
   }
   if (rows.length === 0) {
     return (
-      <div className="bg-white border border-gray-100 rounded-2xl p-8 text-center text-sm text-gray-500">
+      <div className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-8 text-center text-sm text-gray-500 dark:text-gray-400">
         No campaigns yet. Send your first broadcast from the <strong>Compose</strong> tab.
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl overflow-x-auto shadow-sm">
+    <div className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 overflow-x-auto shadow-sm">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+        <thead className="bg-gray-50 dark:bg-gray-950 text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wide">
           <tr>
             <th className="text-left px-4 py-2.5">Sent</th>
             <th className="text-left px-4 py-2.5">Audience</th>
@@ -715,32 +733,32 @@ const HistoryTab = () => {
             <th className="text-left px-4 py-2.5">Status</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
           {rows.map((r) => (
             <tr key={r.id} className="hover:bg-amber-50/30">
-              <td className="px-4 py-2 text-gray-700">
+              <td className="px-4 py-2 text-gray-700 dark:text-gray-300">
                 <div>{formatDate(r.createdAt)}</div>
                 <div className="text-[10px] text-gray-400">{r.actorEmail || ''}</div>
               </td>
-              <td className="px-4 py-2 text-gray-700">{r.audience}</td>
-              <td className="px-4 py-2 text-gray-700">
+              <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{r.audience}</td>
+              <td className="px-4 py-2 text-gray-700 dark:text-gray-300">
                 {[r.channels?.push && 'Push', r.channels?.whatsapp && 'WA']
                   .filter(Boolean)
                   .join(' + ') || '—'}
               </td>
-              <td className="px-4 py-2 text-gray-700 max-w-xs">
+              <td className="px-4 py-2 text-gray-700 dark:text-gray-300 max-w-xs">
                 <div className="truncate font-medium">
                   {r.push?.title || r.whatsapp?.template || '—'}
                 </div>
-                <div className="truncate text-[10px] text-gray-500">{r.push?.body || ''}</div>
+                <div className="truncate text-[10px] text-gray-500 dark:text-gray-400">{r.push?.body || ''}</div>
               </td>
-              <td className="px-4 py-2 text-right text-gray-700">{r.recipientCount ?? '—'}</td>
-              <td className="px-4 py-2 text-right text-gray-700">
+              <td className="px-4 py-2 text-right text-gray-700 dark:text-gray-300">{r.recipientCount ?? '—'}</td>
+              <td className="px-4 py-2 text-right text-gray-700 dark:text-gray-300">
                 {r.pushResult
                   ? `${r.pushResult.successCount ?? 0} / ${r.pushResult.failureCount ?? 0}`
                   : '—'}
               </td>
-              <td className="px-4 py-2 text-right text-gray-700">
+              <td className="px-4 py-2 text-right text-gray-700 dark:text-gray-300">
                 {r.whatsappResult
                   ? `${r.whatsappResult.successCount ?? 0} / ${r.whatsappResult.failureCount ?? 0}`
                   : '—'}
@@ -779,6 +797,41 @@ const StatusPill = ({ status }: { status: CampaignRow['status'] }) => {
 // Templates tab
 // ===========================================================================
 const TemplatesTab = ({ templates }: { templates: WhatsAppTemplate[] }) => {
+  const [view, setView] = useState<'library' | 'create' | 'manual'>('library');
+  const views = [
+    { id: 'library', label: 'Library' },
+    { id: 'create', label: 'Create new' },
+    { id: 'manual', label: 'Add manually' },
+  ] as const;
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex max-w-full overflow-x-auto rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900" role="tablist" aria-label="Templates">
+        {views.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            role="tab"
+            aria-selected={view === v.id}
+            onClick={() => setView(v.id)}
+            className={`min-h-10 flex-none rounded-lg px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 sm:px-4 ${
+              view === v.id
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+      {view === 'library' && <TemplateLibrary templates={templates} />}
+      {view === 'create' && <TemplateCreator onCreated={() => setView('library')} />}
+      {view === 'manual' && <ManualTemplateForm templates={templates} />}
+    </div>
+  );
+};
+
+/** Fallback: type in metadata for a template that already exists in Meta. */
+const ManualTemplateForm = ({ templates }: { templates: WhatsAppTemplate[] }) => {
   const [name, setName] = useState('');
   const [language, setLanguage] = useState('en_US');
   const [category, setCategory] = useState<WhatsAppTemplate['category']>('utility');
@@ -819,11 +872,11 @@ const TemplatesTab = ({ templates }: { templates: WhatsAppTemplate[] }) => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-3">
-        <h2 className="text-sm font-semibold text-gray-900">Add or update a template</h2>
-        <p className="text-xs text-gray-600">
-          Register the metadata for an already-approved Meta WhatsApp template so admins can
-          pick it from the composer. The template itself must be approved in WhatsApp Manager.
+      <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm space-y-3">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Add template details by hand</h2>
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          Use this only for a template that is already approved in WhatsApp Manager and does not
+          show up after Sync from Meta. Type the exact name, language and variable names.
         </p>
         <Field label="Template name" required>
           <input
@@ -882,23 +935,23 @@ const TemplatesTab = ({ templates }: { templates: WhatsAppTemplate[] }) => {
         </button>
       </section>
 
-      <section className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-900 mb-3">Registered templates</h2>
+      <section className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Registered templates</h2>
         {templates.length === 0 ? (
-          <p className="text-xs text-gray-500">No templates yet.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">No templates yet.</p>
         ) : (
           <ul className="space-y-2 max-h-[28rem] overflow-auto">
             {templates.map((t) => (
-              <li key={t.id} className="border border-gray-100 rounded-lg p-3 text-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">{t.name}</span>
-                  <span className="text-[10px] uppercase tracking-wide text-gray-500">
+              <li key={t.id} className="border border-gray-100 dark:border-gray-800 rounded-lg p-3 text-xs space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-gray-900 dark:text-gray-100 break-all inline-flex flex-wrap items-center gap-2">{t.name} <StatusBadge status={t.status} /></span>
+                  <span className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     {t.language} · {t.category}
                   </span>
                 </div>
-                {t.description && <p className="text-gray-600">{t.description}</p>}
+                {t.description && <p className="text-gray-600 dark:text-gray-400">{t.description}</p>}
                 {t.paramLabels.length > 0 && (
-                  <ul className="text-gray-500 list-decimal pl-4">
+                  <ul className="text-gray-500 dark:text-gray-400 list-decimal pl-4">
                     {t.paramLabels.map((p, i) => (
                       <li key={i}>{p}</li>
                     ))}
@@ -926,7 +979,7 @@ const Field = ({
   children: React.ReactNode;
 }) => (
   <label className="block">
-    <span className="block text-xs font-medium text-gray-700 mb-1">
+    <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
       {label} {required && <span className="text-red-500">*</span>}
     </span>
     <div className="relative">{children}</div>
@@ -949,8 +1002,8 @@ const ChannelToggle = ({
   accent: 'amber' | 'emerald';
 }) => {
   const accentBg =
-    accent === 'amber' ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-300';
-  const accentText = accent === 'amber' ? 'text-amber-700' : 'text-emerald-700';
+    accent === 'amber' ? 'bg-amber-50 border-amber-300 dark:bg-amber-500/10 dark:border-amber-500/40' : 'bg-emerald-50 border-emerald-300 dark:bg-emerald-500/10 dark:border-emerald-500/40';
+  const accentText = accent === 'amber' ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300';
   return (
     <button
       type="button"
@@ -958,7 +1011,7 @@ const ChannelToggle = ({
       className={`text-left rounded-xl border p-3 transition ${
         enabled
           ? `${accentBg} ${accentText}`
-          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+          : 'border-gray-200 bg-white text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:bg-gray-950 dark:border-gray-700'
       }`}
     >
       <div className="flex items-center justify-between">
@@ -967,7 +1020,7 @@ const ChannelToggle = ({
         </span>
         <span
           className={`text-[10px] uppercase tracking-wide rounded-full px-2 py-0.5 ${
-            enabled ? 'bg-white/60' : 'bg-gray-100 text-gray-500'
+            enabled ? 'bg-white/60 dark:bg-white/10' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
           }`}
         >
           {enabled ? 'On' : 'Off'}

@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
+import { auth } from "@/config/firebase";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, ShoppingBag, Trash2, ArrowLeft, Package, Search, SlidersHorizontal, ChevronRight } from "lucide-react";
 import Header from "@/components/Header";
+import AccountShell from '@/components/account/AccountShell';
 import Footer from "@/components/Footer";
 import MobileHeader from "@/components/MobileHeader";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import MobileSearchBar from "@/components/MobileSearchBar";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/hooks/useWishlist";
+import { useCart } from "@/contexts/CartContext";
 import { getProduct } from "@/services/productService";
 import { UIProduct, adaptFirebaseToUI } from "@/lib/productAdapter";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +21,7 @@ const Wishlist = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { wishlist, removeFromWishlist, isLoaded } = useWishlist();
+  const { addToCart } = useCart();
   const [products, setProducts] = useState<UIProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,6 +97,7 @@ const Wishlist = () => {
       {/* Desktop View */}
       <div className="hidden lg:block">
         <Header />
+      <AccountShell>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -325,6 +330,7 @@ const Wishlist = () => {
             )}
           </div>
         </motion.div>
+      </AccountShell>
         <Footer />
       </div>
 
@@ -500,11 +506,26 @@ const Wishlist = () => {
                         )}
                       </div>
 
-                      {/* Add to Cart Button */}
+                      {/* Add to Cart Button - it used to just open the product page */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleProductClick(product.id);
+                          if (!user && !auth.currentUser) {
+                            navigate('/login');
+                            return;
+                          }
+                          // The shared cart confirmation shows the result,
+                          // including "out of stock" when it cannot be added.
+                          addToCart({
+                            id: product.id,
+                            name: product.title,
+                            price: product.price,
+                            originalPrice: product.oldPrice && product.oldPrice > product.price ? product.oldPrice : undefined,
+                            image: product.image,
+                            category: product.category,
+                            stock: product.stock,
+                          });
                         }}
                         className="w-full py-2 px-3 bg-[#832729] rounded text-xs font-medium text-white flex items-center justify-center gap-1.5 hover:bg-[#6a1f21] transition-colors"
                         style={{ fontFamily: "'Poppins', sans-serif" }}

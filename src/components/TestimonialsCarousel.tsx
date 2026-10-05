@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useInView } from "framer-motion";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { subscribeToTestimonials, Testimonial } from "@/services/testimonialService";
 import { SmartImage } from "@/components/ui/smart-image";
+import useAutoplayGate from "@/hooks/useAutoplayGate";
 
 /**
  * "What our clients say" - one dark chapter in an otherwise cream page.
@@ -50,12 +51,16 @@ const Stars = ({ rating }: { rating: number }) => (
 );
 
 const TestimonialsCarousel = () => {
-  const ref = useRef(null);
+  const ref = useRef<HTMLElement | null>(null);
   const isInView = useInView(ref, { once: true, amount: 0.15 });
+  const [sectionEl, setSectionEl] = useState<HTMLElement | null>(null);
+  const setSectionRef = useCallback((node: HTMLElement | null) => {
+    ref.current = node;
+    setSectionEl(node);
+  }, []);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToTestimonials((data) => {
@@ -71,11 +76,16 @@ const TestimonialsCarousel = () => {
     [count],
   );
 
+  // Rotates only while nobody is reading or using it: held on hover, touch,
+  // keyboard focus, off screen, in a background tab, and never under reduced
+  // motion. Any change of state restarts the full 7s count.
+  const { running } = useAutoplayGate({ element: sectionEl, enabled: count > 1 });
+
   useEffect(() => {
-    if (count < 2 || paused) return;
+    if (!running) return;
     const timer = window.setInterval(() => go(1), ROTATE_MS);
     return () => window.clearInterval(timer);
-  }, [count, paused, isInView, go]);
+  }, [running, go]);
 
   if (!count) return null;
 
@@ -88,10 +98,8 @@ const TestimonialsCarousel = () => {
 
   return (
     <section
-      ref={ref}
+      ref={setSectionRef}
       className="relative overflow-hidden bg-[#2a1216] py-16 md:py-24"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
     >
       {/* gold light from the top-left, deep shadow bottom-right */}
       <div className="pointer-events-none absolute -left-40 -top-40 h-[560px] w-[560px] rounded-full bg-[radial-gradient(circle,rgba(212,175,55,0.22)_0%,transparent_62%)] blur-2xl" />

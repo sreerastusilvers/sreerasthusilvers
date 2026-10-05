@@ -1,340 +1,360 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import useAutoplayGate from "@/hooks/useAutoplayGate";
+
+/**
+ * Card-by-card autoplay for a horizontal overflow-x row.
+ *
+ * Every `interval` ms the row glides one card along and settles, like a
+ * person swiping it, then rests so the card can be read. At the end it loops:
+ * seamlessly when the caller renders the items twice (`loopItemCount`),
+ * otherwise by gliding back to the start.
+ *
+ * It holds still whenever `useAutoplayGate` says so: hover, a finger on it (and
+ * a few seconds after), keyboard focus inside, the user's own scroll, the row
+ * being off screen, a background tab, reduced motion, or `paused` from the
+ * caller (a video playing). A touch or wheel cancels a glide mid-flight, so it
+ * never fights the user's own swipe.
+ *
+ * Why not set `scrollLeft` from a CSS transition or `scrollTo({behavior})`:
+ * this site gives every `.overflow-x-auto` `scroll-behavior: smooth` and some
+ * rows use mandatory snapping, so the browser would re-animate or re-snap each
+ * write. The glide switches both off on the element for its few hundred ms and
+ * puts them back when it lands exactly on a card.
+ */
 
 export interface UseAutoScrollOptions {
-  /** Pixels per frame; ~0.5 is a slow drift, ~1.4 a brisker glide. */
-  speed?: number;
-  /** Resume auto-scroll after this many ms of inactivity. */
+  /** Rest between steps, ms. */
+  interval?: number;
+  /** How long to wait after a touch, press or manual scroll ends. */
   resumeDelay?: number;
-  /** Reverse direction once each edge is reached so the row "ping-pongs". */
-  pingPong?: boolean;
-  /** Seamless infinite loop. Assumes content is duplicated; resets scrollLeft past half scrollWidth invisibly. */
+  /** Loop at the end (always true in practice; false stops at the end). */
   loop?: boolean;
-  /** Initial direction: 1 = left→right (scrollLeft increases). */
+  /** 1 moves toward later cards, -1 toward earlier ones. */
   direction?: 1 | -1;
-  /** Original card count before the consumer duplicates items for seamless looping. */
+  /** Item count before the caller duplicated them for a seamless loop. */
   loopItemCount?: number;
-  /** Pixels to advance when the consumer calls scrollByPage() with a card width fallback. */
-  pageStep?: number;
-  /** Disable the loop entirely (e.g. when prefers-reduced-motion is on). */
+  /** Cards moved by the arrow buttons; defaults to however many fit. */
+  pageCards?: number;
+  /** Hold still while true, e.g. a video in the row is playing. */
+  paused?: boolean;
+  /** Switch autoplay off entirely (arrows keep working). */
   enabled?: boolean;
 }
 
 export interface UseAutoScrollReturn {
-  scrollerRef: React.RefObject<HTMLDivElement>;
-  pause: () => void;
-  resume: () => void;
+  /** Callback ref for the scrolling element. */
+  scrollerRef: (node: HTMLDivElement | null) => void;
+  /** Arrow-button handler: moves a page of cards and holds autoplay briefly. */
   scrollByPage: (dir: "prev" | "next") => void;
-  isPaused: boolean;
+  /** True when the content (one copy of it) is wider than the row. */
+  canScroll: boolean;
+  /** True while autoplay is allowed to move. */
+  isRunning: boolean;
+}
+
+/** Strong ease-out: arrow presses respond at once. */
+const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
+/** iOS-like paging curve: a soft start and a long, calm settle. */
+const EASE_PAGE: [number, number, number, number] = [0.32, 0.72, 0, 1];
+const STEP_MS = 800;
+const ARROW_MS = 450;
+
+/** Standard cubic-bezier timing function solved for x (Newton, then bisection). */
+function bezier([x1, y1, x2, y2]: [number, number, number, number]) {
+  const cx = 3 * x1;
+  const bx = 3 * (x2 - x1) - cx;
+  const ax = 1 - cx - bx;
+  const cy = 3 * y1;
+  const by = 3 * (y2 - y1) - cy;
+  const ay = 1 - cy - by;
+  const sx = (t: number) => ((ax * t + bx) * t + cx) * t;
+  const sy = (t: number) => ((ay * t + by) * t + cy) * t;
+  const dx = (t: number) => (3 * ax * t + 2 * bx) * t + cx;
+  return (x: number) => {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    let t = x;
+    for (let i = 0; i < 6; i++) {
+      const err = sx(t) - x;
+      const d = dx(t);
+      if (Math.abs(err) < 1e-5) return sy(t);
+      if (Math.abs(d) < 1e-6) break;
+      t -= err / d;
+    }
+    let lo = 0;
+    let hi = 1;
+    t = x;
+    for (let i = 0; i < 20; i++) {
+      const v = sx(t);
+      if (Math.abs(v - x) < 1e-5) break;
+      if (v < x) lo = t;
+      else hi = t;
+      t = (lo + hi) / 2;
+    }
+    return sy(t);
+  };
+}
+
+const easePage = bezier(EASE_PAGE);
+const easeOut = bezier(EASE_OUT);
+
+/**
+ * The element whose children are the cards. Some rows wrap their cards in one
+ * inner `w-max` flex div, so look through single-child wrappers.
+ */
+function getItems(el: HTMLElement): HTMLElement[] {
+  let track: Element = el;
+  while (track.children.length === 1 && track.firstElementChild!.children.length > 1) {
+    track = track.firstElementChild!;
+  }
+  return Array.from(track.children).filter(
+    (c): c is HTMLElement => c instanceof HTMLElement && c.offsetWidth > 0
+  );
+}
+
+interface Layout {
+  /** Resting scrollLeft for each card (unclamped). */
+  targets: number[];
+  /** Distance between a card and its copy; 0 without copies. */
+  resetPoint: number;
+  max: number;
+  /** Cards that fit in the row at once. */
+  perView: number;
   canScroll: boolean;
 }
 
-/**
- * Smooth horizontal auto-scroll for any overflow-x container.
- * - Pauses on pointer/touch interaction and resumes after `resumeDelay`.
- * - Ping-pongs at edges so a short list still feels alive.
- * - Exposes prev/next handlers wired to the same pause logic so arrow buttons
- *   feel natural alongside the auto motion.
- */
+function measure(el: HTMLElement, loopItemCount: number): Layout {
+  const items = getItems(el);
+  const elLeft = el.getBoundingClientRect().left;
+  const base = el.scrollLeft - elLeft;
+  const max = Math.max(0, el.scrollWidth - el.clientWidth);
+  const lefts = items.map((item) => item.getBoundingClientRect().left + base);
+
+  const align = items[0] ? getComputedStyle(items[0]).scrollSnapAlign || "" : "";
+  const first = lefts[0] ?? 0;
+  const targets = items.map((item, i) => {
+    if (align.includes("center")) return lefts[i] + item.offsetWidth / 2 - el.clientWidth / 2;
+    if (align.includes("end")) return lefts[i] + item.offsetWidth - el.clientWidth;
+    // Start alignment, measured from the first card so card 0 rests at 0 and
+    // the row's own padding is kept.
+    return lefts[i] - first;
+  });
+
+  const hasCopies = loopItemCount > 0 && items.length >= loopItemCount * 2;
+  const resetPoint = hasCopies ? lefts[loopItemCount] - first : 0;
+  const singleWidth = hasCopies ? el.scrollWidth - resetPoint : el.scrollWidth;
+  const stride = items.length > 1 ? lefts[1] - lefts[0] : items[0]?.offsetWidth || el.clientWidth;
+
+  return {
+    targets,
+    resetPoint,
+    max,
+    perView: Math.max(1, Math.floor((el.clientWidth + 1) / Math.max(1, stride))),
+    canScroll: singleWidth - el.clientWidth > 2 && items.length > 1,
+  };
+}
+
+function nearestIndex(targets: number[], pos: number, max: number) {
+  let best = 0;
+  let bestDist = Infinity;
+  targets.forEach((t, i) => {
+    const d = Math.abs(Math.min(Math.max(t, 0), max) - pos);
+    if (d < bestDist - 0.5) {
+      best = i;
+      bestDist = d;
+    }
+  });
+  return best;
+}
+
 export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollReturn {
   const {
-    speed = 0.55,
-    resumeDelay = 2200,
-    pingPong = true,
-    loop = false,
+    interval = 3500,
+    resumeDelay = 2500,
+    loop = true,
     direction = 1,
     loopItemCount = 0,
-    pageStep,
+    pageCards,
+    paused = false,
     enabled = true,
   } = opts;
 
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  /**
-   * The position we intend, kept as a float.
-   *
-   * `scrollLeft` is read back rounded, so `el.scrollLeft += 0.5` every frame
-   * threw the fraction away each time: the row advanced 0px, then 1px, then
-   * 0px, which is exactly the stutter this carousel had. Keeping the true
-   * position here and assigning it outright makes the motion continuous.
-   */
-  const posRef = useRef(0);
-  /** Last value we wrote, so a change we did not make is the user scrolling. */
-  const appliedRef = useRef(0);
-  /** Layout metrics, refreshed on resize/mutation instead of every frame. */
-  const metricsRef = useRef({ hasLoopCopies: false, logicalMax: 0, max: 0, resetPoint: 0 });
-  const [isPaused, setIsPaused] = useState(false);
-  const dirRef = useRef<1 | -1>(direction);
-  const rafRef = useRef<number | null>(null);
-  const elementPollRef = useRef<number | null>(null);
-  const resumeTimerRef = useRef<number | null>(null);
-  const pausedRef = useRef(false);
-  const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null);
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
   const [canScroll, setCanScroll] = useState(false);
-  /** Mirror of `canScroll` for the animation loop, which must not re-bind. */
-  const canScrollRef = useRef(false);
+  const scrollerRef = useCallback((node: HTMLDivElement | null) => setEl(node), []);
 
-  const getScrollMetrics = useCallback(
-    (el: HTMLDivElement) => {
-      const hasLoopCopies = loop && loopItemCount > 0 && el.children.length > loopItemCount;
-      const logicalScrollWidth = hasLoopCopies ? el.scrollWidth / 2 : el.scrollWidth;
-      const max = Math.max(0, el.scrollWidth - el.clientWidth);
-      const logicalMax = Math.max(0, logicalScrollWidth - el.clientWidth);
+  const gate = useAutoplayGate({
+    element: el,
+    paused,
+    enabled: enabled && canScroll,
+    resumeDelay,
+  });
 
-      return {
-        hasLoopCopies,
-        logicalMax,
-        max,
-        resetPoint: hasLoopCopies ? el.scrollWidth / 2 : max,
+  const animRef = useRef<number | null>(null);
+  /** Last scrollLeft this hook wrote, to tell the user's scrolls from ours. */
+  const writtenRef = useRef(0);
+  /** Ignore scroll events until then (settling after a glide). */
+  const quietUntilRef = useRef(0);
+  const loopCountRef = useRef(loopItemCount);
+  loopCountRef.current = loopItemCount;
+
+  const stopGlide = useCallback(() => {
+    if (animRef.current !== null) {
+      cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    }
+    if (el) {
+      el.style.scrollSnapType = "";
+      el.style.scrollBehavior = "";
+    }
+  }, [el]);
+
+  /** Glide from `from` to `to`; `from` differs from scrollLeft after a loop jump. */
+  const glide = useCallback(
+    (from: number, to: number, duration: number, ease: (x: number) => number) => {
+      if (!el) return;
+      stopGlide();
+      el.style.scrollSnapType = "none";
+      el.style.scrollBehavior = "auto";
+      el.scrollLeft = from;
+      writtenRef.current = el.scrollLeft;
+
+      if (duration <= 0 || Math.abs(to - from) < 1) {
+        el.scrollLeft = to;
+        writtenRef.current = el.scrollLeft;
+        quietUntilRef.current = performance.now() + 200;
+        stopGlide();
+        return;
+      }
+
+      const start = performance.now();
+      const frame = (now: number) => {
+        const t = Math.min(1, (now - start) / duration);
+        el.scrollLeft = from + (to - from) * ease(t);
+        writtenRef.current = el.scrollLeft;
+        if (t < 1) {
+          animRef.current = requestAnimationFrame(frame);
+        } else {
+          animRef.current = null;
+          quietUntilRef.current = performance.now() + 200;
+          stopGlide();
+        }
       };
+      animRef.current = requestAnimationFrame(frame);
     },
-    [loop, loopItemCount]
+    [el, stopGlide]
   );
 
-  const clearResumeTimer = () => {
-    if (resumeTimerRef.current !== null) {
-      window.clearTimeout(resumeTimerRef.current);
-      resumeTimerRef.current = null;
-    }
-  };
+  /** Move `count` cards in `dir`, looping at either end. */
+  const step = useCallback(
+    (dir: 1 | -1, count: number, duration: number, ease: (x: number) => number) => {
+      if (!el) return;
+      const layout = measure(el, loopCountRef.current);
+      if (!layout.canScroll) return;
+      const { targets, resetPoint, max } = layout;
+      const clamp = (v: number) => Math.min(Math.max(v, 0), max);
 
-  const pause = useCallback(() => {
-    pausedRef.current = true;
-    setIsPaused(true);
-    clearResumeTimer();
-  }, []);
+      let pos = el.scrollLeft;
+      // Seamless loop: hop to the identical spot in the other copy first.
+      if (resetPoint > 0) {
+        if (dir > 0 && pos >= resetPoint - 0.5) pos -= resetPoint;
+        else if (dir < 0 && pos + resetPoint <= max + 0.5) {
+          const idx = nearestIndex(targets, pos, max);
+          if (idx - count < 0) pos += resetPoint;
+        }
+      }
 
-  const resume = useCallback(() => {
-    clearResumeTimer();
-    resumeTimerRef.current = window.setTimeout(() => {
-      pausedRef.current = false;
-      setIsPaused(false);
-    }, resumeDelay);
-  }, [resumeDelay]);
+      const cur = nearestIndex(targets, pos, max);
+      const nextIdx = cur + dir * count;
+      let target: number;
+      if (nextIdx < 0 || nextIdx >= targets.length || Math.abs(clamp(targets[nextIdx]) - pos) < 1) {
+        if (!loop) return;
+        // No copies to hop through: go back to the other end.
+        target = dir > 0 ? 0 : max;
+        duration = gate.reducedMotion ? 0 : Math.max(duration, 1100);
+      } else {
+        target = clamp(targets[nextIdx]);
+      }
+      glide(pos, target, duration, ease);
+    },
+    [el, glide, loop, gate.reducedMotion]
+  );
 
-  const measureScrollability = useCallback(() => {
-    const el = scrollerRef.current;
-    if (!el || !enabled) {
+  // Keep `canScroll` honest as cards load, resize or get duplicated.
+  useEffect(() => {
+    if (!el) {
       setCanScroll(false);
-      return false;
+      return;
     }
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      setCanScroll(measure(el, loopCountRef.current).canScroll);
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(el);
+    const mo = new MutationObserver(schedule);
+    mo.observe(el, { childList: true, subtree: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      ro.disconnect();
+      mo.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, [el, loopItemCount]);
 
-    const metrics = getScrollMetrics(el);
-    metricsRef.current = metrics;
-    const nextCanScroll = metrics.logicalMax > 2;
-    canScrollRef.current = nextCanScroll;
-    setCanScroll((prev) => (prev === nextCanScroll ? prev : nextCanScroll));
-
-    if (!nextCanScroll) {
-      clearResumeTimer();
-      if (pausedRef.current) {
-        pausedRef.current = false;
-        setIsPaused(false);
+  // The user's own input wins: stop a glide the instant they touch or scroll,
+  // and treat any scroll we did not make as an interaction.
+  useEffect(() => {
+    if (!el) return;
+    const takeOver = () => stopGlide();
+    const onScroll = () => {
+      if (animRef.current !== null) return;
+      if (performance.now() < quietUntilRef.current) {
+        writtenRef.current = el.scrollLeft;
+        return;
       }
-      dirRef.current = direction;
-      if (Math.abs(el.scrollLeft) > 0.5) {
-        el.scrollLeft = 0;
-      }
-    }
+      if (Math.abs(el.scrollLeft - writtenRef.current) > 2) gate.hold();
+    };
+    el.addEventListener("pointerdown", takeOver, { passive: true });
+    el.addEventListener("touchstart", takeOver, { passive: true });
+    el.addEventListener("wheel", takeOver, { passive: true });
+    el.addEventListener("scroll", onScroll, { passive: true });
+    writtenRef.current = el.scrollLeft;
+    return () => {
+      el.removeEventListener("pointerdown", takeOver);
+      el.removeEventListener("touchstart", takeOver);
+      el.removeEventListener("wheel", takeOver);
+      el.removeEventListener("scroll", onScroll);
+    };
+  }, [el, gate.hold, stopGlide]);
 
-    return nextCanScroll;
-  }, [direction, enabled, getScrollMetrics]);
+  // The autoplay itself. Pausing (hover, off screen) lets a glide in flight
+  // land on its card; only the user's own touch or scroll cuts one short.
+  useEffect(() => {
+    if (!gate.running || !el) return;
+    const id = window.setInterval(() => step(direction, 1, STEP_MS, easePage), interval);
+    return () => window.clearInterval(id);
+  }, [gate.running, el, direction, interval, step]);
 
-  const scheduleMeasure = useCallback(() => {
-    window.requestAnimationFrame(() => {
-      measureScrollability();
-    });
-  }, [measureScrollability]);
+  useEffect(() => stopGlide, [stopGlide]);
 
   const scrollByPage = useCallback(
     (dir: "prev" | "next") => {
-      const el = scrollerRef.current;
-      if (!el || !canScroll) return;
-      const step = pageStep ?? Math.max(160, Math.round(el.clientWidth * 0.85));
-      if (loop) {
-        const { hasLoopCopies, max, resetPoint } = getScrollMetrics(el);
-        const target = dir === "next" ? el.scrollLeft + step : el.scrollLeft - step;
-        if (hasLoopCopies && resetPoint > 0) {
-          // For looped content (duplicated), allow seamless wrap on manual nav too.
-          if (target < 0) {
-            el.scrollLeft = target + resetPoint;
-            el.scrollBy({ left: 0, behavior: "auto" });
-            el.scrollBy({ left: -step, behavior: "smooth" });
-          } else if (target > max) {
-            el.scrollLeft = target - resetPoint;
-            el.scrollBy({ left: 0, behavior: "auto" });
-            el.scrollBy({ left: step, behavior: "smooth" });
-          } else {
-            el.scrollBy({ left: dir === "next" ? step : -step, behavior: "smooth" });
-          }
-        } else {
-          let wrappedTarget = target;
-          if (target < 0) {
-            wrappedTarget = max;
-          } else if (target > max) {
-            wrappedTarget = 0;
-          }
-          el.scrollTo({ left: wrappedTarget, behavior: "smooth" });
-        }
-      } else {
-        el.scrollBy({ left: dir === "next" ? step : -step, behavior: "smooth" });
-      }
-      pause();
-      resume();
+      if (!el) return;
+      gate.hold();
+      const count = pageCards ?? measure(el, loopCountRef.current).perView;
+      step(dir === "next" ? 1 : -1, Math.max(1, count), gate.reducedMotion ? 0 : ARROW_MS, easeOut);
     },
-    [canScroll, getScrollMetrics, pageStep, pause, resume, loop]
+    [el, gate, pageCards, step]
   );
 
-  useEffect(() => {
-    if (!enabled) {
-      measureScrollability();
-      return;
-    }
-
-    const waitForScroller = () => {
-      if (scrollerRef.current) {
-        setScrollerEl((prev) => (prev === scrollerRef.current ? prev : scrollerRef.current));
-        measureScrollability();
-        return;
-      }
-      elementPollRef.current = requestAnimationFrame(waitForScroller);
-    };
-
-    waitForScroller();
-
-    return () => {
-      if (elementPollRef.current !== null) {
-        cancelAnimationFrame(elementPollRef.current);
-      }
-    };
-  }, [enabled, measureScrollability]);
-
-  useEffect(() => {
-    const el = scrollerEl;
-    if (!el) return;
-
-    measureScrollability();
-
-    const resizeObserver = new ResizeObserver(() => {
-      scheduleMeasure();
-    });
-    resizeObserver.observe(el);
-
-    const mutationObserver = new MutationObserver(() => {
-      scheduleMeasure();
-    });
-    mutationObserver.observe(el, { childList: true, subtree: true });
-
-    const handleWindowResize = () => {
-      scheduleMeasure();
-    };
-    window.addEventListener("resize", handleWindowResize);
-
-    return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-      window.removeEventListener("resize", handleWindowResize);
-    };
-  }, [measureScrollability, scheduleMeasure, scrollerEl]);
-
-  useEffect(() => {
-    if (!enabled || !scrollerEl) return;
-
-    /**
-     * Re-measure only when the layout could actually have changed.
-     *
-     * This used to run on every frame, and it reads `scrollWidth` and
-     * `clientWidth` - two forced synchronous layouts per frame, on top of the
-     * one the scroll write already costs. The ResizeObserver and
-     * MutationObserver above already tell us when the row changes, so the loop
-     * can just read the cached numbers.
-     */
-    let lastTs = performance.now();
-    dirRef.current = direction;
-    posRef.current = scrollerEl.scrollLeft;
-    appliedRef.current = scrollerEl.scrollLeft;
-
-    const tick = (ts: number) => {
-      const el = scrollerEl;
-      const dt = Math.min(ts - lastTs, 50); // a backgrounded tab must not lurch
-      lastTs = ts;
-
-      if (!pausedRef.current && canScrollRef.current) {
-        // The user (wheel, touch, a smooth scrollByPage) moved it since our
-        // last write, so follow them rather than yanking it back.
-        if (Math.abs(el.scrollLeft - appliedRef.current) > 1.5) {
-          posRef.current = el.scrollLeft;
-        }
-
-        // ~60fps baseline, scaled by elapsed time so motion stays steady.
-        posRef.current += speed * (dt / 16.67) * dirRef.current;
-
-        const { hasLoopCopies, max, resetPoint } = metricsRef.current;
-        if (loop) {
-          if (hasLoopCopies && resetPoint > 0) {
-            // Seamless infinite loop: consumer renders a second copy of the content.
-            if (posRef.current >= resetPoint) {
-              posRef.current -= resetPoint;
-            } else if (posRef.current <= 0) {
-              posRef.current += resetPoint;
-            }
-          } else if (dirRef.current >= 0 && posRef.current >= max - 0.5) {
-            posRef.current = 0;
-          } else if (dirRef.current < 0 && posRef.current <= 0.5) {
-            posRef.current = max;
-          }
-        } else if (pingPong) {
-          if (posRef.current >= max - 0.5) {
-            posRef.current = max;
-            dirRef.current = -1;
-          } else if (posRef.current <= 0.5) {
-            posRef.current = 0;
-            dirRef.current = 1;
-          }
-        } else if (posRef.current >= max - 0.5) {
-          posRef.current = 0;
-        }
-
-        el.scrollLeft = posRef.current;
-        appliedRef.current = el.scrollLeft;
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-
-    const handlePointerDown = () => {
-      pause();
-    };
-    const handlePointerUp = () => {
-      resume();
-    };
-    const handleMouseEnter = () => {
-      pause();
-    };
-    const handleMouseLeave = () => {
-      resume();
-    };
-
-    scrollerEl.addEventListener("pointerdown", handlePointerDown, { passive: true });
-    scrollerEl.addEventListener("pointerup", handlePointerUp, { passive: true });
-    scrollerEl.addEventListener("pointercancel", handlePointerUp, { passive: true });
-    scrollerEl.addEventListener("touchstart", handlePointerDown, { passive: true });
-    scrollerEl.addEventListener("touchend", handlePointerUp, { passive: true });
-    scrollerEl.addEventListener("mouseenter", handleMouseEnter);
-    scrollerEl.addEventListener("mouseleave", handleMouseLeave);
-
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      clearResumeTimer();
-      scrollerEl.removeEventListener("pointerdown", handlePointerDown);
-      scrollerEl.removeEventListener("pointerup", handlePointerUp);
-      scrollerEl.removeEventListener("pointercancel", handlePointerUp);
-      scrollerEl.removeEventListener("touchstart", handlePointerDown);
-      scrollerEl.removeEventListener("touchend", handlePointerUp);
-      scrollerEl.removeEventListener("mouseenter", handleMouseEnter);
-      scrollerEl.removeEventListener("mouseleave", handleMouseLeave);
-    };
-  }, [direction, enabled, loop, pause, resume, scrollerEl, speed, pingPong]);
-
-  return { scrollerRef, pause, resume, scrollByPage, isPaused, canScroll };
+  return { scrollerRef, scrollByPage, canScroll, isRunning: gate.running };
 }
 
 export default useAutoScroll;

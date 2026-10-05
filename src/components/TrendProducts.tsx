@@ -28,10 +28,6 @@ const TrendProducts = () => {
     scrollByPage: mobileScrollByPage,
     canScroll: canMobileScroll,
   } = useAutoScroll({
-    speed: 0.5,
-    resumeDelay: 2400,
-    loop: true,
-    direction: 1,
     loopItemCount: Math.max(products.length - 1, 0),
   });
   const {
@@ -39,12 +35,8 @@ const TrendProducts = () => {
     scrollByPage: desktopNAScrollByPage,
     canScroll: canDesktopNAScroll,
   } = useAutoScroll({
-    speed: 0.55,
-    resumeDelay: 2400,
-    loop: true,
-    direction: -1,
     loopItemCount: products.length,
-    pageStep: 246,
+    pageCards: 1,
   });
 
 

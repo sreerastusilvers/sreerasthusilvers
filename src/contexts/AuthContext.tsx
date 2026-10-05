@@ -17,10 +17,11 @@ import {
   setDoc,
   getDoc,
   serverTimestamp,
+  deleteField,
 } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
 import { recordLoginAttempt } from '@/services/securityService';
-import { isManagedImageUrl } from '@/lib/mediaUrl';
+import { isCustomAvatarUrl } from '@/components/account/avatarUtils';
 
 // Types
 export interface UserProfile {
@@ -52,6 +53,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
+  /** Save the profile photo URL, or remove the field (null) to fall back to Google photo / initials. */
+  setAvatar: (url: string | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -146,8 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Only sync Google photoURL if user doesn't have a custom avatar
             // (uploaded to our storage, or a legacy Cloudinary URL). This
             // prevents overwriting custom uploaded avatars.
-            const hasCustomAvatar =
-              !!profile?.avatar && (profile.avatar.includes('cloudinary') || isManagedImageUrl(profile.avatar));
+            const hasCustomAvatar = isCustomAvatarUrl(profile?.avatar);
             
             if (updatedUser.photoURL && profile && !hasCustomAvatar && profile.avatar !== updatedUser.photoURL) {
               try {
@@ -288,8 +290,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         profile = userProfileData;
       } else {
-        // Update avatar for existing Google users to ensure photoURL is synced
-        if (photoURL && profile.avatar !== photoURL) {
+        // Keep the Google photo in sync for existing Google users, but never
+        // overwrite a photo they uploaded themselves.
+        if (photoURL && !isCustomAvatarUrl(profile.avatar) && profile.avatar !== photoURL) {
           await setDoc(doc(db, 'users', uid), {
             avatar: photoURL,
             updatedAt: serverTimestamp(),
@@ -345,6 +348,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserProfile(updatedProfile);
   };
 
+  const setAvatar = async (url: string | null) => {
+    if (!user) throw new Error('No user logged in');
+
+    await setDoc(doc(db, 'users', user.uid), {
+      avatar: url ?? deleteField(),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    const updatedProfile = await fetchUserProfile(user.uid);
+    setUserProfile(updatedProfile);
+  };
+
   const value: AuthContextType = {
     user,
     userProfile,
@@ -357,6 +372,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     resetPassword,
     updateUserProfile,
+    setAvatar,
   };
 
   return (

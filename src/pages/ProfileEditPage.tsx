@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { uploadImage, deleteMedia, describeUploadError } from '@/services/mediaStorage';
 import { updateSecuritySettings } from '@/services/securityService';
 import { toast } from 'sonner';
 import Header from '@/components/Header';
@@ -12,6 +11,10 @@ import { Area } from 'react-easy-crop';
 import { motion } from 'framer-motion';
 import darkLogo from '@/assets/dark.png';
 import WhatsAppSetupModal from '@/components/auth/WhatsAppSetupModal';
+import AccountShell from '@/components/account/AccountShell';
+import UserAvatar from '@/components/account/UserAvatar';
+import { useAccountIdentity } from '@/components/account/useAccountIdentity';
+import { useProfilePhoto, MAX_SOURCE_PHOTO_BYTES } from '@/components/account/useProfilePhoto';
 import {
   ZoomIn,
   ZoomOut,
@@ -24,64 +27,18 @@ import {
   Calendar,
   Phone,
   ShieldCheck,
+  Trash2,
+  Loader2,
   X,
 } from 'lucide-react';
-import { SmartImage } from "@/components/ui/smart-image";
-
-// Helper function to create image from cropped area
-const createImage = (url: string): Promise<HTMLImageElement> =>
-  new Promise((resolve, reject) => {
-    const image = new Image();
-    image.addEventListener('load', () => resolve(image));
-    image.addEventListener('error', (error) => reject(error));
-    image.src = url;
-  });
-
-async function getCroppedImg(
-  imageSrc: string,
-  pixelCrop: Area
-): Promise<Blob> {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    throw new Error('No 2d context');
-  }
-
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  ctx.drawImage(
-    image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-      } else {
-        reject(new Error('Canvas is empty'));
-      }
-    }, 'image/jpeg', 0.95);
-  });
-}
 
 const ProfileEditPage = () => {
   const navigate = useNavigate();
   const { user, userProfile, updateUserProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const identity = useAccountIdentity();
+  const photo = useProfilePhoto();
+  const uploadingPhoto = photo.busy === 'uploading';
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [savingName, setSavingName] = useState(false);
@@ -97,14 +54,6 @@ const ProfileEditPage = () => {
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
   useEffect(() => {
-    if (userProfile?.avatar) {
-      setAvatarUrl(userProfile.avatar);
-    } else if (user?.photoURL) {
-      setAvatarUrl(user.photoURL);
-    }
-  }, [userProfile, user]);
-
-  useEffect(() => {
     const currentName = userProfile?.name || userProfile?.username || user?.email?.split('@')[0] || 'User';
     setNameInput(currentName);
   }, [userProfile, user]);
@@ -113,48 +62,36 @@ const ProfileEditPage = () => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
-  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose a photo (JPG, PNG or WebP).');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_SOURCE_PHOTO_BYTES) {
+      toast.error('That photo is over 20 MB. Please choose a smaller one.');
+      e.target.value = '';
+      return;
+    }
 
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onloadend = () => {
       setImageToCrop(reader.result as string);
       setShowCropModal(true);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
     };
+    reader.readAsDataURL(file);
   };
 
   const handleCropSave = async () => {
     if (!imageToCrop || !croppedAreaPixels) return;
-
-    setUploadingPhoto(true);
     setShowCropModal(false);
-
-    try {
-      const croppedBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
-      const croppedFile = new File([croppedBlob], 'profile-picture.jpg', { type: 'image/jpeg' });
-      const previousAvatar = userProfile?.avatar;
-      const result = await uploadImage(croppedFile, { category: 'avatars', autoCompress: true });
-      setAvatarUrl(result.url);
-      await updateUserProfile({ avatar: result.url });
-      if (previousAvatar && previousAvatar !== result.url) void deleteMedia([previousAvatar]);
-      toast.success('Profile photo updated!');
-      setImageToCrop(null);
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast.error(describeUploadError(error));
-      if (userProfile?.avatar) {
-        setAvatarUrl(userProfile.avatar);
-      } else if (user?.photoURL) {
-        setAvatarUrl(user.photoURL);
-      }
-    } finally {
-      setUploadingPhoto(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    const ok = await photo.save(imageToCrop, croppedAreaPixels);
+    if (ok) setImageToCrop(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleCropCancel = () => {
@@ -162,6 +99,16 @@ const ProfileEditPage = () => {
     setImageToCrop(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  // Escape closes the crop dialog.
+  useEffect(() => {
+    if (!showCropModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCropCancel();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showCropModal]);
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) {
@@ -180,8 +127,7 @@ const ProfileEditPage = () => {
     }
   };
 
-  const displayName = userProfile?.name || userProfile?.username || user?.email?.split('@')[0] || 'User';
-  const initials = displayName.charAt(0).toUpperCase();
+  const displayName = identity.name;
 
   const memberSince = userProfile?.createdAt
     ? new Date(userProfile.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -193,15 +139,8 @@ const ProfileEditPage = () => {
       <div className="hidden lg:block"><Header /></div>
 
       <div className="min-h-screen bg-gray-50 dark:bg-zinc-900/50 pb-24 lg:pb-16 dark:bg-[linear-gradient(180deg,rgba(19,17,15,0.98)_0%,rgba(14,14,15,0.98)_100%)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-        {/* Desktop page wrapper for centered card width */}
-        <div className="lg:max-w-3xl lg:mx-auto lg:px-6 lg:pt-8">
-        <button
-          onClick={() => navigate('/account')}
-          className="mb-4 hidden items-center gap-2 rounded-full border border-[#d4af37]/15 bg-white/90 dark:bg-zinc-900/90 px-4 py-2 text-sm font-medium text-gray-700 dark:text-zinc-300 shadow-sm transition-colors hover:bg-white dark:border-[#d4af37]/20 dark:bg-zinc-900/88 dark:text-zinc-100 dark:hover:bg-zinc-900 lg:inline-flex"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </button>
+        <AccountShell>
+        <div className="lg:max-w-3xl">
         {/* ── Banner + Avatar Section ── */}
         <div className="relative lg:overflow-hidden lg:rounded-3xl lg:border lg:border-gray-100 dark:border-zinc-800 lg:bg-white dark:bg-zinc-900 lg:shadow-sm dark:lg:border-zinc-800 dark:lg:bg-zinc-900/88">
           {/* Banner Background with geometric pattern */}
@@ -209,6 +148,7 @@ const ProfileEditPage = () => {
             {/* Back Button — mobile only (desktop has site header) */}
             <button
               onClick={() => navigate(-1)}
+              aria-label="Go back"
               className="lg:hidden absolute top-4 left-4 z-10 rounded-full bg-white/80 dark:bg-zinc-900/80 p-2 shadow-sm transition-colors hover:bg-white dark:bg-zinc-900/85 dark:hover:bg-zinc-900"
             >
               <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300 dark:text-zinc-100" />
@@ -268,28 +208,25 @@ const ProfileEditPage = () => {
           {/* Avatar overlapping the banner */}
           <div className="flex flex-col items-center -mt-14 relative z-10">
             <div className="relative mb-2">
-              {avatarUrl ? (
-                <SmartImage
-                  key={avatarUrl}
-                  src={avatarUrl}
-                  alt="Profile"
-                  className="w-28 h-28 rounded-full object-cover border-4 border-white dark:border-zinc-800 shadow-lg bg-white dark:bg-zinc-900"
-                  referrerPolicy="no-referrer" preset="thumb" />
-              ) : (
-                <div className="w-28 h-28 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700 flex items-center justify-center border-4 border-white dark:border-zinc-800 shadow-lg">
-                  <span className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-3xl font-bold">{initials}</span>
-                </div>
+              <UserAvatar
+                size={112}
+                decorative={false}
+                className="border-4 border-white shadow-lg dark:border-zinc-800"
+              />
+              {uploadingPhoto && (
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45" role="status">
+                  <Loader2 className="h-7 w-7 animate-spin text-white motion-reduce:animate-none" aria-hidden />
+                  <span className="sr-only">Uploading photo</span>
+                </span>
               )}
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingPhoto}
-                className="absolute bottom-1 right-1 w-8 h-8 bg-gray-900 dark:bg-zinc-100 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-800 dark:bg-zinc-100 transition-colors border-2 border-white dark:border-zinc-800"
+                disabled={!!photo.busy}
+                aria-label={identity.photoUrl ? 'Change profile photo' : 'Add profile photo'}
+                className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-primary text-primary-foreground shadow-lg outline-none transition-transform duration-150 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-95 disabled:opacity-60 motion-reduce:active:scale-100 dark:border-zinc-800"
               >
-                {uploadingPhoto ? (
-                  <div className="w-4 h-4 border-2 border-white dark:border-zinc-800 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Camera className="w-4 h-4 text-white" />
-                )}
+                <Camera className="h-4 w-4" aria-hidden />
               </button>
               <input
                 ref={fileInputRef}
@@ -297,6 +234,8 @@ const ProfileEditPage = () => {
                 accept="image/*"
                 onChange={handlePhotoChange}
                 className="hidden"
+                tabIndex={-1}
+                aria-hidden
               />
             </div>
 
@@ -313,10 +252,10 @@ const ProfileEditPage = () => {
                     disabled={savingName}
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
                   />
-                  <button onClick={handleSaveName} disabled={savingName} className="p-1 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700">
+                  <button onClick={handleSaveName} disabled={savingName} aria-label="Save name" className="p-1 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700">
                     <Check className="w-4 h-4 text-gray-700 dark:text-zinc-300" />
                   </button>
-                  <button onClick={() => setIsEditingName(false)} className="p-1 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700">
+                  <button onClick={() => setIsEditingName(false)} aria-label="Cancel editing name" className="p-1 rounded-full bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700">
                     <X className="w-4 h-4 text-gray-700 dark:text-zinc-300" />
                   </button>
                 </div>
@@ -325,6 +264,7 @@ const ProfileEditPage = () => {
                   <h2 className="text-gray-900 dark:text-zinc-100 text-lg font-bold">{displayName}</h2>
                   <button
                     onClick={() => setIsEditingName(true)}
+                    aria-label="Edit name"
                     className="p-1 rounded-full bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:bg-zinc-700 transition-colors"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-gray-500 dark:text-zinc-500 dark:text-zinc-400" />
@@ -334,6 +274,43 @@ const ProfileEditPage = () => {
             </div>
             <p className="text-gray-500 dark:text-zinc-500 dark:text-zinc-400 text-xs">{user?.email}</p>
             <p className="text-gray-400 dark:text-zinc-500 text-[10px] mt-0.5">Member since {memberSince}</p>
+
+            {/* Photo actions */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!!photo.busy}
+                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-primary/30 px-4 text-xs font-semibold text-primary outline-none transition-colors duration-150 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                <Camera className="h-3.5 w-3.5" aria-hidden />
+                {photo.hasCustomPhoto ? 'Change photo' : 'Upload photo'}
+              </button>
+              {photo.hasCustomPhoto && (
+                <button
+                  type="button"
+                  onClick={() => void photo.remove()}
+                  disabled={!!photo.busy}
+                  className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-border px-4 text-xs font-semibold text-gray-700 outline-none transition-colors duration-150 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  {photo.busy === 'removing' ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Remove photo
+                </button>
+              )}
+            </div>
+            <p className="mt-2 pb-5 px-4 text-center text-[11px] text-gray-500 dark:text-zinc-400">
+              {photo.hasCustomPhoto
+                ? identity.googlePhoto
+                  ? 'Removing it brings back your Google photo.'
+                  : 'Removing it shows your initials instead.'
+                : identity.googlePhoto
+                  ? 'Showing your Google photo. Upload one to replace it.'
+                  : 'JPG, PNG or WebP. You can crop it before saving.'}
+            </p>
           </div>
         </div>
 
@@ -419,6 +396,7 @@ const ProfileEditPage = () => {
         {/* App Version */}
         <p className="text-center text-[10px] text-gray-400 dark:text-zinc-500 pb-2 mt-8">Sreerasthu Silvers v1.0.0</p>
         </div>
+        </AccountShell>
       </div>
 
       {/* Desktop site footer */}
@@ -445,12 +423,14 @@ const ProfileEditPage = () => {
 
       {/* ── Crop Modal ── */}
       {showCropModal && imageToCrop && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-0 sm:p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="crop-photo-title">
           <div className="bg-white dark:bg-zinc-900 rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:max-w-md overflow-hidden flex flex-col sm:block">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-zinc-800">
-              <h2 className="text-gray-900 dark:text-zinc-100 text-lg font-semibold">Edit Photo</h2>
+              <h2 id="crop-photo-title" className="text-gray-900 dark:text-zinc-100 text-lg font-semibold">Crop your photo</h2>
               <button
                 onClick={handleCropCancel}
+                aria-label="Cancel"
+                autoFocus
                 className="p-1 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -481,9 +461,10 @@ const ProfileEditPage = () => {
                   step={0.01}
                   value={zoom}
                   onChange={(e) => setZoom(Number(e.target.value))}
-                  className="flex-1 h-1.5 bg-gray-200 dark:bg-zinc-800 dark:bg-zinc-700 rounded-full appearance-none cursor-pointer"
+                  aria-label="Zoom"
+                  className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full"
                   style={{
-                    background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${((zoom - 1) / 2) * 100}%, #E5E7EB ${((zoom - 1) / 2) * 100}%, #E5E7EB 100%)`
+                    background: `linear-gradient(to right, hsl(var(--primary)) ${((zoom - 1) / 2) * 100}%, hsl(var(--muted)) ${((zoom - 1) / 2) * 100}%)`,
                   }}
                 />
                 <ZoomIn className="w-5 h-5 text-gray-500 dark:text-zinc-500 dark:text-zinc-400 flex-shrink-0" />
@@ -494,9 +475,9 @@ const ProfileEditPage = () => {
               <button
                 onClick={handleCropSave}
                 disabled={uploadingPhoto}
-                className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {uploadingPhoto ? 'Saving...' : 'Save'}
+                {uploadingPhoto ? 'Saving...' : 'Save photo'}
               </button>
             </div>
           </div>

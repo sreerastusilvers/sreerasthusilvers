@@ -25,10 +25,6 @@ const BestSellers = () => {
     scrollByPage: mobileBSScrollByPage,
     canScroll: canMobileBSScroll,
   } = useAutoScroll({
-    speed: 0.5,
-    resumeDelay: 2400,
-    loop: true,
-    direction: -1,
     loopItemCount: Math.max(products.length - 1, 0),
   });
   const {
@@ -36,12 +32,8 @@ const BestSellers = () => {
     scrollByPage: desktopBSScrollByPage,
     canScroll: canDesktopBSScroll,
   } = useAutoScroll({
-    speed: 0.55,
-    resumeDelay: 2400,
-    loop: true,
-    direction: 1,
     loopItemCount: products.length,
-    pageStep: 246,
+    pageCards: 1,
   });
 
   // Real-time subscription to best sellers

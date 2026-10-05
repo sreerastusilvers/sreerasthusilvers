@@ -4,6 +4,7 @@ import { subscribeToActiveBanners, Banner } from "@/services/bannerService";
 import { useNavigate } from "react-router-dom";
 import { SmartImage } from "@/components/ui/smart-image";
 import { cldUrl } from "@/lib/cloudinaryUrl";
+import useAutoplayGate from "@/hooks/useAutoplayGate";
 
 /**
  * Seamless looping hero carousel.
@@ -21,6 +22,11 @@ const HeroBanner = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transitionsEnabled, setTransitionsEnabled] = useState(true);
   const preloadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
+  // Shared autoplay rules on top of the hover/touch/arrow pauses below: hold
+  // while keyboard focus is inside, while scrolled off screen, in a background
+  // tab, and never rotate under reduced motion.
+  const [heroEl, setHeroEl] = useState<HTMLElement | null>(null);
+  const { running: gateRunning } = useAutoplayGate({ element: heroEl, visibleThreshold: 0.2 });
 
   /**
    * URLs to warm before revealing the carousel.
@@ -110,14 +116,14 @@ const HeroBanner = () => {
   }, [banners.length]);
 
   useEffect(() => {
-    if (!hasMultipleBanners || isPaused || loading || !imagesReady) return;
+    if (!hasMultipleBanners || isPaused || !gateRunning || loading || !imagesReady) return;
 
     const interval = window.setInterval(() => {
       setCurrentIndex((prev) => prev + 1);
     }, 4200);
 
     return () => window.clearInterval(interval);
-  }, [hasMultipleBanners, isPaused, loading, imagesReady]);
+  }, [hasMultipleBanners, isPaused, gateRunning, loading, imagesReady]);
 
   const jumpToSlide = (index: number) => {
     setTransitionsEnabled(true);
@@ -194,6 +200,7 @@ const HeroBanner = () => {
 
   return (
     <section
+      ref={setHeroEl}
       className="relative overflow-hidden bg-background"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}

@@ -1,8 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Star, Heart, GitCompare, Minus, Plus } from "lucide-react";
-import { useState } from "react";
+import { auth } from "@/config/firebase";
+import { X, Star, Heart, Minus, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useWishlist } from "@/hooks/useWishlist";
 import { SmartImage } from "@/components/ui/smart-image";
 
 interface Product {
@@ -28,13 +32,39 @@ interface ProductQuickViewProps {
 
 const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) => {
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const { addToCart } = useCart();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // The real wishlist: this used to be a local flag that saved nothing.
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const isWishlisted = product ? isInWishlist(product.id) : false;
+
+  // A quantity picked for one product must not carry over to the next.
+  useEffect(() => {
+    setQuantity(1);
+  }, [product?.id, isOpen]);
+
+  // Escape closes the dialog, as it does everywhere else.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   const handleAddToCart = async () => {
     if (!product) return;
+    // Same rule as the product card: the cart belongs to an account.
+    if (!user && !auth.currentUser) {
+      onClose();
+      navigate('/login', { state: { from: location } });
+      return;
+    }
     setIsAdding(true);
     try {
       const added = addToCart({
@@ -46,11 +76,8 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
         category: product.category,
         stock: product.stock,
       }, quantity);
+      // The shared cart confirmation reports both outcomes.
       if (!added) return;
-      toast({
-        title: "Added to cart",
-        description: `${product.title}${quantity > 1 ? ` (×${quantity})` : ''} has been added to your cart.`,
-      });
       onClose();
     } catch (error) {
       toast({
@@ -88,6 +115,9 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
           {/* Modal Container - Centered */}
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="quick-view-title"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -119,7 +149,7 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
                       </div>
                     )}
                     {product.badge && (
-                      <div className="absolute top-4 left-4 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full">
+                      <div className={`absolute ${product.discount ? 'top-12' : 'top-4'} left-4 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full`}>
                         {product.badge}
                       </div>
                     )}
@@ -128,11 +158,12 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
                 {/* Product Details */}
                 <div className="p-6 md:p-8 flex flex-col" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   {/* Title */}
-                  <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-2">
+                  <h2 id="quick-view-title" className="text-xl md:text-2xl font-semibold text-foreground mb-2 pr-10">
                     {product.title}
                   </h2>
 
-                  {/* Rating */}
+                  {/* Rating - only when there are real reviews to rate */}
+                  {product.reviews > 0 && (
                   <div className="flex items-center gap-2 mb-3">
                     <div className="flex items-center gap-0.5">
                       {[...Array(5)].map((_, i) => (
@@ -147,9 +178,10 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
                       ))}
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      ({product.reviews} reviews)
+                      ({product.reviews} {product.reviews === 1 ? 'review' : 'reviews'})
                     </span>
                   </div>
+                  )}
 
                   {/* Price */}
                   <div className="flex items-center gap-3 mb-4">
@@ -202,10 +234,12 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
                     </button>
                   </div>
 
-                  {/* Wishlist & Compare */}
+                  {/* Wishlist */}
                   <div className="flex items-center gap-6 mb-6">
                     <button
-                      onClick={() => setIsWishlisted(!isWishlisted)}
+                      type="button"
+                      aria-pressed={isWishlisted}
+                      onClick={() => toggleWishlist(product.id, product.title)}
                       className={`flex items-center gap-2 text-sm transition-colors ${
                         isWishlisted ? "text-red-500" : "text-muted-foreground hover:text-foreground"
                       }`}
@@ -214,11 +248,7 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
                         className="w-5 h-5"
                         fill={isWishlisted ? "currentColor" : "none"}
                       />
-                      Add To Wishlist
-                    </button>
-                    <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      <GitCompare className="w-5 h-5" />
-                      Compare
+                      {isWishlisted ? 'In your wishlist' : 'Add to wishlist'}
                     </button>
                   </div>
 

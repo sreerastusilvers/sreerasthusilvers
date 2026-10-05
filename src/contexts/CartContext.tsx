@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getProduct } from '@/services/productService';
 import { fetchLiveProductInfo } from '@/services/livePricing';
 import { useCatalogRevision } from '@/services/productCache';
+import { notifyAdded, notifyCartError } from '@/components/cart/cartFeedback';
 
 // Cart Item Interface
 export interface CartItem {
@@ -308,17 +309,48 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // ─── ADD TO CART ───
   // Always update local state immediately (optimistic), then sync to Firebase
+  //
+  // Every add, from any page, reports through the shared cart confirmation
+  // (src/components/cart): the panel on success, the same panel with the
+  // reason when the add is refused. Call sites need no toast of their own.
   const addToCart = (item: Omit<CartItem, 'quantity'>, quantity = 1) => {
+    const feedbackItem = {
+      id: item.id,
+      name: item.name,
+      image: item.image,
+      price: item.price,
+      category: item.category,
+      weight: item.weight,
+      purity: item.purity,
+    };
+
+    // A NaN, zero or negative quantity would corrupt the line (or remove it).
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      notifyCartError('Could not add to cart', 'Please choose a quantity of 1 or more.', feedbackItem);
+      return false;
+    }
+    quantity = Math.floor(quantity);
+
     const existing = items.find((cartItem) => cartItem.id === item.id);
     const availableStock = typeof item.stock === 'number' ? item.stock : existing?.stock;
-    const requestedQuantity = (existing?.quantity || 0) + quantity;
+    const inCart = existing?.quantity || 0;
+    const requestedQuantity = inCart + quantity;
 
     if (typeof availableStock === 'number' && requestedQuantity > availableStock) {
-      toast({
-        title: 'Stock limit reached',
-        description: buildStockMessage(item.name, availableStock),
-        variant: 'destructive',
-      });
+      if (availableStock <= 0) {
+        notifyCartError('Out of stock', `${item.name} is sold out right now.`, feedbackItem);
+      } else if (inCart > 0) {
+        const left = Math.max(availableStock - inCart, 0);
+        notifyCartError(
+          'Quantity limit reached',
+          left > 0
+            ? `Only ${availableStock} available and you already have ${inCart} in your cart. You can add ${left} more.`
+            : `You already have all ${availableStock} available in your cart.`,
+          feedbackItem,
+        );
+      } else {
+        notifyCartError('Quantity limit reached', buildStockMessage(item.name, availableStock), feedbackItem);
+      }
       return false;
     }
 
@@ -370,6 +402,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       })();
     }
 
+    notifyAdded(feedbackItem, quantity, requestedQuantity);
     return true;
   };
 

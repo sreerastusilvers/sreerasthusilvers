@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
 import { SmartImage } from "@/components/ui/smart-image";
+import CartConfirmation from "@/components/cart/CartConfirmation";
 
 const ShoppingCart = () => {
   const { items, isCartOpen, closeCart, updateQuantity, removeFromCart, subtotal, totalItems, loading } = useCart();
@@ -68,6 +69,10 @@ const ShoppingCart = () => {
   };
 
   return (
+    <>
+    {/* The add-to-cart confirmation lives beside the drawer: mounted once,
+        app-wide, inside the router. */}
+    <CartConfirmation />
     <AnimatePresence>
       {isCartOpen && (
         <>
@@ -599,6 +604,7 @@ const ShoppingCart = () => {
         </>
       )}
     </AnimatePresence>
+    </>
   );
 };
 

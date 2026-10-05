@@ -1,582 +1,922 @@
 /**
- * Admin WhatsApp inbox.
+ * Admin WhatsApp team inbox.
  *
- * Lists active WhatsApp threads from the `whatsappThreads` collection,
- * shows the message timeline in the selected thread, and provides a reply
- * composer that respects Meta's 24-hour customer-service window:
- *   - inside the window  → free-form text reply
- *   - outside the window → must use an approved template from
- *                          `whatsappTemplates`
+ * - Threads from `whatsappThreads` (filled by /api/whatsapp-webhook), with
+ *   filters (All / Unread / Open / Resolved / Assigned to me) and search.
+ * - Conversation timeline with delivery ticks, media on demand, locations
+ *   and internal notes (stored as `direction: 'note'`, never sent).
+ * - Assign to any admin, mark open / resolved, quick-reply snippets
+ *   (`whatsappSnippets`).
+ * - Composer respects Meta's 24-hour window: free-form text inside it,
+ *   approved templates outside it (switches automatically when it closes).
  *
- * Sending is delegated to /api/whatsapp-reply with the signed-in admin's Firebase token.
- * Inbound messages arrive through /api/whatsapp-webhook.
+ * Sending, read receipts and media go through /api/whatsapp-reply with the
+ * signed-in admin's Firebase token. DEV only: add ?demo=1 for sample data.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  collection,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  Timestamp,
-  updateDoc,
-} from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  MessageCircle,
-  Send,
-  Loader2,
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  Clock,
   Eye,
   EyeOff,
-  Clock,
-  AlertTriangle,
+  LayoutTemplate,
+  Loader2,
+  Lock,
+  MessageCircle,
+  RotateCcw,
+  Search,
+  Send,
+  StickyNote,
+  Trash2,
   User as UserIcon,
-  ArrowLeft,
-  MoreVertical,
+  UserPlus,
+  X,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import MessageBubble, { DeliveryTicks } from '@/components/admin/whatsapp/MessageBubble';
+import { SetupStatusButton, SetupStatusDialog, useWhatsAppSetupStatus } from '@/components/admin/whatsapp/SetupStatus';
+import { useInboxData, type Actor } from '@/components/admin/whatsapp/useInboxData';
+import { isSendableTemplate, statusStyle } from '@/components/admin/whatsapp/templateRules';
+import {
+  FILTERS,
+  avatarTone,
+  dayLabel,
+  formatCountdown,
+  formatListTime,
+  initials,
+  maskPhone,
+  matchesFilter,
+  matchesSearch,
+  millisLeft,
+  renderTemplate,
+  threadStatus,
+  type Snippet,
+  type TeamMember,
+  type TemplateMeta,
+  type Thread,
+  type ThreadFilter,
+  type ThreadMessage,
+} from '@/components/admin/whatsapp/inboxModel';
 
-interface Thread {
-  id: string;
-  phone: string;
-  contactName?: string | null;
-  lastMessage?: string;
-  lastDirection?: 'inbound' | 'outbound';
-  lastInboundAt?: Timestamp;
-  lastOutboundAt?: Timestamp;
-  replyWindowClosesAt?: Timestamp;
-  unreadCount?: number;
-  updatedAt?: Timestamp;
+const iconBtn =
+  'inline-flex h-10 w-10 flex-none items-center justify-center rounded-full text-[#54656f] transition-[background-color,transform] duration-150 hover:bg-black/5 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] dark:text-[#aebac1] dark:hover:bg-white/10';
+
+/** Re-render every 30 s so window countdowns stay current. */
+function useNow(intervalMs = 30_000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(i);
+  }, [intervalMs]);
+  return now;
 }
 
-interface ThreadMessage {
-  id: string;
-  direction: 'inbound' | 'outbound';
-  type?: string;
-  text?: string;
-  template?: { name?: string; language?: string; params?: string[] };
-  actorEmail?: string;
-  createdAt?: Timestamp;
-  providerMessageId?: string | null;
-}
-
-interface TemplateMeta {
-  id: string;
-  name: string;
-  language: string;
-  category: string;
-  paramLabels: string[];
-}
-
-const maskPhone = (p: string) => {
-  if (!p) return '';
-  if (p.length <= 4) return p;
-  return p.slice(0, p.length - 4).replace(/\d/g, '•') + p.slice(-4);
+const Avatar = ({ thread, size = 'h-12 w-12' }: { thread: Thread; size?: string }) => {
+  const ini = initials(thread.contactName);
+  return (
+    <div className={`${size} grid flex-none place-items-center rounded-full text-sm font-semibold ${avatarTone(thread.id)}`} aria-hidden>
+      {ini || <UserIcon className="h-5 w-5" />}
+    </div>
+  );
 };
-
-const formatTime = (ts?: Timestamp) => {
-  if (!ts?.toDate) return '';
-  return ts.toDate().toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' });
-};
-
-const millisLeft = (ts?: Timestamp) => {
-  if (!ts?.toDate) return 0;
-  return ts.toMillis() - Date.now();
-};
-
-const formatCountdown = (ms: number) => {
-  if (ms <= 0) return 'closed';
-  const totalMin = Math.floor(ms / 60000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return `${h}h ${m}m`;
-};
-
-const getErrorMessage = (err: unknown, fallback = 'Network error') =>
-  err instanceof Error ? err.message : fallback;
 
 const AdminWhatsApp = () => {
   const { user, userProfile } = useAuth();
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [loadingThreads, setLoadingThreads] = useState(true);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ThreadMessage[]>([]);
-  const [templates, setTemplates] = useState<TemplateMeta[]>([]);
-  const [reveal, setReveal] = useState<Record<string, boolean>>({});
-
-  // -- subscriptions --------------------------------------------------------
-  useEffect(() => {
-    const q = query(collection(db, 'whatsappThreads'), orderBy('updatedAt', 'desc'));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const next: Thread[] = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Thread, 'id'>),
-        }));
-        setThreads(next);
-        setLoadingThreads(false);
-        if (!activeId && next.length > 0) setActiveId(next[0].id);
-      },
-      (err) => {
-        console.warn('[whatsapp] threads subscribe failed', err);
-        setLoadingThreads(false);
-      },
-    );
-    return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!activeId) {
-      setMessages([]);
-      return;
-    }
-    const q = query(
-      collection(db, 'whatsappThreads', activeId, 'messages'),
-      orderBy('createdAt', 'asc'),
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setMessages(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<ThreadMessage, 'id'>),
-        })),
-      );
-    });
-    return () => unsub();
-  }, [activeId]);
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(db, 'whatsappTemplates'), orderBy('name')),
-      (snap) => {
-        setTemplates(
-          snap.docs.map((d) => ({
-            id: d.id,
-            name: (d.data().name as string) || d.id,
-            language: (d.data().language as string) || 'en_US',
-            category: (d.data().category as string) || 'utility',
-            paramLabels: (d.data().paramLabels as string[]) || [],
-          })),
-        );
-      },
-    );
-    return () => unsub();
-  }, []);
-
-  // Auto-mark active thread read.
-  useEffect(() => {
-    if (!activeId) return;
-    const t = threads.find((x) => x.id === activeId);
-    if (!t || !t.unreadCount) return;
-    updateDoc(doc(db, 'whatsappThreads', activeId), { unreadCount: 0 }).catch(() => undefined);
-  }, [activeId, threads]);
-
-  // Tick every minute so the countdown badge updates.
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const i = setInterval(() => setTick((x) => x + 1), 60_000);
-    return () => clearInterval(i);
-  }, []);
-
-  const activeThread = useMemo(
-    () => threads.find((t) => t.id === activeId) || null,
-    [threads, activeId],
+  const actor: Actor = useMemo(
+    () => ({
+      uid: user?.uid || null,
+      name: String((userProfile as { fullName?: string; username?: string } | null)?.fullName || userProfile?.username || userProfile?.email || user?.email || 'Admin'),
+      email: userProfile?.email || user?.email || null,
+    }),
+    [user, userProfile],
   );
-  const remainingMs = millisLeft(activeThread?.replyWindowClosesAt);
-  const windowOpen = remainingMs > 0;
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ThreadFilter>('all');
+  const [search, setSearch] = useState('');
+  const [setupOpen, setSetupOpen] = useState(false);
+  const data = useInboxData(actor, activeId);
+  const setup = useWhatsAppSetupStatus(data.demo);
+  const now = useNow();
+
+  // Desktop opens the newest conversation; mobile starts on the list.
+  useEffect(() => {
+    if (activeId || data.loadingThreads || !data.threads.length) return;
+    if (window.matchMedia('(min-width: 768px)').matches) setActiveId(data.threads[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.loadingThreads]);
+
+  const activeThread = useMemo(() => data.threads.find((t) => t.id === activeId) || null, [data.threads, activeId]);
+
+  // Mark as read while the conversation is on screen.
+  useEffect(() => {
+    if (!activeThread || !activeThread.unreadCount) return;
+    if (document.visibilityState !== 'visible') return;
+    data.actions.markRead(activeThread);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeThread?.id, activeThread?.unreadCount]);
+
+  const counts = useMemo(() => {
+    const c = {} as Record<ThreadFilter, number>;
+    FILTERS.forEach((f) => {
+      c[f.id] = data.threads.filter((t) => matchesFilter(t, f.id, actor.uid)).length;
+    });
+    return c;
+  }, [data.threads, actor.uid]);
+  const visible = useMemo(
+    () => data.threads.filter((t) => matchesFilter(t, filter, actor.uid) && matchesSearch(t, search)),
+    [data.threads, filter, search, actor.uid],
+  );
+  const totalUnread = data.threads.reduce((n, t) => n + ((t.unreadCount || 0) > 0 ? 1 : 0), 0);
 
   return (
-    <div className="h-[calc(100vh-138px)] min-h-[560px] overflow-hidden border border-[#d1d7db] bg-[#efeae2] shadow-sm md:rounded-[3px] md:bg-[#111b21]">
-      <div className="grid h-full grid-cols-1 md:grid-cols-[360px_1fr]">
-      {/* Threads list */}
-      <aside className={`${activeThread ? 'hidden md:flex' : 'flex'} bg-white flex-col overflow-hidden md:border-r md:border-[#d1d7db]`}>
-        <header className="h-[59px] px-4 bg-[#f0f2f5] border-b border-[#d1d7db] flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-[#00a884] grid place-items-center">
-            <MessageCircle className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-semibold text-[#111b21] text-base">WhatsApp</span>
-          <span className="ml-auto text-xs text-[#667781]">{threads.length}</span>
-        </header>
-        {loadingThreads ? (
-          <div className="flex-1 grid place-items-center text-xs text-gray-500 gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading…
-          </div>
-        ) : threads.length === 0 ? (
-          <div className="flex-1 grid place-items-center text-xs text-gray-500 px-6 text-center">
-            No WhatsApp conversations yet. Inbound messages will appear here once Meta
-            forwards them through the webhook.
-          </div>
-        ) : (
-          <ul className="flex-1 overflow-auto divide-y divide-[#e9edef] bg-white">
-            {threads.map((t) => {
-              const unread = (t.unreadCount || 0) > 0;
-              const ms = millisLeft(t.replyWindowClosesAt);
-              const open = ms > 0;
-              return (
-                <li key={t.id}>
-                  <button
-                    onClick={() => setActiveId(t.id)}
-                    className={`w-full text-left px-3 py-3 text-xs hover:bg-[#f5f6f6] transition-colors ${
-                      activeId === t.id ? 'bg-[#f0f2f5]' : ''
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="h-12 w-12 flex-none rounded-full bg-[#dfe5e7] grid place-items-center">
-                        <UserIcon className="h-5 w-5 text-[#667781]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-[#111b21] text-[15px] truncate">
-                            {t.contactName || maskPhone(t.phone)}
-                          </span>
-                          <span className={`text-[11px] ${unread ? 'text-[#00a884]' : 'text-[#667781]'}`}>
-                            {formatTime(t.updatedAt)}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex items-center gap-2">
-                          <p className="min-w-0 flex-1 text-[13px] text-[#667781] truncate">
-                            {t.lastDirection === 'outbound' ? 'You: ' : ''}
-                            {t.lastMessage || 'No messages yet'}
-                          </p>
-                          {unread && (
-                            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#00a884] px-1.5 text-[11px] font-medium text-white">
-                              {t.unreadCount}
-                            </span>
-                          )}
-                        </div>
-                      <span
-                        className={`mt-2 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${
-                          open
-                            ? 'bg-[#d9fdd3] text-[#128c7e]'
-                            : 'bg-[#fff3cd] text-[#8a6d1f]'
-                        }`}
-                      >
-                        <Clock className="h-2.5 w-2.5" />
-                        {open ? formatCountdown(ms) : 'template-only'}
-                      </span>
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </aside>
-
-      {/* Thread detail */}
-      <section className={`${activeThread ? 'flex' : 'hidden md:flex'} min-w-0 flex-col overflow-hidden bg-[#efeae2]`}>
-        {!activeThread ? (
-          <div className="flex-1 grid place-items-center text-sm text-gray-500">
-            Select a conversation to view messages.
-          </div>
-        ) : (
-          <>
-            <header className="h-[59px] px-3 md:px-4 bg-[#f0f2f5] border-b border-[#d1d7db] flex items-center gap-3">
-              <button onClick={() => setActiveId(null)} className="md:hidden p-1 text-[#54656f]" aria-label="Back to chats">
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <div className="h-10 w-10 rounded-full bg-[#dfe5e7] grid place-items-center">
-                <UserIcon className="h-5 w-5 text-[#667781]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[15px] font-medium text-[#111b21]">
-                  {activeThread.contactName || 'Unknown'}
-                </div>
-                <div className="text-xs text-[#667781] flex items-center gap-2">
-                  <span className="font-mono">
-                    {reveal[activeThread.id]
-                      ? activeThread.phone
-                      : maskPhone(activeThread.phone)}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setReveal((r) => ({ ...r, [activeThread.id]: !r[activeThread.id] }))
-                    }
-                    className="text-[#008069] hover:underline inline-flex items-center gap-0.5"
-                    title="Toggle phone visibility"
-                  >
-                    {reveal[activeThread.id] ? (
-                      <EyeOff className="h-3 w-3" />
-                    ) : (
-                      <Eye className="h-3 w-3" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <span
-                key={tick /* force re-render on tick */}
-                className={`hidden sm:inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full ${
-                  windowOpen
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}
-              >
-                <Clock className="h-3 w-3" />
-                {windowOpen
-                  ? `Free-form ${formatCountdown(remainingMs)}`
-                  : 'Free-form window closed'}
-              </span>
-              <MoreVertical className="h-5 w-5 text-[#54656f]" />
-            </header>
-
-            <div className="flex-1 overflow-auto px-3 py-4 md:px-10 md:py-6 bg-[#efeae2] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.36)_0_1px,transparent_1px),radial-gradient(circle_at_80%_40%,rgba(17,27,33,0.08)_0_1px,transparent_1px)] [background-size:24px_24px]">
-              {messages.length === 0 ? (
-                <div className="text-center text-xs text-gray-500 py-12">
-                  No messages in this thread yet.
-                </div>
-              ) : (
-                <ul className="space-y-1.5">
-                  {messages.map((m) => (
-                    <li
-                      key={m.id}
-                      className={`flex ${
-                        m.direction === 'outbound' ? 'justify-end' : 'justify-start'
-                      }`}
-                    >
-                      <div
-                        className={`max-w-[86%] md:max-w-[72%] rounded-lg px-3 py-2 text-sm shadow-sm ${
-                          m.direction === 'outbound'
-                            ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none'
-                            : 'bg-white text-[#111b21] rounded-tl-none'
-                        }`}
-                      >
-                        {m.type === 'template' && m.template ? (
-                          <>
-                            <div className="text-[10px] uppercase tracking-wide opacity-75 mb-1">
-                              Template · {m.template.name}
-                            </div>
-                            {m.template.params && m.template.params.length > 0 && (
-                              <ol className="text-xs list-decimal pl-4 opacity-90">
-                                {m.template.params.map((p, i) => (
-                                  <li key={i}>{p}</li>
-                                ))}
-                              </ol>
-                            )}
-                          </>
-                        ) : (
-                          <p className="whitespace-pre-wrap">{m.text || '—'}</p>
-                        )}
-                        <div className="text-[10px] mt-1 text-[#667781]">
-                          {formatTime(m.createdAt)}
-                          {m.actorEmail ? ` · ${m.actorEmail}` : ''}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+    <div className="-m-4 h-[calc(100dvh-64px)] min-h-[520px] overflow-hidden border-[#d1d7db] bg-[#efeae2] dark:border-[#2a3942] dark:bg-[#0b141a] lg:m-0 lg:h-[calc(100dvh-112px)] lg:rounded-xl lg:border lg:shadow-sm">
+      <div className="grid h-full grid-cols-1 md:grid-cols-[minmax(300px,380px)_1fr]">
+        {/* ------------------------------------------------ thread list */}
+        <aside className={`${activeThread ? 'hidden md:flex' : 'flex'} min-h-0 flex-col overflow-hidden bg-white dark:bg-[#111b21] md:border-r md:border-[#d1d7db] md:dark:border-[#2a3942]`}>
+          <header className="flex h-[60px] flex-none items-center gap-2 bg-[#f0f2f5] px-3 dark:bg-[#202c33]">
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#00a884]" aria-hidden>
+              <MessageCircle className="h-5 w-5 text-white" />
             </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[16px] font-semibold leading-tight text-[#111b21] dark:text-[#e9edef]">WhatsApp inbox</h1>
+              <p className="text-[12px] leading-tight text-[#667781] dark:text-[#8696a0]" aria-live="polite">
+                {data.demo ? 'Demo data · ' : ''}
+                {totalUnread ? `${totalUnread} unread` : 'All caught up'}
+              </p>
+            </div>
+            <SetupStatusButton missing={setup.missing.length} onClick={() => setSetupOpen(true)} />
+          </header>
 
-            <ReplyComposer
-              phone={activeThread.phone}
-              windowOpen={windowOpen}
-              templates={templates}
-              user={user}
-              actorUid={user?.uid || null}
-              actorEmail={userProfile?.email || user?.email || null}
+          {setup.missing.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSetupOpen(true)}
+              className="flex flex-none items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-left text-[13px] text-amber-900 transition-colors duration-150 hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/15"
+            >
+              <AlertTriangle className="h-4 w-4 flex-none" aria-hidden />
+              <span className="flex-1">
+                Setup incomplete: {setup.missing.length} item{setup.missing.length === 1 ? '' : 's'} missing.
+              </span>
+              <span className="font-medium underline underline-offset-2">View</span>
+            </button>
+          )}
+
+          <div className="flex-none space-y-2 border-b border-[#e9edef] px-3 py-2 dark:border-[#2a3942]">
+            <label className="relative block">
+              <span className="sr-only">Search by name or phone</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667781] dark:text-[#8696a0]" aria-hidden />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name or phone"
+                className="h-10 w-full rounded-lg bg-[#f0f2f5] pl-9 pr-9 text-[14px] text-[#111b21] placeholder:text-[#667781] focus:outline-none focus:ring-2 focus:ring-[#00a884]/50 dark:bg-[#202c33] dark:text-[#e9edef] dark:placeholder:text-[#8696a0]"
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch('')} className="absolute right-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[#667781] hover:bg-black/5 dark:text-[#8696a0] dark:hover:bg-white/10" aria-label="Clear search">
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              )}
+            </label>
+            <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none]" role="tablist" aria-label="Filter conversations">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === f.id}
+                  onClick={() => setFilter(f.id)}
+                  className={`inline-flex h-8 flex-none items-center gap-1 rounded-full px-3 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] ${
+                    filter === f.id
+                      ? 'bg-[#d9fdd3] font-medium text-[#008069] dark:bg-[#0a332c] dark:text-[#00a884]'
+                      : 'bg-[#f0f2f5] text-[#54656f] hover:bg-[#e9edef] dark:bg-[#202c33] dark:text-[#aebac1] dark:hover:bg-[#2a3942]'
+                  }`}
+                >
+                  {f.label}
+                  {counts[f.id] > 0 && f.id !== 'all' && <span className="tabular-nums opacity-80">{counts[f.id]}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {data.loadingThreads ? (
+            <div className="grid flex-1 place-items-center text-sm text-[#667781] dark:text-[#8696a0]">
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading conversations…
+              </span>
+            </div>
+          ) : data.threadsError ? (
+            <div className="grid flex-1 place-items-center px-6 text-center text-sm text-red-700 dark:text-red-300">{data.threadsError}</div>
+          ) : data.threads.length === 0 ? (
+            <div className="grid flex-1 place-items-center px-8 text-center">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-[#111b21] dark:text-[#e9edef]">No conversations yet</p>
+                <p className="text-[13px] text-[#667781] dark:text-[#8696a0]">
+                  When a customer messages your WhatsApp business number, it appears here.
+                </p>
+                <button type="button" onClick={() => setSetupOpen(true)} className="text-[13px] font-medium text-[#008069] underline underline-offset-2 dark:text-[#00a884]">
+                  Check WhatsApp setup
+                </button>
+              </div>
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="grid flex-1 place-items-center px-8 text-center text-[13px] text-[#667781] dark:text-[#8696a0]">
+              No conversations match {search ? `"${search}"` : 'this filter'}.
+            </div>
+          ) : (
+            <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {visible.map((t) => (
+                <ThreadRow key={t.id} t={t} active={t.id === activeId} now={now} myUid={actor.uid} onOpen={() => setActiveId(t.id)} />
+              ))}
+            </ul>
+          )}
+        </aside>
+
+        {/* ------------------------------------------------ conversation */}
+        <section className={`${activeThread ? 'flex' : 'hidden md:flex'} min-h-0 min-w-0 flex-col overflow-hidden`}>
+          {!activeThread ? (
+            <div className="grid flex-1 place-items-center border-b-[6px] border-[#25d366] bg-[#f0f2f5] px-8 text-center dark:bg-[#222e35]">
+              <div className="max-w-sm space-y-2">
+                <MessageCircle className="mx-auto h-10 w-10 text-[#8696a0]" aria-hidden />
+                <p className="text-lg font-light text-[#41525d] dark:text-[#e9edef]">Pick a conversation</p>
+                <p className="text-[13px] text-[#667781] dark:text-[#8696a0]">Replies go out from your WhatsApp business number. Internal notes stay inside the team.</p>
+              </div>
+            </div>
+          ) : (
+            <Conversation
+              key={activeThread.id}
+              thread={activeThread}
+              messages={data.messages}
+              loading={data.loadingMessages}
+              templates={data.templates}
+              team={data.team}
+              snippets={data.snippets}
+              actor={actor}
+              now={now}
+              demo={data.demo}
+              actions={data.actions}
+              onBack={() => setActiveId(null)}
             />
-          </>
-        )}
-      </section>
+          )}
+        </section>
       </div>
+      <SetupStatusDialog open={setupOpen} onOpenChange={setSetupOpen} status={setup} />
     </div>
   );
 };
 
 export default AdminWhatsApp;
 
-// ---------------------------------------------------------------------------
-const ReplyComposer = ({
-  phone,
-  windowOpen,
+// ===========================================================================
+const ThreadRow = ({ t, active, now, myUid, onOpen }: { t: Thread; active: boolean; now: number; myUid: string | null; onOpen: () => void }) => {
+  const unread = (t.unreadCount || 0) > 0;
+  const ms = millisLeft(t.replyWindowClosesAt, now);
+  const resolved = threadStatus(t) === 'resolved';
+  const assignedName = t.assignedTo ? (t.assignedTo.uid === myUid ? 'You' : t.assignedTo.name) : null;
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-current={active ? 'true' : undefined}
+        className={`flex w-full items-center gap-3 px-3 text-left transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#00a884] ${
+          active ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : 'hover:bg-[#f5f6f6] dark:hover:bg-[#202c33]'
+        }`}
+      >
+        <Avatar thread={t} />
+        <div className="min-w-0 flex-1 border-b border-[#e9edef] py-3 dark:border-[#222d34]">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className={`truncate text-[16px] text-[#111b21] dark:text-[#e9edef] ${unread ? 'font-semibold' : ''}`}>{t.contactName || maskPhone(t.phone)}</span>
+            <span className={`flex-none text-[12px] ${unread ? 'font-medium text-[#008069] dark:text-[#00a884]' : 'text-[#667781] dark:text-[#8696a0]'}`}>{formatListTime(t.updatedAt)}</span>
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            {t.lastDirection === 'outbound' && <DeliveryTicks status={t.lastStatus || 'sent'} />}
+            <p className={`min-w-0 flex-1 truncate text-[14px] ${unread ? 'text-[#111b21] dark:text-[#e9edef]' : 'text-[#667781] dark:text-[#8696a0]'}`}>
+              {t.lastMessage || 'No messages yet'}
+            </p>
+            {unread && (
+              <span className="inline-flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-[#00a884] px-1.5 text-[11px] font-semibold tabular-nums text-white dark:text-[#111b21]">
+                {t.unreadCount}
+                <span className="sr-only"> unread</span>
+              </span>
+            )}
+          </div>
+          {(assignedName || resolved || ms <= 2 * 3600_000) && (
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              {resolved && <Tag className="bg-[#e7f6ec] text-[#0f6b3a] dark:bg-[#123d2a] dark:text-[#8ee3b0]">Resolved</Tag>}
+              {assignedName && <Tag className="bg-[#eef1f3] text-[#41525d] dark:bg-[#202c33] dark:text-[#aebac1]">{assignedName}</Tag>}
+              {!resolved && ms > 0 && ms <= 2 * 3600_000 && (
+                <Tag className="bg-[#fff3cd] text-[#7a5a00] dark:bg-[#3d3216] dark:text-[#f0d27a]">
+                  <Clock className="h-3 w-3" aria-hidden /> {formatCountdown(ms)} left
+                </Tag>
+              )}
+              {!resolved && ms <= 0 && <Tag className="bg-[#eef1f3] text-[#54656f] dark:bg-[#202c33] dark:text-[#8696a0]">Template only</Tag>}
+            </div>
+          )}
+        </div>
+      </button>
+    </li>
+  );
+};
+
+const Tag = ({ className, children }: { className: string; children: React.ReactNode }) => (
+  <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${className}`}>{children}</span>
+);
+
+// ===========================================================================
+type Actions = ReturnType<typeof useInboxData>['actions'];
+
+const Conversation = ({
+  thread,
+  messages,
+  loading,
   templates,
-  user,
-  actorUid,
-  actorEmail,
+  team,
+  snippets,
+  actor,
+  now,
+  demo,
+  actions,
+  onBack,
 }: {
-  phone: string;
-  windowOpen: boolean;
+  thread: Thread;
+  messages: ThreadMessage[];
+  loading: boolean;
   templates: TemplateMeta[];
-  user: ReturnType<typeof useAuth>['user'];
-  actorUid: string | null;
-  actorEmail: string | null;
+  team: TeamMember[];
+  snippets: Snippet[];
+  actor: Actor;
+  now: number;
+  demo: boolean;
+  actions: Actions;
+  onBack: () => void;
 }) => {
-  const [mode, setMode] = useState<'text' | 'template'>(windowOpen ? 'text' : 'template');
+  const [reveal, setReveal] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const remainingMs = millisLeft(thread.replyWindowClosesAt, now);
+  const windowOpen = remainingMs > 0;
+  const resolved = threadStatus(thread) === 'resolved';
+
+  // Keep the newest message in view (no smooth scroll: this runs often).
+  const stickToBottom = useRef(true);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickToBottom.current = true;
+    el.scrollTop = el.scrollHeight;
+  }, [messages.length, thread.id]);
+  // Stay pinned to the newest message when the box resizes (composer grows,
+  // media loads, keyboard opens) unless the admin scrolled up to read.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const onScroll = () => {
+      stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    };
+    const ro = new ResizeObserver(() => {
+      if (stickToBottom.current) el.scrollTop = el.scrollHeight;
+    });
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('scroll', onScroll);
+    };
+  }, [thread.id, loading]);
+
+  const toggleResolved = async () => {
+    try {
+      await actions.setStatus(thread.id, resolved ? 'open' : 'resolved');
+      toast.success(resolved ? 'Conversation reopened' : 'Marked as resolved');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update the conversation');
+    }
+  };
+  const assignTo = async (m: TeamMember | null) => {
+    try {
+      await actions.assign(thread.id, m);
+      toast.success(m ? `Assigned to ${m.uid === actor.uid ? 'you' : m.name}` : 'Unassigned');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not assign');
+    }
+  };
+
+  // Group messages by day for separators.
+  const groups = useMemo(() => {
+    const out: Array<{ label: string; items: ThreadMessage[] }> = [];
+    messages.forEach((m) => {
+      const label = dayLabel(m.createdAt);
+      const last = out[out.length - 1];
+      if (last && last.label === label) last.items.push(m);
+      else out.push({ label, items: [m] });
+    });
+    return out;
+  }, [messages]);
+
+  const assignee = thread.assignedTo;
+  return (
+    <>
+      <header className="flex h-[60px] flex-none items-center gap-1.5 bg-[#f0f2f5] px-2 dark:bg-[#202c33] md:gap-3 md:px-4">
+        <button type="button" onClick={onBack} className={`${iconBtn} md:hidden`} aria-label="Back to conversations">
+          <ArrowLeft className="h-5 w-5" aria-hidden />
+        </button>
+        <Avatar thread={thread} size="h-10 w-10" />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-[16px] font-medium leading-tight text-[#111b21] dark:text-[#e9edef]">{thread.contactName || 'Unknown contact'}</h2>
+          <div className="flex items-center gap-1 text-[12.5px] leading-tight text-[#667781] dark:text-[#8696a0]">
+            <span className="truncate font-mono">{reveal ? thread.phone : maskPhone(thread.phone)}</span>
+            <button
+              type="button"
+              onClick={() => setReveal((r) => !r)}
+              className="inline-flex h-7 w-7 flex-none items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
+              aria-label={reveal ? 'Hide phone number' : 'Show phone number'}
+              aria-pressed={reveal}
+            >
+              {reveal ? <EyeOff className="h-3.5 w-3.5" aria-hidden /> : <Eye className="h-3.5 w-3.5" aria-hidden />}
+            </button>
+          </div>
+        </div>
+
+        <span
+          className={`hidden flex-none items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium lg:inline-flex ${
+            windowOpen ? 'bg-[#d9fdd3] text-[#0b6b52] dark:bg-[#0a332c] dark:text-[#5fd3b0]' : 'bg-[#fff3cd] text-[#7a5a00] dark:bg-[#3d3216] dark:text-[#f0d27a]'
+          }`}
+          title="Meta allows free-form replies for 24 hours after the customer's last message."
+        >
+          <Clock className="h-3.5 w-3.5" aria-hidden />
+          {windowOpen ? `Reply window ${formatCountdown(remainingMs)}` : 'Window closed'}
+        </span>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-10 flex-none items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium text-[#54656f] transition-[background-color,transform] duration-150 hover:bg-black/5 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] dark:text-[#aebac1] dark:hover:bg-white/10"
+              aria-label={assignee ? `Assigned to ${assignee.name}. Change assignee` : 'Assign conversation'}
+            >
+              {assignee ? (
+                <span className={`grid h-7 w-7 place-items-center rounded-full text-[11px] font-semibold ${avatarTone(assignee.uid)}`} aria-hidden>
+                  {initials(assignee.name) || '?'}
+                </span>
+              ) : (
+                <UserPlus className="h-5 w-5" aria-hidden />
+              )}
+              <span className="hidden max-w-[8rem] truncate md:inline">{assignee ? (assignee.uid === actor.uid ? 'You' : assignee.name) : 'Assign'}</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuLabel>Assign to</DropdownMenuLabel>
+            {actor.uid && (
+              <DropdownMenuItem onSelect={() => assignTo({ uid: actor.uid!, name: actor.name, email: actor.email })}>
+                <span className="flex-1">Me</span>
+                {assignee?.uid === actor.uid && <Check className="h-4 w-4" aria-hidden />}
+              </DropdownMenuItem>
+            )}
+            {team
+              .filter((m) => m.uid !== actor.uid)
+              .map((m) => (
+                <DropdownMenuItem key={m.uid} onSelect={() => assignTo(m)}>
+                  <span className="min-w-0 flex-1 truncate">{m.name}</span>
+                  {assignee?.uid === m.uid && <Check className="h-4 w-4" aria-hidden />}
+                </DropdownMenuItem>
+              ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled={!assignee} onSelect={() => assignTo(null)}>
+              Unassign
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <button
+          type="button"
+          onClick={toggleResolved}
+          className={`inline-flex h-10 flex-none items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium transition-[background-color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] md:px-3 ${
+            resolved
+              ? 'text-[#54656f] hover:bg-black/5 dark:text-[#aebac1] dark:hover:bg-white/10'
+              : 'bg-[#008069] text-white hover:bg-[#017561] dark:bg-[#00a884] dark:text-[#111b21] dark:hover:bg-[#06cf9c]'
+          }`}
+          aria-label={resolved ? 'Reopen conversation' : 'Mark conversation as resolved'}
+        >
+          {resolved ? <RotateCcw className="h-4 w-4" aria-hidden /> : <CheckCircle2 className="h-4 w-4" aria-hidden />}
+          <span className="hidden md:inline">{resolved ? 'Reopen' : 'Resolve'}</span>
+        </button>
+      </header>
+
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#efeae2] px-3 py-3 dark:bg-[#0b141a] md:px-[6%] md:py-5"
+        role="log"
+        aria-label={`Messages with ${thread.contactName || 'customer'}`}
+      >
+        {loading ? (
+          <div className="grid h-full place-items-center text-sm text-[#667781] dark:text-[#8696a0]">
+            <Loader2 className="h-5 w-5 animate-spin" aria-label="Loading messages" />
+          </div>
+        ) : messages.length === 0 ? (
+          <p className="py-12 text-center text-[13px] text-[#667781] dark:text-[#8696a0]">No messages in this conversation yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {groups.map((g) => (
+              <div key={g.label}>
+                <div className="sticky top-0 z-[1] mb-2 flex justify-center">
+                  <span className="rounded-lg bg-white/95 px-3 py-1 text-[12px] text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] dark:bg-[#182229] dark:text-[#8696a0]">{g.label}</span>
+                </div>
+                <ul className="space-y-1.5">
+                  {g.items.map((m) => (
+                    <MessageBubble key={m.id} m={m} demo={demo} />
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Composer thread={thread} windowOpen={windowOpen} remainingMs={remainingMs} templates={templates} snippets={snippets} actions={actions} />
+    </>
+  );
+};
+
+// ===========================================================================
+type Mode = 'reply' | 'template' | 'note';
+
+const Composer = ({
+  thread,
+  windowOpen,
+  remainingMs,
+  templates,
+  snippets,
+  actions,
+}: {
+  thread: Thread;
+  windowOpen: boolean;
+  remainingMs: number;
+  templates: TemplateMeta[];
+  snippets: Snippet[];
+  actions: Actions;
+}) => {
+  const [mode, setMode] = useState<Mode>(windowOpen ? 'reply' : 'template');
   const [text, setText] = useState('');
+  const [note, setNote] = useState('');
   const [tplId, setTplId] = useState('');
-  const [tplParams, setTplParams] = useState<string[]>([]);
+  const [params, setParams] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  // Keep mode in sync with the window: outside window force template.
+  // When the 24 h window closes, free-form replies are no longer allowed.
   useEffect(() => {
-    if (!windowOpen) setMode('template');
-  }, [windowOpen]);
+    if (!windowOpen && mode === 'reply') setMode('template');
+  }, [windowOpen, mode]);
 
   const tpl = useMemo(() => templates.find((t) => t.id === tplId) || null, [templates, tplId]);
   useEffect(() => {
-    if (!tpl) {
-      setTplParams([]);
-      return;
-    }
-    setTplParams((prev) => {
-      const next = [...prev];
-      while (next.length < tpl.paramLabels.length) next.push('');
-      next.length = tpl.paramLabels.length;
-      return next;
-    });
+    setParams((prev) => Array.from({ length: tpl?.paramLabels.length || 0 }, (_, i) => prev[i] || ''));
   }, [tpl]);
 
-  const handleSend = async () => {
-    if (mode === 'text' && !text.trim()) {
-      toast.error('Type a message.');
-      return;
-    }
-    if (mode === 'template' && !tpl) {
-      toast.error('Pick a template.');
-      return;
-    }
-    setSending(true);
+  // Auto-grow the textarea up to ~6 lines.
+  const value = mode === 'note' ? note : text;
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  }, [value, mode]);
+
+  const submit = async () => {
+    if (sending) return;
     try {
-      const idToken = await user?.getIdToken();
-      if (!idToken) {
-        toast.error('Please sign in again before replying.');
-        setSending(false);
-        return;
-      }
-      const resp = await fetch('/api/whatsapp-reply', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          phone,
-          ...(mode === 'text'
-            ? { text: text.trim() }
-            : {
-                template: {
-                  name: tpl!.name,
-                  language: tpl!.language,
-                  params: tplParams,
-                },
-              }),
-          actorUid,
-          actorEmail,
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok || !data.ok) {
-        toast.error(data?.error || 'Send failed');
-      } else {
-        toast.success('Reply sent');
+      if (mode === 'note') {
+        if (!note.trim()) return;
+        setSending(true);
+        await actions.addNote(thread.id, note.trim());
+        setNote('');
+        toast.success('Note added. Only your team can see it.');
+      } else if (mode === 'reply') {
+        if (!text.trim()) return;
+        setSending(true);
+        await actions.send(thread, { text: text.trim() });
         setText('');
-        if (mode === 'template') setTplParams((p) => p.map(() => ''));
-        taRef.current?.focus();
+      } else {
+        if (!tpl) {
+          toast.error('Pick a template first.');
+          return;
+        }
+        const missing = params.findIndex((p) => !p.trim());
+        if (missing >= 0) {
+          toast.error(`Fill in "${tpl.paramLabels[missing] || `Variable ${missing + 1}`}".`);
+          return;
+        }
+        setSending(true);
+        await actions.send(thread, { template: tpl, params: params.map((p) => p.trim()) });
+        setParams((p) => p.map(() => ''));
+        toast.success('Template sent');
       }
-    } catch (err: unknown) {
-      toast.error(getErrorMessage(err));
+      taRef.current?.focus();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Send failed');
     } finally {
       setSending(false);
     }
   };
 
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends on desktop; on touch screens Enter adds a new line.
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia('(pointer: fine)').matches) {
+      e.preventDefault();
+      submit();
+    }
+  };
+
+  const insertSnippet = (s: Snippet) => {
+    if (mode === 'note') setNote((n) => (n ? `${n}\n${s.text}` : s.text));
+    else {
+      if (!windowOpen) {
+        toast.error('The reply window is closed. Quick replies can only be sent inside it.');
+        return;
+      }
+      setMode('reply');
+      setText((t) => (t ? `${t}\n${s.text}` : s.text));
+    }
+    requestAnimationFrame(() => taRef.current?.focus());
+  };
+
+  const modes: Array<{ id: Mode; label: string; Icon: typeof Send; disabled?: boolean }> = [
+    { id: 'reply', label: 'Reply', Icon: Send, disabled: !windowOpen },
+    { id: 'template', label: 'Template', Icon: LayoutTemplate },
+    { id: 'note', label: 'Note', Icon: StickyNote },
+  ];
+  const sendable = templates.filter((t) => isSendableTemplate(t.status));
+
   return (
-    <div className="border-t border-[#d1d7db] px-3 py-2 bg-[#f0f2f5] space-y-2">
-      <div className="flex items-center gap-2">
-        <div className="ml-auto inline-flex rounded-full border border-[#d1d7db] bg-white overflow-hidden text-[11px]">
-          <button
-            disabled={!windowOpen}
-            onClick={() => setMode('text')}
-            className={`px-2 py-1 ${
-              mode === 'text'
-                ? 'bg-[#008069] text-white'
-                : 'bg-white text-[#54656f] disabled:opacity-50'
-            }`}
-            title={!windowOpen ? 'Free-form window closed' : ''}
-          >
-            Text
-          </button>
-          <button
-            onClick={() => setMode('template')}
-            className={`px-2 py-1 ${
-              mode === 'template' ? 'bg-[#008069] text-white' : 'bg-white text-[#54656f]'
-            }`}
-          >
-            Template
-          </button>
-        </div>
-      </div>
-
-      {!windowOpen && (
-        <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 flex items-start gap-1">
-          <AlertTriangle className="h-3 w-3 mt-0.5" />
-          <span>
-            Free-form window closed. Meta requires an approved template until the customer
-            messages again.
-          </span>
-        </div>
-      )}
-
-      {mode === 'text' ? (
-        <textarea
-          ref={taRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={2}
-          maxLength={1000}
-          placeholder="Type your reply…"
-          className="w-full px-4 py-2.5 border-0 rounded-lg text-sm resize-none focus:outline-none bg-white text-[#111b21] placeholder:text-[#667781]"
-        />
-      ) : (
-        <div className="space-y-2">
-          <select
-            value={tplId}
-            onChange={(e) => setTplId(e.target.value)}
-            className="w-full px-3 py-2 border border-[#d1d7db] rounded-lg text-sm bg-white"
-          >
-            <option value="">Pick a template…</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} · {t.language} · {t.category}
-              </option>
-            ))}
-          </select>
-          {tpl?.paramLabels.map((label, idx) => (
-            <input
-              key={idx}
-              value={tplParams[idx] || ''}
-              onChange={(e) => {
-                const next = [...tplParams];
-                next[idx] = e.target.value;
-                setTplParams(next);
-              }}
-              placeholder={`{{${idx + 1}}} ${label}`}
-              className="w-full px-3 py-1.5 border border-[#d1d7db] rounded-lg text-xs bg-white"
-            />
+    <div className="flex-none border-t border-[#d1d7db] bg-[#f0f2f5] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 dark:border-[#2a3942] dark:bg-[#202c33] md:px-4">
+      {/* window state */}
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-full bg-white p-0.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] dark:bg-[#111b21]" role="tablist" aria-label="Composer mode">
+          {modes.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="tab"
+              aria-selected={mode === m.id}
+              disabled={m.disabled}
+              onClick={() => setMode(m.id)}
+              title={m.disabled ? 'The 24-hour reply window is closed. Use a template.' : undefined}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] disabled:cursor-not-allowed disabled:opacity-40 ${
+                mode === m.id
+                  ? m.id === 'note'
+                    ? 'bg-[#f5d76e] text-[#4a3b00]'
+                    : 'bg-[#008069] text-white dark:bg-[#00a884] dark:text-[#111b21]'
+                  : 'text-[#54656f] hover:bg-black/5 dark:text-[#aebac1] dark:hover:bg-white/10'
+              }`}
+            >
+              <m.Icon className="h-3.5 w-3.5" aria-hidden />
+              {m.label}
+            </button>
           ))}
         </div>
+        <span
+          className={`ml-auto inline-flex items-center gap-1 text-[12px] ${
+            !windowOpen ? 'text-[#7a5a00] dark:text-[#f0d27a]' : remainingMs < 2 * 3600_000 ? 'text-[#7a5a00] dark:text-[#f0d27a]' : 'text-[#667781] dark:text-[#8696a0]'
+          }`}
+          aria-live="polite"
+        >
+          <Clock className="h-3.5 w-3.5" aria-hidden />
+          {windowOpen ? `${formatCountdown(remainingMs)} left to reply freely` : 'Template only'}
+        </span>
+      </div>
+
+      {!windowOpen && mode !== 'note' && (
+        <p className="mb-2 flex items-start gap-1.5 rounded-lg bg-[#fff3cd] px-3 py-2 text-[12.5px] text-[#5c4400] dark:bg-[#3d3216] dark:text-[#f0d27a]">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
+          More than 24 hours since the customer's last message. Meta only allows approved templates until they write again.
+        </p>
       )}
 
-      <div className="flex justify-end">
-        <button
-          onClick={handleSend}
-          disabled={sending}
-          className="inline-flex items-center gap-1.5 bg-[#008069] hover:bg-[#017561] disabled:bg-gray-300 text-white text-sm font-medium px-4 py-2 rounded-full"
-        >
-          {sending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Send className="h-3.5 w-3.5" />
+      {mode === 'template' ? (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <label className="sr-only" htmlFor="wa-template">Template</label>
+            <select
+              id="wa-template"
+              value={tplId}
+              onChange={(e) => setTplId(e.target.value)}
+              className="h-11 min-w-0 flex-1 rounded-lg border-0 bg-white px-3 text-[14px] text-[#111b21] focus:outline-none focus:ring-2 focus:ring-[#00a884]/50 dark:bg-[#2a3942] dark:text-[#e9edef]"
+            >
+              <option value="">{sendable.length ? 'Pick an approved template…' : 'No approved templates yet'}</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id} disabled={!isSendableTemplate(t.status)}>
+                  {t.name} · {t.language}
+                  {!isSendableTemplate(t.status) ? ` (${statusStyle(t.status).label})` : ''}
+                </option>
+              ))}
+            </select>
+            <SendButton onClick={submit} sending={sending} disabled={!tpl} label="Send template" />
+          </div>
+          {tpl && tpl.paramLabels.length > 0 && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {tpl.paramLabels.map((label, i) => (
+                <input
+                  key={i}
+                  value={params[i] || ''}
+                  onChange={(e) => setParams((p) => p.map((x, j) => (j === i ? e.target.value : x)))}
+                  placeholder={`{{${i + 1}}} ${label}`}
+                  aria-label={`${label} (variable ${i + 1})`}
+                  className="h-10 rounded-lg border-0 bg-white px-3 text-[14px] text-[#111b21] placeholder:text-[#667781] focus:outline-none focus:ring-2 focus:ring-[#00a884]/50 dark:bg-[#2a3942] dark:text-[#e9edef] dark:placeholder:text-[#8696a0]"
+                />
+              ))}
+            </div>
           )}
-          Send
-        </button>
-      </div>
+          {tpl?.bodyText && (
+            <p className="line-clamp-3 rounded-lg bg-white/70 px-3 py-2 text-[13px] text-[#41525d] dark:bg-[#111b21]/60 dark:text-[#aebac1]">
+              {renderTemplate(tpl.bodyText, params)}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-end gap-2">
+          <SnippetsPopover snippets={snippets} onInsert={insertSnippet} currentText={value} onAdd={actions.addSnippet} onDelete={actions.deleteSnippet} />
+          <div className={`flex min-w-0 flex-1 items-end rounded-lg ${mode === 'note' ? 'bg-[#fff6d6] ring-1 ring-[#f5d76e] dark:bg-[#3a3418] dark:ring-[#8a7420]/60' : 'bg-white dark:bg-[#2a3942]'}`}>
+            {mode === 'note' && <Lock className="mb-3 ml-3 h-4 w-4 flex-none text-[#7a6200] dark:text-[#d9c46e]" aria-hidden />}
+            <label htmlFor="wa-composer" className="sr-only">{mode === 'note' ? 'Internal note' : 'Message'}</label>
+            <textarea
+              id="wa-composer"
+              ref={taRef}
+              value={value}
+              onChange={(e) => (mode === 'note' ? setNote(e.target.value) : setText(e.target.value))}
+              onKeyDown={onKeyDown}
+              rows={1}
+              maxLength={4096}
+              placeholder={mode === 'note' ? 'Write a note for your team (not sent to the customer)' : 'Type a message'}
+              className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-3 py-[11px] text-[15px] leading-[1.4] text-[#111b21] placeholder:text-[#667781] focus:outline-none dark:text-[#e9edef] dark:placeholder:text-[#8696a0]"
+            />
+          </div>
+          <SendButton onClick={submit} sending={sending} disabled={!value.trim()} label={mode === 'note' ? 'Add note' : 'Send reply'} note={mode === 'note'} />
+        </div>
+      )}
     </div>
+  );
+};
+
+const SendButton = ({ onClick, sending, disabled, label, note }: { onClick: () => void; sending: boolean; disabled?: boolean; label: string; note?: boolean }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={sending || disabled}
+    aria-label={label}
+    className={`inline-flex h-11 w-11 flex-none items-center justify-center rounded-full transition-[background-color,transform,opacity] duration-150 active:scale-[0.95] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#00a884] dark:focus-visible:ring-offset-[#202c33] ${
+      note ? 'bg-[#e0b400] text-[#2b2200] hover:bg-[#c99f00]' : 'bg-[#008069] text-white hover:bg-[#017561] dark:bg-[#00a884] dark:text-[#111b21] dark:hover:bg-[#06cf9c]'
+    }`}
+  >
+    {sending ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : note ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
+  </button>
+);
+
+// ===========================================================================
+const SnippetsPopover = ({
+  snippets,
+  onInsert,
+  currentText,
+  onAdd,
+  onDelete,
+}: {
+  snippets: Snippet[];
+  onInsert: (s: Snippet) => void;
+  currentText: string;
+  onAdd: (title: string, text: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [saving, setSaving] = useState(false);
+  const filtered = snippets.filter((s) => !q.trim() || `${s.title} ${s.text}`.toLowerCase().includes(q.trim().toLowerCase()));
+
+  const startAdd = () => {
+    setAdding(true);
+    setTitle('');
+    setBody(currentText.trim());
+  };
+  const save = async () => {
+    if (!title.trim() || !body.trim()) return;
+    setSaving(true);
+    try {
+      await onAdd(title.trim().slice(0, 60), body.trim().slice(0, 2000));
+      setAdding(false);
+      toast.success('Quick reply saved');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setAdding(false); }}>
+      <PopoverTrigger asChild>
+        <button type="button" className={`${iconBtn} h-11 w-11`} aria-label="Quick replies">
+          <Zap className="h-5 w-5" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" side="top" className="w-[min(22rem,calc(100vw-1.5rem))] p-0">
+        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <p className="text-sm font-medium">Quick replies</p>
+          {!adding && (
+            <button type="button" onClick={startAdd} className="inline-flex h-8 items-center rounded-md px-2 text-[13px] font-medium text-[#008069] hover:bg-muted dark:text-[#00a884]">
+              New
+            </button>
+          )}
+        </div>
+        {adding ? (
+          <div className="space-y-2 p-3">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Short name, e.g. Delivery time"
+              maxLength={60}
+              aria-label="Quick reply name"
+              autoFocus
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00a884]/50"
+            />
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              placeholder="The message text"
+              aria-label="Quick reply text"
+              className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00a884]/50"
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setAdding(false)} className="h-9 rounded-md px-3 text-sm hover:bg-muted">Cancel</button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving || !title.trim() || !body.trim()}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[#008069] px-3 text-sm font-medium text-white disabled:opacity-50 dark:bg-[#00a884] dark:text-[#111b21]"
+              >
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />} Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {snippets.length > 5 && (
+              <div className="border-b border-border p-2">
+                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search quick replies" aria-label="Search quick replies" className="h-9 w-full rounded-md bg-muted px-3 text-sm focus:outline-none" />
+              </div>
+            )}
+            {filtered.length === 0 ? (
+              <p className="px-3 py-6 text-center text-[13px] text-muted-foreground">
+                {snippets.length ? 'No match.' : 'Save answers you type often, like delivery times or care tips.'}
+              </p>
+            ) : (
+              <ul className="max-h-72 overflow-y-auto py-1">
+                {filtered.map((s) => (
+                  <li key={s.id} className="group flex items-start">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onInsert(s);
+                        setOpen(false);
+                      }}
+                      className="min-w-0 flex-1 px-3 py-2 text-left hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                    >
+                      <span className="block truncate text-[13px] font-medium">{s.title}</span>
+                      <span className="line-clamp-2 block text-[12px] text-muted-foreground">{s.text}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(s.id).catch(() => toast.error('Could not delete'))}
+                      className="m-1 inline-flex h-8 w-8 flex-none items-center justify-center rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+                      aria-label={`Delete quick reply ${s.title}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 };

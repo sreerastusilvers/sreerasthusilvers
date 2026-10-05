@@ -5,15 +5,16 @@ import { useAuth, UserProfile } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { auth } from '@/config/firebase';
 import { DELIVERY_PARTNERS_ENABLED } from '@/config/features';
-import shoppingBags from '@/assets/shopping-bags.png';
 import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import Header from '@/components/Header';
 import CategoryIconNav from '@/components/CategoryIconNav';
+import AccountShell from '@/components/account/AccountShell';
+import UserAvatar from '@/components/account/UserAvatar';
+import { useAccountIdentity } from '@/components/account/useAccountIdentity';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { subscribeToUserOrders, Order, updateOrderStatus, cancelOrder, requestReturn, cancelReturn } from '@/services/orderService';
-import { uploadImage, deleteMedia, describeUploadError, IMAGE_TYPES } from '@/services/mediaStorage';
 import { useWhatsAppOtpVerification } from '@/hooks/useWhatsAppOtpVerification';
 import { getSecuritySettings, generateDeviceFingerprint, updateSecuritySettings } from '@/services/securityService';
 import TwoFactorChallengeModal from '@/components/auth/TwoFactorChallengeModal';
@@ -797,7 +798,7 @@ const AccountPage = () => {
   const navigate = useNavigate();
   const { logout, userProfile, user, updateUserProfile } = useAuth();
   const { setTheme, resolvedTheme } = useTheme();
-  const [selectedMenu, setSelectedMenu] = useState('orders');
+  const identity = useAccountIdentity();
   const [selectedOrderTab, setSelectedOrderTab] = useState('current');
   const [isMobile, setIsMobile] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -809,54 +810,6 @@ const AccountPage = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  // Update avatar URL when user or userProfile changes
-  useEffect(() => {
-    const newAvatarUrl = userProfile?.avatar || user?.photoURL || null;
-    console.log('🖼️ Avatar URL updated:', newAvatarUrl);
-    setAvatarUrl(newAvatarUrl);
-  }, [userProfile?.avatar, user?.photoURL]);
-
-  // Handle photo upload
-  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    // Validate file type
-    if (!IMAGE_TYPES.includes(file.type)) {
-      toast.error('Please select a JPG, PNG or WebP image');
-      return;
-    }
-
-    // The photo is shrunk to 500 KB before upload; this only guards the phone.
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('Image size should be less than 20MB');
-      return;
-    }
-
-    setUploadingPhoto(true);
-    try {
-      const previousAvatar = userProfile?.avatar;
-      const result = await uploadImage(file, { category: 'avatars', autoCompress: true });
-
-      await updateUserProfile({ avatar: result.url });
-      setAvatarUrl(result.url);
-      if (previousAvatar && previousAvatar !== result.url) void deleteMedia([previousAvatar]);
-      toast.success('Profile photo updated successfully');
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast.error(describeUploadError(error));
-    } finally {
-      setUploadingPhoto(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
   // Handle account deletion
   const handleDeleteAccount = async () => {
     if (!user) return;
@@ -961,17 +914,6 @@ const AccountPage = () => {
     }, 5000);
   };
 
-  const menuItems = [
-    { id: 'orders', label: 'My orders', icon: Package, path: null },
-    { id: 'videocalls', label: 'My Video Calls', icon: Video, path: '/my-video-calls' },
-    { id: 'editProfile', label: 'Edit Profile', icon: Edit, path: '/account/profile-edit' },
-    { id: 'addresses', label: 'Your addresses', icon: MapPin, path: '/account/addresses' },
-    { id: 'security', label: 'Login & security', icon: Shield, path: '/security' },
-    { id: 'saved', label: 'Saved items', icon: Heart, path: '/wishlist' },
-    { id: 'support', label: 'Customer support', icon: MessageCircle, path: '/customer-support' },
-    { id: 'logout', label: 'Log out', icon: LogOut, path: null, action: 'logout' },
-  ];
-
   // Drawer-style menu for the mobile account page (mirrors the old slide-in menu)
   const accountMenu = [
     { label: 'My Orders', icon: Package, href: '/account/orders' },
@@ -981,29 +923,6 @@ const AccountPage = () => {
     { label: 'Login & Security', icon: Shield, href: '/security' },
     { label: 'Saved Items', icon: Heart, href: '/wishlist' },
     { label: 'Customer Support', icon: MessageCircle, href: '/customer-support' },
-  ];
-
-  const quickAccessCards = [
-    { id: 'orders', label: 'Orders', icon: Package, color: 'text-blue-600', bg: 'bg-blue-50', path: '/orders' },
-    { id: 'wishlist', label: 'Wishlist', icon: Heart, color: 'text-pink-600', bg: 'bg-pink-50', path: '/wishlist' },
-    { id: 'coupons', label: 'Coupons', icon: Ticket, color: 'text-orange-600', bg: 'bg-orange-50', path: '/coupons' },
-    { id: 'help', label: 'Help Center', icon: HelpCircle, color: 'text-green-600', bg: 'bg-green-50', path: '/help' },
-  ];
-
-  const accountSettings = [
-    { id: 'plus', label: 'Premium Plus', icon: Sparkles, color: 'text-yellow-600', path: '/premium' },
-    { id: 'profile', label: 'Edit Profile', icon: User, color: 'text-blue-600', path: '/account/profile' },
-    { id: 'cards', label: 'Saved Credit / Debit & Gift Cards', icon: CreditCard, color: 'text-purple-600', path: '/account/cards' },
-    { id: 'addresses', label: 'Saved Addresses', icon: MapPin, color: 'text-red-600', path: '/account/addresses' },
-    { id: 'videocalls', label: 'My Video Calls', icon: Video, color: 'text-emerald-600', path: '/my-video-calls' },
-    { id: 'language', label: 'Select Language', icon: Globe, color: 'text-blue-600', path: '/account/language' },
-    { id: 'notifications', label: 'Notification Settings', icon: Bell, color: 'text-green-600', path: '/account/notifications' },
-    { id: 'privacy', label: 'Privacy Center', icon: Shield, color: 'text-gray-600', path: '/account/privacy' },
-  ];
-
-  const myActivity = [
-    { id: 'reviews', label: 'Reviews', icon: Star, color: 'text-yellow-600' },
-    { id: 'questions', label: 'Questions & Answers', icon: MessageCircle, color: 'text-blue-600' },
   ];
 
   // Filter orders based on selected tab
@@ -1224,16 +1143,6 @@ const AccountPage = () => {
     }
   };
 
-  const handleMenuClick = (menu: any) => {
-    if (menu.action === 'logout') {
-      handleLogout();
-    } else if (menu.path) {
-      navigate(menu.path);
-    } else {
-      setSelectedMenu(menu.id);
-    }
-  };
-
   // Mobile view - new design matching desktop
   if (isMobile) {
     return (
@@ -1252,15 +1161,6 @@ const AccountPage = () => {
               <User className="w-6 h-6 text-foreground/80" strokeWidth={1.5} />
             </div>
 
-            {/* Hidden file input (avatar upload via Edit Profile) */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoChange}
-              className="hidden"
-            />
-
             {/* Welcome / profile banner */}
             <div className="mb-3 mt-1 relative">
               <div
@@ -1275,20 +1175,11 @@ const AccountPage = () => {
                 }}
               >
                 <div className="flex-shrink-0">
-                  {avatarUrl ? (
-                    <SmartImage
-                      key={`avatar-${avatarUrl}-${user?.uid}`}
-                      src={avatarUrl}
-                      alt="Profile"
-                      className="w-[90px] h-[90px] rounded-full object-cover border-2 border-white shadow-sm"
-                      referrerPolicy="no-referrer" preset="thumb" />
-                  ) : (
-                    <img src={shoppingBags} alt="Shopping bags" className="w-[100px] h-[100px] object-contain" />
-                  )}
+                  <UserAvatar size={88} className="border-2 border-white shadow-sm dark:border-zinc-800" />
                 </div>
                 <div className="flex-1 text-right min-w-0">
                   <h3 className="text-foreground font-bold text-base leading-tight truncate">
-                    Hi, {(userProfile?.name || userProfile?.username || user?.displayName?.split(' ')[0] || 'Welcome')}
+                    Hi, {identity.firstName}
                   </h3>
                   <p className="text-muted-foreground text-xs mt-0.5 mb-3 truncate">{user?.email}</p>
                   <button
@@ -1570,45 +1461,12 @@ const AccountPage = () => {
     <>
       <Header />
       <CategoryIconNav />
-      <div className="pt-6 bg-muted" style={{ fontFamily: "'Poppins', sans-serif" }}>
-        <div className="container mx-auto px-6 pb-8">
-          <div className="grid grid-cols-12 gap-6 -mt-4">
-            {/* Sidebar */}
-            <div className="col-span-3">
-              <div className="bg-card rounded-lg shadow-sm p-6 sticky top-20">
-                {/* User Info */}
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-foreground mb-1">Your Account</h2>
-                  <p className="text-sm text-muted-foreground font-medium" style={{ wordBreak: 'break-all' }}>{userProfile?.username || 'User'}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5" style={{ wordBreak: 'break-all' }}>{userProfile?.email || user?.email}</p>
-                </div>
-
-                {/* Menu Items */}
-                <nav className="space-y-1">
-                  {menuItems.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleMenuClick(item)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                        selectedMenu === item.id
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-foreground/80 hover:bg-muted'
-                      }`}
-                    >
-                      <item.icon className="w-5 h-5" />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="col-span-9">
-              {selectedMenu === 'orders' && (
+      <div className="min-h-[60vh] bg-muted" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <AccountShell>
                 <div className="bg-card rounded-lg shadow-sm">
                   {/* Order Tabs */}
                   <div className="border-b border-border px-6 pt-6">
+                    <h1 className="mb-3 px-1 text-xl font-semibold text-foreground">My orders</h1>
                     <div className="flex gap-4">
                       <button
                         onClick={() => setSelectedOrderTab('current')}
@@ -1648,7 +1506,7 @@ const AccountPage = () => {
                           onClick={() => navigate('/category/jewellery')}
                           className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
                         >
-                          ✨ Start Shopping
+                          Start shopping
                         </button>
                       </div>
                     ) : (
@@ -1731,35 +1589,7 @@ const AccountPage = () => {
                     )}
                   </div>
                 </div>
-              )}
-
-              {selectedMenu === 'addresses' && (
-                <div className="bg-card rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-foreground mb-4">Your Addresses</h3>
-                  <p className="text-muted-foreground">Manage your saved addresses here.</p>
-                  <Button onClick={() => navigate('/account/addresses')} className="mt-4">
-                    View Addresses
-                  </Button>
-                </div>
-              )}
-
-              {selectedMenu === 'security' && (
-                <div className="bg-card rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-foreground mb-4">Login & Security</h3>
-                  <p className="text-muted-foreground mb-4">Manage your login credentials and security settings.</p>
-                  <Button onClick={() => navigate('/security')}>Manage Security</Button>
-                </div>
-              )}
-
-              {selectedMenu === 'support' && (
-                <div className="bg-card rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-foreground mb-4">Customer Support</h3>
-                  <p className="text-muted-foreground">Get help with your orders and account.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        </AccountShell>
       </div>
       <Footer />
 

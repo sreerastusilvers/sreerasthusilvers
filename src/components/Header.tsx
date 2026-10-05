@@ -12,6 +12,7 @@ import OfferRibbon from "./offers/OfferRibbon";
 import ThemeToggle from "./ThemeToggle";
 import SilverRateWidget from "./SilverRateWidget";
 import { SmartImage } from "@/components/ui/smart-image";
+import UserAvatar from "@/components/account/UserAvatar";
 
 const Header = () => {
   /** Changes when an admin publishes; re-reads the catalog below. */
@@ -256,25 +257,12 @@ const Header = () => {
 
               {/* User Profile */}
               <button 
-                onClick={() => navigate(user ? "/account" : "/account")}
+                onClick={() => navigate("/account")}
                 className="p-2 hover:bg-muted rounded-full transition-all duration-200 group"
-                aria-label="Account"
+                aria-label={user ? "My account" : "Sign in"}
               >
                 {user ? (
-                  userProfile?.avatar || user.photoURL ? (
-                    <SmartImage 
-                      key={userProfile?.avatar || user.photoURL}
-                      src={userProfile?.avatar || user.photoURL} 
-                      alt="Profile" 
-                      className="w-[22px] h-[22px] rounded-full object-cover ring-1 ring-border"
-                      referrerPolicy="no-referrer" preset="thumb" />
-                  ) : (
-                    <div className="w-[22px] h-[22px] rounded-full bg-[#832729] flex items-center justify-center">
-                      <span className="text-white font-semibold text-[9px]">
-                        {(userProfile?.name || userProfile?.username || 'U').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )
+                  <UserAvatar size={22} />
                 ) : (
                   <User className="w-[20px] h-[20px] text-foreground/80 group-hover:text-primary transition-colors" strokeWidth={1.5} />
                 )}
@@ -289,7 +277,7 @@ const Header = () => {
                 <div className="relative">
                   <ShoppingBag className="w-[20px] h-[20px] text-foreground/80 group-hover:text-primary transition-colors" strokeWidth={1.5} />
                   {user && totalItems > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-[#832729] text-white text-[9px] rounded-full flex items-center justify-center font-bold px-1 shadow-sm">
+                    <span data-cart-badge className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-[#832729] text-white text-[9px] rounded-full flex items-center justify-center font-bold px-1 shadow-sm">
                       {totalItems}
                     </span>
                   )}

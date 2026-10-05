@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
+import AccountShell from '@/components/account/AccountShell';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
@@ -221,8 +222,9 @@ const PurchaseSummary: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-900" style={{ fontFamily: "'Poppins', sans-serif" }}>
       <div className="hidden lg:block"><Header /></div>
 
+      <AccountShell>
       {/* Desktop Back Button */}
-      <div className="hidden lg:block bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800">
+      <div className="hidden bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800">
         <div className="max-w-4xl mx-auto px-4">
           <button
             onClick={() => navigate('/account')}
@@ -650,6 +652,7 @@ const PurchaseSummary: React.FC = () => {
         </motion.div>
       </div>
 
+      </AccountShell>
       <div className="lg:hidden"><MobileBottomNav /></div>
       <div className="hidden lg:block"><Footer /></div>
     </div>

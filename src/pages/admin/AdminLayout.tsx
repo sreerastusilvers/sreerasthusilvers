@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StorageLimitWatcher from '@/components/admin/StorageLimitWatcher';
+import { useWhatsAppUnread } from '@/components/admin/whatsapp/useWhatsAppUnread';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -57,6 +58,8 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  // Unread WhatsApp conversations for the sidebar badge.
+  const whatsappUnread = useWhatsAppUnread(userProfile?.role === 'admin');
 
   /**
    * Say so when a change does not reach the storefront.
@@ -191,6 +194,12 @@ const AdminLayout = () => {
             >
               <item.icon className="h-5 w-5" />
               <span>{item.label}</span>
+              {item.path === '/admin/whatsapp' && whatsappUnread > 0 && (
+                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#008069] px-1.5 text-[11px] font-semibold tabular-nums text-white">
+                  {whatsappUnread > 99 ? '99+' : whatsappUnread}
+                  <span className="sr-only"> unread conversations</span>
+                </span>
+              )}
             </NavLink>
           ))}
 

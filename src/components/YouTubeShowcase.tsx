@@ -58,7 +58,7 @@ const InlinePlayer = ({
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
           <div className="absolute inset-0 grid place-items-center">
             <span className="relative grid place-items-center w-14 h-14 md:w-20 md:h-20 rounded-full bg-white/95 text-black shadow-2xl transition-transform group-hover:scale-110">
-              <span className="absolute inset-0 rounded-full animate-ping bg-white/40" />
+              <span className="absolute inset-0 rounded-full animate-ping bg-white/40 motion-reduce:hidden" />
               <Play className="w-5 h-5 md:w-7 md:h-7 ml-1 fill-current" />
             </span>
           </div>
@@ -82,12 +82,13 @@ const YouTubeShowcase = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<HomeVideo | null>(null);
   const [playingIds, setPlayingIds] = useState<Set<string>>(new Set());
+  // The reel strip steps to the next film every few seconds, and holds still
+  // while any film is playing inline or open full screen: a video must never
+  // slide out from under the person watching it. Nothing here ever starts a
+  // video - playback (and sound) only begins on the viewer's own tap.
   const { scrollerRef, scrollByPage, canScroll } = useAutoScroll({
-    speed: 0.45,
-    resumeDelay: 2600,
-    loop: true,
-    direction: -1,
     loopItemCount: videos.length,
+    paused: playingIds.size > 0 || selectedVideo !== null,
   });
 
   useEffect(() => {
@@ -202,7 +203,7 @@ const YouTubeShowcase = () => {
                   className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-md border border-white/15 z-10"
                 >
                   <span className="relative flex w-2 h-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping motion-reduce:hidden" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                   </span>
                   <span className="text-[10px] uppercase tracking-[0.26em] text-white font-semibold">
