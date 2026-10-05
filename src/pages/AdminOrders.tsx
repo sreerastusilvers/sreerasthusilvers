@@ -41,6 +41,7 @@ import {
 import { subscribeToDeliveryBoys, DeliveryBoy } from '@/services/deliveryBoyService';
 import { toast } from 'sonner';
 import { SmartImage } from "@/components/ui/smart-image";
+import { formatAmountINR } from "@/lib/formatPrice";
 
 const AdminOrders = () => {
   const navigate = useNavigate();
@@ -236,7 +237,7 @@ const AdminOrders = () => {
   };
 
   const formatPrice = (price: number) => {
-    return `₹${price.toFixed(2)}`;
+    return `₹${formatAmountINR(price)}`;
   };
 
   const formatDate = (timestamp: Order['createdAt'] | Date | string | number | null | undefined) => {
@@ -682,7 +683,7 @@ const AdminOrders = () => {
                         <SmartImage src={item.image} alt={item.name} className="w-12 h-12 rounded-lg object-cover" preset="thumb" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                          <p className="text-xs text-gray-500">Qty: {item.quantity} × ₹{item.price.toFixed(2)}</p>
+                          <p className="text-xs text-gray-500">Qty: {item.quantity} × ₹{formatAmountINR(item.price)}</p>
                         </div>
                       </div>
                     ))}
@@ -947,7 +948,7 @@ const AdminOrders = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Total Amount</span>
-                      <span className="text-sm font-semibold text-amber-600">₹{selectedOrder.total.toFixed(2)}</span>
+                      <span className="text-sm font-semibold text-amber-600">₹{formatAmountINR(selectedOrder.total)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Items</span>

@@ -977,6 +977,7 @@ const ProductForm = () => {
                     </p>
                   </div>
                 ) : imageUploadMode === 'upload' ? (
+                  <>
                   <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:border-amber-600 transition-colors">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       {uploadingImages ? (
@@ -996,6 +997,14 @@ const ProductForm = () => {
                     </div>
                     <input type="file" className="hidden" accept={IMAGE_ACCEPT} multiple onChange={handleImageUpload} disabled={uploadingImages} />
                   </label>
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    Photos over 500 KB?{' '}
+                    {/* New tab, so the product being edited isn't lost */}
+                    <a href="/admin/image-compressor" target="_blank" rel="noopener" className="font-medium text-amber-700 underline underline-offset-2 hover:text-amber-800">
+                      Compress them without losing quality
+                    </a>
+                  </p>
+                  </>
                 ) : (
                   <div className="flex gap-2">
                     <Input type="url" value={imageUrlInput} onChange={(e) => setImageUrlInput(e.target.value)} placeholder="https://example.com/image.jpg" className="flex-1 bg-white border-gray-300" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImageUrl())} />

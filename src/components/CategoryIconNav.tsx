@@ -84,6 +84,9 @@ const CategoryIconNav = () => {
     [firebaseCategories],
   );
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  /** Left offset of the open dropdown, relative to the desktop nav. */
+  const [dropdownLeft, setDropdownLeft] = useState(0);
+  const desktopNavRef = useRef<HTMLElement>(null);
   const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const lastScrollYRef = useRef(0);
@@ -117,10 +120,39 @@ const CategoryIconNav = () => {
     return () => window.removeEventListener("scroll", controlMobileNav);
   }, []);
 
-  const handleMouseEnter = (categoryName: string) => {
+  /**
+   * The category row scrolls sideways (overflow-x-auto), and CSS makes such a
+   * box clip vertically too - a dropdown inside it was cut off at the bar's
+   * bottom edge. So the dropdown renders once, as a child of the <nav> (which
+   * doesn't clip), and is lined up under the hovered tab here.
+   */
+  const handleMouseEnter = (categoryName: string, trigger?: HTMLElement | null) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    if (trigger && desktopNavRef.current) {
+      const navRect = desktopNavRef.current.getBoundingClientRect();
+      const tabRect = trigger.getBoundingClientRect();
+      const DROPDOWN_WIDTH = 240;
+      const maxLeft = navRect.width - DROPDOWN_WIDTH - 8;
+      setDropdownLeft(Math.max(8, Math.min(tabRect.left - navRect.left, maxLeft)));
+    }
     setHoveredCategory(categoryName);
   };
+
+  // Close the dropdown when the row scrolls sideways (it would no longer line up) or on Escape.
+  useEffect(() => {
+    if (!hoveredCategory) return;
+    const scroller = desktopScrollRef.current;
+    const close = () => setHoveredCategory(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    scroller?.addEventListener('scroll', close, { passive: true });
+    window.addEventListener('keydown', onKey);
+    return () => {
+      scroller?.removeEventListener('scroll', close);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [hoveredCategory]);
+
+  const openCategory = categories.find((c) => c.name === hoveredCategory && c.subcategories.length > 0);
 
   const handleMouseLeave = () => {
     hoverTimeoutRef.current = setTimeout(() => {
@@ -205,7 +237,8 @@ const CategoryIconNav = () => {
 
       {/* ====== DESKTOP: Clean horizontal nav with subcategory dropdown ====== */}
       <nav
-        className={`hidden lg:block relative sticky top-[68px] z-40 transition-all duration-500 ${
+        ref={desktopNavRef}
+        className={`hidden lg:block sticky top-[68px] z-40 transition-all duration-500 ${
           isScrolled
             ? "bg-background/80 backdrop-blur-xl border-b border-border/40 shadow-[0_1px_0_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_rgba(255,255,255,0.05)]"
             : "bg-background border-b border-border"
@@ -216,7 +249,6 @@ const CategoryIconNav = () => {
             {categories.map((category, index) => {
               const isActive = location.pathname === category.href;
               const Icon = category.icon;
-              const categorySlug = category.slug;
               const subcategories = category.subcategories;
               const hasSubcategories = subcategories.length > 0;
 
@@ -224,8 +256,9 @@ const CategoryIconNav = () => {
                 <div
                   key={category.name}
                   className="relative"
-                  onMouseEnter={() => hasSubcategories && handleMouseEnter(category.name)}
+                  onMouseEnter={(e) => hasSubcategories && handleMouseEnter(category.name, e.currentTarget)}
                   onMouseLeave={handleMouseLeave}
+                  onFocus={(e) => hasSubcategories && handleMouseEnter(category.name, e.currentTarget)}
                 >
                   <motion.a
                     href={category.href}
@@ -241,6 +274,8 @@ const CategoryIconNav = () => {
                         ? "text-primary border-primary"
                         : "text-muted-foreground hover:text-foreground border-transparent hover:border-border"
                     }`}
+                    aria-haspopup={hasSubcategories ? 'menu' : undefined}
+                    aria-expanded={hasSubcategories ? hoveredCategory === category.name : undefined}
                   >
                     <Icon className={`w-4 h-4 transition-colors duration-200 ${
                       isActive ? "text-primary" : "text-muted-foreground/60 group-hover:text-muted-foreground"
@@ -248,59 +283,65 @@ const CategoryIconNav = () => {
                     <span>{category.name}</span>
                   </motion.a>
 
-                  {/* Subcategory Dropdown */}
-                  <AnimatePresence>
-                    {hoveredCategory === category.name && hasSubcategories && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 4 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute top-full left-0 z-50 min-w-[220px] bg-background border border-border rounded-xl shadow-xl py-2 mt-0"
-                        onMouseEnter={() => handleMouseEnter(category.name)}
-                        onMouseLeave={handleMouseLeave}
-                      >
-                        {subcategories.map((sub) => (
-                          <div key={sub.slug}>
-                            <button
-                              onClick={() => {
-                                setHoveredCategory(null);
-                                navigate(`/category/${categorySlug}?sub=${sub.slug}`);
-                              }}
-                              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors text-left"
-                            >
-                              <span>{sub.name}</span>
-                              {sub.children && sub.children.length > 0 && (
-                                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                              )}
-                            </button>
-                            {/* Sub-subcategories */}
-                            {sub.children && sub.children.length > 0 && (
-                              <div className="pl-4">
-                                {sub.children.map((child) => (
-                                  <button
-                                    key={child.slug}
-                                    onClick={() => {
-                                      setHoveredCategory(null);
-                                      navigate(`/category/${categorySlug}?sub=${sub.slug}&subsub=${child.slug}`);
-                                    }}
-                                    className="w-full px-4 py-2 text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-left"
-                                  >
-                                    {child.name}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               );
             })}
           </div>
         </div>
+
+        {/* Subcategory Dropdown - outside the scrolling row so it isn't clipped */}
+        <AnimatePresence>
+          {openCategory && (
+            <motion.div
+              key={openCategory.name}
+              role="menu"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+              style={{ left: dropdownLeft }}
+              className="absolute top-full z-50 w-[240px] max-h-[70vh] overflow-y-auto bg-background border border-border rounded-xl shadow-xl py-2"
+              onMouseEnter={() => handleMouseEnter(openCategory.name)}
+              onMouseLeave={handleMouseLeave}
+            >
+              {openCategory.subcategories.map((sub) => (
+                <div key={sub.slug}>
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setHoveredCategory(null);
+                      navigate(`/category/${openCategory.slug}?sub=${sub.slug}`);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-foreground hover:bg-muted focus-visible:bg-muted focus-visible:outline-none transition-colors text-left"
+                  >
+                    <span>{sub.name}</span>
+                    {sub.children && sub.children.length > 0 && (
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                    )}
+                  </button>
+                  {/* Sub-subcategories */}
+                  {sub.children && sub.children.length > 0 && (
+                    <div className="pl-4">
+                      {sub.children.map((child) => (
+                        <button
+                          key={child.slug}
+                          role="menuitem"
+                          onClick={() => {
+                            setHoveredCategory(null);
+                            navigate(`/category/${openCategory.slug}?sub=${sub.slug}&subsub=${child.slug}`);
+                          }}
+                          className="w-full px-4 py-2 text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none transition-colors text-left"
+                        >
+                          {child.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       <style>{`

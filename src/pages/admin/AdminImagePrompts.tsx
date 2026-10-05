@@ -25,6 +25,8 @@ import {
   generateCustomImagePrompt,
   generateVariationPrompt,
   refinePrompt,
+  PRODUCT_KINDS,
+  type ProductKind,
   type ImageInput,
   type HeroOutputFormat,
   type LogoMode,
@@ -276,6 +278,10 @@ const AdminImagePrompts = () => {
   const [customRequirement, setCustomRequirement] = useState('');
   const [customImageType, setCustomImageType] = useState('Product Photography');
 
+  // What kind of product is being shot - decides worn-on-model vs in-use lifestyle scenes
+  const [productKind, setProductKind] = useState<ProductKind>('jewellery');
+  const [productNote, setProductNote] = useState('');
+
   // Image upload state
   const [productImage, setProductImage] = useState<ImageInput | null>(null);
   const [productPreview, setProductPreview] = useState('');
@@ -408,7 +414,7 @@ const AdminImagePrompts = () => {
           : 'Custom logo active — prompts will place the uploaded mark directly without recreating it.';
 
   const tabs = [
-    { id: 'product-model' as PromptCategory, label: 'Product + Model', icon: Gem, description: 'Website-ready model product photo' },
+    { id: 'product-model' as PromptCategory, label: 'Product + Model', icon: Gem, description: 'Jewellery on a model, or any product in real use' },
     { id: 'product-studio' as PromptCategory, label: 'Studio Product', icon: Camera, description: 'Clean studio product shots' },
     { id: 'hero-section' as PromptCategory, label: 'Hero Banners', icon: Gift, description: 'Festival / Offer hero banners' },
     { id: 'custom' as PromptCategory, label: 'Custom Prompt', icon: Wand2, description: 'Any custom image need' },
@@ -440,9 +446,9 @@ const AdminImagePrompts = () => {
             return;
           }
           prompt = await generateProductModelPrompt(
-            productImage, activeLogoImages, logoMode
+            productImage, activeLogoImages, logoMode, productKind, productNote
           );
-          inputs = { type: 'Product + Model', logoMode };
+          inputs = { type: 'Product + Model', productKind, productNote, logoMode };
           break;
 
         case 'product-studio':
@@ -452,9 +458,9 @@ const AdminImagePrompts = () => {
             return;
           }
           prompt = await generateProductStudioPrompt(
-            productImage, activeLogoImages, logoMode
+            productImage, activeLogoImages, logoMode, productKind, productNote
           );
-          inputs = { type: 'Studio Product', logoMode };
+          inputs = { type: 'Studio Product', productKind, productNote, logoMode };
           break;
 
         case 'hero-section':
@@ -561,18 +567,20 @@ const AdminImagePrompts = () => {
     if (!generatedPrompt || !productImage) return;
     setVariationLoading(true);
     try {
-      const variation = await generateVariationPrompt(generatedPrompt, productImage, getLogoImages(), logoMode);
+      const variation = await generateVariationPrompt(
+        generatedPrompt, productImage, getLogoImages(), logoMode, productKind, productNote
+      );
       setGeneratedPrompt(variation);
-      toast.success('Variation generated — different angle & pose, same background!');
+      toast.success('Variation generated — a fresh angle, pose and styling for the same product');
       const newEntry: GeneratedPrompt = {
         id: Date.now().toString(),
         category: 'product-model',
         prompt: variation,
-        inputs: { type: 'Variation' },
+        inputs: { type: 'Variation', productKind },
         timestamp: new Date(),
       };
       setHistory(prev => [newEntry, ...prev].slice(0, 20));
-      savePromptToHistory({ category: 'product-model', prompt: variation, inputs: { type: 'Variation' } })
+      savePromptToHistory({ category: 'product-model', prompt: variation, inputs: { type: 'Variation', productKind } })
         .catch((e) => console.warn('[promptHistory] save failed:', e));
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Failed to generate variation'));
@@ -596,7 +604,7 @@ const AdminImagePrompts = () => {
             AI Image Prompt Generator
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Upload your jewelry image → generate reference-locked Nano Banana Pro prompts for product photos and banners
+            Upload a product image → generate reference-locked Nano Banana Pro prompts for product photos and banners
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-400 bg-white px-3 py-1.5 rounded-full border border-[#F5EFE6]">
@@ -651,12 +659,36 @@ const AdminImagePrompts = () => {
               </div>
             </div>
 
-            {/* Product Forms (Model & Studio — only image upload needed) */}
+            {/* Product Forms (Model & Studio) */}
             {(activeTab === 'product-model' || activeTab === 'product-studio') && (
               <>
+                {/* Product type decides the kind of shoot: worn on a model vs in real use */}
+                <div>
+                  <label className={labelStyles}>What are you shooting? <span className="text-red-500">*</span></label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Product type">
+                    {PRODUCT_KINDS.map((k) => (
+                      <button
+                        key={k.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={productKind === k.id}
+                        onClick={() => setProductKind(k.id)}
+                        className={`text-left px-3 py-2 rounded-lg border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                          productKind === k.id
+                            ? 'border-amber-500 bg-amber-50 text-amber-800'
+                            : 'border-[#F5EFE6] text-gray-600 hover:border-amber-400 hover:text-amber-700'
+                        }`}
+                      >
+                        <span className="block text-xs font-semibold">{k.label}</span>
+                        <span className="block text-[10px] leading-snug opacity-80 mt-0.5">{k.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Product Image Upload — REQUIRED */}
                 <ImageDropZone
-                  label="Upload Jewelry Image"
+                  label="Upload Product Image"
                   image={productImage}
                   preview={productPreview}
                   onSelect={handleProductImageSelect}
@@ -665,17 +697,48 @@ const AdminImagePrompts = () => {
                   required
                 />
 
-                {activeTab === 'product-model' && (
+                <div>
+                  <label className={labelStyles} htmlFor="product-note">
+                    What is it and how big? <span className="text-gray-400 font-normal">(optional, improves scale)</span>
+                  </label>
+                  <input
+                    id="product-note"
+                    type="text"
+                    value={productNote}
+                    onChange={(e) => setProductNote(e.target.value)}
+                    placeholder={
+                      productKind === 'jewellery' ? 'e.g. long temple haram, 18 inch'
+                        : productKind === 'furniture' ? 'e.g. silver-clad baby cradle, 4 ft long'
+                        : productKind === 'pooja' ? 'e.g. pair of silver deepam lamps, 8 inch tall'
+                        : productKind === 'wedding' ? 'e.g. silver kalash and plate set for kanyadaan'
+                        : productKind === 'gifting' ? 'e.g. silver Ganesha idol, 6 inch, corporate gift'
+                        : 'e.g. silver-clad wall clock, 18 inch diameter'
+                    }
+                    className={inputStyles}
+                  />
+                </div>
+
+                {activeTab === 'product-model' && productKind === 'jewellery' && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
                     <p className="text-xs text-amber-800 font-semibold">Website Product Page Model Shot</p>
                     <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
-                      <li>Premium Indian model — DSLR photographed, not AI-looking</li>
+                      <li>Premium Indian model wearing the piece naturally — DSLR photographed, not AI-looking</li>
                       <li>Real skin pores, catchlights, hair flyaways, natural imperfections</li>
-                      <li>Product stays large, sharp, centered, and inspectable for the product page</li>
+                      <li>Jewellery stays large, sharp, centered, and fully visible</li>
                       <li>Your exact uploaded product is treated as the locked source asset</li>
-                      <li>Background, pose, lighting, and styling improve without changing the jewelry</li>
                       <li>After generating, click <strong>"Different Angle / Pose"</strong> for variations</li>
-                      <li>Use <strong>"Refine"</strong> to modify any detail you want changed</li>
+                    </ul>
+                  </div>
+                )}
+                {activeTab === 'product-model' && productKind !== 'jewellery' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1.5">
+                    <p className="text-xs text-amber-800 font-semibold">Lifestyle "In Use" Photoshoot</p>
+                    <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
+                      <li>The product is shown where it really belongs, being used — never held up to the camera</li>
+                      <li>Real people interact naturally: sitting, arranging, gifting, praying, celebrating</li>
+                      <li>True real-world size, so a clock looks like a clock and a chair like a chair</li>
+                      <li>Product stays the sharp, complete hero of the frame</li>
+                      <li>Logo is a small transparent corner watermark, never a banner</li>
                     </ul>
                   </div>
                 )}
@@ -684,10 +747,9 @@ const AdminImagePrompts = () => {
                     <p className="text-xs text-amber-800 font-semibold">Studio Product Photoshoot</p>
                     <ul className="text-[11px] text-amber-700 space-y-0.5 list-disc list-inside">
                       <li>Product-only premium studio shot — no model</li>
-                      <li>Keeps original metal color, stones, beads, pearls, and proportions</li>
-                      <li>Macro-level detail — every texture and engraving razor-sharp</li>
-                      <li>Premium surface auto-selected to complement the jewelry</li>
-                      <li>1:1, 4K, Canon macro lens, focus stacking</li>
+                      <li>Keeps the original metal color, finish, details, and proportions</li>
+                      <li>{productKind === 'jewellery' ? 'Macro-level detail — every texture and engraving razor-sharp' : 'Styled set chosen for this kind of product, at true scale'}</li>
+                      <li>1:1, 4K, calibrated studio lighting</li>
                     </ul>
                   </div>
                 )}
@@ -1042,7 +1104,7 @@ const AdminImagePrompts = () => {
                     <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin" />
                     <Sparkles className="h-5 w-5 text-amber-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
-                  <p className="text-sm text-gray-500">Gemini 2.5 Flash is analyzing your jewelry & crafting the prompt...</p>
+                  <p className="text-sm text-gray-500">Gemini 2.5 Flash is analyzing your product & crafting the prompt...</p>
                 </div>
               ) : generatedPrompt ? (
                 <div className="space-y-4">
@@ -1128,7 +1190,7 @@ const AdminImagePrompts = () => {
                   <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
                     <Wand2 className="h-8 w-8 text-gray-300" />
                   </div>
-                  <p className="text-sm">Upload your jewelry image, then click "Generate Prompt"</p>
+                  <p className="text-sm">Upload your product image, then click "Generate Prompt"</p>
                   <p className="text-xs">The prompt will lock your uploaded product as the exact source asset</p>
                 </div>
               )}
@@ -1141,11 +1203,11 @@ const AdminImagePrompts = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-600">
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">1</span>
-                <span><strong>Upload</strong> your jewelry image → Gemini builds a prompt that uses it as a locked product reference, not a text description.</span>
+                <span><strong>Upload</strong> your product image → Gemini builds a prompt that uses it as a locked product reference, not a text description.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">2</span>
-                <span><strong>Copy</strong> the prompt and paste into Nano Banana Pro. <strong>Attach the same jewelry and logo references</strong> alongside it.</span>
+                <span><strong>Copy</strong> the prompt and paste into Nano Banana Pro. <strong>Attach the same product and logo images</strong> alongside it.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="flex-shrink-0 w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">3</span>

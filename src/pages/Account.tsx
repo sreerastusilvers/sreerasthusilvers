@@ -60,6 +60,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { SmartImage } from "@/components/ui/smart-image";
+import { formatAmountINR } from "@/lib/formatPrice";
 
 const Account = () => {
   const { user, loading, logout, updateUserProfile } = useAuth();
@@ -1017,7 +1018,7 @@ const AccountPage = () => {
 
   // Format price in INR
   const formatPrice = (price: number) => {
-    return `₹${price.toFixed(2)}`;
+    return `₹${formatAmountINR(price)}`;
   };
 
   // Get status color - sophisticated palette

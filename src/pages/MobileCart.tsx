@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
 import { SmartImage } from "@/components/ui/smart-image";
+import { formatAmountINR } from "@/lib/formatPrice";
 
 // ─── Slide to Proceed Button Component ───
 const SlideToProceedButton = ({ amount, onComplete }: { amount: string; onComplete: () => void }) => {
@@ -121,7 +122,7 @@ const MobileCart = () => {
   const totalAmount = pricing.total;
 
   const formatPrice = (price: number) => {
-    return `₹ ${price.toFixed(2)}`;
+    return `₹ ${formatAmountINR(price)}`;
   };
 
   return (

@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useCheckoutPricing } from '@/hooks/useCheckoutPricing';
 import { SmartImage } from "@/components/ui/smart-image";
+import { formatAmountINR } from "@/lib/formatPrice";
 
 // ─── Slide to Pay Button Component ───
 /**
@@ -202,7 +203,6 @@ const MobileCheckout = () => {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [tempSelectedAddress, setTempSelectedAddress] = useState<Address | null>(null);
-  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Razorpay');
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [showOrderAnimation, setShowOrderAnimation] = useState(false);
@@ -233,6 +233,11 @@ const MobileCheckout = () => {
     state: '',
     isDefault: false,
   });
+
+  // Each step replaces the page content, so start it from the top.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [currentStep]);
 
   // Track when cart has items so we know if it was emptied during this session
   useEffect(() => {
@@ -373,7 +378,7 @@ const MobileCheckout = () => {
   };
 
   const formatPrice = (price: number) => {
-    return `₹ ${price.toFixed(2)}`;
+    return `₹ ${formatAmountINR(price)}`;
   };
 
   // Admin-driven pricing (coupons / delivery / GST all live in /admin/commerce-settings).
@@ -408,6 +413,7 @@ const MobileCheckout = () => {
   // Handle order placement
   const handlePlaceOrder = async () => {
     if (!user || !selectedAddress) {
+      setSlideResetKey(k => k + 1); // otherwise the slider stays "done" with no way to retry
       toast({
         title: 'Error',
         description: 'Please add a delivery address',
@@ -417,6 +423,7 @@ const MobileCheckout = () => {
     }
 
     if (items.length === 0) {
+      setSlideResetKey(k => k + 1);
       toast({
         title: 'Error',
         description: 'Your cart is empty',
@@ -578,8 +585,7 @@ const MobileCheckout = () => {
       setShowOrderAnimation(true);
       setTimeout(() => setShowOrderAnimation(false), 2800);
 
-      // Close payment modal and clear cart AFTER success flag is set
-      setShowPaymentDetails(false);
+      // Clear cart AFTER success flag is set
       clearCart();
     } catch (error) {
       console.error('Error placing order:', error);
@@ -600,6 +606,37 @@ const MobileCheckout = () => {
       setIsPlacingOrder(false);
     }
   };
+
+  // Shared by the Checkout (2) and Payment (3) steps so both show the same breakdown.
+  const billSummaryRows = (
+    <div className="space-y-2.5">
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-600 dark:text-zinc-400">Item Total</span>
+        <span className="text-gray-900 dark:text-zinc-100 font-medium tabular-nums">{formatPrice(subtotal)}</span>
+      </div>
+      {discount > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-green-600">Coupon Discount{pricing.appliedCoupon ? ` (${pricing.appliedCoupon.code})` : ''}</span>
+          <span className="text-green-600 font-medium tabular-nums">− {formatPrice(discount)}</span>
+        </div>
+      )}
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-600 dark:text-zinc-400">Delivery Fee</span>
+        <span className={`font-medium tabular-nums ${deliveryCharge === 0 ? 'text-green-600' : 'text-gray-900 dark:text-zinc-100'}`}>
+          {deliveryCharge === 0 ? 'FREE' : formatPrice(deliveryCharge)}
+        </span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-600 dark:text-zinc-400">{gstLabel}</span>
+        <span className="text-gray-900 dark:text-zinc-100 font-medium tabular-nums">{formatPrice(taxAmount)}</span>
+      </div>
+      <div className="h-px bg-gray-200 dark:bg-zinc-800 my-2" />
+      <div className="flex justify-between items-center">
+        <span className="text-base font-bold text-gray-900 dark:text-zinc-100">To Pay</span>
+        <span className="text-lg font-bold text-green-600 tabular-nums">{formatPrice(total)}</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-900 flex flex-col pb-24" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -1259,8 +1296,8 @@ const MobileCheckout = () => {
           </div>
         )}
 
-        {/* ─── STEP 2+: Checkout ─── */}
-        {currentStep >= 2 && (<>
+        {/* ─── STEP 2: Checkout ─── */}
+        {currentStep === 2 && (<>
 
         {/* Address bar - scrolls with content */}
         <div className="px-4 pt-4 pb-2">
@@ -1333,32 +1370,7 @@ const MobileCheckout = () => {
         <div className="mx-4 mb-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden p-4">
             <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>Bill Summary</h3>
-            
-            <div className="space-y-2.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Item Total</span>
-                <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(subtotal)}</span>
-              </div>
-              
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>Delivery Fee</span>
-                <span className={`font-medium ${deliveryCharge === 0 ? 'text-green-600' : 'text-gray-900'}`} style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  {deliveryCharge === 0 ? 'FREE' : formatPrice(deliveryCharge)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>{gstLabel}</span>
-                <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(taxAmount)}</span>
-              </div>
-
-              <div className="h-px bg-gray-200 dark:bg-zinc-800 my-2" />
-
-              <div className="flex justify-between items-center">
-                <span className="text-base font-bold text-gray-900 dark:text-zinc-100" style={{ fontFamily: "'Poppins', sans-serif" }}>To Pay</span>
-                <span className="text-lg font-bold text-green-600" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(total)}</span>
-              </div>
-            </div>
+            {billSummaryRows}
           </div>
         </div>
 
@@ -1425,6 +1437,96 @@ const MobileCheckout = () => {
           </div>
         )}
         </>)}
+
+        {/* ─── STEP 3: Payment (same page, so the stepper above stays in place) ─── */}
+        {currentStep === 3 && (
+          <div className="pb-8">
+            {/* Deliver to */}
+            <div className="mx-4 mt-3 mb-3 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm px-4 py-3 flex items-start gap-3">
+              <MapPin className="w-4 h-4 mt-0.5 text-gray-600 dark:text-zinc-400 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 dark:text-zinc-400">Delivering to</p>
+                {selectedAddress && (
+                  <>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate">{selectedAddress.fullName}</p>
+                    <p className="text-xs text-gray-600 dark:text-zinc-400 line-clamp-2">
+                      {selectedAddress.address}, {selectedAddress.city}, {selectedAddress.state} {selectedAddress.pinCode}
+                    </p>
+                  </>
+                )}
+              </div>
+              <button
+                onClick={handleOpenAddressSelector}
+                className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex-shrink-0 py-1"
+              >
+                Change
+              </button>
+            </div>
+
+            {/* Payment Method */}
+            <div className="mx-4 mb-3 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4">
+              <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3">Payment Method</h3>
+              <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                    <CreditCard className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
+                  </div>
+                  <div>
+                    <span className="block text-sm font-medium text-gray-900 dark:text-zinc-100">Pay Online (Razorpay)</span>
+                    <span className="text-xs text-gray-500 dark:text-zinc-400">Cards, UPI, Wallets & Net Banking</span>
+                  </div>
+                </div>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="Razorpay"
+                  checked={selectedPaymentMethod === 'Razorpay'}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
+                />
+              </label>
+            </div>
+
+            {/* Items */}
+            <div className="mx-4 mb-3 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100">
+                  {totalItems} item{totalItems !== 1 ? 's' : ''}
+                </h3>
+                <button
+                  onClick={() => setCurrentStep(1)}
+                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 py-1"
+                >
+                  Edit
+                </button>
+              </div>
+              <div className="space-y-3">
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-800">
+                      <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-semibold text-gray-900 dark:text-zinc-100 line-clamp-2">{item.name}</h4>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 tabular-nums">
+                        Qty {item.quantity} × {formatPrice(item.price)}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 tabular-nums flex-shrink-0">
+                      {formatPrice(item.price * item.quantity)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bill Summary */}
+            <div className="mx-4 mb-4 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm p-4">
+              <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3">Bill Summary</h3>
+              {billSummaryRows}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── Bottom Fixed Section ─── */}
@@ -1439,178 +1541,34 @@ const MobileCheckout = () => {
               Proceed to Checkout
               <ChevronRight className="w-4 h-4" />
             </button>
+          ) : currentStep === 2 ? (
+            <button
+              onClick={() => {
+                if (!selectedAddress) {
+                  handleOpenAddressSelector();
+                  return;
+                }
+                setCurrentStep(3);
+              }}
+              className="w-full h-14 bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold text-sm rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all tabular-nums"
+            >
+              {selectedAddress ? `Continue to Payment · ${formatPrice(total)}` : 'Add Delivery Address'}
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : isPlacingOrder ? (
+            <div className="h-14 rounded-full flex items-center justify-center bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold">
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              Placing Order...
+            </div>
           ) : (
             <SlideToPayButton
               key={slideResetKey}
               amount={formatPrice(total)}
-              onComplete={() => {
-                if (!selectedAddress) {
-                  setSlideResetKey(k => k + 1);
-                  setShowAddressSelector(true);
-                  return;
-                }
-                setShowPaymentDetails(true);
-              }}
+              onComplete={handlePlaceOrder}
             />
           )}
         </div>
       </div>
-
-      {/* ─── Payment Details Modal ─── */}
-      <AnimatePresence>
-        {showPaymentDetails && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed inset-0 z-[80] bg-[linear-gradient(180deg,rgba(212,175,55,0.08)_0%,rgba(255,255,255,1)_18%),linear-gradient(135deg,rgba(131,39,41,0.04)_0%,rgba(255,255,255,1)_52%)] dark:bg-zinc-950"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
-          >
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-white/85 dark:bg-zinc-900/85 backdrop-blur border-b border-[#d4af37]/15 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => { setShowPaymentDetails(false); setSlideResetKey(k => k + 1); }}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 dark:bg-zinc-800 rounded-full transition-colors"
-                >
-                  <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-zinc-300" />
-                </button>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Payment Details</h2>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-y-auto pb-24" style={{ height: 'calc(100vh - 60px)' }}>
-              {/* Stepper - scrolls with content */}
-              <div className="px-4 pt-4 pb-3">
-                <div className="relative flex justify-between">
-                  {/* Gray background rail */}
-                  <div className="absolute top-4 h-0.5 bg-gray-200 dark:bg-zinc-700" style={{ left: '12.5%', right: '12.5%' }} />
-                  {/* Green active rail (steps 1-3 done, step 4 pending) */}
-                  <div className="absolute top-4 h-0.5 bg-green-500" style={{ left: '12.5%', width: '50%' }} />
-
-                  {/* Step 1: Cart */}
-                  <div className="relative z-10 flex flex-col items-center w-1/4">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
-                      <Check className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-xs mt-1 text-green-600 font-semibold">Cart</span>
-                  </div>
-
-                  {/* Step 2: Checkout */}
-                  <div className="relative z-10 flex flex-col items-center w-1/4">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
-                      <Check className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-xs mt-1 text-green-600 font-semibold">Checkout</span>
-                  </div>
-
-                  {/* Step 3: Payment */}
-                  <div className="relative z-10 flex flex-col items-center w-1/4">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
-                      <span className="text-xs font-bold text-white">3</span>
-                    </div>
-                    <span className="text-xs mt-1 text-green-600 font-semibold">Payment</span>
-                  </div>
-
-                  {/* Step 4: Confirm */}
-                  <div className="relative z-10 flex flex-col items-center w-1/4">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-zinc-800">
-                      <span className="text-xs font-bold text-gray-500 dark:text-zinc-500">4</span>
-                    </div>
-                    <span className="text-xs mt-1 text-gray-400 dark:text-zinc-500">Confirm</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Method */}
-              <div className="px-4 py-4">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-4">Payment Method</h3>
-                <div className="space-y-3">
-                  {/* Razorpay — Cards, UPI, Wallets & Net Banking */}
-                  <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                        <CreditCard className="w-4 h-4 text-gray-600 dark:text-zinc-400" />
-                      </div>
-                      <div>
-                        <span className="block text-sm font-medium text-gray-900 dark:text-zinc-100">Pay Online (Razorpay)</span>
-                        <span className="text-xs text-gray-500 dark:text-zinc-400">Cards, UPI, Wallets & Net Banking</span>
-                      </div>
-                    </div>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="Razorpay"
-                      checked={selectedPaymentMethod === 'Razorpay'}
-                      onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-zinc-700 focus:ring-blue-500"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Order Details */}
-              <div className="px-4 py-4 border-t border-gray-100 dark:border-zinc-800">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-4">Order Details</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600 dark:text-zinc-400">Sub Total (include vat and tax)</span>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{formatPrice(subtotal)}</span>
-                  </div>
-                  <Separator className="my-2" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-gray-900 dark:text-zinc-100">Total (include vat and tax)</span>
-                    <span className="text-lg font-bold text-gray-900 dark:text-zinc-100">{formatPrice(total)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Selected Items */}
-              <div className="px-4 py-4 border-t border-gray-100 dark:border-zinc-800">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-4">Selected item</h3>
-                <div className="space-y-3">
-                  {items.slice(0, 1).map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-3">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 dark:bg-zinc-900">
-                        <SmartImage src={item.image} alt={item.name} className="w-full h-full object-cover" preset="thumb" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-semibold text-gray-900 dark:text-zinc-100 line-clamp-1">{item.name}</h4>
-                      </div>
-                    </div>
-                  ))}
-                  {items.length > 1 && (
-                    <p className="text-xs text-gray-500 dark:text-zinc-500">+ {items.length - 1} more item{items.length > 2 ? 's' : ''}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Place Order Slide Button */}
-            <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3, type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 bg-white/88 dark:bg-zinc-900/88 backdrop-blur border-t border-[#d4af37]/15 p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)]"
-            >
-              {isPlacingOrder ? (
-                <div className="h-14 rounded-full flex items-center justify-center bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  Placing Order...
-                </div>
-              ) : (
-                <SlideToPayButton
-                  amount="Place Order"
-                  onComplete={handlePlaceOrder}
-                />
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ─── Premium Order Animation Overlay ─── */}
       <AnimatePresence>
@@ -2063,7 +2021,7 @@ const Checkout = () => {
 
   // Format price in Indian Rupees
   const formatPrice = (price: number) => {
-    return `₹ ${price.toFixed(2)}`;
+    return `₹ ${formatAmountINR(price)}`;
   };
 
   // Admin-driven pricing (must be called before any conditional returns — Rules of Hooks)
