@@ -1,5 +1,9 @@
 # Handoff
 
+## 2026-10-05 (late): removed 89 unused files
+
+Status: done. The owner approved it. The 89 files in `docs/UNUSED_FILES.txt` were removed with `git rm`; all were tracked, none were missing. `npm run build` passes. The type-check (`npx tsc --noEmit -p tsconfig.app.json --ignoreDeprecations 5.0`) now shows 13 errors, down from 20, and none are "cannot find module". Without the override flag, tsc stops at `ignoreDeprecations: "6.0"` in `tsconfig.app.json` line 25. No browser check was done: none of the files were imported from `src/main.tsx`, and the build confirms that.
+
 ## 2026-10-05 (night): announcements, product-page claims, known-issues list, leaked token
 
 Status: done. `npm run build` passes and `api/` still has 12 files. The type-check shows the same 20 old errors as before, none in changed files. Tests pass: `scripts/tests/` has 21 + 14 + 8 cases (see its README). Playwright checks pass 25/25 at 390 px and 1440 px, light and dark; Meta, `/api/broadcast` and R2 were mocked. Committed locally, not pushed. Firestore rules not changed.
@@ -47,7 +51,7 @@ Status: done. `npm run build` passes and `api/` still has 12 files. The type-che
     - **Team media:** a paperclip in Reply mode (also paste). Photos are re-encoded to JPEG ≤3 MB; documents (PDF, Office, txt) up to 3 MB. New action `send-media`, which uploads to Meta's `/media` and then sends.
     - **Large media:** the `media` action serves 3.5 MB slices, which the admin page joins. The limit is now 25 MB.
     - **Inbox:** "Load older conversations" adds 300 more each time.
-- **About 89 unused files:** **not deleted.** The bulk `git rm` was blocked by the safety check. The list is in `docs/UNUSED_FILES.txt`, made by tracing imports from `src/main.tsx`. To delete them, run this in Git Bash: `git rm $(cat docs/UNUSED_FILES.txt)`, then `npm run build`.
+- **About 89 unused files:** deleted on 2026-10-05 (see the entry above).
 
 ### 4. Security: a WhatsApp token was committed
 - `scripts/test-templates.mjs` had a hardcoded token fallback, committed since 2026-04-28 and pushed to GitHub. The fallback is removed. Checked 2026-10-05: the token belongs to the agency's **"Dream Team Posting"** app and a different phone number, **not** the store's (the store uses app `ssmessages` and the "Sreerasthu Silvers" number). It **still works**, so revoke it in the Dream Team business: Settings → System users → Revoke tokens. The store's token doesn't need replacing.
