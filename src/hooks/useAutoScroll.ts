@@ -2,34 +2,36 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import useAutoplayGate from "@/hooks/useAutoplayGate";
 
 /**
- * Card-by-card autoplay for a horizontal overflow-x row.
+ * Continuous autoplay for a horizontal overflow-x row: the row drifts slowly
+ * and steadily, like a marquee, and loops seamlessly when the caller renders
+ * the items twice (`loopItemCount`); without copies it turns around at the ends.
  *
- * Every `interval` ms the row glides one card along and settles, like a
- * person swiping it, then rests so the card can be read. At the end it loops:
- * seamlessly when the caller renders the items twice (`loopItemCount`),
- * otherwise by gliding back to the start.
+ * It holds still whenever `useAutoplayGate` says so: a mouse over it (it moves
+ * again the moment the mouse leaves), a finger on it (it moves again as soon
+ * as the swipe settles), keyboard focus inside, the row being off screen, a
+ * background tab, reduced motion, or `paused` from the caller (a video
+ * playing). Every start eases in, so it never lurches.
  *
- * It holds still whenever `useAutoplayGate` says so: hover, a finger on it (and
- * a few seconds after), keyboard focus inside, the user's own scroll, the row
- * being off screen, a background tab, reduced motion, or `paused` from the
- * caller (a video playing). A touch or wheel cancels a glide mid-flight, so it
- * never fights the user's own swipe.
+ * Smoothness: browsers round `scrollLeft` to whole pixels, so a drift of
+ * ~40 px/s through `scrollLeft` alone would step 1 px, 1 px, 0 px... and
+ * judder. The whole pixels go to `scrollLeft` (so a swipe or the arrows carry
+ * on from where the row really is) and the leftover fraction goes to a
+ * `transform` on the inner track. Callers wrap their cards in one inner flex
+ * div so there is a track to move.
  *
- * Why not set `scrollLeft` from a CSS transition or `scrollTo({behavior})`:
- * this site gives every `.overflow-x-auto` `scroll-behavior: smooth` and some
- * rows use mandatory snapping, so the browser would re-animate or re-snap each
- * write. The glide switches both off on the element for its few hundred ms and
- * puts them back when it lands exactly on a card.
+ * This site gives every `.overflow-x-auto` `scroll-behavior: smooth`, and some
+ * rows snap. Both would re-animate or re-snap each write, so they are switched
+ * off on the row for as long as it autoplays.
  */
 
 export interface UseAutoScrollOptions {
-  /** Rest between steps, ms. */
-  interval?: number;
+  /** Drift speed, px per second. */
+  speed?: number;
   /** How long to wait after a touch, press or manual scroll ends. */
   resumeDelay?: number;
   /** Loop at the end (always true in practice; false stops at the end). */
   loop?: boolean;
-  /** 1 moves toward later cards, -1 toward earlier ones. */
+  /** 1: cards travel right to left (toward later cards); -1: left to right. */
   direction?: 1 | -1;
   /** Item count before the caller duplicated them for a seamless loop. */
   loopItemCount?: number;
@@ -54,10 +56,15 @@ export interface UseAutoScrollReturn {
 
 /** Strong ease-out: arrow presses respond at once. */
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
-/** iOS-like paging curve: a soft start and a long, calm settle. */
-const EASE_PAGE: [number, number, number, number] = [0.32, 0.72, 0, 1];
-const STEP_MS = 800;
 const ARROW_MS = 450;
+/** Default drift speed, px per second: calm enough to read a card as it passes. */
+const DRIFT_SPEED = 40;
+/** Each start eases up to full speed over this long. */
+const RAMP_MS = 450;
+/** After a finger lifts or a swipe's momentum ends, wait this long. */
+const SETTLE_MS = 300;
+/** After an arrow press, let the row rest so the new card can be seen. */
+const ARROW_HOLD_MS = 1600;
 
 /** Standard cubic-bezier timing function solved for x (Newton, then bisection). */
 function bezier([x1, y1, x2, y2]: [number, number, number, number]) {
@@ -95,19 +102,22 @@ function bezier([x1, y1, x2, y2]: [number, number, number, number]) {
   };
 }
 
-const easePage = bezier(EASE_PAGE);
 const easeOut = bezier(EASE_OUT);
 
 /**
  * The element whose children are the cards. Some rows wrap their cards in one
  * inner `w-max` flex div, so look through single-child wrappers.
  */
-function getItems(el: HTMLElement): HTMLElement[] {
+function getTrack(el: HTMLElement): HTMLElement {
   let track: Element = el;
   while (track.children.length === 1 && track.firstElementChild!.children.length > 1) {
     track = track.firstElementChild!;
   }
-  return Array.from(track.children).filter(
+  return track as HTMLElement;
+}
+
+function getItems(el: HTMLElement): HTMLElement[] {
+  return Array.from(getTrack(el).children).filter(
     (c): c is HTMLElement => c instanceof HTMLElement && c.offsetWidth > 0
   );
 }
@@ -169,8 +179,8 @@ function nearestIndex(targets: number[], pos: number, max: number) {
 
 export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollReturn {
   const {
-    interval = 3500,
-    resumeDelay = 2500,
+    speed = DRIFT_SPEED,
+    resumeDelay = SETTLE_MS,
     loop = true,
     direction = 1,
     loopItemCount = 0,
@@ -190,6 +200,7 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
     resumeDelay,
   });
 
+  /** Arrow-button glide in flight. */
   const animRef = useRef<number | null>(null);
   /** Last scrollLeft this hook wrote, to tell the user's scrolls from ours. */
   const writtenRef = useRef(0);
@@ -197,17 +208,35 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
   const quietUntilRef = useRef(0);
   const loopCountRef = useRef(loopItemCount);
   loopCountRef.current = loopItemCount;
+  const layoutRef = useRef<Layout | null>(null);
+  /** Snap and smooth scrolling stay off while the row autoplays. */
+  const lockedRef = useRef(false);
+  const autoplays = enabled && canScroll && !gate.reducedMotion;
+
+  const restoreScrollStyle = useCallback(() => {
+    if (!el) return;
+    el.style.scrollSnapType = lockedRef.current ? "none" : "";
+    el.style.scrollBehavior = lockedRef.current ? "auto" : "";
+  }, [el]);
+
+  useEffect(() => {
+    if (!el) return;
+    lockedRef.current = autoplays;
+    restoreScrollStyle();
+    return () => {
+      lockedRef.current = false;
+      el.style.scrollSnapType = "";
+      el.style.scrollBehavior = "";
+    };
+  }, [el, autoplays, restoreScrollStyle]);
 
   const stopGlide = useCallback(() => {
     if (animRef.current !== null) {
       cancelAnimationFrame(animRef.current);
       animRef.current = null;
     }
-    if (el) {
-      el.style.scrollSnapType = "";
-      el.style.scrollBehavior = "";
-    }
-  }, [el]);
+    restoreScrollStyle();
+  }, [restoreScrollStyle]);
 
   /** Glide from `from` to `to`; `from` differs from scrollLeft after a loop jump. */
   const glide = useCallback(
@@ -280,16 +309,20 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
     [el, glide, loop, gate.reducedMotion]
   );
 
-  // Keep `canScroll` honest as cards load, resize or get duplicated.
+  // Keep `canScroll` and the cached layout honest as cards load, resize or
+  // get duplicated.
   useEffect(() => {
     if (!el) {
+      layoutRef.current = null;
       setCanScroll(false);
       return;
     }
     let raf = 0;
     const update = () => {
       raf = 0;
-      setCanScroll(measure(el, loopCountRef.current).canScroll);
+      const layout = measure(el, loopCountRef.current);
+      layoutRef.current = layout;
+      setCanScroll(layout.canScroll);
     };
     const schedule = () => {
       if (!raf) raf = requestAnimationFrame(update);
@@ -309,7 +342,8 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
   }, [el, loopItemCount]);
 
   // The user's own input wins: stop a glide the instant they touch or scroll,
-  // and treat any scroll we did not make as an interaction.
+  // and treat any scroll we did not make (a swipe's momentum after the finger
+  // lifts) as an interaction, so the drift waits until it settles.
   useEffect(() => {
     if (!el) return;
     const takeOver = () => stopGlide();
@@ -319,7 +353,10 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
         writtenRef.current = el.scrollLeft;
         return;
       }
-      if (Math.abs(el.scrollLeft - writtenRef.current) > 2) gate.hold();
+      if (Math.abs(el.scrollLeft - writtenRef.current) > 2) {
+        writtenRef.current = el.scrollLeft;
+        gate.hold();
+      }
     };
     el.addEventListener("pointerdown", takeOver, { passive: true });
     el.addEventListener("touchstart", takeOver, { passive: true });
@@ -334,20 +371,76 @@ export function useAutoScroll(opts: UseAutoScrollOptions = {}): UseAutoScrollRet
     };
   }, [el, gate.hold, stopGlide]);
 
-  // The autoplay itself. Pausing (hover, off screen) lets a glide in flight
-  // land on its card; only the user's own touch or scroll cuts one short.
+  // The drift itself: one frame loop while nothing holds the row still.
   useEffect(() => {
-    if (!gate.running || !el) return;
-    const id = window.setInterval(() => step(direction, 1, STEP_MS, easePage), interval);
-    return () => window.clearInterval(id);
-  }, [gate.running, el, direction, interval, step]);
+    if (!gate.running || !el || gate.reducedMotion) return;
+    const track = getTrack(el);
+    const moveTrack = track !== el;
+    if (moveTrack) track.style.willChange = "transform";
+
+    let raf = 0;
+    let pos = el.scrollLeft;
+    let dir: 1 | -1 = direction;
+    const startedAt = performance.now();
+    let last = startedAt;
+
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      // A long gap (a dropped frame, a busy main thread) must not become a jump.
+      const dt = Math.min(Math.max(now - last, 0), 50) / 1000;
+      last = now;
+      if (animRef.current !== null) {
+        pos = el.scrollLeft;
+        return;
+      }
+      const layout = layoutRef.current ?? measure(el, loopCountRef.current);
+      layoutRef.current = layout;
+      if (!layout.canScroll) return;
+      const { resetPoint, max } = layout;
+
+      const r = Math.min(1, (now - startedAt) / RAMP_MS);
+      const ramp = r * r * (3 - 2 * r);
+      pos += dir * speed * ramp * dt;
+
+      if (resetPoint > 0) {
+        // Seamless loop: the copy at `resetPoint` looks identical to card 0.
+        // (A turn-around made before the copies rendered no longer applies.)
+        dir = direction;
+        if (pos >= resetPoint) pos -= resetPoint;
+        else if (pos < 0) pos += resetPoint;
+      } else if (pos >= max) {
+        if (!loop) return;
+        pos = max;
+        dir = -1;
+      } else if (pos <= 0) {
+        if (!loop) return;
+        pos = 0;
+        dir = 1;
+      }
+
+      el.scrollLeft = Math.floor(pos);
+      const actual = el.scrollLeft;
+      writtenRef.current = actual;
+      if (moveTrack) track.style.transform = `translate3d(${(actual - pos).toFixed(3)}px,0,0)`;
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (moveTrack) {
+        track.style.transform = "";
+        track.style.willChange = "";
+      }
+      writtenRef.current = el.scrollLeft;
+    };
+  }, [gate.running, gate.reducedMotion, el, direction, speed, loop]);
 
   useEffect(() => stopGlide, [stopGlide]);
 
   const scrollByPage = useCallback(
     (dir: "prev" | "next") => {
       if (!el) return;
-      gate.hold();
+      gate.hold(ARROW_HOLD_MS);
       const count = pageCards ?? measure(el, loopCountRef.current).perView;
       step(dir === "next" ? 1 : -1, Math.max(1, count), gate.reducedMotion ? 0 : ARROW_MS, easeOut);
     },

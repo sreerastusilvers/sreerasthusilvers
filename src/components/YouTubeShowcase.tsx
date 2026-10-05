@@ -89,6 +89,8 @@ const YouTubeShowcase = () => {
   const { scrollerRef, scrollByPage, canScroll } = useAutoScroll({
     loopItemCount: videos.length,
     paused: playingIds.size > 0 || selectedVideo !== null,
+    // Home rows alternate: this sixth row drifts left to right.
+    direction: -1,
   });
 
   useEffect(() => {
@@ -266,66 +268,68 @@ const YouTubeShowcase = () => {
 
             <div
               ref={scrollerRef}
-              className="flex items-stretch gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 px-1"
+              className="overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 px-1"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
-              {stripVideos.map((v, i) => {
-                const key = v.id || v.videoId;
-                const cardKey = `${key}-${i}`;
-                const isFeaturedActive =
-                  featured && key === (featured.id || featured.videoId);
-                const isPortrait = v.aspectRatio === "9:16";
-                const isPlaying = playingIds.has(cardKey);
-                return (
-                  <motion.div
-                    key={cardKey}
-                    whileHover={{ y: -4 }}
-                    transition={{ duration: 0.25 }}
-                    className={`group flex-shrink-0 snap-center text-left rounded-2xl overflow-hidden border-2 transition-all bg-card ${
-                      // Phone cards are sized off the viewport so a reel is
-                      // watchable, with the next one peeking to invite a swipe.
-                      isPortrait
-                        ? "w-[62vw] max-w-[260px] md:w-[216px]"
-                        : "w-[82vw] max-w-[340px] md:w-[320px]"
-                    } ${
-                      isFeaturedActive
-                        ? "border-primary shadow-[0_18px_36px_-18px_rgba(212,175,55,0.6)]"
-                        : "border-transparent shadow-md hover:shadow-xl"
-                    }`}
-                  >
-                    <div className="relative">
-                      <InlinePlayer
-                        video={v}
-                        playing={isPlaying}
-                        onPlay={() => playInline(v, cardKey)}
-                        onOpen={() => {
-                          setPlayingIds(prev => { const s = new Set(prev); s.delete(cardKey); return s; });
-                          openVideo(v);
-                        }}
-                        rounded=""
-                      />
-                      {!isPlaying && v.featured && (
-                        <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/95 text-white text-[9px] uppercase tracking-[0.2em] font-semibold shadow">
-                          ★ Featured
-                        </span>
-                      )}
-                      {!isPlaying && isFeaturedActive && (
-                        <span className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full bg-primary/95 text-white text-[9px] uppercase tracking-[0.22em] font-semibold">
-                          In Spotlight
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p
-                        className="text-sm font-medium leading-snug line-clamp-2 text-foreground"
-                        style={{ fontFamily: "'Playfair Display', serif" }}
-                      >
-                        {v.title}
-                      </p>
-                    </div>
-                  </motion.div>
-                );
-              })}
+              <div className="flex w-max items-stretch gap-3 md:gap-4">
+                {stripVideos.map((v, i) => {
+                  const key = v.id || v.videoId;
+                  const cardKey = `${key}-${i}`;
+                  const isFeaturedActive =
+                    featured && key === (featured.id || featured.videoId);
+                  const isPortrait = v.aspectRatio === "9:16";
+                  const isPlaying = playingIds.has(cardKey);
+                  return (
+                    <motion.div
+                      key={cardKey}
+                      whileHover={{ y: -4 }}
+                      transition={{ duration: 0.25 }}
+                      className={`group flex-shrink-0 snap-center text-left rounded-2xl overflow-hidden border-2 transition-all bg-card ${
+                        // Phone cards are sized off the viewport so a reel is
+                        // watchable, with the next one peeking to invite a swipe.
+                        isPortrait
+                          ? "w-[62vw] max-w-[260px] md:w-[216px]"
+                          : "w-[82vw] max-w-[340px] md:w-[320px]"
+                      } ${
+                        isFeaturedActive
+                          ? "border-primary shadow-[0_18px_36px_-18px_rgba(212,175,55,0.6)]"
+                          : "border-transparent shadow-md hover:shadow-xl"
+                      }`}
+                    >
+                      <div className="relative">
+                        <InlinePlayer
+                          video={v}
+                          playing={isPlaying}
+                          onPlay={() => playInline(v, cardKey)}
+                          onOpen={() => {
+                            setPlayingIds(prev => { const s = new Set(prev); s.delete(cardKey); return s; });
+                            openVideo(v);
+                          }}
+                          rounded=""
+                        />
+                        {!isPlaying && v.featured && (
+                          <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/95 text-white text-[9px] uppercase tracking-[0.2em] font-semibold shadow">
+                            ★ Featured
+                          </span>
+                        )}
+                        {!isPlaying && isFeaturedActive && (
+                          <span className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full bg-primary/95 text-white text-[9px] uppercase tracking-[0.22em] font-semibold">
+                            In Spotlight
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p
+                          className="text-sm font-medium leading-snug line-clamp-2 text-foreground"
+                          style={{ fontFamily: "'Playfair Display', serif" }}
+                        >
+                          {v.title}
+                        </p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

@@ -1,5 +1,43 @@
 # Handoff
 
+## 2026-10-05 (late night): home rows now drift continuously, alternating direction
+
+Status: done, not committed. `npm run build` passes. The type-check shows 13 errors, all old, none in the changed files. Browser-checked with Playwright on the dev server at 390 px and 1440 px, light and dark.
+
+- **Owner's complaint:** the home product rows "don't scroll / feel static".
+    - **Root cause:** the old autoplay waited 3.5 s, hopped one card, then rested again.
+    - Every pause restarted that 3.5 s wait, including going off screen while the page was scrolled and a touch (held for 2.5 s after lifting).
+    - So in real use the rows looked still.
+- **Now (`src/hooks/useAutoScroll.ts`):** a continuous drift at 40 px/s.
+    - It eases in over 0.45 s and loops seamlessly through the duplicated cards.
+    - **Mouse:** it stops the instant the mouse is over a row and starts again the instant it leaves.
+    - **Finger:** it stops while touched and starts again about 0.3 s after the swipe settles.
+    - The arrows still page by a card and then rest 1.6 s.
+    - With reduced motion it stays still, as before.
+- **Smoothness:** Chrome rounds `scrollLeft` to whole pixels, so the whole pixels go to `scrollLeft` and the leftover fraction goes to a `transform` on an inner track.
+    - Measured: an even 0.667 px per frame at 60 fps, no stalled frames, no jump at the loop point.
+    - So every row's cards are now wrapped in one inner `flex w-max gap-*` div (TopDeals ×2, BestSellers mobile, TrendProducts mobile, TrendProductSection, PromoSection, YouTubeShowcase). Keep that wrapper if you edit these rows.
+    - Snap and smooth scrolling are switched off on a row while it autoplays.
+- **Directions alternate (owner's ask: first row right to left):**
+
+  | Row | Direction |
+  |---|---|
+  | TopDeals | R→L |
+  | BestSellers | L→R |
+  | TrendProducts (New Arrivals) | R→L |
+  | TrendProductSection (Trending) | L→R |
+  | PromoSection (Collections) | R→L |
+  | YouTubeShowcase | L→R |
+
+  Desktop shows the first three rows.
+- The TopDeals desktop row now renders its cards twice, so it loops seamlessly.
+- `useAutoplayGate.hold(ms?)` now takes an optional duration.
+- **Not changed:**
+    - FeaturedSection ("Editor's Picks"), a paged grid, not a row.
+    - HeroBanner and Testimonials, which have their own autoplay.
+- **Not verified:** real iOS Safari momentum scrolling and a 120 Hz phone. Check on a real phone after deploy.
+- Section 1 of the "evening" entry below (one card every 3.5 s) is replaced by this.
+
 ## 2026-10-05 (late): removed 89 unused files
 
 Status: done. The owner approved it. The 89 files in `docs/UNUSED_FILES.txt` were removed with `git rm`; all were tracked, none were missing. `npm run build` passes. The type-check (`npx tsc --noEmit -p tsconfig.app.json --ignoreDeprecations 5.0`) now shows 13 errors, down from 20, and none are "cannot find module". Without the override flag, tsc stops at `ignoreDeprecations: "6.0"` in `tsconfig.app.json` line 25. No browser check was done: none of the files were imported from `src/main.tsx`, and the build confirms that.

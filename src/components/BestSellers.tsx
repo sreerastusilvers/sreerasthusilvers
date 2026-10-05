@@ -26,6 +26,8 @@ const BestSellers = () => {
     canScroll: canMobileBSScroll,
   } = useAutoScroll({
     loopItemCount: Math.max(products.length - 1, 0),
+    // Home rows alternate: this second row drifts left to right.
+    direction: -1,
   });
   const {
     scrollerRef: desktopBSRef,
@@ -34,6 +36,7 @@ const BestSellers = () => {
   } = useAutoScroll({
     loopItemCount: products.length,
     pageCards: 1,
+    direction: -1,
   });
 
   // Real-time subscription to best sellers
@@ -236,68 +239,70 @@ const BestSellers = () => {
                 {/* Horizontal auto-scroll row for the rest (lighter than the previous 3-row grid) */}
                 <div
                   ref={mobileBSRef}
-                  className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1"
+                  className="overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1"
                   style={{ WebkitOverflowScrolling: 'touch' }}
                 >
-                  {mobileCarouselProducts.map((product, idx) => {
-                    const sourceIndex = mobileBaseProducts.length > 0 ? idx % mobileBaseProducts.length : idx;
-                    const rank = sourceIndex + 2; // continues from #2
-                    return (
-                      <motion.div
-                        key={`${product.id}-${idx}`}
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: Math.min(idx, 4) * 0.05, duration: 0.4 }}
-                        onClick={() => navigate(`/product/${product.id}`)}
-                        className="group cursor-pointer flex-shrink-0 w-[150px] flex flex-col overflow-hidden rounded-[20px] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,249,240,0.98)_100%)] shadow-[0_12px_28px_-22px_rgba(114,77,31,0.45)] transition-all duration-300 active:scale-[0.98] dark:border-[#d4af37]/15 dark:bg-[linear-gradient(180deg,rgba(28,22,16,0.98)_0%,rgba(16,14,12,0.98)_100%)] dark:shadow-[0_14px_28px_-20px_rgba(0,0,0,0.7)]"
-                      >
-                        <div className="relative aspect-square overflow-hidden bg-muted">
-                          <SmartImage
-                            src={product.image}
-                            alt={product.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" preset="card" />
-                          {rank <= 5 && (
-                            <span className="absolute top-2 left-2 inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold text-black shadow-sm" style={{ background: 'linear-gradient(135deg, #f4d57a 0%, #d4af37 50%, #b8941f 100%)' }}>
-                              #{rank}
-                            </span>
-                          )}
-                          <button
-                            onClick={(e) => handleWishlistClick(e, product.id, product.title)}
-                            className="absolute top-1.5 right-1.5 p-1.5 bg-background/95 dark:bg-card/95 backdrop-blur-sm rounded-full shadow-sm"
-                            aria-label="Add to wishlist"
-                          >
-                            <Heart className={`w-3 h-3 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
-                          </button>
-                        </div>
-                        <div className="p-2.5 flex flex-col flex-grow">
-                          <h3 className="text-[11px] font-medium text-foreground line-clamp-1 mb-1">
-                            {product.title}
-                          </h3>
-                          <div className="mt-auto flex items-end justify-between">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-1">
-                                <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
-                                {product.oldPrice && product.oldPrice > product.price && (
-                                  <p className="text-[9px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
-                                )}
-                              </div>
-                              {product.discount && product.discount > 0 && (
-                                <p className="text-[9px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
-                              )}
-                            </div>
+                  <div className="flex w-max gap-3">
+                    {mobileCarouselProducts.map((product, idx) => {
+                      const sourceIndex = mobileBaseProducts.length > 0 ? idx % mobileBaseProducts.length : idx;
+                      const rank = sourceIndex + 2; // continues from #2
+                      return (
+                        <motion.div
+                          key={`${product.id}-${idx}`}
+                          initial={{ opacity: 0 }}
+                          whileInView={{ opacity: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: Math.min(idx, 4) * 0.05, duration: 0.4 }}
+                          onClick={() => navigate(`/product/${product.id}`)}
+                          className="group cursor-pointer flex-shrink-0 w-[150px] flex flex-col overflow-hidden rounded-[20px] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(255,249,240,0.98)_100%)] shadow-[0_12px_28px_-22px_rgba(114,77,31,0.45)] transition-all duration-300 active:scale-[0.98] dark:border-[#d4af37]/15 dark:bg-[linear-gradient(180deg,rgba(28,22,16,0.98)_0%,rgba(16,14,12,0.98)_100%)] dark:shadow-[0_14px_28px_-20px_rgba(0,0,0,0.7)]"
+                        >
+                          <div className="relative aspect-square overflow-hidden bg-muted">
+                            <SmartImage
+                              src={product.image}
+                              alt={product.title}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" preset="card" />
+                            {rank <= 5 && (
+                              <span className="absolute top-2 left-2 inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold text-black shadow-sm" style={{ background: 'linear-gradient(135deg, #f4d57a 0%, #d4af37 50%, #b8941f 100%)' }}>
+                                #{rank}
+                              </span>
+                            )}
                             <button
-                              onClick={(e) => handleAddToCart(e, product)}
-                              className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart"
-                              aria-label="Add to cart"
+                              onClick={(e) => handleWishlistClick(e, product.id, product.title)}
+                              className="absolute top-1.5 right-1.5 p-1.5 bg-background/95 dark:bg-card/95 backdrop-blur-sm rounded-full shadow-sm"
+                              aria-label="Add to wishlist"
                             >
-                              <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white" />
+                              <Heart className={`w-3 h-3 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
                             </button>
                           </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                          <div className="p-2.5 flex flex-col flex-grow">
+                            <h3 className="text-[11px] font-medium text-foreground line-clamp-1 mb-1">
+                              {product.title}
+                            </h3>
+                            <div className="mt-auto flex items-end justify-between">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
+                                  {product.oldPrice && product.oldPrice > product.price && (
+                                    <p className="text-[9px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
+                                  )}
+                                </div>
+                                {product.discount && product.discount > 0 && (
+                                  <p className="text-[9px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
+                                )}
+                              </div>
+                              <button
+                                onClick={(e) => handleAddToCart(e, product)}
+                                className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart"
+                                aria-label="Add to cart"
+                              >
+                                <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
                 </div>
               </>
             )}

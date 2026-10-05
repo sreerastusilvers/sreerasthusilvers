@@ -23,7 +23,11 @@ const TrendProductSection = () => {
     scrollerRef: mobileScrollRef,
     scrollByPage: mobileScrollByPage,
     canScroll: canMobileTrendingScroll,
-  } = useAutoScroll({ loopItemCount: products.length });
+  } = useAutoScroll({
+    loopItemCount: products.length,
+    // Home rows alternate: this fourth row drifts left to right.
+    direction: -1,
+  });
 
   const mobileTrendingProducts =
     canMobileTrendingScroll && products.length > 1 ? [...products, ...products] : products;
@@ -117,50 +121,52 @@ const TrendProductSection = () => {
               </button>
             </div>
           </div>
-          <div ref={mobileScrollRef} className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {mobileTrendingProducts.map((product, index) => (
-              <motion.div
-                key={`${product.id}-${index}`}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: Math.min(index, 4) * 0.06 }}
-                className="flex-shrink-0 w-[150px] cursor-pointer"
-                onClick={() => navigate(`/product/${product.id}`)}
-              >
-                <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/70 h-full flex flex-col">
-                  <div className="aspect-square overflow-hidden bg-muted relative">
-                    <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" preset="card" />
-                    <button
-                      onClick={(e) => handleWishlistClick(e, product.id, product.title)}
-                      className="absolute top-2 right-2 p-1.5 bg-background/95 dark:bg-card/95 rounded-full shadow-sm"
-                    >
-                      <Heart className={`w-3.5 h-3.5 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
-                    </button>
-                  </div>
-                  <div className="p-2.5 flex flex-col flex-grow">
-                    <p className="text-[11px] text-muted-foreground line-clamp-1 mb-0.5">{product.title}</p>
-                    <div className="mt-auto flex items-end justify-between gap-1">
-                      <div className="flex flex-col min-w-0">
-                        <p className="text-sm font-bold text-foreground leading-tight">₹{product.price.toLocaleString()}</p>
-                        {product.oldPrice && product.oldPrice > product.price && (
-                          <p className="text-[10px] text-muted-foreground line-through leading-tight">₹{product.oldPrice.toLocaleString()}</p>
-                        )}
-                        {product.discount && product.discount > 0 && (
-                          <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73] leading-tight">{product.discount}% Off</p>
-                        )}
-                      </div>
+          <div ref={mobileScrollRef} className="overflow-x-auto scrollbar-hide pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex w-max gap-3">
+              {mobileTrendingProducts.map((product, index) => (
+                <motion.div
+                  key={`${product.id}-${index}`}
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: Math.min(index, 4) * 0.06 }}
+                  className="flex-shrink-0 w-[150px] cursor-pointer"
+                  onClick={() => navigate(`/product/${product.id}`)}
+                >
+                  <div className="bg-card rounded-2xl overflow-hidden shadow-sm border border-border/70 h-full flex flex-col">
+                    <div className="aspect-square overflow-hidden bg-muted relative">
+                      <SmartImage src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" preset="card" />
                       <button
-                        onClick={(e) => handleAddToCart(e, product)}
-                        className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart flex-shrink-0"
+                        onClick={(e) => handleWishlistClick(e, product.id, product.title)}
+                        className="absolute top-2 right-2 p-1.5 bg-background/95 dark:bg-card/95 rounded-full shadow-sm"
                       >
-                        <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white transition-colors" />
+                        <Heart className={`w-3.5 h-3.5 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
                       </button>
                     </div>
+                    <div className="p-2.5 flex flex-col flex-grow">
+                      <p className="text-[11px] text-muted-foreground line-clamp-1 mb-0.5">{product.title}</p>
+                      <div className="mt-auto flex items-end justify-between gap-1">
+                        <div className="flex flex-col min-w-0">
+                          <p className="text-sm font-bold text-foreground leading-tight">₹{product.price.toLocaleString()}</p>
+                          {product.oldPrice && product.oldPrice > product.price && (
+                            <p className="text-[10px] text-muted-foreground line-through leading-tight">₹{product.oldPrice.toLocaleString()}</p>
+                          )}
+                          {product.discount && product.discount > 0 && (
+                            <p className="text-[10px] font-semibold text-[#b88a2a] dark:text-[#f4cf73] leading-tight">{product.discount}% Off</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => handleAddToCart(e, product)}
+                          className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart flex-shrink-0"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white transition-colors" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -232,60 +232,62 @@ const TrendProducts = () => {
                 {/* Horizontal snap row of remaining */}
                 <div
                   ref={scrollRef}
-                  className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4"
+                  className="overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4"
                   style={{ WebkitOverflowScrolling: 'touch', scrollPaddingLeft: '16px' }}
                 >
-                  {mobileTrackProducts.map((product, index) => (
-                    <div
-                      key={`${product.id}-${index}`}
-                      className="w-[148px] flex-shrink-0 cursor-pointer"
-                      onClick={() => navigate(`/product/${product.id}`)}
-                    >
-                      <div className="flex h-full flex-col overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-[0_12px_28px_-22px_rgba(114,77,31,0.4)] dark:border-[#d4af37]/15 dark:shadow-[0_14px_28px_-20px_rgba(0,0,0,0.7)]">
-                        <div className="aspect-square overflow-hidden bg-secondary/50 dark:bg-muted relative">
-                          <SmartImage
-                            src={product.image}
-                            alt={product.title}
-                            className="w-full h-full object-cover" preset="card" />
-                          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.18em] dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/70">
-                            New
-                          </span>
-                          <button
-                            onClick={(e) => handleWishlistClick(e, product.id, product.title)}
-                            className="absolute top-1.5 right-1.5 p-1.5 bg-background/90 dark:bg-card/90 backdrop-blur-sm rounded-full shadow-sm"
-                            aria-label="Add to wishlist"
-                          >
-                            <Heart className={`w-3 h-3 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
-                          </button>
-                        </div>
-                        <div className="p-2.5 flex flex-col flex-grow">
-                          <h3 className="text-[11px] font-medium text-foreground line-clamp-1 mb-1">
-                            {product.title}
-                          </h3>
-                          <div className="mt-auto flex items-end justify-between">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-1">
-                                <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
-                                {product.oldPrice && product.oldPrice > product.price && (
-                                  <p className="text-[9px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
+                  <div className="flex w-max gap-3">
+                    {mobileTrackProducts.map((product, index) => (
+                      <div
+                        key={`${product.id}-${index}`}
+                        className="w-[148px] flex-shrink-0 cursor-pointer"
+                        onClick={() => navigate(`/product/${product.id}`)}
+                      >
+                        <div className="flex h-full flex-col overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-[0_12px_28px_-22px_rgba(114,77,31,0.4)] dark:border-[#d4af37]/15 dark:shadow-[0_14px_28px_-20px_rgba(0,0,0,0.7)]">
+                          <div className="aspect-square overflow-hidden bg-secondary/50 dark:bg-muted relative">
+                            <SmartImage
+                              src={product.image}
+                              alt={product.title}
+                              className="w-full h-full object-cover" preset="card" />
+                            <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.18em] dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/70">
+                              New
+                            </span>
+                            <button
+                              onClick={(e) => handleWishlistClick(e, product.id, product.title)}
+                              className="absolute top-1.5 right-1.5 p-1.5 bg-background/90 dark:bg-card/90 backdrop-blur-sm rounded-full shadow-sm"
+                              aria-label="Add to wishlist"
+                            >
+                              <Heart className={`w-3 h-3 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
+                            </button>
+                          </div>
+                          <div className="p-2.5 flex flex-col flex-grow">
+                            <h3 className="text-[11px] font-medium text-foreground line-clamp-1 mb-1">
+                              {product.title}
+                            </h3>
+                            <div className="mt-auto flex items-end justify-between">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <p className="text-sm font-bold text-foreground">₹{product.price.toLocaleString()}</p>
+                                  {product.oldPrice && product.oldPrice > product.price && (
+                                    <p className="text-[9px] text-muted-foreground line-through">₹{product.oldPrice.toLocaleString()}</p>
+                                  )}
+                                </div>
+                                {product.discount && product.discount > 0 && (
+                                  <p className="text-[9px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
                                 )}
                               </div>
-                              {product.discount && product.discount > 0 && (
-                                <p className="text-[9px] font-semibold text-[#b88a2a] dark:text-[#f4cf73]">{product.discount}% Off</p>
-                              )}
+                              <button
+                                onClick={(e) => handleAddToCart(e, product)}
+                                className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart"
+                                aria-label="Add to cart"
+                              >
+                                <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white" />
+                              </button>
                             </div>
-                            <button
-                              onClick={(e) => handleAddToCart(e, product)}
-                              className="w-7 h-7 rounded-full bg-muted hover:bg-primary flex items-center justify-center transition-colors group/cart"
-                              aria-label="Add to cart"
-                            >
-                              <ShoppingCart className="w-3.5 h-3.5 text-muted-foreground group-hover/cart:text-white" />
-                            </button>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </>
             )}

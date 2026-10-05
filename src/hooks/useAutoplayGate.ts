@@ -50,8 +50,8 @@ export interface AutoplayGate {
   running: boolean;
   /** True when the OS asks for reduced motion. */
   reducedMotion: boolean;
-  /** Treat this moment as a user interaction: hold still for `resumeDelay`. */
-  hold: () => void;
+  /** Treat this moment as a user interaction: hold still for `ms` (default `resumeDelay`). */
+  hold: (ms?: number) => void;
 }
 
 const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
@@ -127,10 +127,13 @@ export function useAutoplayGate({
     [clearTimer, sync]
   );
 
-  const hold = useCallback(() => {
-    add("scroll");
-    remove("scroll", resumeDelay);
-  }, [add, remove, resumeDelay]);
+  const hold = useCallback(
+    (ms: number = resumeDelay) => {
+      add("scroll");
+      remove("scroll", ms);
+    },
+    [add, remove, resumeDelay]
+  );
 
   // Caller-controlled reasons.
   useEffect(() => {
