@@ -35,3 +35,6 @@ TEST_CREDENTIALS.md
 .env*.local
 nul
 nul
+
+# test bundles
+scripts/tests/out/

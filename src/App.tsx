@@ -259,11 +259,9 @@ const App = () => {
                   <BuyAgain />
                 </ProtectedRoute>
               } />
-              <Route path="/wallet" element={
-                <ProtectedRoute requireEmailVerification={false}>
-                  <PurchaseSummary />
-                </ProtectedRoute>
-              } />
+              {/* No wallet yet: checkout cannot spend a balance, so the old
+                  WalletPage (gift-card redeem into wallet) stays unrouted. */}
+              <Route path="/wallet" element={<Navigate to="/purchase-summary" replace />} />
               <Route path="/purchase-summary" element={
                 <ProtectedRoute requireEmailVerification={false}>
                   <PurchaseSummary />

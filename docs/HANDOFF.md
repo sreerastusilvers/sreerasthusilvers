@@ -1,5 +1,83 @@
 # Handoff
 
+## 2026-10-05 (night): announcements, product-page claims, known-issues list, leaked token
+
+Status: done. `npm run build` passes and `api/` still has 12 files. The type-check shows the same 20 old errors as before, none in changed files. Tests pass: `scripts/tests/` has 21 + 14 + 8 cases (see its README). Playwright checks pass 25/25 at 390 px and 1440 px, light and dark; Meta, `/api/broadcast` and R2 were mocked. Committed locally, not pushed. Firestore rules not changed.
+
+### 1. Marketing → Announcement (new first tab)
+- **Files:** `src/components/admin/marketing/AnnouncementComposer.tsx` and `announcement.ts`.
+- **How it works:** one WhatsApp template, `store_announcement`.
+    - The text is "Hello {{1}}, … update from Sreerasthu Silvers: {{2}} …", with the footer "Reply STOP to stop these updates".
+    - {{1}} is the customer's first name, filled per customer; {{2}} is whatever the admin types.
+- **Template setup:** a "Create announcement template" button and a "Check status with Meta" button. A rejected template is resubmitted as `_v2`, `_v3`, and so on.
+- **Audience:** all customers, or chosen customers from a searchable checkbox list.
+- **Channels:** WhatsApp and/or website notification.
+- **Before sending:**
+    - A live preview.
+    - A reach count: no number, replied STOP, or a duplicate number.
+    - A confirm dialog.
+- **`api/broadcast.ts` fixes:**
+    - "Customers" missed every shopper: signup saves `role: 'user'` and the filter wanted `'customer'`. It now means everyone except admin and delivery accounts.
+    - It now uses `whatsappNumber` first and adds 91 to bare 10-digit numbers.
+    - It sends once per number.
+    - It skips numbers that opted out.
+    - It folds line breaks, which Meta rejects (error 132018).
+    - It sends 8 messages at a time, with `maxDuration` 60.
+    - It logs each sent message into the customer's inbox thread (existing threads are bumped; no empty threads are created).
+- **STOP/START:** `api/whatsapp-webhook.ts` sets `whatsappThreads/{phone}.marketingOptOut`.
+- **The Custom tab's picker** had the same role bug (fixed). Its search icon overlapped the placeholder (fixed).
+
+### 2. Product-page claims (owner asked to replace them)
+- **ProductDetail:** "Free Shipping / 2 Year Warranty / Easy Returns" are gone. The strip now shows:
+    - the product's own purity ("92.5 Sterling Silver" or "99.9% Pure Silver", hidden when the product has none);
+    - "Secure Checkout";
+    - "See It on Video Call".
+- **Home:** `FreeShippingBand` said "Free Shipping Over ₹20,000" and `FeatureIcons` said "Free shipping over ₹10,000". Both now use the 92.5 silver, secure checkout, video call and WhatsApp claims instead.
+- **Checkout:** "7-Day Easy Returns" was kept. It matches the site's own refund policy page (7 days).
+
+### 3. Known issues list from the evening entry
+- **`/wallet`:** now a redirect to `/purchase-summary`. WalletPage was deliberately **not** routed: checkout can't spend a wallet balance, and its "redeem gift card" would use up the card for nothing.
+- **2FA card (and nearby Security panels) in dark mode:** fixed.
+- **`/products`:** lists the whole catalogue ("All Products"). `?tag=` still filters.
+- **CartContext:** the add is saved in a Firestore transaction that re-checks stock against the saved quantity (`src/contexts/cartMerge.ts`). The local-storage fallback saves the latest items (`itemsRef`).
+- **ProductCard quantity buttons:** a 44 px hit area through `before:-inset-2` (still 28 px visually), plus focus rings.
+- **QuickView:** uses the live silver-rate price, the same as ProductCard, for both the price shown and the price added to the cart.
+- **WhatsApp:**
+    - **Picture-header templates:** a "Text / Picture" switch in Create new. The picture goes to R2 (category `media`, ≤500 KB JPEG), then the server sends it to Meta as the review sample (resumable upload; app ID from `WHATSAPP_APP_ID` or `GET /app`). The picture is saved as `headerImageUrl` and attached to every send (inbox, Custom, broadcast). Library → "Set picture" covers templates made in WhatsApp Manager. The server only fetches pictures from `R2_PUBLIC_URL`.
+    - **Team media:** a paperclip in Reply mode (also paste). Photos are re-encoded to JPEG ≤3 MB; documents (PDF, Office, txt) up to 3 MB. New action `send-media`, which uploads to Meta's `/media` and then sends.
+    - **Large media:** the `media` action serves 3.5 MB slices, which the admin page joins. The limit is now 25 MB.
+    - **Inbox:** "Load older conversations" adds 300 more each time.
+- **About 89 unused files:** **not deleted.** The bulk `git rm` was blocked by the safety check. The list is in `docs/UNUSED_FILES.txt`, made by tracing imports from `src/main.tsx`. To delete them, run this in Git Bash: `git rm $(cat docs/UNUSED_FILES.txt)`, then `npm run build`.
+
+### 4. Security: a WhatsApp token was committed
+- `scripts/test-templates.mjs` had a real-looking `WHATSAPP_TOKEN` fallback, committed since 2026-04-28 and pushed to GitHub. The fallback is removed. **It is still in git history, so the owner must revoke it and make a new one** (owner step 1).
+
+### Owner to-do
+1. **Meta:** delete the old system-user token and generate a new one. Put the new one in Vercel `WHATSAPP_TOKEN`, then redeploy.
+2. **Vercel and Meta setup:** the setup guide steps (env vars, webhook, Live mode). `WHATSAPP_APP_ID` is optional; it's only needed if a picture template says it can't find the app ID.
+3. **Announcement:** Admin → Marketing → Announcement → "Create announcement template" once, then wait for Approved.
+4. **Firestore rules:** still not deployed (from earlier entries).
+5. **[NEED] Confirm with the client:**
+    - Is all their silver jewellery 92.5? The home band and feature card now say so; the owner suggested it.
+    - The "The Iconic Box … signature packaging" claim on the home page.
+    - "In-store … appointments" on the home page.
+    - One product is named "Silver Clad Photo Frame" but its purity says "999 pure silver".
+    - The home collections show "NECKLACE / GOLD" and "DIAMOND NECKLACE / PURE DIAMOND" with no pictures. They look like placeholders on a silver store.
+
+### Not verified
+- Real Meta was never called:
+    - the resumable upload and `GET /app` for picture templates;
+    - multipart `/media` uploads;
+    - whether Meta's media CDN honours `Range` (the code works either way; tests cover both);
+    - approval of the announcement template wording.
+- A broadcast to a large list (8 at a time, 60 s limit; roughly 1,000+ messages should fit).
+
+### Known issues, not fixed
+- The 20 old TypeScript errors (unchanged).
+- Firestore rules let a customer edit their own `users/{uid}/wallets` balance. Nothing uses wallets now; lock it down to admin-only when rules are next deployed (needs the emulator suite).
+- Inbox: the sticky "Yesterday" day label can overlap a note bubble while scrolling.
+- An admin choosing customers loads every user document (fine at today's ~30 customers; needs paging at thousands).
+
 ## 2026-10-05 (evening): home autoplay, account sidebar + photo, cart confirmation, image viewer, WhatsApp templates + team inbox
 
 Status: done. `npm run build` passes, and `api/` still has 12 files. Each part was browser-tested with Playwright at 390 px and 1440 px, in light and dark mode. Committed locally, not pushed. Firestore rules were changed but **not deployed**.

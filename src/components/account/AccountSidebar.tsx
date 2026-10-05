@@ -65,7 +65,7 @@ export const ACCOUNT_NAV: NavGroup[] = [
     items: [
       { label: 'Wishlist', to: '/wishlist', icon: Heart },
       { label: 'Video calls', to: '/my-video-calls', icon: Video },
-      { label: 'Purchase summary', to: '/purchase-summary', icon: Gem, match: ['/wallet'] },
+      { label: 'Purchase summary', to: '/purchase-summary', icon: Gem },
     ],
   },
   {

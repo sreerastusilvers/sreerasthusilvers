@@ -29,6 +29,7 @@ import {
   type TemplateDraft,
 } from './templateRules';
 import WhatsAppPreviewBubble from './WhatsAppPreviewBubble';
+import TemplatePictureField from './TemplatePictureField';
 import { whatsappAdminApi, WhatsAppApiError } from '@/services/whatsappAdminApi';
 
 const LANGUAGES: Array<{ code: string; label: string }> = [
@@ -167,7 +168,14 @@ export const TemplateCreator = ({ onCreated }: { onCreated?: () => void }) => {
       name: draft.name.trim(),
       language: draft.language,
       category: draft.category,
-      header: draft.header?.text?.trim() ? { text: draft.header.text.trim() } : null,
+      header:
+        draft.header?.format === 'IMAGE'
+          ? draft.header.imageUrl
+            ? { text: '', format: 'IMAGE', imageUrl: draft.header.imageUrl }
+            : null
+          : draft.header?.text?.trim()
+            ? { text: draft.header.text.trim() }
+            : null,
       body: { text: bodyText.trim(), examples: Array.from({ length: varCount }, (_, i) => (draft.body?.examples?.[i] || '').trim()) },
       footer: draft.footer?.text?.trim() ? { text: draft.footer.text.trim() } : null,
       buttons,
@@ -306,18 +314,50 @@ export const TemplateCreator = ({ onCreated }: { onCreated?: () => void }) => {
         ) : (
           <>
             <Card title="Message">
-              <FieldRow id="tpl-header-text" label="Header (optional)" counter={`${(draft.header?.text || '').length}/${TEMPLATE_LIMITS.header}`} error={errorFor('header.text')}>
-                <input
-                  id="tpl-header-text"
-                  value={draft.header?.text || ''}
-                  onChange={(e) => update({ header: { text: e.target.value } })}
-                  onBlur={() => touch('header.text')}
-                  maxLength={TEMPLATE_LIMITS.header}
-                  placeholder="Your order is on its way"
-                  aria-invalid={!!errorFor('header.text')}
-                  className={inputCls}
-                />
-              </FieldRow>
+              <div>
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <span id="tpl-header-kind" className="text-xs font-medium text-gray-700 dark:text-gray-300">Header (optional)</span>
+                  <div role="radiogroup" aria-labelledby="tpl-header-kind" className="inline-flex rounded-full border border-gray-200 p-0.5 dark:border-gray-700">
+                    {(['TEXT', 'IMAGE'] as const).map((kind) => {
+                      const active = (draft.header?.format || 'TEXT') === kind;
+                      return (
+                        <button
+                          key={kind}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => update({ header: kind === 'IMAGE' ? { text: '', format: 'IMAGE', imageUrl: draft.header?.imageUrl } : { text: '' } })}
+                          className={`min-h-8 rounded-full px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                            active ? 'bg-amber-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                          }`}
+                        >
+                          {kind === 'TEXT' ? 'Text' : 'Picture'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {draft.header?.format === 'IMAGE' ? (
+                  <TemplatePictureField
+                    imageUrl={draft.header.imageUrl || null}
+                    onChange={(imageUrl) => update({ header: { text: '', format: 'IMAGE', imageUrl: imageUrl || undefined } })}
+                    error={errorFor('header.imageUrl')}
+                  />
+                ) : (
+                  <FieldRow id="tpl-header-text" label="Header text" counter={`${(draft.header?.text || '').length}/${TEMPLATE_LIMITS.header}`} error={errorFor('header.text')}>
+                    <input
+                      id="tpl-header-text"
+                      value={draft.header?.text || ''}
+                      onChange={(e) => update({ header: { text: e.target.value } })}
+                      onBlur={() => touch('header.text')}
+                      maxLength={TEMPLATE_LIMITS.header}
+                      placeholder="Your order is on its way"
+                      aria-invalid={!!errorFor('header.text')}
+                      className={inputCls}
+                    />
+                  </FieldRow>
+                )}
+              </div>
 
               <div>
                 <div className="mb-1.5 flex items-end justify-between gap-2">
@@ -521,7 +561,13 @@ export const TemplateCreator = ({ onCreated }: { onCreated?: () => void }) => {
       <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <div className="space-y-2 lg:sticky lg:top-4">
           <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Preview</p>
-          <WhatsAppPreviewBubble header={isAuth ? null : draft.header?.text} body={previewBody} footer={previewFooter} buttons={previewButtons} />
+          <WhatsAppPreviewBubble
+            header={isAuth || draft.header?.format === 'IMAGE' ? null : draft.header?.text}
+            headerImage={!isAuth && draft.header?.format === 'IMAGE' ? draft.header.imageUrl || 'placeholder' : null}
+            body={previewBody}
+            footer={previewFooter}
+            buttons={previewButtons}
+          />
           <p className="text-[11px] text-gray-500 dark:text-gray-400">Shown with your example values. Customers see their own details.</p>
         </div>
       </div>

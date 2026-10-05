@@ -229,7 +229,7 @@ export async function applyStatus(db: WebhookDb, status: Record<string, any>, de
   return db.runTransaction(async (tx) => {
     const msgSnap = await tx.get(msgRef);
     const threadSnap = await tx.get(threadRef);
-    // Broadcast / order-notification sends are not stored in threads: ignore.
+    // Order notifications are not stored in threads: ignore. (Broadcasts are.)
     if (!msgSnap.exists) return 'missing';
     const patch = nextStatusPatch(msgSnap.data(), status, deps.fromMillis);
     if (!patch) return 'stale';
@@ -239,6 +239,17 @@ export async function applyStatus(db: WebhookDb, status: Record<string, any>, de
     }
     return 'updated';
   });
+}
+
+/**
+ * Marketing consent keywords. "STOP" opts a number out of announcements
+ * (broadcast skips it); "START" opts it back in. Anything else: no change.
+ */
+export function marketingConsentChange(text: string): 'out' | 'in' | null {
+  const word = String(text || '').trim().toLowerCase().replace(/[.!]+$/, '');
+  if (['stop', 'unsubscribe', 'stop updates', 'stop messages'].includes(word)) return 'out';
+  if (['start', 'subscribe', 'unstop'].includes(word)) return 'in';
+  return null;
 }
 
 export async function storeInbound(
@@ -272,6 +283,11 @@ export async function storeInbound(
     updatedAt: deps.serverTimestamp(),
   };
   if (contactName) threadPatch.contactName = contactName;
+  const consent = summary.type === 'text' || summary.type === 'button' ? marketingConsentChange(summary.text) : null;
+  if (consent) {
+    threadPatch.marketingOptOut = consent === 'out';
+    threadPatch.marketingConsentAt = deps.serverTimestamp();
+  }
 
   const batch = db.batch();
   batch.set(threadRef, threadPatch, { merge: true });

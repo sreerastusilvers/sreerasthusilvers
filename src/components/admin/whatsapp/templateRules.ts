@@ -30,7 +30,8 @@ export interface TemplateDraft {
   name: string;
   language: string;
   category: TemplateCategory;
-  header?: { text: string } | null;
+  /** A text header, or a picture (`format: 'IMAGE'`) stored at `imageUrl`. */
+  header?: { text: string; format?: 'TEXT' | 'IMAGE'; imageUrl?: string } | null;
   body?: { text: string; examples: string[] } | null;
   footer?: { text: string } | null;
   buttons?: TemplateButtonDraft[];
@@ -117,7 +118,9 @@ export function validateTemplateDraft(d: TemplateDraft): Record<string, string> 
   });
 
   const headerText = (d.header?.text || '').trim();
-  if (headerText) {
+  if (d.header?.format === 'IMAGE') {
+    if (!d.header.imageUrl) errors['header.imageUrl'] = 'Choose a picture for the header, or switch the header to text.';
+  } else if (headerText) {
     if (headerText.length > TEMPLATE_LIMITS.header) errors['header.text'] = `Header must be ${TEMPLATE_LIMITS.header} characters or fewer.`;
     else if (/\{\{|\}\}/.test(headerText)) errors['header.text'] = 'Variables in the header are not supported here. Put them in the message text.';
     else if (/[\r\n]/.test(headerText)) errors['header.text'] = 'The header must be one line.';

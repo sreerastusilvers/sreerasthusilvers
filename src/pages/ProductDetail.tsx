@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { auth } from "@/config/firebase";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Truck, Shield, RotateCcw, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Star, Heart, Minus, Plus, ChevronRight, ShoppingBag, Shield, Gem, Check, Loader2, X, ChevronLeft, ArrowLeft, Share2, PenLine, CheckCircle, Image as ImageIcon, ThumbsUp, ThumbsDown } from "lucide-react";
 import { getProduct, type Product as FirebaseProduct } from "@/services/productService";
 import { getActiveProductsCached, useCatalogRevision } from "@/services/productCache";
 import { UIProductDetail, adaptFirebaseToUIDetail, adaptFirebaseArrayToUI } from "@/lib/productAdapter";
@@ -1099,21 +1099,38 @@ const ProductDetail = () => {
                     )}
                   </AnimatePresence>
 
-                {/* Features */}
-                <div className="grid grid-cols-3 gap-2 md:gap-4 mt-4 md:mt-5 mb-6 md:mb-8">
-                  <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 bg-secondary/50 rounded-lg md:rounded-xl text-center md:text-left">
-                    <Truck className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
-                    <span className="text-[10px] md:text-sm leading-tight">Free Shipping</span>
-                  </div>
-                  <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 bg-secondary/50 rounded-lg md:rounded-xl text-center md:text-left">
-                    <Shield className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
-                    <span className="text-[10px] md:text-sm leading-tight">2 Year Warranty</span>
-                  </div>
-                  <div className="flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 bg-secondary/50 rounded-lg md:rounded-xl text-center md:text-left">
-                    <RotateCcw className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
-                    <span className="text-[10px] md:text-sm leading-tight">Easy Returns</span>
-                  </div>
-                </div>
+                {/* Features: only claims that are true for this product. Purity
+                    comes from the product's own specifications. */}
+                {(() => {
+                  const purity = product.specifications?.purity?.trim();
+                  const features = [
+                    ...(purity
+                      ? [{
+                          icon: Gem,
+                          // Stored as typed: "92.5 pure silver", "99.9pure silver", "999 pure silver".
+                          label: /92\.?5/.test(purity)
+                            ? '92.5 Sterling Silver'
+                            : /99\.?9/.test(purity)
+                              ? '99.9% Pure Silver'
+                              : /silver/i.test(purity)
+                                ? purity.replace(/\b\w/g, (c) => c.toUpperCase())
+                                : `${purity} Purity`,
+                        }]
+                      : []),
+                    { icon: Shield, label: 'Secure Checkout' },
+                    { icon: Video, label: 'See It on Video Call' },
+                  ];
+                  return (
+                    <div className={`grid ${features.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 md:gap-4 mt-4 md:mt-5 mb-6 md:mb-8`}>
+                      {features.map(({ icon: Icon, label }) => (
+                        <div key={label} className="flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 bg-secondary/50 rounded-lg md:rounded-xl text-center md:text-left">
+                          <Icon className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" aria-hidden="true" />
+                          <span className="text-[10px] md:text-sm leading-tight">{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Divider */}
                 <div className="border-t border-border my-4" />

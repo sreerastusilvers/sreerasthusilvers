@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
 import { Gem } from "lucide-react";
 
+// Only claims the store can stand behind. No shipping or warranty promises
+// until the owner confirms them.
 const phrases = [
-  "Free Shipping Over ₹20,000 For Members",
-  "Free Shipping Over ₹20,000 For Members",
-  "Free Shipping Over ₹20,000 For Members",
-  "Free Shipping Over ₹20,000 For Members",
+  "Pure 92.5 Sterling Silver",
+  "Secure Checkout",
+  "See Any Piece on a Live Video Call",
+  "Chat With Us on WhatsApp",
 ];
 
 const FreeShippingBand = () => {

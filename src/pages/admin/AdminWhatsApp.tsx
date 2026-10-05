@@ -23,10 +23,12 @@ import {
   Clock,
   Eye,
   EyeOff,
+  FileText,
   LayoutTemplate,
   Loader2,
   Lock,
   MessageCircle,
+  Paperclip,
   RotateCcw,
   Search,
   Send,
@@ -51,6 +53,7 @@ import MessageBubble, { DeliveryTicks } from '@/components/admin/whatsapp/Messag
 import { SetupStatusButton, SetupStatusDialog, useWhatsAppSetupStatus } from '@/components/admin/whatsapp/SetupStatus';
 import { useInboxData, type Actor } from '@/components/admin/whatsapp/useInboxData';
 import { isSendableTemplate, statusStyle } from '@/components/admin/whatsapp/templateRules';
+import { ATTACH_ACCEPT, prepareAttachment } from '@/components/admin/whatsapp/waMedia';
 import {
   FILTERS,
   avatarTone,
@@ -236,13 +239,23 @@ const AdminWhatsApp = () => {
             </div>
           ) : visible.length === 0 ? (
             <div className="grid flex-1 place-items-center px-8 text-center text-[13px] text-[#667781] dark:text-[#8696a0]">
-              No conversations match {search ? `"${search}"` : 'this filter'}.
+              <div className="space-y-3">
+                <p>No conversations match {search ? `"${search}"` : 'this filter'}.</p>
+                {data.hasMoreThreads && (
+                  <LoadMoreThreads loading={data.loadingMoreThreads} onClick={data.loadMoreThreads} label="Search older conversations" />
+                )}
+              </div>
             </div>
           ) : (
             <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {visible.map((t) => (
                 <ThreadRow key={t.id} t={t} active={t.id === activeId} now={now} myUid={actor.uid} onOpen={() => setActiveId(t.id)} />
               ))}
+              {data.hasMoreThreads && (
+                <li className="flex justify-center px-4 py-3">
+                  <LoadMoreThreads loading={data.loadingMoreThreads} onClick={data.loadMoreThreads} label="Load older conversations" />
+                </li>
+              )}
             </ul>
           )}
         </aside>
@@ -578,6 +591,33 @@ const Composer = ({
   const [params, setParams] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  // A photo or document to send with the reply text as its caption.
+  const [attachment, setAttachment] = useState<{ file: File; kind: 'image' | 'document'; previewUrl: string | null } | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => () => {
+    if (attachment?.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+  }, [attachment]);
+
+  const attach = async (file: File | undefined) => {
+    if (!file) return;
+    if (!windowOpen) {
+      toast.error('Photos and files can only be sent inside the 24-hour reply window.');
+      return;
+    }
+    setPreparing(true);
+    try {
+      const ready = await prepareAttachment(file);
+      setMode('reply');
+      setAttachment({ ...ready, previewUrl: ready.kind === 'image' ? URL.createObjectURL(ready.file) : null });
+      requestAnimationFrame(() => taRef.current?.focus());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not attach that file.');
+    } finally {
+      setPreparing(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
 
   // When the 24 h window closes, free-form replies are no longer allowed.
   useEffect(() => {
@@ -608,10 +648,17 @@ const Composer = ({
         setNote('');
         toast.success('Note added. Only your team can see it.');
       } else if (mode === 'reply') {
-        if (!text.trim()) return;
-        setSending(true);
-        await actions.send(thread, { text: text.trim() });
-        setText('');
+        if (attachment) {
+          setSending(true);
+          await actions.sendMedia(thread, attachment.file, attachment.kind, text.trim());
+          setAttachment(null);
+          setText('');
+        } else {
+          if (!text.trim()) return;
+          setSending(true);
+          await actions.send(thread, { text: text.trim() });
+          setText('');
+        }
       } else {
         if (!tpl) {
           toast.error('Pick a template first.');
@@ -749,8 +796,51 @@ const Composer = ({
           )}
         </div>
       ) : (
+        <>
+        {attachment && mode === 'reply' && (
+          <div className="mb-2 flex items-center gap-3 rounded-lg bg-white p-2 pr-1 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] dark:bg-[#2a3942]">
+            {attachment.previewUrl ? (
+              <img src={attachment.previewUrl} alt="" className="h-12 w-12 flex-none rounded object-cover" />
+            ) : (
+              <span className="grid h-12 w-12 flex-none place-items-center rounded bg-[#f0f2f5] text-[#54656f] dark:bg-[#111b21] dark:text-[#aebac1]">
+                <FileText className="h-5 w-5" aria-hidden />
+              </span>
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">
+                {attachment.kind === 'image' ? 'Photo' : attachment.file.name}
+              </span>
+              <span className="block text-[11px] text-[#667781] dark:text-[#8696a0]">
+                {(attachment.file.size / 1024 / 1024).toFixed(attachment.file.size < 1024 * 1024 ? 2 : 1)} MB · your text below is sent as the caption
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setAttachment(null)}
+              aria-label="Remove attachment"
+              className="grid h-10 w-10 flex-none place-items-center rounded-full text-[#54656f] hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] dark:text-[#aebac1] dark:hover:bg-white/10"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <SnippetsPopover snippets={snippets} onInsert={insertSnippet} currentText={value} onAdd={actions.addSnippet} onDelete={actions.deleteSnippet} />
+          {mode === 'reply' && (
+            <>
+              <input ref={fileRef} type="file" accept={ATTACH_ACCEPT} className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => attach(e.target.files?.[0])} />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={preparing || sending}
+                aria-label="Attach a photo or document"
+                title="Attach a photo or document (up to 3 MB)"
+                className="grid h-11 w-11 flex-none place-items-center rounded-full text-[#54656f] transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] disabled:opacity-40 dark:text-[#aebac1] dark:hover:bg-white/10"
+              >
+                {preparing ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Paperclip className="h-5 w-5" aria-hidden />}
+              </button>
+            </>
+          )}
           <div className={`flex min-w-0 flex-1 items-end rounded-lg ${mode === 'note' ? 'bg-[#fff6d6] ring-1 ring-[#f5d76e] dark:bg-[#3a3418] dark:ring-[#8a7420]/60' : 'bg-white dark:bg-[#2a3942]'}`}>
             {mode === 'note' && <Lock className="mb-3 ml-3 h-4 w-4 flex-none text-[#7a6200] dark:text-[#d9c46e]" aria-hidden />}
             <label htmlFor="wa-composer" className="sr-only">{mode === 'note' ? 'Internal note' : 'Message'}</label>
@@ -760,14 +850,28 @@ const Composer = ({
               value={value}
               onChange={(e) => (mode === 'note' ? setNote(e.target.value) : setText(e.target.value))}
               onKeyDown={onKeyDown}
+              onPaste={(e) => {
+                const file = mode === 'reply' ? Array.from(e.clipboardData.files)[0] : undefined;
+                if (file) {
+                  e.preventDefault();
+                  attach(file);
+                }
+              }}
               rows={1}
-              maxLength={4096}
-              placeholder={mode === 'note' ? 'Write a note for your team (not sent to the customer)' : 'Type a message'}
+              maxLength={attachment && mode === 'reply' ? 1024 : 4096}
+              placeholder={mode === 'note' ? 'Write a note for your team (not sent to the customer)' : attachment ? 'Add a caption (optional)' : 'Type a message'}
               className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-3 py-[11px] text-[15px] leading-[1.4] text-[#111b21] placeholder:text-[#667781] focus:outline-none dark:text-[#e9edef] dark:placeholder:text-[#8696a0]"
             />
           </div>
-          <SendButton onClick={submit} sending={sending} disabled={!value.trim()} label={mode === 'note' ? 'Add note' : 'Send reply'} note={mode === 'note'} />
+          <SendButton
+            onClick={submit}
+            sending={sending}
+            disabled={mode === 'reply' && attachment ? preparing : !value.trim()}
+            label={mode === 'note' ? 'Add note' : attachment ? 'Send attachment' : 'Send reply'}
+            note={mode === 'note'}
+          />
         </div>
+        </>
       )}
     </div>
   );
@@ -920,3 +1024,15 @@ const SnippetsPopover = ({
     </Popover>
   );
 };
+
+const LoadMoreThreads = ({ loading, onClick, label }: { loading: boolean; onClick: () => void; label: string }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={loading}
+    className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-[#d1d7db] px-4 text-[13px] font-medium text-[#008069] hover:bg-[#f5f6f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] disabled:opacity-60 dark:border-[#313d45] dark:text-[#00a884] dark:hover:bg-[#202c33]"
+  >
+    {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+    {loading ? 'Loading…' : label}
+  </button>
+);

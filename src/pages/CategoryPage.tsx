@@ -463,15 +463,15 @@ const CategoryPage = () => {
   // We re-subscribe with raw data to keep subcategory info
   const [rawProducts, setRawProducts] = useState<any[]>([]);
   useEffect(() => {
-    // Tag-only mode (e.g. /products?tag=top-deals — no category slug):
-    // pull every active product and keep only those whose flag matches.
-    if (!categorySlug && tagMeta) {
+    // No category slug: /products lists the whole catalogue, and
+    // /products?tag=top-deals keeps only products whose flag matches.
+    if (!categorySlug) {
       setLoading(true);
-      setSubcategoryFallback(false); // tag views are not category-scoped
+      setSubcategoryFallback(false); // not category-scoped
       const unsub = subscribeToActiveProducts((fbProducts) => {
-        const matching = fbProducts.filter(
-          (p: any) => p?.flags?.[tagMeta.flag] === true
-        );
+        const matching = tagMeta
+          ? fbProducts.filter((p: any) => p?.flags?.[tagMeta.flag] === true)
+          : fbProducts;
         const uiProducts = matching.map((fp) => {
           const ui = adaptFirebaseArrayToUI([fp])[0];
           return {
@@ -695,7 +695,7 @@ const CategoryPage = () => {
     }
   };
 
-  if (!currentCategory && !tagMeta && !loading && categories.length > 0) {
+  if (categorySlug && !currentCategory && !loading && categories.length > 0) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -725,7 +725,7 @@ const CategoryPage = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-lg font-semibold text-foreground">
-            {currentCategory?.name || tagMeta?.label || "Products"}
+            {currentCategory?.name || tagMeta?.label || "All Products"}
             {activeSub && currentCategory && (
               <span className="text-muted-foreground font-normal">
                 {" / "}
@@ -740,7 +740,7 @@ const CategoryPage = () => {
       <div className="lg:hidden sticky top-0 z-30 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-lg font-bold text-foreground">
-            {currentCategory?.name || tagMeta?.label || "Products"}
+            {currentCategory?.name || tagMeta?.label || "All Products"}
           </h1>
           <div className="flex gap-2">
             {/* Sort */}

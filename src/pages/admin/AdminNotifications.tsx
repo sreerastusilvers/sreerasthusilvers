@@ -7,7 +7,9 @@
  * the `broadcastCampaigns` collection.
  *
  * Tabs:
- *  - Compose   : pick audience + channels + content, fire a campaign.
+ *  - Announcement : type a message, send it to all or chosen customers
+ *                   through one approved WhatsApp template (and/or push).
+ *  - Custom    : pick audience + channels + any template, fire a campaign.
  *  - History   : review past campaigns and per-channel results.
  *  - Templates : create WhatsApp templates in Meta, sync their approval status,
  *                delete them, or add metadata by hand as a fallback.
@@ -23,7 +25,6 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
-  where,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,11 +43,14 @@ import {
   Clock,
   History as HistoryIcon,
   FileText,
+  Megaphone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import TemplateCreator from '@/components/admin/whatsapp/TemplateCreator';
 import TemplateLibrary, { StatusBadge } from '@/components/admin/whatsapp/TemplateLibrary';
 import { isSendableTemplate, statusStyle } from '@/components/admin/whatsapp/templateRules';
+import AnnouncementComposer from '@/components/admin/marketing/AnnouncementComposer';
+import { isCustomerRole } from '@/components/admin/marketing/announcement';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +78,8 @@ interface WhatsAppTemplate {
   source?: string | null;
   metaId?: string | null;
   bodyText?: string | null;
+  headerFormat?: string | null;
+  headerImageUrl?: string | null;
 }
 
 interface CampaignRow {
@@ -81,7 +87,8 @@ interface CampaignRow {
   audience: AudienceKind;
   channels: { push?: boolean; whatsapp?: boolean };
   push?: { title?: string; body?: string } | null;
-  whatsapp?: { template?: string } | null;
+  whatsapp?: { template?: string; params?: string[] } | null;
+  kind?: 'announcement' | 'custom';
   status: 'sending' | 'completed' | 'failed';
   recipientCount?: number;
   pushResult?: { successCount?: number; failureCount?: number; invalidTokens?: string[] };
@@ -94,7 +101,7 @@ interface CampaignRow {
 
 const AUDIENCE_OPTIONS: { id: AudienceKind; label: string; help: string }[] = [
   { id: 'all', label: 'All accounts', help: 'Every customer + delivery partner with a profile' },
-  { id: 'customers', label: 'Customers only', help: 'Role = customer' },
+  { id: 'customers', label: 'Customers only', help: 'Every shopper account (not admins or delivery)' },
   { id: 'delivery', label: 'Delivery partners', help: 'Role = delivery' },
   { id: 'pushEnabled', label: 'Push-enabled devices', help: 'Anyone with at least one FCM token' },
   { id: 'selected', label: 'Selected customers', help: 'Pick specific users below' },
@@ -111,7 +118,7 @@ const getErrorMessage = (err: unknown, fallback = 'Network error') =>
 // ---------------------------------------------------------------------------
 const AdminNotifications = () => {
   const { user, userProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'templates'>('compose');
+  const [activeTab, setActiveTab] = useState<'announcement' | 'compose' | 'history' | 'templates'>('announcement');
 
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   useEffect(() => {
@@ -131,6 +138,8 @@ const AdminNotifications = () => {
             source: (d.data().source as string | undefined) ?? null,
             metaId: (d.data().metaId as string | undefined) ?? null,
             bodyText: (d.data().bodyText as string | undefined) ?? null,
+            headerFormat: (d.data().headerFormat as string | undefined) ?? null,
+            headerImageUrl: (d.data().headerImageUrl as string | undefined) ?? null,
           })),
         );
       },
@@ -149,8 +158,8 @@ const AdminNotifications = () => {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Marketing Center</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Run web push and WhatsApp campaigns. Audience resolution and delivery happen
-              server-side via the broadcast endpoint.
+              Send announcements and offers to your customers on WhatsApp and as website
+              notifications.
             </p>
           </div>
         </div>
@@ -162,12 +171,27 @@ const AdminNotifications = () => {
         .mc-input:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
         .dark .mc-input { background: #030712; border-color: #374151; color: #f3f4f6; }
         .mc-counter { position: absolute; right: 0.5rem; bottom: 0.35rem; font-size: 10px; color: #9ca3af; pointer-events: none; }
+        .mc-btn { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 40px; padding: 0.5rem 0.9rem; border-radius: 0.5rem; background: #b45309; color: white; font-size: 0.8125rem; font-weight: 500; }
+        .mc-btn:hover:not(:disabled) { background: #92400e; }
+        .mc-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .mc-btn:focus-visible, .mc-link:focus-visible { outline: 2px solid #f59e0b; outline-offset: 2px; }
+        .mc-btn-ghost { background: transparent; color: inherit; border: 1px solid currentColor; }
+        .mc-btn-ghost:hover:not(:disabled) { background: rgba(0,0,0,0.05); }
+        .dark .mc-btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
+        .mc-link { min-height: 32px; padding: 0.25rem 0.5rem; border-radius: 0.375rem; color: #b45309; font-weight: 500; }
+        .mc-link:hover:not(:disabled) { background: #fffbeb; }
+        .mc-link:disabled { opacity: 0.5; }
+        .dark .mc-link { color: #fbbf24; }
+        .dark .mc-link:hover:not(:disabled) { background: rgba(245,158,11,0.1); }
       `}</style>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-        <TabsList className="bg-white border border-gray-200 h-11 dark:bg-gray-900 dark:border-gray-800">
+        <TabsList className="bg-white border border-gray-200 h-11 max-w-full overflow-x-auto justify-start dark:bg-gray-900 dark:border-gray-800">
+          <TabsTrigger value="announcement" className="gap-2">
+            <Megaphone className="h-3.5 w-3.5" /> Announcement
+          </TabsTrigger>
           <TabsTrigger value="compose" className="gap-2">
-            <Send className="h-3.5 w-3.5" /> Compose
+            <Send className="h-3.5 w-3.5" /> Custom
           </TabsTrigger>
           <TabsTrigger value="history" className="gap-2">
             <HistoryIcon className="h-3.5 w-3.5" /> History
@@ -177,6 +201,9 @@ const AdminNotifications = () => {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="announcement" className="mt-4">
+          <AnnouncementComposer templates={templates} />
+        </TabsContent>
         <TabsContent value="compose" className="mt-4">
           <ComposeTab
             templates={templates}
@@ -585,19 +612,21 @@ const SelectedCustomersPicker = ({
     if (!t) return;
     setSearching(true);
     try {
-      const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'customer')));
+      // Shoppers are saved with role 'user' (older ones 'customer' or none).
+      const snap = await getDocs(collection(db, 'users'));
       const matches: UserRow[] = [];
       snap.forEach((d) => {
         const data = d.data() || {};
+        if (!isCustomerRole(data.role)) return;
         const name = String(data.fullName || data.name || '').toLowerCase();
         const email = String(data.email || '').toLowerCase();
-        const phone = String(data.phone || data.mobile || '').toLowerCase();
+        const phone = String(data.whatsappNumber || data.phone || data.mobile || '').toLowerCase();
         if (name.includes(t) || email.includes(t) || phone.includes(t)) {
           matches.push({
             uid: d.id,
             name: (data.fullName as string) || (data.name as string),
             email: data.email as string | undefined,
-            phone: (data.phone as string) || (data.mobile as string),
+            phone: (data.whatsappNumber as string) || (data.phone as string) || (data.mobile as string),
             role: data.role as string | undefined,
           });
         }
@@ -626,7 +655,7 @@ const SelectedCustomersPicker = ({
             onChange={(e) => setTerm(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && runSearch()}
             placeholder="Search by name, email or phone"
-            className="mc-input pl-8"
+            className="mc-input" style={{ paddingLeft: "2rem" }}
           />
         </div>
         <button
@@ -748,9 +777,11 @@ const HistoryTab = () => {
               </td>
               <td className="px-4 py-2 text-gray-700 dark:text-gray-300 max-w-xs">
                 <div className="truncate font-medium">
-                  {r.push?.title || r.whatsapp?.template || '—'}
+                  {r.kind === 'announcement'
+                    ? r.whatsapp?.params?.[1] || r.push?.body || 'Announcement'
+                    : r.push?.title || r.whatsapp?.template || '—'}
                 </div>
-                <div className="truncate text-[10px] text-gray-500 dark:text-gray-400">{r.push?.body || ''}</div>
+                <div className="truncate text-[10px] text-gray-500 dark:text-gray-400">{r.kind === 'announcement' ? '' : r.push?.body || ''}</div>
               </td>
               <td className="px-4 py-2 text-right text-gray-700 dark:text-gray-300">{r.recipientCount ?? '—'}</td>
               <td className="px-4 py-2 text-right text-gray-700 dark:text-gray-300">

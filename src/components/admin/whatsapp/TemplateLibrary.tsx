@@ -3,9 +3,9 @@
  * merged with the latest "Sync from Meta" result, status badges, delete.
  */
 import { useMemo, useState } from 'react';
-import { deleteDoc, doc } from 'firebase/firestore';
+import { deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { AlertCircle, Loader2, RefreshCw, Trash2, FileText, ChevronDown } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw, Trash2, FileText, ChevronDown, Image as ImageIcon } from 'lucide-react';
 import { db } from '@/config/firebase';
 import {
   AlertDialog,
@@ -20,6 +20,7 @@ import {
 import { whatsappAdminApi, WhatsAppApiError, type MetaTemplateRow } from '@/services/whatsappAdminApi';
 import { statusStyle } from './templateRules';
 import { formatWhatsAppText } from './WhatsAppPreviewBubble';
+import TemplatePictureField from './TemplatePictureField';
 
 export interface LibraryTemplate {
   id: string;
@@ -33,6 +34,9 @@ export interface LibraryTemplate {
   source?: string | null;
   metaId?: string | null;
   bodyText?: string | null;
+  /** 'IMAGE' for picture headers; those need headerImageUrl before sending. */
+  headerFormat?: string | null;
+  headerImageUrl?: string | null;
 }
 
 type Row = LibraryTemplate & { key: string; fromMeta: boolean };
@@ -77,6 +81,8 @@ export const TemplateLibrary = ({ templates }: { templates: LibraryTemplate[] })
         source: 'meta',
         metaId: m.id,
         bodyText: m.bodyText,
+        headerFormat: m.headerFormat ?? prev?.headerFormat ?? null,
+        headerImageUrl: prev?.headerImageUrl ?? null,
         key: prev?.key || `meta-${m.id}`,
         fromMeta: true,
       });
@@ -206,6 +212,7 @@ export const TemplateLibrary = ({ templates }: { templates: LibraryTemplate[] })
                       {t.paramLabels.length ? ` · ${t.paramLabels.length} variable${t.paramLabels.length === 1 ? '' : 's'}` : ''}
                       {!t.fromMeta ? ' · added by hand' : ''}
                     </p>
+                    {String(t.headerFormat || '').toUpperCase() === 'IMAGE' && <HeaderPictureRow t={t} />}
                     {t.rejectedReason && (
                       <p className="mt-1.5 text-xs text-red-700 dark:text-red-300">
                         Reason from Meta: {t.rejectedReason.replace(/_/g, ' ').toLowerCase()}
@@ -279,6 +286,47 @@ export const TemplateLibrary = ({ templates }: { templates: LibraryTemplate[] })
         </AlertDialogContent>
       </AlertDialog>
     </section>
+  );
+};
+
+/**
+ * Picture-header templates send their saved picture with every message.
+ * Templates made in WhatsApp Manager arrive without one, so it is set here.
+ */
+const HeaderPictureRow = ({ t }: { t: Row }) => {
+  const [editing, setEditing] = useState(false);
+  const save = async (url: string | null) => {
+    try {
+      await setDoc(doc(db, 'whatsappTemplates', t.id), { headerImageUrl: url, updatedAt: serverTimestamp() }, { merge: true });
+      toast.success(url ? 'Picture saved. It goes with every message using this template.' : 'Picture removed.');
+      setEditing(false);
+    } catch {
+      toast.error('Could not save the picture. Try again.');
+    }
+  };
+  if (editing) {
+    return (
+      <div className="mt-2 max-w-sm">
+        <TemplatePictureField imageUrl={t.headerImageUrl || null} onChange={save} />
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      {t.headerImageUrl ? (
+        <img src={t.headerImageUrl} alt="" className="h-9 w-16 rounded border border-gray-200 object-cover dark:border-gray-700" />
+      ) : (
+        <span className="text-xs text-amber-800 dark:text-amber-300">Has a picture header but no picture saved here, so it can’t be sent yet.</span>
+      )}
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="inline-flex min-h-8 items-center gap-1 rounded-full px-2 text-xs font-medium text-amber-800 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300 dark:hover:bg-amber-500/10"
+      >
+        <ImageIcon className="h-3.5 w-3.5" aria-hidden />
+        {t.headerImageUrl ? 'Change picture' : 'Set picture'}
+      </button>
+    </div>
   );
 };
 

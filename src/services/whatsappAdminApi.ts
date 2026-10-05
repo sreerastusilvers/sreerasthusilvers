@@ -62,6 +62,7 @@ export interface MetaTemplateRow {
   rejectedReason: string | null;
   components: Array<Record<string, unknown>>;
   bodyText: string;
+  headerFormat?: string | null;
   paramCount: number;
 }
 
@@ -80,6 +81,10 @@ export const whatsappAdminApi = {
   send: (payload: { phone: string; text?: string; template?: { name: string; language: string; params: string[] } }) =>
     call<{ ok: true; messageId: string | null }>('send', payload),
 
+  /** A photo or document inside the 24-hour window; `data` is base64. */
+  sendMedia: (payload: { phone: string; media: { mime: string; filename: string; data: string }; caption?: string }) =>
+    call<{ ok: true; messageId: string | null; mediaId: string }>('send-media', payload),
+
   markRead: (phone: string, messageId?: string | null) =>
     call<{ ok: true; receiptSent: boolean }>('mark-read', { phone, messageId: messageId || undefined }),
 
@@ -97,19 +102,31 @@ export const whatsappAdminApi = {
 
   configStatus: () => call<ConfigStatus>('config-status'),
 
-  /** Downloads inbound media through the admin proxy and returns an object URL. */
+  /**
+   * Downloads media through the admin proxy and returns an object URL. Files
+   * over 3.5 MB arrive in slices (Vercel's response limit), joined here.
+   */
   async mediaObjectUrl(mediaId: string): Promise<string> {
-    let resp: Response;
-    try {
-      resp = await post('media', { mediaId });
-    } catch {
-      throw new WhatsAppApiError('Could not reach the server.', 0);
+    const parts: Blob[] = [];
+    let type = '';
+    let offset: number | null = 0;
+    for (let i = 0; offset !== null && i < 12; i += 1) {
+      let resp: Response;
+      try {
+        resp = await post('media', { mediaId, offset });
+      } catch {
+        throw new WhatsAppApiError('Could not reach the server.', 0);
+      }
+      const contentType = resp.headers.get('content-type') || '';
+      if (!resp.ok || contentType.includes('application/json')) {
+        const data = await resp.json().catch(() => ({}));
+        throw new WhatsAppApiError(data?.error || `Could not load media (HTTP ${resp.status}).`, resp.status);
+      }
+      type = type || contentType;
+      parts.push(await resp.blob());
+      const next = resp.headers.get('x-media-next-offset');
+      offset = next ? Number(next) : null;
     }
-    const type = resp.headers.get('content-type') || '';
-    if (!resp.ok || type.includes('application/json')) {
-      const data = await resp.json().catch(() => ({}));
-      throw new WhatsAppApiError(data?.error || `Could not load media (HTTP ${resp.status}).`, resp.status);
-    }
-    return URL.createObjectURL(await resp.blob());
+    return URL.createObjectURL(new Blob(parts, { type }));
   },
 };

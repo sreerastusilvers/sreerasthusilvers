@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { doc, setDoc, getDoc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, updateDoc, deleteField, runTransaction } from 'firebase/firestore';
 import { db, auth } from '@/config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +7,7 @@ import { getProduct } from '@/services/productService';
 import { fetchLiveProductInfo } from '@/services/livePricing';
 import { useCatalogRevision } from '@/services/productCache';
 import { notifyAdded, notifyCartError } from '@/components/cart/cartFeedback';
+import { mergeAddIntoSavedCart } from './cartMerge';
 
 // Cart Item Interface
 export interface CartItem {
@@ -129,6 +130,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [authResolved, setAuthResolved] = useState(false);
   const firebaseSyncRef = useRef(false);
   const pendingOpRef = useRef(false);
+  // Latest items for async fallbacks, which would otherwise see the list from
+  // before their own update.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -374,30 +379,36 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (currentUserId) {
       void (async () => {
         try {
+          // A transaction so two quick adds cannot overwrite each other, and
+          // so stock is checked against the saved cart: the check above can
+          // run before the saved cart has loaded.
           const cartRef = doc(db, 'carts', currentUserId);
-          const cartSnap = await getDoc(cartRef);
-
-          let updatedItems: Record<string, CartItem> = {};
-          if (cartSnap.exists()) {
-            updatedItems = cartSnap.data().items || {};
-          }
-
-          if (updatedItems[item.id]) {
-            updatedItems[item.id].quantity += quantity;
-            if (typeof item.stock === 'number') {
-              updatedItems[item.id].stock = item.stock;
+          const merged = await runTransaction(db, async (tx) => {
+            const cartSnap = await tx.get(cartRef);
+            const saved = (cartSnap.exists() ? cartSnap.data().items : undefined) as Record<string, CartItem> | undefined;
+            const result = mergeAddIntoSavedCart<CartItem>(saved, item, quantity);
+            if (result.added > 0) {
+              tx.set(cartRef, { items: result.items, updatedAt: new Date().toISOString() }, { merge: true });
             }
-          } else {
-            updatedItems[item.id] = { ...item, quantity, stock: item.stock };
+            return result;
+          });
+          if (merged.added < quantity && typeof merged.stock === 'number') {
+            // Show the saved cart: when nothing fitted there was no write, so
+            // the listener would not correct the optimistic line.
+            setItems(Object.values(merged.items));
+            notifyCartError(
+              'Quantity limit reached',
+              merged.added > 0
+                ? `Only ${merged.stock} available, so ${merged.added} ${merged.added === 1 ? 'was' : 'were'} added.`
+                : merged.before > 0
+                  ? `You already have all ${merged.stock} available in your cart.`
+                  : buildStockMessage(item.name, merged.stock),
+              feedbackItem,
+            );
           }
-
-          await setDoc(cartRef, {
-            items: updatedItems,
-            updatedAt: new Date().toISOString(),
-          }, { merge: true });
         } catch (error: any) {
           console.error('Firebase sync failed for addToCart:', error?.code);
-          saveToLocalStorage(items);
+          saveToLocalStorage(itemsRef.current);
         }
       })();
     }

@@ -1,13 +1,13 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Package, Headphones, CalendarCheck, Gift } from "lucide-react";
+import { Gem, Headphones, CalendarCheck, Gift } from "lucide-react";
 
 const features = [
   {
     id: 1,
-    title: "Complimentary Shipping",
-    description: "Free shipping & returns on orders over ₹10,000.",
-    icon: Package,
+    title: "92.5 Sterling Silver",
+    description: "Our silver jewellery is crafted in pure 92.5 sterling silver.",
+    icon: Gem,
   },
   {
     id: 2,

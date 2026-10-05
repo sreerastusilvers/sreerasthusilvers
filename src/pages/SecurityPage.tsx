@@ -695,12 +695,12 @@ const SecurityPage: React.FC = () => {
             </div>
 
             {/* 2FA — Real WhatsApp OTP flow */}
-            <div className={`rounded-xl p-4 mt-6 border ${settings?.twoFactorEnabled ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+            <div className={`rounded-xl p-4 mt-6 border ${settings?.twoFactorEnabled ? 'bg-green-50 border-green-200 dark:bg-green-500/10 dark:border-green-500/30' : 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30'}`}>
               <div className="flex items-start gap-3">
-                <Fingerprint className={`w-5 h-5 flex-shrink-0 mt-0.5 ${settings?.twoFactorEnabled ? 'text-green-600' : 'text-amber-600'}`} />
+                <Fingerprint className={`w-5 h-5 flex-shrink-0 mt-0.5 ${settings?.twoFactorEnabled ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
                 <div className="flex-1">
                   <div className="flex items-center justify-between gap-3">
-                    <p className={`text-sm font-medium ${settings?.twoFactorEnabled ? 'text-green-900' : 'text-amber-900'}`}>
+                    <p className={`text-sm font-medium ${settings?.twoFactorEnabled ? 'text-green-900 dark:text-green-100' : 'text-amber-900 dark:text-amber-100'}`}>
                       Two-Factor Authentication
                       {settings?.twoFactorEnabled && (
                         <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-600 text-white">
@@ -714,7 +714,7 @@ const SecurityPage: React.FC = () => {
                         variant="outline"
                         onClick={handleDisable2FA}
                         disabled={actionLoading === 'disable-2fa'}
-                        className="border-green-300 text-green-700 hover:bg-green-100"
+                        className="border-green-300 text-green-700 hover:bg-green-100 dark:border-green-500/40 dark:bg-transparent dark:text-green-300 dark:hover:bg-green-500/10"
                       >
                         {actionLoading === 'disable-2fa' ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
                         Disable
@@ -729,7 +729,7 @@ const SecurityPage: React.FC = () => {
                       </Button>
                     )}
                   </div>
-                  <p className={`text-xs mt-1 ${settings?.twoFactorEnabled ? 'text-green-700' : 'text-amber-700'}`}>
+                  <p className={`text-xs mt-1 ${settings?.twoFactorEnabled ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
                     {settings?.twoFactorEnabled
                       ? 'A WhatsApp code is required on every new sign-in to keep your account safe.'
                       : 'Add an extra layer of security by verifying logins with a one-time code on WhatsApp.'}
@@ -738,7 +738,7 @@ const SecurityPage: React.FC = () => {
               </div>
 
               {twoFaPanelOpen && !settings?.twoFactorEnabled && (
-                <div className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-white dark:bg-zinc-900 p-4 dark:border-amber-800/70 dark:bg-zinc-950/90">
+                <div className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-white p-4 dark:border-amber-800/70 dark:bg-zinc-950/90">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-zinc-300 mb-1">WhatsApp number</label>
                     <div className="flex flex-col sm:flex-row rounded-lg border border-gray-200 dark:border-zinc-800 overflow-hidden focus-within:ring-2 focus-within:ring-amber-300">
@@ -751,7 +751,7 @@ const SecurityPage: React.FC = () => {
                         onChange={(e) => { setTwoFaPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); }}
                         placeholder="10-digit number"
                         disabled={twoFaOtp.isVerified || phoneAlreadyVerified}
-                        className="flex-1 min-w-0 px-3 py-2 text-sm outline-none disabled:bg-gray-50 dark:bg-zinc-900/50 disabled:text-gray-500 dark:text-zinc-500 dark:text-zinc-400"
+                        className="flex-1 min-w-0 px-3 py-2 text-sm bg-white text-gray-900 outline-none disabled:bg-gray-50 disabled:text-gray-500 dark:bg-zinc-900 dark:text-zinc-100 dark:disabled:bg-zinc-900/50 dark:disabled:text-zinc-400"
                       />
                       {phoneAlreadyVerified ? (
                         <span className="px-3 py-2 flex items-center justify-center sm:justify-start text-xs font-semibold text-green-600 gap-1 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-zinc-800">
@@ -762,7 +762,7 @@ const SecurityPage: React.FC = () => {
                           type="button"
                           onClick={twoFaOtp.sendOtp}
                           disabled={twoFaOtp.isBusy || twoFaOtp.isVerified || twoFaPhone.length !== 10}
-                          className="px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-zinc-800"
+                          className="px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10 disabled:opacity-40 disabled:cursor-not-allowed border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-zinc-800"
                         >
                           {twoFaOtp.phase === 'sending' ? 'Sending…' : twoFaOtp.phase === 'sent' || twoFaOtp.phase === 'verified' ? 'Resend' : 'Send code'}
                         </button>
@@ -785,7 +785,7 @@ const SecurityPage: React.FC = () => {
                           onChange={(e) => twoFaOtp.setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           placeholder="123456"
                           disabled={twoFaOtp.isVerified}
-                          className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-800 outline-none focus:ring-2 focus:ring-amber-300 tracking-[0.4em] font-mono disabled:bg-gray-50 dark:bg-zinc-900/50"
+                          className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-800 outline-none focus:ring-2 focus:ring-amber-300 tracking-[0.4em] font-mono bg-white text-gray-900 disabled:bg-gray-50 dark:bg-zinc-900 dark:text-zinc-100 dark:disabled:bg-zinc-900/50"
                         />
                         <Button
                           type="button"
@@ -827,7 +827,7 @@ const SecurityPage: React.FC = () => {
               {resetEmailSent ? (
                 /* ── Step 2: Check Your Email ── */
                 <div className="text-center">
-                  <div className="bg-purple-100 rounded-full p-5 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                  <div className="bg-purple-100 dark:bg-purple-500/15 rounded-full p-5 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
                     <Mail className="w-12 h-12 text-purple-600" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-zinc-100 mb-2">Check Your Email</h3>
@@ -837,9 +837,9 @@ const SecurityPage: React.FC = () => {
                   </p>
 
                   {/* Instructions */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-left">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-left dark:bg-blue-500/10 dark:border-blue-500/30">
                     <div className="flex gap-3">
-                      <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-gray-700 dark:text-zinc-300">
                         <p className="font-semibold mb-1">What to do next:</p>
                         <ul className="space-y-1 text-xs">
@@ -900,8 +900,8 @@ const SecurityPage: React.FC = () => {
                 /* ── Step 1: Enter Email ── */
                 <>
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                      <Key className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/10 rounded-xl flex items-center justify-center">
+                      <Key className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-zinc-100">Reset Password</h3>
@@ -942,8 +942,8 @@ const SecurityPage: React.FC = () => {
                   </div>
 
                   {/* Google sign-in notice */}
-                  <div className="mt-5 p-3 bg-amber-50 border border-amber-100 rounded-xl">
-                    <p className="text-xs text-amber-800 flex items-start gap-2">
+                  <div className="mt-5 p-3 bg-amber-50 border border-amber-100 rounded-xl dark:bg-amber-500/10 dark:border-amber-500/30">
+                    <p className="text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
                       <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                       <span>
                         <strong>Signed up with Google?</strong> Your password is managed by Google.

@@ -201,11 +201,11 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
                 if (inCartQty <= 1 && cartItem) removeFromCart(cartItem.id);
                 else if (cartItem) updateQuantity(cartItem.id, inCartQty - 1);
               }}
-              className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted"
+              className="relative w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary before:absolute before:-inset-2 before:content-['']"
             >
               <Minus className="w-3 h-3" />
             </button>
-            <span className="text-xs lg:text-sm font-semibold inline-flex items-center gap-1">
+            <span className="text-xs lg:text-sm font-semibold inline-flex items-center gap-1" aria-live="polite">
               {justAdded ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={3} aria-hidden="true" />
@@ -222,7 +222,7 @@ const ProductCard = ({ product, index = 0, onQuickView }: ProductCardProps) => {
                 e.stopPropagation();
                 if (cartItem) updateQuantity(cartItem.id, inCartQty + 1);
               }}
-              className="w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted"
+              className="relative w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary before:absolute before:-inset-2 before:content-['']"
             >
               <Plus className="w-3 h-3" />
             </button>

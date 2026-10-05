@@ -4,7 +4,8 @@ This guide connects your WhatsApp business number to the website admin. When you
 
 - reply to customers from **Admin → WhatsApp**,
 - create message templates from **Admin → Marketing → Templates**,
-- send WhatsApp campaigns from **Admin → Marketing → Compose**.
+- send announcements to all or chosen customers from **Admin → Marketing → Announcement** (step 9b),
+- send other WhatsApp campaigns from **Admin → Marketing → Custom**.
 
 It takes about 45 minutes. Do it on a computer, not a phone. Meta changes its screens from time to time, so a button may be in a slightly different place. Look for the words in **bold**.
 
@@ -89,6 +90,7 @@ These are long numbers like `123456789012345`. They are not your phone number.
 | `WHATSAPP_VERIFY_TOKEN` | The password you made up in point 2 above |
 | `WHATSAPP_APP_SECRET` | The App secret from point 1 above |
 | `FIREBASE_ADMIN_SDK_BASE64` | Probably already there (other features use it). If it is missing, ask your developer. |
+| `WHATSAPP_APP_ID` | Optional. Only needed if creating a template **with a picture** fails with "Could not work out the Meta app ID". It is the **App ID** at the top of **App settings → Basic**. |
 
 5. If a key already exists with an old value, click the three dots next to it → **Edit**, and replace the value.
 6. Click **Deployments** at the top. On the newest deployment, click the three dots → **Redeploy** → **Redeploy**. New values only work after a redeploy. Wait until it says **Ready**.
@@ -139,6 +141,16 @@ Templates you made earlier directly in WhatsApp Manager appear after **Sync from
     - **Filters and search**: All, Unread, Open, Resolved, Assigned to me; search by name or phone.
 5. The clock at the bottom shows how long you can still reply freely. After 24 hours without a customer message, only **Template** works. The admin switches to it by itself.
 
+## Step 9b. Send an announcement
+
+1. Open **Admin → Marketing → Announcement**.
+2. The first time only: click **Create announcement template**. Meta reviews it (usually minutes, up to 24 hours). Click **Check status with Meta** until the box turns green.
+3. Type your message. The preview on the right shows what customers get, with their own first name.
+4. Pick **All customers**, or **Choose customers** and tick the people you want.
+5. Leave **WhatsApp** ticked (and tick **Website notification** too if you like), click **Send announcement**, check the summary and click **Send now**.
+
+Customers who reply **STOP** are skipped from then on; **START** turns announcements back on. Meta charges a small fee for each marketing message.
+
 ## Step 10. Common problems and fixes
 
 | What you see | What it means | Fix |
@@ -156,7 +168,9 @@ Templates you made earlier directly in WhatsApp Manager appear after **Sync from
 | Template stuck on **In review** | Meta is still reviewing | Wait up to 24 hours, then click **Sync from Meta**. |
 | Template **Rejected** | Usually wording: looks promotional in Utility, variables at the very start or end, or unclear examples | Read the reason, fix it, create again with a new name. |
 | Templates fail with a payment error | No payment method on the WhatsApp account | Step 3 point 7. |
-| "This file is larger than 4 MB" when opening a photo or document | The website can preview files up to 4 MB | Open it in the WhatsApp Business Manager or ask the customer to send a smaller file. |
+| "This file is larger than 25 MB" when opening a file | The inbox opens files up to 25 MB | Open it in the WhatsApp Business app, or ask the customer for a smaller file. |
+| "Files sent from here can be up to 3 MB" | The paperclip in the inbox sends photos (shrunk automatically) and documents up to 3 MB | Send a smaller document, or share a link. |
+| "This template has a picture at the top but none is saved" | A picture template made in WhatsApp Manager has no picture on the website yet | **Marketing → Templates → Library**, click **Set picture** on that template. |
 | "The WhatsApp API is not available here" | You are on a local test copy, not the live site | Use the live website address. |
 
 If something still does not work, send your developer a screenshot of the error. Never send the token or the app secret.

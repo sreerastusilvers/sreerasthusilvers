@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useWishlist } from "@/hooks/useWishlist";
 import { SmartImage } from "@/components/ui/smart-image";
+import { useSilverRate, computeSilverOriginalPrice } from "@/contexts/SilverRateContext";
 
 interface Product {
   id: string;
@@ -22,6 +23,7 @@ interface Product {
   alt?: string;
   badge?: string;
   discount?: number;
+  silverPricing?: { enabled?: boolean; weightGrams: number; wastagePercent: number; makingCharges: number };
 }
 
 interface ProductQuickViewProps {
@@ -41,6 +43,17 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
   // The real wishlist: this used to be a local flag that saved nothing.
   const { toggleWishlist, isInWishlist } = useWishlist();
   const isWishlisted = product ? isInWishlist(product.id) : false;
+
+  // Same rule as ProductCard: a silver-priced piece follows today's rate and
+  // has no MRP to strike through.
+  const { ratePerGram } = useSilverRate();
+  const sp = product?.silverPricing;
+  const livePrice = product
+    ? sp?.enabled && ratePerGram > 0
+      ? computeSilverOriginalPrice(sp, ratePerGram)
+      : product.price
+    : 0;
+  const oldPrice = product && !sp?.enabled && product.oldPrice && product.oldPrice > livePrice ? product.oldPrice : null;
 
   // A quantity picked for one product must not carry over to the next.
   useEffect(() => {
@@ -70,8 +83,8 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
       const added = addToCart({
         id: product.id,
         name: product.title,
-        price: product.price,
-        originalPrice: product.oldPrice ?? undefined,
+        price: livePrice,
+        originalPrice: oldPrice ?? undefined,
         image: product.image,
         category: product.category,
         stock: product.stock,
@@ -143,13 +156,13 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
                       src={product.image}
                       alt={product.alt || product.title}
                       className="w-full h-full object-contain p-6 md:p-10" preset="card" />
-                    {product.discount && (
+                    {!sp?.enabled && (product.discount ?? 0) > 0 && (
                       <div className="absolute top-4 left-4 bg-destructive text-destructive-foreground text-xs font-bold px-3 py-1 rounded-full">
                         {product.discount}% OFF
                       </div>
                     )}
                     {product.badge && (
-                      <div className={`absolute ${product.discount ? 'top-12' : 'top-4'} left-4 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full`}>
+                      <div className={`absolute ${!sp?.enabled && (product.discount ?? 0) > 0 ? 'top-12' : 'top-4'} left-4 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full`}>
                         {product.badge}
                       </div>
                     )}
@@ -186,11 +199,11 @@ const ProductQuickView = ({ product, isOpen, onClose }: ProductQuickViewProps) =
                   {/* Price */}
                   <div className="flex items-center gap-3 mb-4">
                     <span className="text-2xl md:text-3xl font-bold text-foreground">
-                      ₹{product.price.toLocaleString('en-IN')}
+                      ₹{livePrice.toLocaleString('en-IN')}
                     </span>
-                    {product.oldPrice && (
+                    {oldPrice && (
                       <span className="text-lg text-muted-foreground line-through">
-                        ₹{product.oldPrice.toLocaleString('en-IN')}
+                        ₹{oldPrice.toLocaleString('en-IN')}
                       </span>
                     )}
                   </div>

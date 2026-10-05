@@ -2,12 +2,15 @@
  * WhatsApp Template Test — calls Meta API directly (no server needed)
  * Usage:  node scripts/test-templates.mjs
  *
- * Reads WHATSAPP_TOKEN and WHATSAPP_PHONE_ID from env vars OR falls back
- * to the hardcoded values below.
+ * Reads WHATSAPP_TOKEN and WHATSAPP_PHONE_ID from env vars (never hardcode them).
  */
 
-const TOKEN    = process.env.WHATSAPP_TOKEN    || 'EAAQWhgBVraABRAzgddTUijVVrWhoJkkcx44WNb3QpSCXwgGCa3UrvkcgLZB4xuGpm0DxQpySUrBfmInqxRZCmZCHOIkauGkB6gQGp7U0Ky7c7JWyznEj5kdVaedRsZCi8MrRzyqOvKGQ6BSExf6HeZAPut9MXDeZB0o7B1dn7kG3eFIZCyXyVQuc3ulb0wJhoUgMwZDZD';
-const PHONE_ID = process.env.WHATSAPP_PHONE_ID || '1112943475226121';
+const TOKEN    = process.env.WHATSAPP_TOKEN;
+const PHONE_ID = process.env.WHATSAPP_PHONE_ID;
+if (!TOKEN || !PHONE_ID) {
+  console.error('Set WHATSAPP_TOKEN and WHATSAPP_PHONE_ID in the environment first.');
+  process.exit(1);
+}
 const BASE     = `https://graph.facebook.com/v21.0/${PHONE_ID}/messages`;
 
 // ── recipients ──────────────────────────────────────────────────────────────

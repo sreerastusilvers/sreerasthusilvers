@@ -4,7 +4,7 @@
  * ~strike~, ```mono```) as React nodes, never as HTML.
  */
 import { Fragment, type ReactNode } from 'react';
-import { CornerUpLeft, ExternalLink, Phone, Copy, CheckCheck } from 'lucide-react';
+import { CornerUpLeft, ExternalLink, Phone, Copy, CheckCheck, Image as ImageIcon } from 'lucide-react';
 
 export interface PreviewButton {
   type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'OTP' | string;
@@ -43,12 +43,15 @@ const ButtonIcon = ({ type }: { type: string }) => {
 
 export const WhatsAppPreviewBubble = ({
   header,
+  headerImage,
   body,
   footer,
   buttons = [],
   businessName = 'Sreerasthu Silvers',
 }: {
   header?: string | null;
+  /** Picture header: its URL, 'placeholder' while none is chosen, or nothing. */
+  headerImage?: string | null;
   body: string;
   footer?: string | null;
   buttons?: PreviewButton[];
@@ -69,6 +72,13 @@ export const WhatsAppPreviewBubble = ({
       <div className="min-h-[220px] bg-[#efeae2] p-3 dark:bg-[#0b141a]">
         <div className="max-w-[92%]">
           <div className="relative rounded-lg rounded-tl-none bg-white px-2.5 pb-1.5 pt-2 text-[14px] leading-[1.4] text-[#111b21] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] dark:bg-[#202c33] dark:text-[#e9edef]">
+            {headerImage === 'placeholder' ? (
+              <div className="-mx-1 -mt-1 mb-1.5 grid aspect-[1.91/1] place-items-center rounded-md bg-[#e9edef] text-[#8696a0] dark:bg-[#2a3942]">
+                <ImageIcon className="h-8 w-8" aria-hidden />
+              </div>
+            ) : headerImage ? (
+              <img src={headerImage} alt="" className="-mx-1 -mt-1 mb-1.5 aspect-[1.91/1] w-[calc(100%+0.5rem)] max-w-none rounded-md object-cover" />
+            ) : null}
             {header ? <p className="mb-1 font-semibold">{header}</p> : null}
             <p className="whitespace-pre-wrap break-words">
               {body ? formatWhatsAppText(body) : <span className="text-[#667781] dark:text-[#8696a0]">Your message appears here.</span>}

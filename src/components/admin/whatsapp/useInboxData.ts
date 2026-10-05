@@ -23,6 +23,7 @@ import { db } from '@/config/firebase';
 import { whatsappAdminApi } from '@/services/whatsappAdminApi';
 import type { Snippet, TeamMember, TemplateMeta, Thread, ThreadMessage, ThreadStatus, TimeLike } from './inboxModel';
 import { renderTemplate } from './inboxModel';
+import { fileToBase64 } from './waMedia';
 
 export interface Actor {
   uid: string | null;
@@ -39,13 +40,16 @@ const loadDemo = async (actor: Actor) => {
 export const isDemoMode = () =>
   import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('demo');
 
-const THREAD_LIMIT = 300;
+/** Conversations per page; "Load more" adds another page to the live query. */
+const THREAD_PAGE = 300;
 
 export function useInboxData(actor: Actor, activeId: string | null) {
   const demo = isDemoMode();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [threadsError, setThreadsError] = useState<string | null>(null);
+  const [threadLimit, setThreadLimit] = useState(THREAD_PAGE);
+  const [loadingMoreThreads, setLoadingMoreThreads] = useState(false);
   const [messagesByThread, setMessagesByThread] = useState<Record<string, ThreadMessage[]>>({});
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [templates, setTemplates] = useState<TemplateMeta[]>([]);
@@ -76,21 +80,30 @@ export function useInboxData(actor: Actor, activeId: string | null) {
   // ------------------------------------------------------------- threads
   useEffect(() => {
     if (demo) return;
-    const q = query(collection(db, 'whatsappThreads'), orderBy('updatedAt', 'desc'), limit(THREAD_LIMIT));
+    const q = query(collection(db, 'whatsappThreads'), orderBy('updatedAt', 'desc'), limit(threadLimit));
     return onSnapshot(
       q,
       (snap) => {
         setThreads(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Thread, 'id'>) })));
         setLoadingThreads(false);
+        setLoadingMoreThreads(false);
         setThreadsError(null);
       },
       (err) => {
         console.warn('[whatsapp] threads subscribe failed', err);
         setThreadsError('Could not load conversations. Check your connection, then reload.');
         setLoadingThreads(false);
+        setLoadingMoreThreads(false);
       },
     );
-  }, [demo]);
+  }, [demo, threadLimit]);
+
+  // A full page means there may be older conversations to fetch.
+  const hasMoreThreads = !demo && threads.length >= threadLimit;
+  const loadMoreThreads = useCallback(() => {
+    setLoadingMoreThreads(true);
+    setThreadLimit((n) => n + THREAD_PAGE);
+  }, []);
 
   // ------------------------------------------------------------ messages
   useEffect(() => {
@@ -239,6 +252,32 @@ export function useInboxData(actor: Actor, activeId: string | null) {
     [demo, actor.name, pushLocalMessage, patchThreadLocal],
   );
 
+  /** Send a prepared photo or document (see waMedia.prepareAttachment). */
+  const sendMedia = useCallback(
+    async (t: Thread, file: File, kind: 'image' | 'document', caption: string) => {
+      if (demo) {
+        pushLocalMessage(t.id, {
+          id: `demo-out-${Date.now()}`,
+          direction: 'outbound',
+          type: kind,
+          text: caption || (kind === 'document' ? file.name : ''),
+          media: { id: '', mimeType: file.type, caption: caption || null, filename: kind === 'document' ? file.name : null },
+          status: 'delivered',
+          actorName: actor.name,
+          createdAt: demoNow(),
+        });
+        patchThreadLocal(t.id, { lastMessage: kind === 'image' ? 'Photo' : 'Document', lastDirection: 'outbound', lastStatus: 'delivered', unreadCount: 0 });
+        return;
+      }
+      await whatsappAdminApi.sendMedia({
+        phone: t.phone,
+        media: { mime: file.type, filename: file.name, data: await fileToBase64(file) },
+        caption: caption || undefined,
+      });
+    },
+    [demo, actor.name, pushLocalMessage, patchThreadLocal],
+  );
+
   const addSnippet = useCallback(
     async (title: string, text: string) => {
       if (demo) return setSnippets((s) => [...s, { id: `s-${Date.now()}`, title, text }].sort((a, b) => a.title.localeCompare(b.title)));
@@ -260,11 +299,14 @@ export function useInboxData(actor: Actor, activeId: string | null) {
     threads,
     loadingThreads,
     threadsError,
+    hasMoreThreads,
+    loadingMoreThreads,
+    loadMoreThreads,
     messages: activeId ? messagesByThread[activeId] || [] : [],
     loadingMessages: !demo && loadingMessages && !!activeId && !messagesByThread[activeId],
     templates,
     team,
     snippets,
-    actions: { markRead, assign, setStatus, addNote, send, addSnippet, deleteSnippet },
+    actions: { markRead, assign, setStatus, addNote, send, sendMedia, addSnippet, deleteSnippet },
   };
 }
