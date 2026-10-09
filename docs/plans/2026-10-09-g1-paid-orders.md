@@ -10,7 +10,7 @@ signed in can write a "paid" order without paying.
    order's `notes` (`srs_lines_N` = `productId*qty,...`, `srs_line_count`).
    Only Razorpay holds them, and only our key secret can create an order, so they
    are trustworthy. Client notes are whitelisted (`orderNumber`, `userId`), so a
-   client can't plant `srs_*` keys. Carts are capped at 30 lines (a rules limit).
+   client can't plant `srs_*` keys. Carts are capped at 25 lines (a rules limit).
 2. **`api/verify-payment.ts`** (no new function; the 12-function cap still holds):
    - needs the customer's Firebase ID token and binds the payment to that uid;
    - checks the signature (unchanged), then asks Razorpay for the payment

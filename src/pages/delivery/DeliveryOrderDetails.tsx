@@ -371,7 +371,9 @@ const DeliveryOrderDetails = () => {
   }
 
   const isCod = isCashOnDeliveryOrder(order);
-  const isPaid = isPaymentSettled(order);
+  // Partners only ever collect cash on COD orders. A prepaid order whose
+  // payment the shop is still checking must not be shown as cash due.
+  const isPaid = isPaymentSettled(order) || !isCod;
   const paymentPending = isCod && !isPaid;
   const collectorName =
     user?.displayName || order.delivery_partner_name || order.delivery_boy_name || 'Delivery partner';

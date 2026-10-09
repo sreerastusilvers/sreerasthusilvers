@@ -446,7 +446,13 @@ service cloud.firestore {
       function isValidReturnRequest() {
         let currentStatus = resource.data.status;
         let newStatus = request.resource.data.status;
-        return currentStatus == 'delivered' && newStatus == 'returnRequested';
+        // The fields list stops a return request from also marking the order
+        // paid or changing its total (found in the G1 review).
+        return currentStatus == 'delivered' && newStatus == 'returnRequested' &&
+               request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                 'status', 'returnReason', 'returnRequestedAt', 'returnStatus',
+                 'updatedAt', 'lastUpdated', 'statusHistory'
+               ]);
       }
 
       // Helper: Assigned delivery partner can mark COD payment as collected
@@ -493,13 +499,18 @@ service cloud.firestore {
       }
 
       function isPaidOrderMatch(d, p) {
+        // Checkout writes the order seconds after the payment is recorded. The
+        // hour limit stops a payment buying a second order after the owner
+        // deletes the first one.
         return p.userId == request.auth.uid
+          && request.time < p.createdAt + duration.value(1, 'h')
+          && p.currency == 'INR'
           && d.razorpayOrderId == p.razorpayOrderId
           && d.total is number
           && math.abs(d.total * 100 - p.amountPaise) <= 100
           && d.items is list
           && d.items.size() == p.lines.size()
-          && d.items.size() <= 30
+          && d.items.size() <= 25
           && paidLineMatches(d.items, p.lines, 0) && paidLineMatches(d.items, p.lines, 1)
           && paidLineMatches(d.items, p.lines, 2) && paidLineMatches(d.items, p.lines, 3)
           && paidLineMatches(d.items, p.lines, 4) && paidLineMatches(d.items, p.lines, 5)
@@ -512,16 +523,32 @@ service cloud.firestore {
           && paidLineMatches(d.items, p.lines, 18) && paidLineMatches(d.items, p.lines, 19)
           && paidLineMatches(d.items, p.lines, 20) && paidLineMatches(d.items, p.lines, 21)
           && paidLineMatches(d.items, p.lines, 22) && paidLineMatches(d.items, p.lines, 23)
-          && paidLineMatches(d.items, p.lines, 24) && paidLineMatches(d.items, p.lines, 25)
-          && paidLineMatches(d.items, p.lines, 26) && paidLineMatches(d.items, p.lines, 27)
-          && paidLineMatches(d.items, p.lines, 28) && paidLineMatches(d.items, p.lines, 29);
+          && paidLineMatches(d.items, p.lines, 24);
       }
 
       // CREATE: Only authenticated users can create their own orders, either
       // unpaid ('pending') or paid and backed by a recorded payment.
       // The owner may write one back (Restore from the Recycle bin).
+      // A new customer order starts 'pending' with no delivery details:
+      // otherwise a customer could name themselves the delivery partner, or
+      // start at 'delivered', and use those update rules to mark it paid.
+      // A Razorpay payment id is always the doc id, so one payment can only
+      // ever back one order, confirmed or not.
+      function isFreshCustomerOrder() {
+        let d = request.resource.data;
+        return d.status == 'pending'
+          && !d.keys().hasAny([
+            'delivery_boy_id', 'delivery_boy_name', 'delivery_partner_id', 'delivery_partner_name',
+            'delivery_partner_phone', 'deliveryBoyId', 'assignedAt', 'delivery_otp', 'otp_verified',
+            'otp_generated_at', 'paymentCollectedAt', 'paymentCollectedBy', 'paymentCollectedByName',
+            'deliveredAt', 'returnScheduledAt', 'return_otp', 'return_store_otp'
+          ])
+          && (!('razorpayPaymentId' in d) || d.razorpayPaymentId == orderId);
+      }
+
       allow create: if isAdmin() || (isAuthenticated() &&
         request.resource.data.userId == request.auth.uid &&
+        isFreshCustomerOrder() &&
         (request.resource.data.paymentStatus == 'pending' ||
           (request.resource.data.paymentStatus == 'paid' && isBackedPaidOrder())));
         
@@ -573,13 +600,16 @@ service cloud.firestore {
     // only accepted when it matches one of these (see orders above).
     match /payments/{paymentId} {
       allow read: if isAuthenticated() &&
-        (resource.data.userId == request.auth.uid || can('orders'));
+        (resource.data.userId == request.auth.uid || can('orders') ||
+          (request.auth.uid == 'razorpay-verifier' && request.auth.token.paymentServer == true));
       allow create: if request.auth != null
         && request.auth.uid == 'razorpay-verifier'
         && request.auth.token.paymentServer == true
         && request.resource.data.razorpayPaymentId == paymentId
         && request.resource.data.userId is string
         && request.resource.data.amountPaise is int
+        && request.resource.data.currency == 'INR'
+        && request.resource.data.createdAt is timestamp
         && request.resource.data.lines is list;
       allow update, delete: if false;
     }

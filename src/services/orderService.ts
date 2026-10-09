@@ -581,6 +581,12 @@ const createPaidOrderFallback = async (
 ): Promise<string> => {
   const now = Timestamp.now();
   const docRef = orderDocRef(orderData);
+  // A transaction can commit even though the client saw an error. The order
+  // is then already there, and writing it again would be refused.
+  if (orderData.razorpayPaymentId) {
+    const existing = await getDoc(docRef).catch(() => null);
+    if (existing?.exists()) return docRef.id;
+  }
   const write = (paymentStatus: 'paid' | 'pending', why: string) =>
     setDoc(docRef, {
       ...orderData,

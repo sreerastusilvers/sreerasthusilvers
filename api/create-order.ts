@@ -36,7 +36,7 @@ const RAZORPAY_API_BASE =
 /** Client and server both round; allow a rupee of drift before rejecting. */
 const AMOUNT_TOLERANCE_PAISE = 100;
 /** The rules compare a paid order's items line by line, up to this many. */
-const MAX_CART_LINES = 30;
+const MAX_CART_LINES = 25;
 /** Razorpay allows 15 notes of up to 256 characters each. */
 const NOTE_MAX_CHARS = 256;
 const MAX_LINE_NOTES = 12;
@@ -625,7 +625,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  const currency = typeof body.currency === 'string' && body.currency ? body.currency : 'INR';
+  // Prices are rupees, so the order is always INR. Taking the currency from
+  // the client let a cheaper currency carry the same number (G1 review).
+  const currency = 'INR';
   const receipt =
     typeof body.receipt === 'string' && body.receipt ? body.receipt : `rcpt_${Date.now()}`;
 
@@ -648,6 +650,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         amount: amountInPaise,
         currency,
         receipt,
+        // Capture as soon as the customer pays, so a recorded payment is never
+        // left as an authorisation that Razorpay later refunds.
+        payment_capture: 1,
         notes: { ...clientNotes, ...lineNotes },
       }),
     });

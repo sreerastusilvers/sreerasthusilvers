@@ -239,9 +239,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       razorpayGet(`/orders/${encodeURIComponent(orderId)}`, keyId, keySecret),
     ]);
     if (payment?.order_id !== orderId) throw new Error('Payment does not belong to this order');
+    // 'authorized' is the moment before auto-capture (create-order sets
+    // payment_capture), so it still counts.
     if (payment?.status !== 'captured' && payment?.status !== 'authorized') {
       throw new Error(`Payment status is ${payment?.status || 'unknown'}`);
     }
+    if (payment?.currency !== 'INR') throw new Error(`Payment currency is ${payment?.currency || 'unknown'}`);
     const lines = parseLines(order?.notes);
     if (lines.length === 0) throw new Error('Order has no priced cart lines');
 
@@ -250,7 +253,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       razorpayPaymentId: paymentId,
       razorpayOrderId: orderId,
       amountPaise: Number(payment.amount),
-      currency: String(payment.currency || 'INR'),
+      currency: 'INR',
       status: String(payment.status),
       lines,
     });

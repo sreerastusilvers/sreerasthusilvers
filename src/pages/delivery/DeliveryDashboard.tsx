@@ -14,7 +14,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToDeliveryBoyOrders, Order } from '@/services/orderService';
+import { subscribeToDeliveryBoyOrders, Order, isCashOnDeliveryOrder } from '@/services/orderService';
 import { db } from '@/config/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -290,10 +290,8 @@ const OrderCard = ({
   const isReturnPickedUp = order.status === 'picked' && !!(order as any).returnScheduledAt;
   const isActionable = order.status === 'outForDelivery' || isReturnPickup || isReturnPickedUp;
 
-  const isPaid =
-    order.paymentStatus === 'paid' ||
-    (order.paymentMethod || '').toLowerCase().includes('online') ||
-    (order.paymentMethod || '').toLowerCase().includes('upi');
+  // Cash is only collected on COD orders; every other order was paid online.
+  const isPaid = order.paymentStatus === 'paid' || !isCashOnDeliveryOrder(order);
 
   const phone = order.shippingAddress.mobile || '';
   const addr = [

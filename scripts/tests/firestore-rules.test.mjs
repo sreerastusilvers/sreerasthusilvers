@@ -404,7 +404,8 @@ const fakeServer = env.authenticatedContext('cust', { paymentServer: true }).fir
 const lines = (n) => Array.from({ length: n }, (_, i) => ({ productId: `p${i}`, quantity: 1 + (i % 3) }));
 const payment = (id, extra = {}) => ({
   userId: 'cust', razorpayPaymentId: id, razorpayOrderId: `order_${id}`, amountPaise: 150000,
-  currency: 'INR', status: 'captured', lines: [{ productId: 'p1', quantity: 1 }, { productId: 'p7', quantity: 2 }], ...extra,
+  currency: 'INR', status: 'captured', lines: [{ productId: 'p1', quantity: 1 }, { productId: 'p7', quantity: 2 }],
+  createdAt: new Date(), ...extra,
 });
 const paidOrder = (id, extra = {}) => ({
   userId: 'cust', status: 'pending', paymentMethod: 'Razorpay', paymentStatus: 'paid',
@@ -415,8 +416,11 @@ const paidOrder = (id, extra = {}) => ({
 await seed({
   'payments/pay_A': payment('pay_A'),
   'payments/pay_B': payment('pay_B', { userId: 'cust2' }),
-  'payments/pay_30': payment('pay_30', { lines: lines(30) }),
-  'payments/pay_31': payment('pay_31', { lines: lines(31) }),
+  'payments/pay_30': payment('pay_30', { lines: lines(25) }),
+  'payments/pay_31': payment('pay_31', { lines: lines(26) }),
+  'payments/pay_OLD': payment('pay_OLD', { createdAt: new Date(Date.now() - 2 * 3600 * 1000) }),
+  'payments/pay_USD': payment('pay_USD', { currency: 'USD' }),
+  'orders/c-deliv2': { userId: 'cust', status: 'delivered', total: 1000, paymentMethod: 'Razorpay', paymentStatus: 'pending' },
 });
 const put = (id, data) => (db) => db.doc(`orders/${id}`).set(data);
 await deny("G1: a customer cannot write a 'paid' order without paying", 'cust', put('free', { userId: 'cust', status: 'pending', total: 1, paymentMethod: 'Razorpay', paymentStatus: 'paid' }));
@@ -431,16 +435,27 @@ await deny('a paid order cannot change a quantity', 'cust', put('pay_A', paidOrd
 await deny('a paid order cannot add an item', 'cust', put('pay_A', paidOrder('pay_A', { items: [...paidOrder('pay_A').items, { productId: 'p9', quantity: 1 }] })));
 await deny('a customer order must say paid or pending', 'cust', put('nostatus', { userId: 'cust', status: 'pending', total: 1000 }));
 await deny("a customer order cannot start 'refunded'", 'cust', put('refd', { userId: 'cust', status: 'pending', total: 1000, paymentStatus: 'refunded' }));
-await deny('a paid order cannot mismatch its last line (30 lines)', 'cust', put('pay_30', paidOrder('pay_30', { items: [...lines(29), { productId: 'p29', quantity: 9 }] })));
-await allow('a paid order with 30 matching lines', 'cust', put('pay_30', paidOrder('pay_30', { items: lines(30) })));
-await deny('a paid order has at most 30 lines', 'cust', put('pay_31', paidOrder('pay_31', { items: lines(31) })));
+await deny('a paid order cannot mismatch its last line (25 lines)', 'cust', put('pay_30', paidOrder('pay_30', { items: [...lines(24), { productId: 'p24', quantity: 9 }] })));
+await allow('a paid order with 25 matching lines', 'cust', put('pay_30', paidOrder('pay_30', { items: lines(25) })));
+await deny('a paid order has at most 25 lines', 'cust', put('pay_31', paidOrder('pay_31', { items: lines(26) })));
 await allow('a paid order within a rupee of the amount paid', 'cust', put('pay_A', paidOrder('pay_A', { total: 1500.6 })));
 await deny('one payment cannot buy a second order', 'cust', put('pay_A', paidOrder('pay_A')));
 await allow('an unconfirmed payment is saved as pending, needing review', 'cust', put('pay_Z', paidOrder('pay_Z', { paymentStatus: 'pending', needsManualReview: true })));
 await allow('the owner restores a paid order from the bin', 'owner', put('pay_R', paidOrder('pay_R')));
+// Found in the G1 review: other ways to end up with an unpaid order marked paid.
+await deny('a payment cannot buy an order an hour later (e.g. after the first was deleted)', 'cust', put('pay_OLD', paidOrder('pay_OLD')));
+await deny('a payment in another currency does not back an order', 'cust', put('pay_USD', paidOrder('pay_USD')));
+await deny('an unconfirmed order must be stored under its payment id', 'cust', put('other-id2', paidOrder('pay_A', { paymentStatus: 'pending', needsManualReview: true })));
+await deny('a customer cannot name themselves the delivery partner', 'cust', put('self-dboy', { userId: 'cust', status: 'outForDelivery', total: 1000, paymentMethod: 'Cash On Delivery', paymentStatus: 'pending', delivery_boy_id: 'cust' }));
+await deny('a pending order cannot carry delivery details', 'cust', put('self-dboy2', { userId: 'cust', status: 'pending', total: 1000, paymentMethod: 'Cash On Delivery', paymentStatus: 'pending', delivery_boy_id: 'cust' }));
+await deny("a new order cannot start 'delivered'", 'cust', put('pre-deliv', { userId: 'cust', status: 'delivered', total: 1000, paymentStatus: 'pending' }));
+await deny('a return request cannot also mark the order paid', 'cust', (db) => db.doc('orders/c-deliv2').update({ status: 'returnRequested', paymentStatus: 'paid', total: 99999 }));
+await allow('a return request with its own fields', 'cust', (db) => db.doc('orders/c-deliv2').update({ status: 'returnRequested', returnReason: 'Too big', returnRequestedAt: 1, returnStatus: 'pending', updatedAt: 1, lastUpdated: 1, statusHistory: [] }));
 
 const rec = (id, extra) => (db) => db.doc(`payments/${id}`).set(payment(id, extra));
 await t('the payment server records a payment', () => assertSucceeds(rec('pay_S')(server)));
+await t('the payment server reads its record back (retry)', () => assertSucceeds(server.doc('payments/pay_A').get()));
+await t('the payment server only records INR', () => assertFails(rec('pay_X', { currency: 'USD' })(server)));
 await t('the payment record id must be the payment id', () => assertFails(server.doc('payments/pay_T').set(payment('pay_U'))));
 await t('the payment server cannot change a record', () => assertFails(server.doc('payments/pay_A').update({ amountPaise: 1 })));
 await t('the payment server cannot delete a record', () => assertFails(server.doc('payments/pay_A').delete()));

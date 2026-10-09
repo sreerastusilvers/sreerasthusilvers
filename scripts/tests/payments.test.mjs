@@ -175,6 +175,7 @@ await notRecorded('no sign-in token: verified, but not recorded', 'pay_2', 'orde
 await notRecorded('an expired token: verified, but not recorded', 'pay_3', 'order_1', 'expired', () => razorpayPayment('pay_3', 'order_1'));
 await notRecorded('a payment for a different Razorpay order is not recorded', 'pay_4', 'order_1', 'uid:cust1', () => razorpayPayment('pay_4', 'order_other'));
 await notRecorded('a failed payment is not recorded', 'pay_5', 'order_1', 'uid:cust1', () => razorpayPayment('pay_5', 'order_1', { status: 'failed' }));
+await notRecorded('a payment in another currency is not recorded', 'pay_7', 'order_1', 'uid:cust1', () => razorpayPayment('pay_7', 'order_1', { currency: 'USD' }));
 await notRecorded('an order without priced lines is not recorded', 'pay_6', 'order_bare', 'uid:cust1', () => {
   rzp.orders.set('order_bare', { id: 'order_bare', amount: 150000, notes: { orderNumber: 'SRS1' } });
   razorpayPayment('pay_6', 'order_bare');
@@ -207,6 +208,14 @@ await t('the priced cart lines go into the Razorpay notes, in cart order', async
   const notes = rzp.created.at(-1).notes;
   assert.deepEqual(vp.parseLines(notes), LINES);
   assert.equal(notes.orderNumber, 'SRS1');
+  assert.equal(rzp.created.at(-1).currency, 'INR');
+  assert.equal(rzp.created.at(-1).payment_capture, 1);
+});
+
+await t('the client cannot pick the currency', async () => {
+  const r = await call(co, { items: [{ productId: 'ring1', quantity: 1 }], currency: 'IDR' });
+  assert.equal(r.status, 200, JSON.stringify(r.payload));
+  assert.equal(rzp.created.at(-1).currency, 'INR');
 });
 
 await t('a client cannot plant its own srs_ lines or extra notes', async () => {
@@ -221,9 +230,9 @@ await t('a client cannot plant its own srs_ lines or extra notes', async () => {
   assert.equal(notes.other, undefined);
 });
 
-await t('more than 30 cart lines are refused before any payment', async () => {
+await t('more than 25 cart lines are refused before any payment', async () => {
   const before = rzp.created.length;
-  const items = Array.from({ length: 31 }, (_, i) => ({ productId: `p${i}`, quantity: 1 }));
+  const items = Array.from({ length: 26 }, (_, i) => ({ productId: `p${i}`, quantity: 1 }));
   const r = await call(co, { items });
   assert.equal(r.status, 400);
   assert.equal(rzp.created.length, before);
