@@ -10,7 +10,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-rules -c scripts/tests/firebase.rules-test.json \"node scripts/tests/firestore-rules.test.mjs .\""
   },
   "dependencies": {
     "@google/genai": "^1.48.0",
@@ -80,6 +81,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@firebase/rules-unit-testing": "5.0.2",
     "@tailwindcss/typography": "^0.5.16",
     "@types/leaflet": "^1.9.21",
     "@types/leaflet-routing-machine": "^3.2.9",

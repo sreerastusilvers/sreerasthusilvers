@@ -14,6 +14,27 @@ node scripts/tests/jewellery-offer.test.mjs .  # offer rules + server copy in ap
 node scripts/tests/dealer-chats.test.mjs .     # dealer tickets, team permissions, number privacy, webhook routing
 ```
 
+## Firestore rules suite
+
+`firestore-rules.test.mjs` checks `firestore.rules` on the Firestore emulator
+(demo project `demo-rules`, port 8180, so it never reaches the live database):
+
+- every admin action against the owner, one staff login per page key, a
+  switched-off login, customers, a signed-in account with no profile and a
+  signed-out visitor;
+- team logins (own profile, switching off, changing pages), customer accounts,
+  checkout stock and coupon writes, orders, delivery, order chat, newsletter,
+  reviews, push tokens and video calls;
+- known gaps, printed as `GAP` without failing the run. When a rule fix closes
+  one it prints `closed`: move that case into the main list.
+
+```
+npm run test:rules        # needs a FULL JDK (JAVA_HOME + PATH); a JRE fails
+RULES_FILE=path/to/copy.rules npm run test:rules   # try a changed copy first
+```
+
+Expect `0 failed`. Every rules change should add or move a case here.
+
 ## Browser testing without touching the live project
 
 `src/config/firebase.ts` connects to the Firebase emulators when Vite runs with
