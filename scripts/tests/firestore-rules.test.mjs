@@ -159,14 +159,16 @@ const MATRIX = [
   // customers
   { name: "read another customer's profile", perms: ['customers'], op: get('users/cust2') },
   { name: 'list every user profile', perms: ['customers'], op: list('users') },
+  { name: "read a customer's order history (Customer details)", perms: ['customers'], op: list('users/cust2/orders') },
+  { name: "read a customer's wishlist (Customer details)", perms: ['customers'], op: list('users/cust2/wishlist') },
   // products
   { name: 'create a product', perms: ['products'], op: (db, tag) => db.doc(`products/${tag}`).set(product()) },
   { name: 'change a product price', perms: ['products'], op: (db, tag, i) => db.doc('products/p1').update({ price: 1000 + i }) },
   { name: 'delete a product', perms: ['products'], seed: (tag) => ({ [`products/${tag}`]: product() }), op: (db, tag) => db.doc(`products/${tag}`).delete() },
   { name: 'write a category', perms: ['products'], op: (db, tag) => db.doc(`categories/${tag}`).set({ name: 'Rings' }) },
   // orders
-  { name: "read someone else's order", perms: ['orders'], op: get('orders/o1') },
-  { name: 'list every order', perms: ['orders'], op: list('orders') },
+  { name: "read someone else's order", perms: ['orders', 'dashboard'], op: get('orders/o1') },
+  { name: 'list every order (Orders and Dashboard pages)', perms: ['orders', 'dashboard'], op: list('orders') },
   { name: 'edit an order', perms: ['orders'], op: (db, tag) => db.doc('orders/o1').update({ adminNote: tag }) },
   { name: 'delete an order', perms: ['orders'], seed: (tag) => ({ [`orders/${tag}`]: { userId: 'cust2', status: 'pending' } }), op: (db, tag) => db.doc(`orders/${tag}`).delete() },
   { name: 'read an internal order note', perms: ['orders'], op: get('orders/o1/messages/note') },
@@ -182,8 +184,10 @@ const MATRIX = [
   { name: "change a customer's gift card balance", perms: ['giftCards'], op: (db, tag, i) => db.doc('users/cust2/giftCards/g1').update({ balance: i }) },
   { name: 'list every gift card (collection group)', perms: ['giftCards'], op: (db) => db.collectionGroup('giftCards').get() },
   { name: 'create a shop-wide gift card', perms: ['giftCards'], op: (db, tag) => db.doc(`giftCards/${tag}`).set({ code: tag, balance: 100 }) },
+  { name: 'change a shop-wide gift card balance', perms: ['giftCards'], op: (db, tag, i) => db.doc('giftCards/gc1').update({ balance: i }) },
   // video calls
   { name: "read someone else's video call request", perms: ['videoCalls'], op: get('videoCallRequests/v1') },
+  { name: 'list every video call booking', perms: ['videoCalls'], op: list('videoCallRequests') },
   { name: 'update a video call request', perms: ['videoCalls'], op: (db, tag) => db.doc('videoCallRequests/v1').update({ adminNote: tag }) },
   { name: 'delete a video call request', perms: ['videoCalls'], seed: (tag) => ({ [`videoCallRequests/${tag}`]: { customerUid: 'cust2' } }), op: (db, tag) => db.doc(`videoCallRequests/${tag}`).delete() },
   // newsletter
@@ -238,6 +242,7 @@ const MATRIX = [
   { name: 'bump the ticket counter', perms: [], op: (db, tag, i) => db.doc('counters/dealerTickets').set({ next: i }) },
   { name: 'edit dealer chat setup (siteSettings/dealerChat)', perms: [], op: settingsWrite('dealerChat') },
   { name: 'edit siteSettings/catalogVersion', perms: [], op: settingsWrite('catalogVersion') },
+  { name: 'edit siteSettings/adminNotification (where order alerts go)', perms: [], op: settingsWrite('adminNotification') },
   { name: 'read admin/*', perms: [], op: get('admin/a1') },
   { name: 'write admin/*', perms: [], op: (db, tag) => db.doc(`admin/${tag}`).set({ x: 1 }) },
   { name: 'read the admin wallet log', perms: [], op: get('adminWalletLog/w1') },
@@ -249,8 +254,10 @@ const MATRIX = [
   { name: 'read a delivery rating', perms: [], op: get('deliveryRatings/dr1') },
   { name: "read a customer's saved address", perms: [], op: get('users/cust2/addresses/ad1') },
   { name: "read a customer's wallet", perms: [], op: get('users/cust2/wallets/w1') },
+  { name: "set a customer's wallet balance", perms: [], op: (db, tag, i) => db.doc('users/cust2/wallets/w1').update({ balance: i }) },
   { name: "read a customer's login history", perms: [], op: get('users/cust2/loginHistory/lh1') },
   { name: "read someone's account deletion request", perms: [], op: get('accountDeletionRequests/adr1') },
+  { name: 'list every account deletion request', perms: [], op: list('accountDeletionRequests') },
   // nobody, not even the owner (server only)
   { name: 'read WhatsApp OTP records', nobody: true, op: get('whatsappOtps/otp1') },
   { name: 'write WhatsApp OTP records', nobody: true, op: (db, tag) => db.doc(`whatsappOtps/${tag}`).set({ hash: 'h' }) },
@@ -325,6 +332,8 @@ await deny("a customer cannot read another customer's address", 'cust', get('use
 await allow('a customer reads their own gift card', 'cust2', get('users/cust2/giftCards/g1'));
 await deny('a customer cannot raise their own gift card balance', 'cust2', (db) => db.doc('users/cust2/giftCards/g1').update({ balance: 99999 }));
 await deny("a customer cannot read another customer's gift card", 'cust', get('users/cust2/giftCards/g1'));
+await deny('a customer cannot set their own wallet balance', 'cust2', (db) => db.doc('users/cust2/wallets/w1').update({ balance: 99999 }));
+await deny('a customer cannot create a wallet', 'cust', (db) => db.doc('users/cust/wallets/w1').set({ balance: 99999 }));
 await allow('a customer adds to their own ledger', 'cust2', (db, i) => db.doc(`users/cust2/transactions/t${i}`).set({ amount: 1 }));
 await deny('a customer cannot edit a ledger entry', 'cust2', (db) => db.doc('users/cust2/transactions/tx1').update({ amount: 999 }));
 await allow('a customer adds to their own login history', 'cust2', (db, i) => db.doc(`users/cust2/loginHistory/l${i}`).set({ at: i }));
@@ -336,6 +345,7 @@ await deny('a signed-out visitor cannot read a cart', null, get('carts/cust'));
 await allow('a customer asks to delete their account', 'cust', (db) => db.doc('accountDeletionRequests/adr-cust').set({ userId: 'cust', status: 'pending' }));
 await allow('a customer reads their own deletion request', 'cust', get('accountDeletionRequests/adr-cust'));
 await deny("a customer cannot read another customer's deletion request", 'cust', get('accountDeletionRequests/adr1'));
+await allow('a customer lists their own deletion requests', 'cust', (db) => db.collection('accountDeletionRequests').where('userId', '==', 'cust').get());
 
 // ── 4. Products and coupons from checkout ───────────────────────────────────
 console.log('\n4. Products and coupons (checkout writes from the browser)');
@@ -432,10 +442,33 @@ await deny('a switched-off login cannot write the activity log', 'st-off', (db, 
 await deny('staff cannot read the activity log', 'st-products', list('activityLog'));
 await deny('even the owner cannot edit an activity entry', 'owner', (db) => db.doc('activityLog/a1').update({ action: 'x' }));
 await deny('even the owner cannot delete an activity entry', 'owner', del('activityLog/a1'));
-await allow('staff bins a product they delete', 'st-products', (db, i) => db.doc(`recycleBin/s${i}`).set({ path: 'products/ps', data: { name: 'x' }, deletedByUid: 'st-products' }));
-await deny("staff cannot bin something in the owner's name", 'st-products', (db, i) => db.doc(`recycleBin/s${i}`).set({ path: 'products/ps', deletedByUid: 'owner' }));
-await deny('a customer cannot write to the bin', 'cust', (db, i) => db.doc(`recycleBin/c${i}`).set({ path: 'products/ps', deletedByUid: 'cust' }));
+const bin = (p, by, data = { name: 'x' }) => (db, i) => db.doc(`recycleBin/e${i}`).set({ path: p, data, deletedByUid: by });
+await seed({ 'videoCalls/vbin': { callerUid: 'cust', calleeUid: 'st-videoCalls' } });
+await allow('staff bins a product they delete', 'st-products', bin('products/ps', 'st-products'));
+await allow('Orders staff bins an order chat message', 'st-orders', bin('orders/o1/messages/m1', 'st-orders'));
+await allow("Gift-card staff bins a customer's gift card", 'st-giftCards', bin('users/cust2/giftCards/g1', 'st-giftCards'));
+await allow('WhatsApp staff bins a thread note', 'st-whatsapp', bin('whatsappThreads/t1/messages/wm1', 'st-whatsapp'));
+await allow('Video-call staff bins a call they hang up', 'st-videoCalls', bin('videoCalls/vbin', 'st-videoCalls'));
+await allow('Content staff bins a review', 'st-content', bin('reviews/r1', 'st-content'));
+await allow('the owner bins a customer profile', 'owner', bin('users/cust2', 'owner'));
+await deny("staff cannot bin something their page doesn't cover", 'st-products', bin('coupons/c1', 'st-products'));
+await deny('staff cannot plant a profile in the bin (Restore would create an admin)', 'st-products', bin('users/sleeper', 'st-products', { role: 'admin' }));
+await deny('staff cannot bin an existing profile either', 'st-customers', bin('users/cust2', 'st-customers', { role: 'admin' }));
+await deny("staff cannot bin a dealer's number", 'st-dealerChats', bin('dealerPrivate/d1', 'st-dealerChats'));
+await deny("staff cannot bin something that doesn't exist", 'st-products', bin('products/nope', 'st-products'));
+await deny('a bin entry needs a path', 'st-products', (db, i) => db.doc(`recycleBin/e${i}`).set({ deletedByUid: 'st-products' }));
+await deny("staff cannot bin something in the owner's name", 'st-products', bin('products/ps', 'owner'));
+await deny('a customer cannot write to the bin', 'cust', bin('products/ps', 'cust'));
 await allow('owner restores an entry (writes the document back)', 'owner', (db) => db.doc('products/old').set({ name: 'Old' }).then(() => db.doc('recycleBin/b1').delete()));
+await allow("owner restores a customer's order", 'owner', (db) => db.doc('orders/restored').set({ userId: 'cust2', status: 'delivered', total: 1000 }));
+await allow("owner restores a customer's approved review", 'owner', (db) => db.doc('reviews/restored').set({ userId: 'cust2', status: 'approved', rating: 5 }));
+await allow("owner restores a customer's video call booking", 'owner', (db) => db.doc('videoCallRequests/restored').set({ customerUid: 'cust2', status: 'pending' }));
+await deny("Orders staff cannot create an order in a customer's name", 'st-orders', (db) => db.doc('orders/staff-made').set({ userId: 'cust2', status: 'pending' }));
+// Ids with '+' or '%' must still be found (a rules path built from one string URL-decodes them).
+await seed({ 'newsletterSubscriptions/a+b@x.io': { email: 'a+b@x.io' }, 'products/lit%20only': product() });
+await allow('Newsletter staff bins a plus-address subscriber', 'st-newsletter', bin('newsletterSubscriptions/a+b@x.io', 'st-newsletter'));
+await allow("Products staff bins a product whose id has '%'", 'st-products', bin('products/lit%20only', 'st-products'));
+await deny('a bin path with a trailing segment pair missing is refused', 'st-orders', bin('orders/o1/messages', 'st-orders'));
 await deny('dealer staff cannot set a ticket to any other status', 'st-dealerChats', (db) => db.doc('dealerTickets/k1').update({ status: 'deleted' }));
 await deny('dealer staff cannot move a ticket to another dealer while closing it', 'st-dealerChats', (db) => db.doc('dealerTickets/k1').update({ status: 'closed', dealerId: 'd2' }));
 await allow('dealer staff closes a ticket with who and when', 'st-dealerChats', (db, i) => db.doc('dealerTickets/k1').update({ status: 'closed', closedAt: i, closedByUid: 'st-dealerChats', closedByName: 'S', updatedAt: i }));
@@ -454,6 +487,7 @@ await deny('newsletter: the email must match the document', null, (db) => db.doc
 await deny('newsletter: joining twice is refused, not an overwrite', null, (db) => db.doc('newsletterSubscriptions/new@shop.in').set({ email: 'new@shop.in', subscribedAt: 2 }));
 await deny('newsletter: a visitor cannot read the list', null, list('newsletterSubscriptions'));
 await allow('a customer writes their own review', 'cust', (db) => db.doc('reviews/rv-cust').set({ userId: 'cust', productId: 'p1', rating: 5, status: 'pending' }));
+await deny('a customer cannot publish their own review as approved', 'cust', (db) => db.doc('reviews/rv-self').set({ userId: 'cust', productId: 'p1', rating: 5, status: 'approved' }));
 await deny("a customer cannot write a review in someone else's name", 'cust', (db) => db.doc('reviews/rv-x').set({ userId: 'cust2', rating: 1, status: 'pending' }));
 await deny('a customer cannot approve their own review', 'cust', (db) => db.doc('reviews/rv-cust').update({ status: 'approved' }));
 await allow('a customer rates their delivery', 'cust2', (db) => db.doc('deliveryRatings/dr-c2').set({ userId: 'cust2', deliveryBoyId: 'dboy', rating: 4 }));
@@ -482,21 +516,10 @@ await allow('a signed-in customer reads a shop gift card code', 'cust', get('gif
 
 // ── 8. Known gaps (do not fail the run) ─────────────────────────────────────
 console.log('\n8. Known gaps (should be fixed; see README)');
-await gap('G1', 'Content staff can change siteSettings/adminNotification (the owner-only Settings page: where order alerts go)', 'deny', 'st-content',
-  (db) => db.doc('siteSettings/adminNotification').set({ whatsappNumber: '+910000000000' }, { merge: true }));
-await seed({ 'users/st-planted': staff(['products']) });
-await gap('G2', "Staff can plant a recycle-bin entry for a path they can't write (owner's Restore would create an admin)", 'deny', 'st-planted',
-  (db) => db.doc('recycleBin/planted').set({ path: 'users/sleeper', collection: 'users', docId: 'sleeper', label: 'Silver ring', data: { role: 'admin' }, deletedByUid: 'st-planted' }));
-await gap('G3', 'A customer can set their own wallet balance', 'deny', 'cust2', (db) => db.doc('users/cust2/wallets/w1').update({ balance: 99999 }));
-await gap('G4', 'A customer can publish their own review as already approved', 'deny', 'cust', (db) => db.doc('reviews/rv-self').set({ userId: 'cust', productId: 'p1', rating: 5, status: 'approved' }));
-await gap('G5', 'Any signed-in user can rewrite a shop-wide gift card balance', 'deny', 'cust', (db) => db.doc('giftCards/gc1').update({ balance: 999999 }));
-await gap('G6', 'Any signed-in user can list every video call booking', 'deny', 'cust', list('videoCallRequests'));
-await gap('G7', 'Any signed-in user can list every account deletion request', 'deny', 'cust', list('accountDeletionRequests'));
-await gap('G8', "A customer can write a prepaid order marked 'paid' without paying (orders are written by the browser)", 'deny', 'cust',
+// Needs server work, not a rule: /api/verify-payment checks the Razorpay
+// signature, but the browser then writes the order itself.
+await gap('G1', "A customer can write a prepaid order marked 'paid' without paying (orders are written by the browser)", 'deny', 'cust',
   (db) => db.doc('orders/free').set({ userId: 'cust', status: 'pending', total: 1, paymentMethod: 'Razorpay', paymentStatus: 'paid' }));
-await gap('G9', 'Staff with only Dashboard cannot load orders, so the Dashboard page is empty', 'allow', 'st-dashboard', list('orders'));
-await gap('G10', 'Customer details reads users/{id}/orders, which has no rule: refused even for the owner', 'allow', 'owner', list('users/cust2/orders'));
-await gap('G11', "Customer details reads the customer's wishlist: refused for staff with Customers", 'allow', 'st-customers', list('users/cust2/wishlist'));
 
 await env.cleanup();
 console.log(`\n${passed} passed, ${failed} failed, ${gaps.length} known gaps open${closed.length ? `, ${closed.length} gaps now closed` : ''}`);

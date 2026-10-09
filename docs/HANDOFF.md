@@ -1,6 +1,66 @@
 # Handoff
 
-Last updated: 2026-10-09
+Last updated: 2026-10-09 (later)
+
+## 2026-10-09 (later): Firestore rules test suite rebuilt, 11 rule problems fixed
+
+Status: committed locally, **rules not deployed**. `npm run test:rules` gives 298 passed, 0 failed, 1 known gap. One reviewer agent checked the rule changes: no way for staff to escalate. Its two bugs are fixed below (items 9 and 10). `npm run build` passes, and the other unit tests pass (21 + 14 + 8 + 20 + 9). No app code changed: only `firestore.rules`, the tests, and `package.json` (dev dependency `@firebase/rules-unit-testing@5.0.2` and the `test:rules` script).
+
+### The suite (`scripts/tests/firestore-rules.test.mjs`)
+- **Admin areas:** 103 actions, each tried as the owner, one staff login per page key, a switched-off login, a login with no pages, a customer, a signed-in account with no profile, and a signed-out visitor.
+- **Everything else:** team logins (switching off and changing pages take effect at once), customer accounts, checkout stock and coupon writes, orders, delivery, order chat, the recycle bin and the storefront.
+- **Known gaps** print `GAP` without failing the run.
+- **Proof the suite catches problems:**
+    - It caught three holes planted on purpose: switched-off staff still allowed in, staff giving themselves pages, and customers editing the price.
+    - It fails on all 10 fixes below when run against the old rules (`RULES_FILE=<copy> npm run test:rules`).
+- **Running it:** needs a full JDK. See `scripts/tests/README.md`.
+    - None is installed system-wide. Last time this chat used the JDK left in an earlier chat's temporary scratchpad (`%LOCALAPPDATA%\Temp\claude\...\b8d75ccb-...\scratchpad\jdk-dl\jdk-21.0.12.1+1`), which Windows may clean up.
+    - Installing Temurin 21 JDK is a global install, so ask first.
+
+### Rule fixes (owner said yes to all of them)
+1. **Recycle bin:** staff could plant an entry such as `users/<id>` with role `admin`. The owner's Restore would then have created an admin.
+    - Staff may now only bin a document that exists and that their page lets them delete (`binPage()` in the rules).
+2. `siteSettings/adminNotification` (where order alerts go) is owner-only. Content staff could change it before.
+3. Customers can no longer set their own wallet balance. This was the 2026-10-05 known issue.
+4. A new review must start as `pending`. Before, a customer could publish one as `approved`.
+5. Shop-wide `giftCards`: any signed-in user could rewrite a balance. Now only staff with the Gift cards page can.
+6. Any signed-in user could list every video call booking and every account-deletion request. Now each person sees only their own.
+7. **Dashboard-only staff can read orders.** The owner chose this so the Dashboard page works. They could also see customer names and addresses through the browser console.
+8. **Customer details would have broken for the owner after deploy.** It reads `users/{id}/orders`, which had no rule. That path and the wishlist are now readable by the owner and by staff with the Customers page.
+9. **Recycle-bin check by document id (reviewer find).** It now looks the document up by its id, piece by piece.
+    - Built as one string, the path decoded `+` and `%`.
+    - So nobody could have deleted a newsletter subscriber like `name+tag@gmail.com`.
+10. **Restore always failed for orders, reviews and video-call bookings** (reviewer find; older bug). Only the customer could create these, so even the owner's Restore was refused. The owner (`isAdmin()`) may now create them.
+
+### Known gap left open (needs server work, not a rule)
+- **G1, money:** checkout writes the order from the browser with `paymentStatus: 'paid'`. `/api/verify-payment` checks the Razorpay signature but writes nothing, so a customer who skips payment can create a "paid" order.
+    - Fix idea: the server writes the paid order, or writes a `payments/{razorpayPaymentId}` record that the rules require.
+    - The `api/` folder is at the 12-function cap, so do it inside an existing function.
+    - Until it's fixed, check the payment in the Razorpay dashboard before shipping a prepaid order.
+
+### Browser check (local emulators with the fixed rules): 7 of 7 pass
+- The owner opens Customer details (1440 px light, 390 px dark).
+- Dashboard-only staff see the order figures (1440 px dark, 390 px light).
+- Products staff delete a product, and it lands in the Recycle bin as "deleted by Prod".
+- Planting a `users/...` entry in the bin is refused.
+
+### Found while testing, not fixed (older bugs, not caused by the rules)
+- **Customer details always shows "Orders 0" and ₹0.** The Customers list also always shows 0. Both read `users/{id}/orders`, which nothing writes; real orders live in `orders` with `userId`.
+    - Fix: query `orders` where `userId == id`.
+    - The rules would then need to let Customers staff read orders (a decision for the owner).
+- **The Dashboard shows buttons a Dashboard-only login can't use:** Add Product, Save silver rate, Upload Media and View Orders. They fail when used.
+
+### Minor, left as is
+- **Bin entry wording:** a staff member's bin entry can claim any `label` or `deletedByName`, for example "removed by Owner". The rules check only `deletedByUid`, and the bin screen shows the name.
+- **Video calls:** video-call staff can bin any call. This is harmless: a Restore needs the owner to be the caller.
+
+### Owner to-do
+1. Deploy the rules: `firebase login --reauth`, then `firebase deploy --only firestore:rules`.
+2. The rest of the to-do list in the entry below is unchanged.
+
+### Next steps
+1. Fix G1 (server-written paid orders). Use Extra high effort: it's payment code.
+2. Customer details and Customers list order counts (see "Found while testing").
 
 ## 2026-10-09: jewellery offer, team logins, activity log, recycle bin, dealer chats, WhatsApp redesign, install as app
 
@@ -80,7 +140,7 @@ Status: done and committed locally (not pushed, not deployed). `npm run build` p
     - real dealer replies arriving through the webhook (covered by unit tests with a fake Firestore);
     - a real Razorpay payment with the offer applied (server pricing is unit-tested; the browser test stopped before payment so no real order was created).
 - **Install:** a real install on Android or iPhone (the prompt was simulated).
-- **Rules:** no 50-case rules suite was re-run. The new rules were exercised by the browser tests (owner, staff and website-manager reads and writes all worked; owner-only pages were refused).
+- **Rules:** no 50-case rules suite was re-run (since rebuilt; see the 2026-10-09 (later) entry). The new rules were exercised by the browser tests (owner, staff and website-manager reads and writes all worked; owner-only pages were refused).
 
 ### Known issues, not fixed
 - The 13 old type errors.
@@ -89,7 +149,7 @@ Status: done and committed locally (not pushed, not deployed). `npm run build` p
 
 ### Next steps
 1. The owner to-do above.
-2. Rebuild the 50-case Firestore rules suite for the new `can()` rules (emulator recipe in `scripts/tests/README.md`; needs a full JDK).
+2. ~~Rebuild the Firestore rules suite~~: done in the 2026-10-09 (later) entry above.
 
 ## 2026-10-05 (late night): home rows now drift continuously, alternating direction
 

@@ -85,7 +85,13 @@ service cloud.firestore {
 
       // --- WISHLIST ---
       match /wishlist/{productId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || can('customers'); // Customer details
+        allow write: if isOwner(userId) || isAdmin();
+      }
+
+      // --- ORDER HISTORY (read by Customer details; nothing writes it today) ---
+      match /orders/{orderId} {
+        allow read: if isOwner(userId) || can('customers');
       }
       
       // --- GIFT CARDS SUBCOLLECTION ---
@@ -96,15 +102,11 @@ service cloud.firestore {
       }
 
       // --- WALLET (subcollection) ---
-      // Balance is READ-ONLY for clients. Only server/admin can modify.
-      // In production, replace client writes with Cloud Functions.
+      // Nothing in the app writes wallets today. A customer used to be able
+      // to set their own balance; now only the owner (and the server) can.
       match /wallets/{walletId} {
         allow read: if isOwner(userId) || isAdmin();
-        // Allow create for wallet initialization
-        allow create: if isOwner(userId) || isAdmin();
-        // Users can update their own wallet (for client-side atomic transactions)
-        // In production: restrict to Cloud Functions only
-        allow update: if isOwner(userId) || isAdmin();
+        allow create, update: if isAdmin();
         allow delete: if false; // NEVER delete wallets
       }
       
@@ -169,9 +171,9 @@ service cloud.firestore {
     // --- GIFT CARDS (global collection) ---
     match /giftCards/{cardId} {
       allow read: if isAuthenticated();
-      allow create: if can('giftCards');
-      allow update: if isAuthenticated(); // For redemption
-      allow delete: if can('giftCards');
+      // Nothing redeems these from the browser; any signed-in user could
+      // rewrite a balance while update was isAuthenticated().
+      allow create, update, delete: if can('giftCards');
     }
 
     // --- GIFT CARDS collection-group read (admin manager fast query) ---
@@ -202,8 +204,10 @@ service cloud.firestore {
     
     // --- ACCOUNT DELETION REQUESTS ---
     match /accountDeletionRequests/{requestId} {
-      // Allow list/query: users can query their own requests
-      allow list: if isAuthenticated();
+      // Queries must ask for the user's own requests (where userId == uid).
+      allow list: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
       // Allow get: users can read their own requests or admin can read all
       allow get: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || isAdmin()
@@ -226,7 +230,9 @@ service cloud.firestore {
       allow write: if isAdmin()
         || (docId in ['delivery', 'gst', 'customerSupport', 'coupons', 'jewelleryOffer'] && can('commerce'))
         || (docId == 'silverRate' && can('silverRate'))
-        || (!(docId in ['delivery', 'gst', 'customerSupport', 'coupons', 'jewelleryOffer', 'silverRate', 'dealerChat', 'catalogVersion'])
+        // adminNotification (where order alerts go) belongs to the owner-only
+        // Settings page, so it is not website content.
+        || (!(docId in ['delivery', 'gst', 'customerSupport', 'coupons', 'jewelleryOffer', 'silverRate', 'dealerChat', 'catalogVersion', 'adminNotification'])
             && can('content'));
     }
     match /homeBanners/{docId} {
@@ -370,9 +376,12 @@ service cloud.firestore {
     match /reviews/{reviewId} {
       // Anyone can read approved reviews
       allow read: if true;
-      // Authenticated users can create their own reviews
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
+      // Authenticated users create their own review; it waits for approval
+      // (WriteReview sends 'pending'). The owner may write any review back:
+      // that is what Restore from the Recycle bin does.
+      allow create: if isAdmin() || (isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.get('status', 'pending') == 'pending');
       // Only admin can update (approve/reject) or delete reviews
       allow update: if can('content');
       allow delete: if can('content');
@@ -461,12 +470,14 @@ service cloud.firestore {
       }
       
       // READ: Admins see all; Customers see their orders; Delivery boys see assigned orders
-      allow read: if isAuthenticated() && 
-        (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || can('orders'));
+      // The Dashboard page totals every order, so its page reads them too.
+      allow read: if isAuthenticated() &&
+        (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || can('orders') || can('dashboard'));
       
-      // CREATE: Only authenticated users can create their own orders
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
+      // CREATE: Only authenticated users can create their own orders.
+      // The owner may write one back (Restore from the Recycle bin).
+      allow create: if isAdmin() || (isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid);
         
       // UPDATE: Complex rules for different roles
       // - Admin can update anything
@@ -590,16 +601,18 @@ service cloud.firestore {
 
     // --- VIDEO CALL REQUESTS (demo booking) ---
     match /videoCallRequests/{reqId} {
-      // Customer can create their own request
-      allow create: if isAuthenticated()
-                    && request.resource.data.customerUid == request.auth.uid;
+      // Customer can create their own request; the owner may write one back
+      // (Restore from the Recycle bin).
+      allow create: if isAdmin() || (isAuthenticated()
+                    && request.resource.data.customerUid == request.auth.uid);
       // Customer can read/update (cancel) their own requests
       allow read, update: if isAuthenticated()
                     && (resource.data.customerUid == request.auth.uid || can('videoCalls'));
       // Only admin can delete
       allow delete: if can('videoCalls');
-      // List-level: admins see all; customers query filtered by their uid
-      allow list: if isAuthenticated();
+      // Lists fall under `read` above: customers must query where
+      // customerUid == their uid. A blanket list rule here let any signed-in
+      // user read every booking.
     }
   
     // --- ACTIVITY LOG & RECYCLE BIN (src/lib/audit/firestore.ts) ---
@@ -613,7 +626,51 @@ service cloud.firestore {
     }
     match /recycleBin/{entryId} {
       allow read, update, delete: if isAdmin();
-      allow create: if isAdminOrTeam() && request.resource.data.deletedByUid == request.auth.uid;
+      // The owner's Restore writes `data` back to `path`, so a team member may
+      // only bin a document that exists and that their page lets them delete.
+      // Otherwise they could plant users/<id> with role 'admin' and wait for a
+      // Restore.
+      allow create: if request.resource.data.deletedByUid == request.auth.uid
+        && request.resource.data.path is string
+        && (isAdmin() || can(binPage(request.resource.data.path)))
+        && binTargetExists(request.resource.data.path.split('/'));
+    }
+
+    // Built segment by segment: path('...' + p) URL-decodes, so a document id
+    // with '+' (a newsletter address like name+tag@gmail.com) or '%' would not
+    // be found and its delete would fail.
+    function binTargetExists(parts) {
+      return parts.size() == 2
+        ? exists(/databases/$(database)/documents/$(parts[0])/$(parts[1]))
+        : parts.size() == 4
+          && exists(/databases/$(database)/documents/$(parts[0])/$(parts[1])/$(parts[2])/$(parts[3]));
+    }
+
+    // The page that lets a team member delete the document at `p` ('' = owner only).
+    function binPage(p) {
+      let parts = p.split('/');
+      return parts.size() == 2
+        ? {
+            'products': 'products', 'categories': 'products',
+            'orders': 'orders',
+            'coupons': 'coupons',
+            'giftCards': 'giftCards',
+            'videoCallRequests': 'videoCalls', 'videoCalls': 'videoCalls',
+            'newsletterSubscriptions': 'newsletter',
+            'promptHistory': 'aiTools',
+            'broadcastCampaigns': 'marketing', 'whatsappTemplates': 'marketing',
+            'whatsappThreads': 'whatsapp', 'whatsappSnippets': 'whatsapp',
+            'homeBanners': 'content', 'homeCollections': 'content', 'homeVideos': 'content',
+            'banners': 'content', 'showcases': 'content', 'testimonials': 'content',
+            'gallery': 'content', 'reviews': 'content'
+          }.get(parts[0], '')
+        : parts.size() == 4
+          ? {
+              'orders/messages': 'orders',
+              'whatsappThreads/messages': 'whatsapp',
+              'users/giftCards': 'giftCards'
+            }.get(parts[0] + '/' + parts[2], '')
+          : '';
     }
 
     // --- DEALER (MANUFACTURER) CHATS ---
