@@ -22,11 +22,41 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  * same function the checkout uses; `offerGiftProductId` only picks WHICH cart
  * line is the free item, never how much comes off.
  * Returns: { order_id, amount, currency, key_id }
+ *
+ * The cart lines are also written into the Razorpay order's notes
+ * (`srs_line_count`, `srs_lines_N` = "productId*qty,..."). /api/verify-payment
+ * copies them into the payment record, and the Firestore rules only accept a
+ * paid order whose items match it. Only this server can create Razorpay orders,
+ * so the notes can be trusted; client notes are limited to CLIENT_NOTE_KEYS so
+ * nobody can plant `srs_*` values.
  */
 
-const RAZORPAY_API_BASE = 'https://api.razorpay.com/v1';
+const RAZORPAY_API_BASE =
+  (process.env.FIRESTORE_EMULATOR_HOST && process.env.RAZORPAY_TEST_API_BASE) || 'https://api.razorpay.com/v1';
 /** Client and server both round; allow a rupee of drift before rejecting. */
 const AMOUNT_TOLERANCE_PAISE = 100;
+/** The rules compare a paid order's items line by line, up to this many. */
+const MAX_CART_LINES = 30;
+/** Razorpay allows 15 notes of up to 256 characters each. */
+const NOTE_MAX_CHARS = 256;
+const MAX_LINE_NOTES = 12;
+const CLIENT_NOTE_KEYS = ['orderNumber', 'userId'];
+
+/** Pack "productId*qty" lines into note values of at most 256 characters. */
+export function packLines(lines: Array<{ productId: string; quantity: number }>): Record<string, string> | null {
+  const chunks: string[] = [];
+  for (const l of lines) {
+    const part = `${l.productId}*${l.quantity}`;
+    const last = chunks.length - 1;
+    if (last >= 0 && chunks[last].length + 1 + part.length <= NOTE_MAX_CHARS) chunks[last] += `,${part}`;
+    else if (part.length <= NOTE_MAX_CHARS) chunks.push(part);
+    else return null;
+  }
+  if (chunks.length === 0 || chunks.length > MAX_LINE_NOTES) return null;
+  const notes: Record<string, string> = { srs_line_count: String(lines.length) };
+  chunks.forEach((c, k) => (notes[`srs_lines_${k}`] = c));
+  return notes;
+}
 
 /**
  * Firestore access uses the REST API with the public web key, not the Admin SDK.
@@ -44,7 +74,9 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_
 const WEB_API_KEY = process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
 
 const firestoreBase = () =>
-  `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+  // FIRESTORE_EMULATOR_HOST is set only for local emulator testing, never on Vercel.
+  `${process.env.FIRESTORE_EMULATOR_HOST ? `http://${process.env.FIRESTORE_EMULATOR_HOST}` : 'https://firestore.googleapis.com'}` +
+  `/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 /** Unwrap Firestore's typed REST representation into plain JS. */
 function decodeValue(v: any): any {
@@ -447,10 +479,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Firebase project id / web API key are not configured' });
   }
 
+  if (items.length > MAX_CART_LINES) {
+    return res
+      .status(400)
+      .json({ error: `Please place orders of up to ${MAX_CART_LINES} different items at a time` });
+  }
+
   // Validate every cart line before spending any network calls on it.
   for (const line of items) {
     const quantity = Number(line.quantity);
-    if (!line.productId || !Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+    if (
+      !line.productId ||
+      /[,*]/.test(String(line.productId)) ||
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > 100
+    ) {
       return res
         .status(400)
         .json({ error: `Invalid cart line for product ${String(line.productId || '')}` });
@@ -585,6 +629,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const receipt =
     typeof body.receipt === 'string' && body.receipt ? body.receipt : `rcpt_${Date.now()}`;
 
+  const lineNotes = packLines(items.map((l) => ({ productId: String(l.productId), quantity: Number(l.quantity) })));
+  if (!lineNotes) {
+    return res.status(400).json({ error: 'This cart is too large for one order. Please split it.' });
+  }
+  const clientNotes: Record<string, string> = {};
+  for (const k of CLIENT_NOTE_KEYS) {
+    const v = body.notes?.[k];
+    if (typeof v === 'string' && v) clientNotes[k] = v.slice(0, NOTE_MAX_CHARS);
+  }
+
   try {
     const auth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
     const resp = await fetch(`${RAZORPAY_API_BASE}/orders`, {
@@ -594,7 +648,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         amount: amountInPaise,
         currency,
         receipt,
-        ...(body.notes ? { notes: body.notes } : {}),
+        notes: { ...clientNotes, ...lineNotes },
       }),
     });
 

@@ -574,7 +574,7 @@ const MobileCheckout = () => {
       // The payment is already captured at this point, so createPaidOrder falls
       // back to a flagged order rather than throwing - a customer must never be
       // charged and left without a record of it.
-      const created = await createPaidOrder(orderData);
+      const created = await createPaidOrder(orderData, { paymentRecorded: verifiedPayment?.recorded ?? false });
       const docId = created.id;
       setFirestoreOrderId(docId);
       if (created.needsReview) {
@@ -2228,7 +2228,7 @@ const Checkout = () => {
       // The payment is already captured at this point, so createPaidOrder falls
       // back to a flagged order rather than throwing - a customer must never be
       // charged and left without a record of it.
-      const created = await createPaidOrder(orderData);
+      const created = await createPaidOrder(orderData, { paymentRecorded: verifiedPayment?.recorded ?? false });
       const docId = created.id;
       setFirestoreOrderId(docId);
       if (created.needsReview) {

@@ -396,6 +396,63 @@ await seed({
 await allow('a customer places their own order', 'cust', (db) => db.doc('orders/new-c').set({ userId: 'cust', status: 'pending', total: 1000, paymentMethod: 'Cash On Delivery', paymentStatus: 'pending' }));
 await deny('a customer cannot place an order in another name', 'cust', (db) => db.doc('orders/new-x').set({ userId: 'cust2', status: 'pending' }));
 await deny('a signed-out visitor cannot place an order', null, (db) => db.doc('orders/new-y').set({ userId: 'cust' }));
+
+// Paid orders (gap G1): only with a payment /api/verify-payment recorded.
+// The server signs in as 'razorpay-verifier' with the paymentServer claim.
+const server = env.authenticatedContext('razorpay-verifier', { paymentServer: true }).firestore();
+const fakeServer = env.authenticatedContext('cust', { paymentServer: true }).firestore();
+const lines = (n) => Array.from({ length: n }, (_, i) => ({ productId: `p${i}`, quantity: 1 + (i % 3) }));
+const payment = (id, extra = {}) => ({
+  userId: 'cust', razorpayPaymentId: id, razorpayOrderId: `order_${id}`, amountPaise: 150000,
+  currency: 'INR', status: 'captured', lines: [{ productId: 'p1', quantity: 1 }, { productId: 'p7', quantity: 2 }], ...extra,
+});
+const paidOrder = (id, extra = {}) => ({
+  userId: 'cust', status: 'pending', paymentMethod: 'Razorpay', paymentStatus: 'paid',
+  razorpayPaymentId: id, razorpayOrderId: `order_${id}`, total: 1500,
+  items: [{ productId: 'p1', quantity: 1, name: 'Ring', price: 500 }, { productId: 'p7', quantity: 2, name: 'Chain', price: 500 }],
+  ...extra,
+});
+await seed({
+  'payments/pay_A': payment('pay_A'),
+  'payments/pay_B': payment('pay_B', { userId: 'cust2' }),
+  'payments/pay_30': payment('pay_30', { lines: lines(30) }),
+  'payments/pay_31': payment('pay_31', { lines: lines(31) }),
+});
+const put = (id, data) => (db) => db.doc(`orders/${id}`).set(data);
+await deny("G1: a customer cannot write a 'paid' order without paying", 'cust', put('free', { userId: 'cust', status: 'pending', total: 1, paymentMethod: 'Razorpay', paymentStatus: 'paid' }));
+await deny("a 'paid' order needs a recorded payment", 'cust', put('pay_NONE', paidOrder('pay_NONE')));
+await deny('a paid order must be stored under its payment id', 'cust', put('other-id', paidOrder('pay_A')));
+await deny("a customer cannot use someone else's payment", 'cust', put('pay_B', paidOrder('pay_B')));
+await deny('a paid order must carry the same Razorpay order id', 'cust', put('pay_A', paidOrder('pay_A', { razorpayOrderId: 'order_X' })));
+await deny('a paid order total must match the amount paid', 'cust', put('pay_A', paidOrder('pay_A', { total: 15000 })));
+await deny('a paid order total may drift by a rupee, not more', 'cust', put('pay_A', paidOrder('pay_A', { total: 1501.5 })));
+await deny('a paid order cannot swap an item for another product', 'cust', put('pay_A', paidOrder('pay_A', { items: [{ productId: 'p1', quantity: 1 }, { productId: 'p9', quantity: 2 }] })));
+await deny('a paid order cannot change a quantity', 'cust', put('pay_A', paidOrder('pay_A', { items: [{ productId: 'p1', quantity: 1 }, { productId: 'p7', quantity: 5 }] })));
+await deny('a paid order cannot add an item', 'cust', put('pay_A', paidOrder('pay_A', { items: [...paidOrder('pay_A').items, { productId: 'p9', quantity: 1 }] })));
+await deny('a customer order must say paid or pending', 'cust', put('nostatus', { userId: 'cust', status: 'pending', total: 1000 }));
+await deny("a customer order cannot start 'refunded'", 'cust', put('refd', { userId: 'cust', status: 'pending', total: 1000, paymentStatus: 'refunded' }));
+await deny('a paid order cannot mismatch its last line (30 lines)', 'cust', put('pay_30', paidOrder('pay_30', { items: [...lines(29), { productId: 'p29', quantity: 9 }] })));
+await allow('a paid order with 30 matching lines', 'cust', put('pay_30', paidOrder('pay_30', { items: lines(30) })));
+await deny('a paid order has at most 30 lines', 'cust', put('pay_31', paidOrder('pay_31', { items: lines(31) })));
+await allow('a paid order within a rupee of the amount paid', 'cust', put('pay_A', paidOrder('pay_A', { total: 1500.6 })));
+await deny('one payment cannot buy a second order', 'cust', put('pay_A', paidOrder('pay_A')));
+await allow('an unconfirmed payment is saved as pending, needing review', 'cust', put('pay_Z', paidOrder('pay_Z', { paymentStatus: 'pending', needsManualReview: true })));
+await allow('the owner restores a paid order from the bin', 'owner', put('pay_R', paidOrder('pay_R')));
+
+const rec = (id, extra) => (db) => db.doc(`payments/${id}`).set(payment(id, extra));
+await t('the payment server records a payment', () => assertSucceeds(rec('pay_S')(server)));
+await t('the payment record id must be the payment id', () => assertFails(server.doc('payments/pay_T').set(payment('pay_U'))));
+await t('the payment server cannot change a record', () => assertFails(server.doc('payments/pay_A').update({ amountPaise: 1 })));
+await t('the payment server cannot delete a record', () => assertFails(server.doc('payments/pay_A').delete()));
+await t('a customer with a forged claim cannot record a payment', () => assertFails(rec('pay_F')(fakeServer)));
+await deny('a customer cannot record a payment', 'cust', rec('pay_C'));
+await deny('the owner cannot record a payment', 'owner', rec('pay_O'));
+await deny('a customer cannot change their payment record', 'cust', (db) => db.doc('payments/pay_A').update({ amountPaise: 999999 }));
+await allow('a customer reads their own payment', 'cust', get('payments/pay_A'));
+await deny("a customer cannot read someone else's payment", 'cust', get('payments/pay_B'));
+await allow('Orders staff read a payment', 'st-orders', get('payments/pay_B'));
+await deny('Dashboard-only staff cannot read a payment', 'st-dashboard', get('payments/pay_B'));
+await deny('a signed-out visitor cannot read a payment', null, get('payments/pay_A'));
 await allow('a customer reads their own order', 'cust', get('orders/c-pending'));
 await deny("a customer cannot read someone else's order", 'cust', get('orders/o1'));
 await allow('a customer lists their own orders', 'cust', (db) => db.collection('orders').where('userId', '==', 'cust').get());
@@ -516,10 +573,7 @@ await allow('a signed-in customer reads a shop gift card code', 'cust', get('gif
 
 // ── 8. Known gaps (do not fail the run) ─────────────────────────────────────
 console.log('\n8. Known gaps (should be fixed; see README)');
-// Needs server work, not a rule: /api/verify-payment checks the Razorpay
-// signature, but the browser then writes the order itself.
-await gap('G1', "A customer can write a prepaid order marked 'paid' without paying (orders are written by the browser)", 'deny', 'cust',
-  (db) => db.doc('orders/free').set({ userId: 'cust', status: 'pending', total: 1, paymentMethod: 'Razorpay', paymentStatus: 'paid' }));
+// G1 (unpaid 'paid' orders) is closed: see the paid-order cases in section 5.
 
 await env.cleanup();
 console.log(`\n${passed} passed, ${failed} failed, ${gaps.length} known gaps open${closed.length ? `, ${closed.length} gaps now closed` : ''}`);

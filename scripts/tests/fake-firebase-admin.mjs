@@ -76,8 +76,14 @@ const firestore = Object.assign(() => db, { FieldValue: { serverTimestamp, incre
 const adminStub = {
   apps: [1],
   firestore,
-  // 'admin-token' → admin1; 'uid:<x>' → <x>; anything else → user1.
-  auth: () => ({ verifyIdToken: async (t) => ({ uid: t === 'admin-token' ? 'admin1' : t.startsWith('uid:') ? t.slice(4) : 'user1' }) }),
+  // 'admin-token' → admin1; 'uid:<x>' → <x>; 'expired' throws; anything else → user1.
+  auth: () => ({
+    verifyIdToken: async (t) => {
+      if (t === 'expired') throw new Error('auth/id-token-expired');
+      return { uid: t === 'admin-token' ? 'admin1' : t.startsWith('uid:') ? t.slice(4) : 'user1' };
+    },
+    createCustomToken: async (uid, claims) => `custom:${uid}:${JSON.stringify(claims || {})}`,
+  }),
   messaging: () => ({ sendEachForMulticast: async ({ tokens }) => ({ successCount: tokens.length, failureCount: 0, responses: tokens.map(() => ({ success: true })) }) }),
   credential: { cert: () => ({}) },
   initializeApp() {},

@@ -338,7 +338,10 @@ export const isPaymentSettled = (
   order: Pick<Order, 'paymentMethod' | 'paymentStatus'>,
 ): boolean => {
   if (order.paymentStatus === 'paid') return true;
-  return isPrepaidPaymentMethod(order.paymentMethod);
+  // Only very old orders have no status at all; for those the method is all we
+  // know. A prepaid order marked 'pending' is a payment the server could not
+  // confirm, and must not be treated as collected.
+  return !order.paymentStatus && isPrepaidPaymentMethod(order.paymentMethod);
 };
 
 /**
@@ -574,19 +577,38 @@ export const preflightCart = async (
 const createPaidOrderFallback = async (
   orderData: OrderFormData,
   reason: string,
+  paymentConfirmed: boolean,
 ): Promise<string> => {
   const now = Timestamp.now();
-  const docRef = doc(collection(db, ORDERS_COLLECTION));
-  await setDoc(docRef, {
-    ...orderData,
-    paymentStatus: 'paid',
-    status: 'pending',
-    createdAt: now,
-    updatedAt: now,
-    stockDecremented: false,
-    needsManualReview: true,
-    manualReviewReason: reason,
-  });
+  const docRef = orderDocRef(orderData);
+  const write = (paymentStatus: 'paid' | 'pending', why: string) =>
+    setDoc(docRef, {
+      ...orderData,
+      paymentStatus,
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+      stockDecremented: false,
+      needsManualReview: true,
+      manualReviewReason: why,
+    });
+
+  // 'paid' needs the server's payment record (Firestore rules, gap G1). When
+  // that is missing the order is still saved, as an unconfirmed payment the
+  // shop checks in the Razorpay dashboard.
+  const unconfirmed = `Payment not confirmed automatically - check payment ${orderData.razorpayPaymentId || '(no id)'} in the Razorpay dashboard. Stock was not reduced. ${reason}`;
+  if (paymentConfirmed) {
+    try {
+      await write('paid', reason);
+    } catch (error) {
+      console.error('[orderService] paid fallback refused, saving as unconfirmed:', error);
+      reason = unconfirmed;
+      await write('pending', reason);
+    }
+  } else {
+    reason = unconfirmed;
+    await write('pending', reason);
+  }
 
   void notifyOrder({
     orderId: docRef.id,
@@ -609,15 +631,29 @@ const createPaidOrderFallback = async (
  */
 export const createPaidOrder = async (
   orderData: OrderFormData,
+  { paymentRecorded = true }: { paymentRecorded?: boolean } = {},
 ): Promise<{ id: string; needsReview: boolean; reason?: string }> => {
+  if (!paymentRecorded) {
+    const reason = 'The payment server could not record this payment.';
+    return { id: await createPaidOrderFallback(orderData, reason, false), needsReview: true, reason };
+  }
   try {
     return { id: await createOrder(orderData), needsReview: false };
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'Order creation failed';
     console.error('[orderService] paid order fell back to manual review:', reason);
-    return { id: await createPaidOrderFallback(orderData, reason), needsReview: true, reason };
+    return { id: await createPaidOrderFallback(orderData, reason, true), needsReview: true, reason };
   }
 };
+
+/**
+ * A Razorpay order is stored under its payment id: the Firestore rules accept a
+ * paid order only there, which is what stops one payment buying two orders.
+ */
+const orderDocRef = (orderData: Pick<OrderFormData, 'razorpayPaymentId'>) =>
+  orderData.razorpayPaymentId
+    ? doc(db, ORDERS_COLLECTION, orderData.razorpayPaymentId)
+    : doc(collection(db, ORDERS_COLLECTION));
 
 /**
  * Create a new order
@@ -625,8 +661,11 @@ export const createPaidOrder = async (
 export const createOrder = async (orderData: OrderFormData): Promise<string> => {
   try {
     const now = Timestamp.now();
-    const paymentStatus = isPrepaidPaymentMethod(orderData.paymentMethod) ? 'paid' : 'pending';
-    const docRef = doc(collection(db, ORDERS_COLLECTION));
+    // 'paid' only with a verified Razorpay payment behind it; the rules check
+    // the server's record of that payment.
+    const paymentStatus =
+      isPrepaidPaymentMethod(orderData.paymentMethod) && orderData.razorpayPaymentId ? 'paid' : 'pending';
+    const docRef = orderDocRef(orderData);
     const groupedItems = new Map<string, { productId: string; name: string; quantity: number }>();
     for (const item of orderData.items || []) {
       const existing = groupedItems.get(item.productId);
@@ -650,9 +689,18 @@ export const createOrder = async (orderData: OrderFormData): Promise<string> => 
       // Rebuilt on every attempt: Firestore may re-run this function.
       const soldOutNow: Array<{ productId: string; productName: string }> = [];
 
-      for (const item of groupedItems.values()) {
+      // Every read must come before the first write in a Firestore
+      // transaction. Reading and writing product by product failed every cart
+      // with two or more different items, which then fell back to a
+      // needs-review order with no stock taken off.
+      const lines = [...groupedItems.values()];
+      const snaps = await Promise.all(
+        lines.map((item) => transaction.get(doc(db, 'products', item.productId))),
+      );
+
+      for (const [i, item] of lines.entries()) {
         const productRef = doc(db, 'products', item.productId);
-        const productSnap = await transaction.get(productRef);
+        const productSnap = snaps[i];
 
         if (!productSnap.exists()) {
           throw new Error(`${item.name} is currently unavailable.`);

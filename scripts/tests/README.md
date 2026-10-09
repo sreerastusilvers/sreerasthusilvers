@@ -12,6 +12,7 @@ node scripts/tests/whatsapp-reply.test.mjs .   # send-media, picture templates, 
 node scripts/tests/cart-merge.test.mjs .       # stock-safe add to cart
 node scripts/tests/jewellery-offer.test.mjs .  # offer rules + server copy in api/create-order.ts agrees
 node scripts/tests/dealer-chats.test.mjs .     # dealer tickets, team permissions, number privacy, webhook routing
+node scripts/tests/payments.test.mjs .         # G1: priced lines in Razorpay notes, payment records (fake Razorpay)
 ```
 
 ## Firestore rules suite
@@ -46,6 +47,18 @@ VITE_USE_EMULATORS=1 VITE_AUTH_EMULATOR_PORT=8081 VITE_FIRESTORE_EMULATOR_PORT=8
 ```
 
 The emulators enforce `firestore.rules`, so browser tests also exercise the rules.
+
+Checkout against a fake Razorpay (never the live keys): start a local fake of
+the Razorpay REST API and give the Vite process test keys plus the emulators.
+`RAZORPAY_TEST_API_BASE` only works while `FIRESTORE_EMULATOR_HOST` is set, so it
+can never redirect a production function.
+
+```
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:8081 FIREBASE_PROJECT_ID=demo-x VITE_FIREBASE_PROJECT_ID=demo-x RAZORPAY_TEST_API_BASE=http://127.0.0.1:8299/v1 RAZORPAY_KEY_ID=rzp_test_local RAZORPAY_KEY_SECRET=test_secret VITE_USE_EMULATORS=1 npx vite
+```
+
+In the browser, replace `window.Razorpay` with a stub that calls `handler` with a
+signature made from `test_secret` (HMAC-SHA256 of `order_id|payment_id`).
 `/api/whatsapp-reply` does not run under Vite; mock it in the browser test.
 
 Build output goes to `scripts/tests/out/` (git-ignored).

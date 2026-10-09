@@ -474,10 +474,56 @@ service cloud.firestore {
       allow read: if isAuthenticated() &&
         (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || can('orders') || can('dashboard'));
       
-      // CREATE: Only authenticated users can create their own orders.
+      // A paid order must match the payment /api/verify-payment recorded
+      // (gap G1): the order is stored under the payment id, so one payment buys
+      // one order, and the customer, total and items must all agree with it.
+      function paidLineMatches(items, lines, i) {
+        // One map diff per line is cheaper than two field comparisons, and the
+        // rules may evaluate at most 1000 expressions per request.
+        return i >= lines.size() ||
+          !items[i].diff(lines[i]).affectedKeys().hasAny(['productId', 'quantity']);
+      }
+
+      function isBackedPaidOrder() {
+        let d = request.resource.data;
+        let path = /databases/$(database)/documents/payments/$(orderId);
+        return d.razorpayPaymentId == orderId
+          && exists(path)
+          && isPaidOrderMatch(d, get(path).data);
+      }
+
+      function isPaidOrderMatch(d, p) {
+        return p.userId == request.auth.uid
+          && d.razorpayOrderId == p.razorpayOrderId
+          && d.total is number
+          && math.abs(d.total * 100 - p.amountPaise) <= 100
+          && d.items is list
+          && d.items.size() == p.lines.size()
+          && d.items.size() <= 30
+          && paidLineMatches(d.items, p.lines, 0) && paidLineMatches(d.items, p.lines, 1)
+          && paidLineMatches(d.items, p.lines, 2) && paidLineMatches(d.items, p.lines, 3)
+          && paidLineMatches(d.items, p.lines, 4) && paidLineMatches(d.items, p.lines, 5)
+          && paidLineMatches(d.items, p.lines, 6) && paidLineMatches(d.items, p.lines, 7)
+          && paidLineMatches(d.items, p.lines, 8) && paidLineMatches(d.items, p.lines, 9)
+          && paidLineMatches(d.items, p.lines, 10) && paidLineMatches(d.items, p.lines, 11)
+          && paidLineMatches(d.items, p.lines, 12) && paidLineMatches(d.items, p.lines, 13)
+          && paidLineMatches(d.items, p.lines, 14) && paidLineMatches(d.items, p.lines, 15)
+          && paidLineMatches(d.items, p.lines, 16) && paidLineMatches(d.items, p.lines, 17)
+          && paidLineMatches(d.items, p.lines, 18) && paidLineMatches(d.items, p.lines, 19)
+          && paidLineMatches(d.items, p.lines, 20) && paidLineMatches(d.items, p.lines, 21)
+          && paidLineMatches(d.items, p.lines, 22) && paidLineMatches(d.items, p.lines, 23)
+          && paidLineMatches(d.items, p.lines, 24) && paidLineMatches(d.items, p.lines, 25)
+          && paidLineMatches(d.items, p.lines, 26) && paidLineMatches(d.items, p.lines, 27)
+          && paidLineMatches(d.items, p.lines, 28) && paidLineMatches(d.items, p.lines, 29);
+      }
+
+      // CREATE: Only authenticated users can create their own orders, either
+      // unpaid ('pending') or paid and backed by a recorded payment.
       // The owner may write one back (Restore from the Recycle bin).
       allow create: if isAdmin() || (isAuthenticated() &&
-        request.resource.data.userId == request.auth.uid);
+        request.resource.data.userId == request.auth.uid &&
+        (request.resource.data.paymentStatus == 'pending' ||
+          (request.resource.data.paymentStatus == 'paid' && isBackedPaidOrder())));
         
       // UPDATE: Complex rules for different roles
       // - Admin can update anything
@@ -518,6 +564,24 @@ service cloud.firestore {
 
         allow update, delete: if can('orders');
       }
+    }
+
+    // --- PAYMENTS (written only by /api/verify-payment) ---
+    // One document per verified Razorpay payment, id = the payment id. The
+    // server signs in as a service identity whose custom token carries
+    // `paymentServer: true`; nobody else can mint that claim. A paid order is
+    // only accepted when it matches one of these (see orders above).
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || can('orders'));
+      allow create: if request.auth != null
+        && request.auth.uid == 'razorpay-verifier'
+        && request.auth.token.paymentServer == true
+        && request.resource.data.razorpayPaymentId == paymentId
+        && request.resource.data.userId is string
+        && request.resource.data.amountPaise is int
+        && request.resource.data.lines is list;
+      allow update, delete: if false;
     }
 
     // --- USER FCM TOKENS (web push) ---

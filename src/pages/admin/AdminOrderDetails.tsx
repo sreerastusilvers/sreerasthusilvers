@@ -476,6 +476,33 @@ const AdminOrderDetails = () => {
     NEXT_STEP_HINT[normalizedStatus];
   const isCod = isCashOnDeliveryOrder(order);
   const isPaid = isPaymentSettled(order);
+  // Paid on Razorpay, but the server could not confirm it (see createPaidOrder).
+  const paymentUnconfirmed = !isPaid && !isCod && !!order.razorpayPaymentId;
+
+  const confirmPayment = async () => {
+    if (
+      !window.confirm(
+        `Have you found payment ${order.razorpayPaymentId} in the Razorpay dashboard, marked "Captured", for ${formatPrice(order.total)}?
+
+Only confirm if it is there.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'orders', order.id), {
+        paymentStatus: 'paid',
+        paymentCollectedAt: serverTimestamp(),
+        paymentCollectedBy: user?.uid || '',
+        paymentCollectedByName: `${userProfile?.username || userProfile?.name || 'Admin'} (checked in Razorpay)`,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success('Payment marked as confirmed');
+    } catch (err) {
+      console.error('[order] confirm payment failed:', err);
+      toast.error('Could not update the payment. Please try again.');
+    }
+  };
   const partnerName = order.delivery_partner_name || order.delivery_boy_name;
   const partnerPhone = order.delivery_partner_phone;
   const otp = order.delivery_otp;
@@ -526,7 +553,9 @@ const AdminOrderDetails = () => {
             {/* Cash on Delivery was retired, but historic orders still carry it -
                 so the label follows the order rather than assuming COD. */}
             <p className={`text-xs font-medium ${isPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
-              {isPaid ? (isCod ? 'COD collected' : 'Paid') : isCod ? 'COD pending' : 'Payment pending'}
+              {isPaid
+                ? isCod ? 'COD collected' : 'Paid'
+                : isCod ? 'COD pending' : paymentUnconfirmed ? 'Not confirmed: check Razorpay' : 'Payment pending'}
             </p>
             {order.paymentCollectedAt && (
               <p className="mt-1 text-[11px] text-gray-500">
@@ -546,6 +575,17 @@ const AdminOrderDetails = () => {
         {statusHint && (
           <div className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
             <span className="font-semibold">Next:</span> {statusHint}
+          </div>
+        )}
+        {order.needsManualReview && (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200">
+            <p className="font-semibold">Needs review</p>
+            {order.manualReviewReason && <p className="mt-0.5">{order.manualReviewReason}</p>}
+            {paymentUnconfirmed && (
+              <Button size="sm" variant="outline" className="mt-2" onClick={confirmPayment}>
+                Payment confirmed in Razorpay
+              </Button>
+            )}
           </div>
         )}
         {isCod && !isPaid && normalizedStatus === 'outForDelivery' && (

@@ -9,7 +9,12 @@
  *
  * The key secret never touches this file — only the public key id is used,
  * and it is returned by /api/create-order (falling back to VITE_RAZORPAY_KEY_ID).
+ *
+ * Step 3 also records the payment server-side (payments/{paymentId}); a paid
+ * order is only accepted by the Firestore rules when it matches that record.
  */
+
+import { auth } from '@/config/firebase';
 
 const CHECKOUT_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -34,6 +39,11 @@ export interface VerifiedPayment {
   razorpayPaymentId: string;
   razorpayOrderId: string;
   razorpaySignature: string;
+  /**
+   * False when the payment is genuine but the server could not record it. The
+   * order is then saved as "payment pending, needs review" (see createPaidOrder).
+   */
+  recorded: boolean;
 }
 
 export interface RazorpayCheckoutOptions {
@@ -167,9 +177,14 @@ async function createOrder(options: RazorpayCheckoutOptions): Promise<CreateOrde
 }
 
 async function verifyPayment(response: RazorpaySuccessResponse): Promise<VerifiedPayment> {
+  // The server ties the payment record to this account.
+  const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
   const res = await fetch('/api/verify-payment', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+    },
     body: JSON.stringify({
       razorpay_order_id: response.razorpay_order_id,
       razorpay_payment_id: response.razorpay_payment_id,
@@ -186,6 +201,7 @@ async function verifyPayment(response: RazorpaySuccessResponse): Promise<Verifie
     razorpayPaymentId: response.razorpay_payment_id,
     razorpayOrderId: response.razorpay_order_id,
     razorpaySignature: response.razorpay_signature,
+    recorded: data.recorded === true,
   };
 }
 
