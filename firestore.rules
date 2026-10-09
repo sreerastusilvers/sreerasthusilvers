@@ -89,11 +89,6 @@ service cloud.firestore {
         allow write: if isOwner(userId) || isAdmin();
       }
 
-      // --- ORDER HISTORY (read by Customer details; nothing writes it today) ---
-      match /orders/{orderId} {
-        allow read: if isOwner(userId) || can('customers');
-      }
-      
       // --- GIFT CARDS SUBCOLLECTION ---
       match /giftCards/{giftCardId} {
         allow read: if isOwner(userId) || can('giftCards');
@@ -476,9 +471,10 @@ service cloud.firestore {
       }
       
       // READ: Admins see all; Customers see their orders; Delivery boys see assigned orders
-      // The Dashboard page totals every order, so its page reads them too.
+      // The Dashboard page totals every order, and the Customers page shows each
+      // customer's orders, so those pages read them too (owner's choice).
       allow read: if isAuthenticated() &&
-        (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || can('orders') || can('dashboard'));
+        (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || can('orders') || can('dashboard') || can('customers'));
       
       // A paid order must match the payment /api/verify-payment recorded
       // (gap G1): the order is stored under the payment id, so one payment buys

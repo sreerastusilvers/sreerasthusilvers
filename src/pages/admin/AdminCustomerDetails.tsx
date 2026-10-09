@@ -12,23 +12,15 @@ import {
   Users,
   Heart,
 } from 'lucide-react';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { CustomerOrder, toCustomerOrders, totalSpent as sumSpent } from '@/lib/customerOrders';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getProduct } from '@/services/productService';
 import { getUserWishlist } from '@/services/wishlistService';
 import { UIProduct, adaptFirebaseToUI } from '@/lib/productAdapter';
 import { SmartImage } from "@/components/ui/smart-image";
-
-interface CustomerOrder {
-  id: string;
-  orderNumber?: string;
-  status: string;
-  total: number;
-  items: any[];
-  createdAt: any;
-}
 
 interface CustomerDetails {
   uid: string;
@@ -89,27 +81,11 @@ const AdminCustomerDetails = () => {
 
         const userData = userSnap.data();
         const [ordersSnap, wishlistEntries] = await Promise.all([
-          getDocs(collection(db, 'users', customerId, 'orders')),
+          getDocs(query(collection(db, 'orders'), where('userId', '==', customerId))),
           getUserWishlist(customerId),
         ]);
-        const orders = ordersSnap.docs
-          .map((orderDoc) => ({
-            id: orderDoc.id,
-            orderNumber: orderDoc.data().orderNumber,
-            status: orderDoc.data().status || 'pending',
-            total: orderDoc.data().total || 0,
-            items: orderDoc.data().items || [],
-            createdAt: orderDoc.data().createdAt,
-          }))
-          .sort((first, second) => {
-            const firstSeconds = first.createdAt?.seconds || 0;
-            const secondSeconds = second.createdAt?.seconds || 0;
-            return secondSeconds - firstSeconds;
-          });
-
-        const totalSpent = orders
-          .filter((order) => order.status === 'delivered')
-          .reduce((sum, order) => sum + order.total, 0);
+        const orders = toCustomerOrders(ordersSnap.docs.map((d) => ({ id: d.id, data: d.data() })));
+        const totalSpent = sumSpent(orders);
 
         const wishlistProducts = (await Promise.all(
           wishlistEntries.map(async (entry) => {

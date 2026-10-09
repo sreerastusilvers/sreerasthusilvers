@@ -1,6 +1,32 @@
 # Handoff
 
-Last updated: 2026-10-09 (evening)
+Last updated: 2026-10-09 (night)
+
+## 2026-10-09 (night): Customers list and Customer details show real orders
+
+Status: committed locally. **Not deployed** (rules and code ship together with the G1 deploy below).
+- **Bug:** both pages read `users/{id}/orders`, which nothing writes, so every customer showed 0 orders and ₹0.
+- **Fix:** they now read the real `orders` collection by `userId`.
+    - The list does one read of all orders and groups them by customer.
+    - Details asks only for that customer's orders.
+    - Shared logic is in `src/lib/customerOrders.ts`. Order numbers now show the real `orderId` (for example `#SS-1004`) instead of a cut-down document id.
+    - "Spent" still counts delivered orders only.
+- **Owner's choice:** team logins with the Customers page may read orders. `firestore.rules`: the orders read rule gains `can('customers')`. The unused `users/{id}/orders` rule is removed.
+    - Customers staff can therefore see every order, with delivery addresses, through the browser console, as Dashboard-only staff already can. They still can't see internal order notes or edit orders.
+- **Tests:**
+    - New `scripts/tests/customer-orders.test.mjs`: 8 passed.
+    - Rules suite: 340 passed, 0 failed. Against the old rules, 3 of the new cases fail, which proves the suite catches the change.
+    - The other unit tests and `npm run build` pass.
+- **Browser (emulators, project `demo-cust`): 24 of 24 pass.**
+    - Owner and a Customers-only staff login, at 1440 light, 390 dark, 390 dark (owner) and 1440 light (staff).
+    - Asha shows 2 orders and ₹2,500. Ravi shows 1 cancelled order and ₹0. Meena shows 0.
+    - Details lists the orders newest first. There are no console errors apart from local-only noise: Firebase Installations 403 and `/api/media` 401, which can't verify emulator tokens.
+    - The admin dark theme is the app's own switch (`localStorage['sreerasthu-theme']`). The system dark setting doesn't change it.
+- **Testing tip:** emulators left running from earlier chats (hub 4400, Firestore 8080, Auth 9099, rules suite 8180) can be reused. Run the rules suite directly: `node scripts/tests/firestore-rules.test.mjs .` (it loads the rules itself). For a browser test, use a separate project id so earlier data stays untouched.
+
+### Next steps
+1. Owner to-do from the evening entry below (replace the admin key, then deploy code before rules).
+2. Optional: hide Dashboard buttons that a Dashboard-only login can't use (see "Found while testing" in the 2026-10-09 (later) entry).
 
 ## 2026-10-09 (evening): G1 fixed (paid orders need a server-recorded payment), multi-item order bug, leaked admin key
 
@@ -95,7 +121,7 @@ Status: committed locally, **rules not deployed**. `npm run test:rules` gives 29
 - Planting a `users/...` entry in the bin is refused.
 
 ### Found while testing, not fixed (older bugs, not caused by the rules)
-- **Customer details always shows "Orders 0" and ₹0.** The Customers list also always shows 0. Both read `users/{id}/orders`, which nothing writes; real orders live in `orders` with `userId`.
+- ~~**Customer details always shows "Orders 0" and ₹0.**~~ Fixed 2026-10-09 (night). The Customers list also always shows 0. Both read `users/{id}/orders`, which nothing writes; real orders live in `orders` with `userId`.
     - Fix: query `orders` where `userId == id`.
     - The rules would then need to let Customers staff read orders (a decision for the owner).
 - **The Dashboard shows buttons a Dashboard-only login can't use:** Add Product, Save silver rate, Upload Media and View Orders. They fail when used.
@@ -110,7 +136,7 @@ Status: committed locally, **rules not deployed**. `npm run test:rules` gives 29
 
 ### Next steps
 1. ~~Fix G1~~ Done 2026-10-09 (evening), see the entry above.
-2. Customer details and Customers list order counts (see "Found while testing").
+2. ~~Customer details and Customers list order counts~~ Done 2026-10-09 (night), see the top entry.
 
 ## 2026-10-09: jewellery offer, team logins, activity log, recycle bin, dealer chats, WhatsApp redesign, install as app
 

@@ -13,6 +13,7 @@ node scripts/tests/cart-merge.test.mjs .       # stock-safe add to cart
 node scripts/tests/jewellery-offer.test.mjs .  # offer rules + server copy in api/create-order.ts agrees
 node scripts/tests/dealer-chats.test.mjs .     # dealer tickets, team permissions, number privacy, webhook routing
 node scripts/tests/payments.test.mjs .         # G1: priced lines in Razorpay notes, payment records (fake Razorpay)
+node scripts/tests/customer-orders.test.mjs .  # Customers list/details: order rows, grouping, "Spent"
 ```
 
 ## Firestore rules suite

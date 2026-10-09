@@ -13,6 +13,7 @@ import {
   deleteDoc, serverTimestamp, deleteField,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { CustomerOrder, groupOrdersByCustomer, totalSpent } from '@/lib/customerOrders';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
@@ -25,15 +26,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-
-interface CustomerOrder {
-  id: string;
-  orderNumber?: string;
-  status: string;
-  total: number;
-  items: any[];
-  createdAt: any;
-}
 
 interface Customer {
   uid: string;
@@ -110,23 +102,19 @@ const AdminCustomers: React.FC = () => {
         orders: [],
         totalSpent: 0,
       }));
-      const withOrders = await Promise.all(
-        usersData.map(async (customer) => {
-          try {
-            const ordersSnap = await getDocs(collection(db, 'users', customer.uid, 'orders'));
-            const orders: CustomerOrder[] = ordersSnap.docs.map((oDoc) => ({
-              id: oDoc.id,
-              orderNumber: oDoc.data().orderNumber,
-              status: oDoc.data().status || 'pending',
-              total: oDoc.data().total || 0,
-              items: oDoc.data().items || [],
-              createdAt: oDoc.data().createdAt,
-            }));
-            const totalSpent = orders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0);
-            return { ...customer, orders, totalSpent };
-          } catch { return customer; }
-        })
-      );
+      // One read of every order, grouped by customer. If it fails, still show the customers.
+      let ordersByCustomer = new Map<string, CustomerOrder[]>();
+      try {
+        const ordersSnap = await getDocs(collection(db, 'orders'));
+        ordersByCustomer = groupOrdersByCustomer(ordersSnap.docs.map((d) => ({ id: d.id, data: d.data() })));
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        toast.error("Couldn't load order counts");
+      }
+      const withOrders = usersData.map((customer) => {
+        const orders = ordersByCustomer.get(customer.uid) || [];
+        return { ...customer, orders, totalSpent: totalSpent(orders) };
+      });
       withOrders.sort((a, b) => b.orders.length - a.orders.length);
       setCustomers(withOrders);
     } catch (error) {

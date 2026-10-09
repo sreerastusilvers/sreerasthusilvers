@@ -92,7 +92,6 @@ await seed({
 
   'users/cust2/addresses/ad1': { line1: '1 MG Road' },
   'users/cust2/wishlist/p1': { productId: 'p1' },
-  'users/cust2/orders/uo1': { total: 1000, status: 'delivered' },
   'users/cust2/giftCards/g1': { balance: 500 },
   'users/cust2/wallets/w1': { balance: 0 },
   'users/cust2/transactions/tx1': { amount: 10 },
@@ -159,7 +158,7 @@ const MATRIX = [
   // customers
   { name: "read another customer's profile", perms: ['customers'], op: get('users/cust2') },
   { name: 'list every user profile', perms: ['customers'], op: list('users') },
-  { name: "read a customer's order history (Customer details)", perms: ['customers'], op: list('users/cust2/orders') },
+  { name: "read a customer's orders (Customers list and details)", perms: ['customers', 'orders', 'dashboard'], op: (db) => db.collection('orders').where('userId', '==', 'cust2').get() },
   { name: "read a customer's wishlist (Customer details)", perms: ['customers'], op: list('users/cust2/wishlist') },
   // products
   { name: 'create a product', perms: ['products'], op: (db, tag) => db.doc(`products/${tag}`).set(product()) },
@@ -167,8 +166,8 @@ const MATRIX = [
   { name: 'delete a product', perms: ['products'], seed: (tag) => ({ [`products/${tag}`]: product() }), op: (db, tag) => db.doc(`products/${tag}`).delete() },
   { name: 'write a category', perms: ['products'], op: (db, tag) => db.doc(`categories/${tag}`).set({ name: 'Rings' }) },
   // orders
-  { name: "read someone else's order", perms: ['orders', 'dashboard'], op: get('orders/o1') },
-  { name: 'list every order (Orders and Dashboard pages)', perms: ['orders', 'dashboard'], op: list('orders') },
+  { name: "read someone else's order", perms: ['orders', 'dashboard', 'customers'], op: get('orders/o1') },
+  { name: 'list every order (Orders, Dashboard and Customers pages)', perms: ['orders', 'dashboard', 'customers'], op: list('orders') },
   { name: 'edit an order', perms: ['orders'], op: (db, tag) => db.doc('orders/o1').update({ adminNote: tag }) },
   { name: 'delete an order', perms: ['orders'], seed: (tag) => ({ [`orders/${tag}`]: { userId: 'cust2', status: 'pending' } }), op: (db, tag) => db.doc(`orders/${tag}`).delete() },
   { name: 'read an internal order note', perms: ['orders'], op: get('orders/o1/messages/note') },
