@@ -1,6 +1,56 @@
 # Handoff
 
-Last updated: 2026-10-09 (later)
+Last updated: 2026-10-09 (evening)
+
+## 2026-10-09 (evening): G1 fixed (paid orders need a server-recorded payment), multi-item order bug, leaked admin key
+
+Status: committed locally (`114cdb3`, `0714d3d`, `f1ac5ae`). **Not deployed.** Plan: `docs/plans/2026-10-09-g1-paid-orders.md`.
+
+### G1: how a "paid" order is now protected
+- `/api/verify-payment` checks the signature as before. It then needs the customer's sign-in token, asks Razorpay for the payment and the order, and writes `payments/{paymentId}`.
+    - It writes as a service login (`razorpay-verifier`, custom claim `paymentServer`), made from `FIREBASE_ADMIN_SDK_BASE64`.
+- `/api/create-order` stores the priced cart lines in the Razorpay order's notes. Carts are capped at 25 different items.
+- **Rules:** a customer's order is either `pending`, or `paid` and matches that record: stored under the payment id (one payment buys one order), same customer, same Razorpay order, total within ₹1, and the same items and quantities.
+- **If the server can't record a genuine payment,** the order is still saved as "payment pending, Needs review". The owner's order page shows **Payment confirmed in Razorpay** to mark it paid after checking.
+- A prepaid order marked `pending` no longer counts as paid (`isPaymentSettled`).
+
+### Older bug fixed on the way
+Every order with 2 or more different items failed its stock transaction (it read after writing). Such orders went to "Needs review" without reducing stock. Fixed in `createOrder`.
+
+### Reviewer findings (one adversarial agent), fixed in `f1ac5ae`
+- Customers could create an order already "out for delivery" with themselves as the partner, or already "delivered", then use those update rules to mark it paid. New customer orders must now start `pending` with no delivery fields, and a return request may only touch return fields.
+- A payment could buy a second order after the owner deleted the first. A record now backs an order only within 1 hour of payment.
+- Currency: always INR (create-order, verify-payment, rules). Payments are auto-captured (`payment_capture: 1`).
+- Any order carrying a payment id must be stored under that id, so an "unconfirmed" twin can't be confirmed for a used payment.
+- Delivery screens no longer ask for cash on prepaid orders.
+- The cart cap is 25 different items (Firestore's rule-size limit).
+
+**Left as is (low):** on paid orders, display fields such as per-item price, subtotal, coupon and offer details are still written by the browser. Total and items are bound to the payment; the rest only affects what is shown.
+
+### Tests
+- Rules suite: 340 passed, 0 failed, 0 gaps. The 11 new cases fail on the pre-review rules.
+- New `scripts/tests/payments.test.mjs`: 18 passed.
+- Other unit tests and `npm run build` pass.
+- **Browser, on emulators with a fake Razorpay: 18 of 18 pass.**
+    - A normal payment: recorded, order paid, stock reduced.
+    - An unconfirmed payment: saved as Needs review.
+    - Console tampering: refused.
+    - Owner confirms the payment (1440 light, 390 dark).
+
+### SECURITY: the live Firebase admin key is public
+`scripts/setup-test-accounts.mjs` held the full service-account key (key id starting `4aeefad8`) since 2026-04-24. The GitHub repo is public. The file now reads the key from the environment, but git history still has it. Anyone can use it to read, change or delete everything in Firebase until it's replaced.
+
+### Owner to-do (in order)
+1. **Replace the admin key today.**
+    - Google Cloud console → IAM → Service accounts → `firebase-adminsdk-fbsvc` → Keys. Delete the key starting `4aeefad8`, then add a new JSON key.
+    - Base64 it and put it in Vercel as `FIREBASE_ADMIN_SDK_BASE64`, then redeploy.
+2. Deploy the rules (unchanged step from below): `firebase login --reauth`, then `firebase deploy --only firestore:rules`. **Deploy the code first, then the rules.** With new rules and old code, every prepaid order lands as "Needs review".
+3. **After deploy,** place one small real order, then check that Admin → Orders shows it as **Paid** with no "Needs review".
+    - If it says "Not confirmed", check that `FIREBASE_ADMIN_SDK_BASE64` is set in Vercel.
+    - Also check that the Firebase web API key has no website restriction that blocks the server.
+
+### Notes
+- Restoring a deleted paid order from the bin works (owner only). A customer could re-create a binned paid order under the same payment id. This is minor: it was paid.
 
 ## 2026-10-09 (later): Firestore rules test suite rebuilt, 11 rule problems fixed
 
@@ -59,7 +109,7 @@ Status: committed locally, **rules not deployed**. `npm run test:rules` gives 29
 2. The rest of the to-do list in the entry below is unchanged.
 
 ### Next steps
-1. Fix G1 (server-written paid orders). Use Extra high effort: it's payment code.
+1. ~~Fix G1~~ Done 2026-10-09 (evening), see the entry above.
 2. Customer details and Customers list order counts (see "Found while testing").
 
 ## 2026-10-09: jewellery offer, team logins, activity log, recycle bin, dealer chats, WhatsApp redesign, install as app
