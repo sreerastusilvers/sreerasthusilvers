@@ -566,7 +566,7 @@ const AdminReviews = () => {
             </div>
             <h3 className="text-lg font-semibold mb-2">Delete Review?</h3>
             <p className="text-gray-500 text-sm mb-6">
-              This action cannot be undone. The review will be permanently removed.
+              The review is removed from the site. It goes to the Recycle bin, where the owner can restore it.
             </p>
             <div className="flex gap-3">
               <button

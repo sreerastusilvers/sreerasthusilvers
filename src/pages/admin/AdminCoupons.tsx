@@ -283,7 +283,7 @@ const AdminCoupons = () => {
 
   const onDelete = async (id?: string) => {
     if (!id) return;
-    if (!confirm('Delete this coupon? This cannot be undone.')) return;
+    if (!confirm('Delete this coupon? It goes to the Recycle bin, where the owner can restore it.')) return;
     try { await deleteCoupon(id); toast.success('Deleted'); }
     catch (e: any) { toast.error(e?.message || 'Delete failed'); }
   };

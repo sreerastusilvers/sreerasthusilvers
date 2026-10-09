@@ -1,5 +1,96 @@
 # Handoff
 
+Last updated: 2026-10-09
+
+## 2026-10-09: jewellery offer, team logins, activity log, recycle bin, dealer chats, WhatsApp redesign, install as app
+
+Status: done and committed locally (not pushed, not deployed). `npm run build` passes. The type-check shows the same 13 old errors, none in new code. `api/` still has 12 files. Unit tests: 21 + 14 + 8 + 20 + 9 pass (`scripts/tests/README.md`). Browser checks: 87 pass, at 390 px and 1440 px in light and dark. They ran on the local Firebase **emulators** with the new rules; no live data was touched, and `/api/whatsapp-reply` was mocked, so no real WhatsApp messages were sent.
+
+### 1. Jewellery offer
+- Buy jewellery above a tier and one product in the same order is free up to the tier's credit: ≥ ₹25,000 → ₹7,000; ≥ ₹50,000 → ₹15,000; ≥ ₹1,00,000 → ₹30,000.
+- If the free item costs more than the credit, the credit comes off and the customer pays the rest.
+- **The free unit never counts towards its own threshold.** For example, a lone ₹30,000 ring can't make itself free.
+- **Settings:** Admin → Commerce → **Offers** (`siteSettings/jewelleryOffer`).
+    - On/off (**default off**), tiers, which categories count (Jewellery), and dates.
+    - "Allow with coupons" (default off: a coupon switches the offer off for that order). Terms text.
+    - A "Try it" calculator.
+- **Logic:** `src/lib/jewelleryOffer.ts`. An exact copy sits in `api/create-order.ts`, so the server charges the same amount; a test checks the two agree on 2,000 random carts.
+- **Shoppers see it on:**
+    - the cart drawer, mobile cart and checkout: progress bar, "free item unlocked", a picker for which item is free, and a "Free item (jewellery offer)" bill row;
+    - jewellery product pages: a list of the tiers.
+- **Orders store** `offerDiscount`, `offerGiftName`, `offerCredit` and `offerQualifyingSpend`; `discount` = coupon + offer. Admin order details and the invoice PDF show the offer line.
+
+### 2. Team logins (Admin → Team, owner only)
+- **Roles:** a team member is `users/{uid}` with `role: 'staff'`, `staffRole: 'staff' | 'website_manager'`, `permissions: [...]` and `isActive`. The pages are listed in `src/lib/permissions.ts`.
+- **Enforced in four places:**
+    - the sidebar and `AdminRoute` (redirect to their first page);
+    - `firestore.rules` (`can('<page>')`);
+    - `api/whatsapp-reply.ts` (`ACTION_PERMISSIONS`);
+    - `api/media.ts` (uploads for product and content managers).
+- **Owner-only pages:** Team, Manufacturers, Activity, Recycle bin, Settings.
+- **Switching a login off or changing its pages** takes effect immediately; the open session is watched live.
+- **Removing a login** makes it an ordinary customer account. Deleting the sign-in itself needs the Admin SDK; not done.
+
+### 3. Activity log and recycle bin (owner only)
+- **How it works:** `vite.config.ts` aliases `firebase/firestore` to `src/lib/audit/firestore.ts`.
+    - Inside `/admin`, every write by the owner or staff is logged to `activityLog`: who, what and which fields, never the values.
+    - Every delete is first copied to `recycleBin`. That covers all 57 delete call sites without changing them.
+    - Skipped as bookkeeping: login counters on your own profile, chat read receipts, carts and tokens.
+- **Restore** puts the document back exactly as it was. **Delete forever** removes it; for products, it also frees the photos (deleting a product no longer deletes its photos straight away).
+- **Delete dialogs** now say the item goes to the Recycle bin.
+
+### 4. Dealer (manufacturer) chats
+- **Data:**
+    - `dealers/{id}`: the display name plus the chat summary (staff can read it).
+    - `dealerPrivate/{id}`: the number, the real name and the dealer's WhatsApp profile name (owner and server only).
+    - `dealers/{id}/messages`, `dealerTickets` (T-0001…) and `counters/dealerTickets`.
+- **Owner:** Admin → **Manufacturers**. Add a dealer (display name, real name, number). **Create the template** once (`dealer_enquiry`, UTILITY, saved in `siteSettings/dealerChat`).
+- **Staff:** Admin → **Dealer Chats**.
+    - **New ticket** sends the template, which asks the dealer to reply. The 24 h window isn't mentioned to the dealer.
+    - Once the dealer replies, staff chat freely: text, photos and documents up to 3 MB, each tagged to a ticket.
+    - Tickets can be closed and reopened. Staff only ever send a `dealerId`; the server looks up the number.
+- **Webhook:** a reply from a listed number goes to that dealer's chat, never the customer inbox. Delivery ticks work for dealer messages.
+- **Calling:** not built. Meta's Calling API needs a daily messaging limit of at least 2,000 unique recipients, which this number almost certainly doesn't have yet. See `docs/WHATSAPP_SETUP.md`, Step 9c.
+
+### 5. WhatsApp look (customer inbox and dealer chats)
+- **Shared kit:** `src/components/wa/` (WaKit, `wa.css`, emoji picker).
+- **Desktop** follows WhatsApp Web: list pane, grey headers, doodle wallpaper (our own drawing, not WhatsApp's), bubbles with tails, ticks, day chips, pill composer, and an intro screen.
+- **Phones** follow the Android app: the chat opens full screen, the back gesture closes it, a round green send button and a "New ticket" floating button.
+- **Every inbox feature is kept:** filters, search, assign, resolve, notes, quick replies, templates, attachments, the 24 h window and load-more.
+
+### 6. Install as app
+- `public/manifest.webmanifest` plus icons, and `src/lib/pwaInstall.ts`.
+- The "Install app" card shows **only on /account**: a button when the browser offers install, steps on iPhone Safari, and hidden once installed.
+
+### Other fixes
+- Staff accounts were counted as "customers" by announcements and broadcasts; now excluded.
+- A dealer ticket ending in "." produced ".." in the WhatsApp text; fixed.
+
+### Owner to-do (in order)
+1. **Deploy the Firestore rules.** Production still runs open test-mode rules, so staff limits are only enforced by the screens and the API until this is done: `firebase login --reauth`, then `firebase deploy --only firestore:rules`.
+2. Deploy the site (push, or Vercel), then Promote the deployment if production is pinned (see the 2026-10-05 note).
+3. Admin → Commerce → Offers: check the tiers and switch the offer **on**.
+4. Admin → Manufacturers: **Create the template**, wait for "ready", then add the manufacturers.
+5. Admin → Team: create staff logins.
+6. Meta: the app must be **Published** for incoming dealer replies to arrive (same as the customer inbox; 2026-10-05 to-do 1b).
+
+### Not verified
+- **Real Meta and the real payment path:**
+    - the dealer template approval and its wording;
+    - real dealer replies arriving through the webhook (covered by unit tests with a fake Firestore);
+    - a real Razorpay payment with the offer applied (server pricing is unit-tested; the browser test stopped before payment so no real order was created).
+- **Install:** a real install on Android or iPhone (the prompt was simulated).
+- **Rules:** no 50-case rules suite was re-run. The new rules were exercised by the browser tests (owner, staff and website-manager reads and writes all worked; owner-only pages were refused).
+
+### Known issues, not fixed
+- The 13 old type errors.
+- Activity shows the latest 300 entries; the bin shows 500. Neither pages further yet.
+- `api/create-order.ts` carries a copy of the offer logic (needed by Vercel's setup). Edit both together; the test catches drift.
+
+### Next steps
+1. The owner to-do above.
+2. Rebuild the 50-case Firestore rules suite for the new `can()` rules (emulator recipe in `scripts/tests/README.md`; needs a full JDK).
+
 ## 2026-10-05 (late night): home rows now drift continuously, alternating direction
 
 Status: done, not committed. `npm run build` passes. The type-check shows 13 errors, all old, none in the changed files. Browser-checked with Playwright on the dev server at 390 px and 1440 px, light and dark.

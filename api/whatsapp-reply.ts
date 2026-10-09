@@ -1203,7 +1203,8 @@ async function handleDealerTicket({ res, db, body, actor }: Ctx) {
   const messageDoc: Record<string, unknown> = { ...senderFields(actor), ticketId: ticketRef.id, ticketNumber: number };
   let preview: string;
   if (template) {
-    const params = [number, oneLine(summary)];
+    // The template adds its own full stop after {{2}}.
+    const params = [number, oneLine(summary).replace(/[\s.!?,;:]+$/, '')];
     const data = await sendToMeta({
       to,
       type: 'template',

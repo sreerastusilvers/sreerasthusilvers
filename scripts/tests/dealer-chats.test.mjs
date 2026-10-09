@@ -139,7 +139,8 @@ await t('ticket with window closed sends the approved template to the dealer num
   const msg = s.get('dealers/d1/messages/wamid.1');
   assert.equal(msg.sentByName, 'Ravi');
   assert.match(msg.text, /ref T-0001/);
-  const second = await call({ action: 'dealer-ticket', dealerId: 'd1', subject: 'Toe rings' });
+  const second = await call({ action: 'dealer-ticket', dealerId: 'd1', subject: 'Toe rings', details: 'By Friday.' });
+  assert.equal(sent[sent.length - 1].body.template.components[0].parameters[1].text, 'Toe rings: By Friday', 'no double full stop');
   assert.equal(second.payload.number, 'T-0002');
 });
 await t('inside the window a ticket goes as plain text', async () => {

@@ -244,7 +244,7 @@ const AdminGiftCards: React.FC = () => {
   };
 
   const handleDeleteCard = async (card: GiftCard) => {
-    if (!confirm(`Delete gift card ${card.code}? This cannot be undone.`)) return;
+    if (!confirm(`Delete gift card ${card.code}? It goes to the Recycle bin, where the owner can restore it.`)) return;
     
     try {
       const cardRef = doc(db, 'users', card.userId, 'giftCards', card.id);

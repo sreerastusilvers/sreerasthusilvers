@@ -93,9 +93,18 @@ async function binDocument(ref: DocumentReference, actor: AuditActor): Promise<{
   return { label, binId: binRef.id };
 }
 
+/**
+ * Worth recording for this person? Their own users/{uid} document is skipped:
+ * sign-in keeps login counters and session data there, which is bookkeeping,
+ * not something they changed.
+ */
+function auditedFor(actor: AuditActor | null, path: string): actor is AuditActor {
+  return !!actor && isAudited(path) && path !== `users/${actor.uid}`;
+}
+
 export async function deleteDoc(reference: DocumentReference<any, any>): Promise<void> {
   const actor = currentAuditActor();
-  if (!actor || !isAudited(reference.path)) return fs.deleteDoc(reference);
+  if (!auditedFor(actor, reference.path)) return fs.deleteDoc(reference);
   const binned = await binDocument(reference, actor);
   await fs.deleteDoc(reference);
   if (binned) logActivity(reference.firestore, actor, 'delete', reference.path, { name: binned.label }, { binId: binned.binId });
@@ -108,9 +117,19 @@ export function setDoc<A, B extends DocumentData>(
   options: SetOptions,
 ): Promise<void>;
 export async function setDoc(reference: DocumentReference<any, any>, data: any, options?: SetOptions): Promise<void> {
-  await (options ? fs.setDoc(reference, data, options) : fs.setDoc(reference, data));
   const actor = currentAuditActor();
-  if (actor && isAudited(reference.path)) logActivity(reference.firestore, actor, 'save', reference.path, data);
+  const audited = auditedFor(actor, reference.path);
+  // A full write either creates or replaces: look first so the log can say which.
+  let existed = true;
+  if (audited) {
+    try {
+      existed = (await fs.getDoc(reference)).exists();
+    } catch {
+      existed = true;
+    }
+  }
+  await (options ? fs.setDoc(reference, data, options) : fs.setDoc(reference, data));
+  if (audited) logActivity(reference.firestore, actor, existed ? 'update' : 'create', reference.path, data);
 }
 
 export async function addDoc<A, B extends DocumentData>(
@@ -119,7 +138,7 @@ export async function addDoc<A, B extends DocumentData>(
 ): Promise<DocumentReference<A, B>> {
   const ref = await fs.addDoc(reference, data);
   const actor = currentAuditActor();
-  if (actor && isAudited(ref.path)) logActivity(ref.firestore, actor, 'create', ref.path, data as Record<string, unknown>);
+  if (auditedFor(actor, ref.path)) logActivity(ref.firestore, actor, 'create', ref.path, data as Record<string, unknown>);
   return ref;
 }
 
@@ -133,7 +152,7 @@ export function updateDoc<A, B extends DocumentData>(
 export async function updateDoc(reference: DocumentReference<any, any>, ...args: any[]): Promise<void> {
   await (fs.updateDoc as (...a: any[]) => Promise<void>)(reference, ...args);
   const actor = currentAuditActor();
-  if (!actor || !isAudited(reference.path)) return;
+  if (!auditedFor(actor, reference.path)) return;
   const data =
     args.length === 1 && args[0] && typeof args[0] === 'object'
       ? (args[0] as Record<string, unknown>)
@@ -166,7 +185,7 @@ export function writeBatch(firestore: Firestore): WriteBatch {
     },
     async commit() {
       const actor = currentAuditActor();
-      const audited = actor ? ops.filter((o) => isAudited(o.ref.path)) : [];
+      const audited = actor ? ops.filter((o) => auditedFor(actor, o.ref.path)) : [];
       const binned = new Map<string, { label: string; binId: string }>();
       if (actor) {
         for (const o of audited) {

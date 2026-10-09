@@ -54,6 +54,8 @@ import {
 } from '@/services/siteSettingsService';
 
 import { describeError } from '@/lib/errorMessage';
+import { Gift } from 'lucide-react';
+import JewelleryOfferSettingsPanel from '@/components/admin/offers/JewelleryOfferSettingsPanel';
 
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -807,17 +809,20 @@ const AdminCommerceSettings = () => {
           Commerce Settings
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Manage coupons, delivery, GST, and customer support — applied site-wide at checkout.
+          Manage delivery, GST, customer support and offers. Applied site-wide at checkout.
         </p>
       </div>
 
-      <Tabs defaultValue="delivery" className="w-full">
+      <Tabs defaultValue={new URLSearchParams(window.location.search).get('tab') || 'delivery'} className="w-full">
         <TabsList className="bg-white dark:bg-gray-900 border border-[#F5EFE6] dark:border-gray-800 p-1 rounded-xl mb-6">
           <TabsTrigger value="delivery" className="gap-1.5">
             <Truck className="w-4 h-4" /> Delivery & GST
           </TabsTrigger>
           <TabsTrigger value="support" className="gap-1.5">
             <HeadphonesIcon className="w-4 h-4" /> Support
+          </TabsTrigger>
+          <TabsTrigger value="offers" className="gap-1.5">
+            <Gift className="w-4 h-4" /> Offers
           </TabsTrigger>
         </TabsList>
 
@@ -826,6 +831,9 @@ const AdminCommerceSettings = () => {
         </TabsContent>
         <TabsContent value="support">
           <SupportTab />
+        </TabsContent>
+        <TabsContent value="offers">
+          <JewelleryOfferSettingsPanel />
         </TabsContent>
       </Tabs>
     </div>

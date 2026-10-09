@@ -181,7 +181,7 @@ const AdminCustomers: React.FC = () => {
     try {
       await deleteDoc(doc(db, 'users', c.uid));
       setCustomers(prev => prev.filter(x => x.uid !== c.uid));
-      toast.success(`${c.name || c.username} permanently deleted`);
+      toast.success(`${c.name || c.username} deleted. The owner can restore it from the Recycle bin.`);
       setDeleteConfirm(null);
       if (selectedProfile?.uid === c.uid) setSelectedProfile(null);
     } catch { toast.error('Failed to delete'); }
@@ -224,7 +224,7 @@ const AdminCustomers: React.FC = () => {
     try {
       await Promise.all([...selectedIds].map(uid => deleteDoc(doc(db, 'users', uid))));
       setCustomers(prev => prev.filter(c => !selectedIds.has(c.uid)));
-      toast.success(`${selectedIds.size} permanently deleted`);
+      toast.success(`${selectedIds.size} deleted. The owner can restore them from the Recycle bin.`);
       setSelectedIds(new Set());
       setDeleteConfirm(null);
     } catch { toast.error('Batch delete failed'); }
@@ -576,13 +576,13 @@ const AdminCustomers: React.FC = () => {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteConfirm?.type === 'permanent' && deleteConfirm.customer && (
-                <>Permanently delete <strong>{deleteConfirm.customer.name || deleteConfirm.customer.username}</strong>? This cannot be undone.</>
+                <>Delete <strong>{deleteConfirm.customer.name || deleteConfirm.customer.username}</strong> from the trash? The owner can still restore it from the Recycle bin.</>
               )}
               {deleteConfirm?.type === 'soft' && deleteConfirm.customer && (
                 <>Move <strong>{deleteConfirm.customer.name || deleteConfirm.customer.username}</strong> to trash? Restorable within 30 days.</>
               )}
               {deleteConfirm?.type === 'batch-permanent' && (
-                <>Permanently delete <strong>{selectedIds.size} customers</strong>? This cannot be undone.</>
+                <>Delete <strong>{selectedIds.size} customers</strong> from the trash? The owner can still restore them from the Recycle bin.</>
               )}
               {deleteConfirm?.type === 'batch-soft' && (
                 <>Move <strong>{selectedIds.size} customers</strong> to trash? Restorable within 30 days.</>

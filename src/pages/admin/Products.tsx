@@ -791,8 +791,7 @@ const Products = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-gray-900">Delete Product</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600">
-              Are you sure you want to delete "{productToDelete?.name}"? This action cannot
-              be undone.
+              Delete "{productToDelete?.name}"? It goes to the Recycle bin, where the owner can restore it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

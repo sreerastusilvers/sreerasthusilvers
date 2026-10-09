@@ -1102,8 +1102,8 @@ const AdminDeliveryBoys = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the delivery boy account for{' '}
-              <strong>{selectedDeliveryBoy?.name}</strong>. This action cannot be undone.
+              This removes the delivery partner{' '}
+              <strong>{selectedDeliveryBoy?.name}</strong>. It goes to the Recycle bin, where the owner can restore it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -151,6 +151,21 @@ Templates you made earlier directly in WhatsApp Manager appear after **Sync from
 
 Customers who reply **STOP** are skipped from then on; **START** turns announcements back on. Meta charges a small fee for each marketing message.
 
+## Step 9c. Dealer chats (manufacturers)
+
+Staff can message manufacturers without ever seeing their number or real name.
+
+1. Admin → **Manufacturers** → **Create the template** (one time). Meta reviews it, usually within minutes.
+   Press **Check status with Meta** until the card says *Dealer chats are ready*.
+2. **Add manufacturer**: a display name staff will see (for example "Dealer A"), the real name and the WhatsApp number (only you see these).
+3. Admin → **Team** → **Add team member** → role **Staff** (the *Dealer chats* page is ticked for you).
+4. The staff member signs in at `/admin`, opens **Dealer Chats**, presses **New ticket**, picks the manufacturer and writes what is needed.
+   The manufacturer gets the template on WhatsApp asking them to reply. As soon as they reply, staff can chat, send photos and documents, for 24 hours after each reply.
+5. Replies from a manufacturer's number go to Dealer Chats, not the customer inbox.
+
+Calling: WhatsApp's Business Calling API needs the number to have a daily messaging limit of at least 2,000 people,
+so it is not switched on here yet. Check Meta's Calling API page once the number reaches that tier.
+
 ## Step 10. Common problems and fixes
 
 | What you see | What it means | Fix |

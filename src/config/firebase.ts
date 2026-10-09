@@ -1,6 +1,6 @@
 import { FirebaseOptions, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { initializeFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, initializeFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
 
@@ -43,8 +43,21 @@ export const secondaryAuth = getAuth(secondaryApp); // For creating users withou
  * Note this means `undefined` = "leave this field as it is" on an update; to
  * actually clear a stored field, write `null`.
  */
+const useEmulators = import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === '1';
 export const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
 export const storage = getStorage(app);
+
+/**
+ * Local testing against the Firebase emulators (`firebase emulators:start`),
+ * so test accounts and test data never touch the live project. Dev builds only:
+ * set VITE_USE_EMULATORS=1 when starting Vite.
+ */
+if (useEmulators) {
+  connectAuthEmulator(auth, `http://127.0.0.1:${import.meta.env.VITE_AUTH_EMULATOR_PORT || 8081}`, { disableWarnings: true });
+  connectAuthEmulator(secondaryAuth, `http://127.0.0.1:${import.meta.env.VITE_AUTH_EMULATOR_PORT || 8081}`, { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', Number(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || 8080));
+  console.warn('[Firebase] Using the local emulators (VITE_USE_EMULATORS=1)');
+}
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
 // Verify Firebase configuration

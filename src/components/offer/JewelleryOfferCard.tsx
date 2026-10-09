@@ -85,7 +85,7 @@ export function JewelleryOfferCard({ pricing, className }: { pricing: CheckoutPr
       )}
 
       {offer.discount > 0 && offerGiftOptions.length > 1 && (
-        <fieldset className="mt-3">
+        <fieldset className="mt-3 min-w-0">
           <legend className="mb-1.5 text-xs font-medium text-gray-700 dark:text-zinc-300">Choose your free item</legend>
           <div className="space-y-1.5">
             {offerGiftOptions.map((o) => {
