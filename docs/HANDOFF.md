@@ -1,6 +1,23 @@
 # Handoff
 
-Last updated: 2026-10-09 (night)
+Last updated: 2026-10-09 (late night)
+
+## 2026-10-09 (late night): Dashboard shows only the buttons a login can use
+
+Status: committed locally. **Not deployed.** Only `src/pages/admin/Dashboard.tsx` changed (no rules change).
+- **Change:** each Dashboard button now checks the login's pages with `can()`. The owner still sees everything.
+    - Add Product, Add New Product, Add First Product, Upload Media and View All need **Products**.
+    - View Orders needs **Orders**.
+    - The silver rate input and Save need **Silver rate**. Without it the card shows the current rate, read-only.
+    - The four figure cards link to Orders or Products only for logins that can open them. They are now real links, so the keyboard can reach them.
+    - Quick Actions is hidden when it would be empty, and Recent Products then takes the full width.
+- **Also fixed:** in the dark theme the silver-rate card was washed out and hard to read. It now uses the classes the dark-theme remap covers (`from-amber-50`, `border-amber-200/40`). The save button also gained a label for screen readers, because on phones it shows only an icon.
+- **Tests:** `npm run build` passes. Typecheck and lint are clean for the file.
+- **Browser (emulators, project `demo-dash`): 25 of 25 pass.** Owner (1440 light, 390 dark), Dashboard-only (1440 dark, 390 light), and Dashboard plus Orders (1440 light). The checks covered which buttons show, the figures, no sideways scroll, and no console errors.
+
+### Next steps
+1. Owner to-do from the evening entry below (replace the admin key, then deploy code before rules).
+
 
 ## 2026-10-09 (night): Customers list and Customer details show real orders
 
@@ -26,7 +43,7 @@ Status: committed locally. **Not deployed** (rules and code ship together with t
 
 ### Next steps
 1. Owner to-do from the evening entry below (replace the admin key, then deploy code before rules).
-2. Optional: hide Dashboard buttons that a Dashboard-only login can't use (see "Found while testing" in the 2026-10-09 (later) entry).
+2. ~~Optional: hide Dashboard buttons that a Dashboard-only login can't use~~ Done 2026-10-09 (late night), see the top entry.
 
 ## 2026-10-09 (evening): G1 fixed (paid orders need a server-recorded payment), multi-item order bug, leaked admin key
 
@@ -124,7 +141,7 @@ Status: committed locally, **rules not deployed**. `npm run test:rules` gives 29
 - ~~**Customer details always shows "Orders 0" and ₹0.**~~ Fixed 2026-10-09 (night). The Customers list also always shows 0. Both read `users/{id}/orders`, which nothing writes; real orders live in `orders` with `userId`.
     - Fix: query `orders` where `userId == id`.
     - The rules would then need to let Customers staff read orders (a decision for the owner).
-- **The Dashboard shows buttons a Dashboard-only login can't use:** Add Product, Save silver rate, Upload Media and View Orders. They fail when used.
+- ~~**The Dashboard shows buttons a Dashboard-only login can't use:** Add Product, Save silver rate, Upload Media and View Orders. They fail when used.~~ Fixed 2026-10-09 (late night).
 
 ### Minor, left as is
 - **Bin entry wording:** a staff member's bin entry can claim any `label` or `deletedByName`, for example "removed by Owner". The rules check only `deletedByUid`, and the bin screen shows the name.

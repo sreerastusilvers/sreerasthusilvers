@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Package,
   ShoppingCart,
@@ -19,6 +19,7 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { toast } from 'sonner';
 import { SmartImage } from "@/components/ui/smart-image";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface StatCard {
   title: string;
@@ -36,7 +37,12 @@ const Dashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  // A team login may have the Dashboard without the pages its buttons lead
+  // to, so only show what this login can use (the owner can use everything).
+  const { can } = useAuth();
+  const canProducts = can('products');
+  const canOrders = can('orders');
+  const canSilverRate = can('silverRate');
 
   // Silver rate state
   const [silverInput, setSilverInput] = useState<string>('');
@@ -112,7 +118,7 @@ const Dashboard = () => {
       icon: DollarSign,
       color: 'text-green-600',
       iconBgColor: 'bg-green-50',
-      link: '/admin/orders',
+      link: canOrders ? '/admin/orders' : undefined,
     },
     {
       title: 'Total Orders',
@@ -121,7 +127,7 @@ const Dashboard = () => {
       icon: ShoppingCart,
       color: 'text-blue-600',
       iconBgColor: 'bg-blue-50',
-      link: '/admin/orders',
+      link: canOrders ? '/admin/orders' : undefined,
     },
     {
       title: 'Products',
@@ -130,7 +136,7 @@ const Dashboard = () => {
       icon: Package,
       color: 'text-purple-600',
       iconBgColor: 'bg-purple-50',
-      link: '/admin/products',
+      link: canProducts ? '/admin/products' : undefined,
     },
     {
       title: 'Low Stock Items',
@@ -139,11 +145,12 @@ const Dashboard = () => {
       icon: Clock,
       color: 'text-orange-600',
       iconBgColor: 'bg-orange-50',
-      link: '/admin/products',
+      link: canProducts ? '/admin/products' : undefined,
     },
   ];
 
   const recentProducts = products.slice(0, 5);
+  const showQuickActions = canProducts || canOrders;
 
   return (
     <div className="space-y-5">
@@ -156,17 +163,20 @@ const Dashboard = () => {
             <h1 className="text-2xl font-serif font-semibold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>Dashboard</h1>
             <p className="text-gray-600 text-sm mt-1">Welcome back — here's what's happening at <span className="text-amber-700 font-medium">Sreerasthu Silvers</span> today.</p>
           </div>
+          {canProducts && (
           <Link to="/admin/products/new">
             <Button className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-md">
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
           </Link>
+          )}
         </div>
       </div>
 
-      {/* Silver Rate Quick Card */}
-      <Card className="border-amber-200/60 bg-gradient-to-r from-amber-50/80 to-yellow-50/40">
+      {/* Silver Rate Quick Card: read-only without the Silver rate page */}
+      {(canSilverRate || silverSaved !== null) && (
+      <Card className="border-amber-200/40 bg-gradient-to-r from-amber-50 to-yellow-50/40">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -183,6 +193,7 @@ const Dashboard = () => {
                 )}
               </div>
             </div>
+            {canSilverRate && (
             <div className="flex items-center gap-2">
               <div className="relative">
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">₹</span>
@@ -199,25 +210,27 @@ const Dashboard = () => {
                 size="sm"
                 disabled={!silverChanged || silverSaving}
                 onClick={handleSilverSave}
+                aria-label="Save silver rate"
                 className="h-8 bg-amber-600 hover:bg-amber-700 text-white shrink-0"
               >
                 {silverSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 <span className="ml-1.5 hidden sm:inline">{silverSaving ? 'Saving…' : 'Save Rate'}</span>
               </Button>
             </div>
+            )}
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <Card 
-            key={index} 
-            className="group relative overflow-hidden bg-white border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
-            onClick={() => stat.link && navigate(stat.link)}
+        {stats.map((stat) => {
+          const card = (
+          <Card
+            className={`relative h-full overflow-hidden bg-white border-gray-100 shadow-sm ${stat.link ? 'group hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300' : ''}`}
           >
-            <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-amber-400 to-amber-600 scale-y-0 group-hover:scale-y-100 transition-transform duration-300 origin-top" />
+            {stat.link && <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-amber-400 to-amber-600 scale-y-0 group-hover:scale-y-100 transition-transform duration-300 origin-top" />}
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-2">
                 <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wider">{stat.title}</h3>
@@ -231,19 +244,33 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+          return stat.link ? (
+            <Link
+              key={stat.title}
+              to={stat.link}
+              className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              {card}
+            </Link>
+          ) : (
+            <div key={stat.title}>{card}</div>
+          );
+        })}
       </div>
 
       {/* Recent Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${showQuickActions ? 'lg:grid-cols-2' : ''}`}>
         <Card className="bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-gray-900 text-base">Recent Products</CardTitle>
+            {canProducts && (
             <Link to="/admin/products">
               <Button variant="ghost" size="sm" className="text-amber-500 hover:text-amber-400">
                 View All
               </Button>
             </Link>
+            )}
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -289,22 +316,26 @@ const Dashboard = () => {
               <div className="text-center py-8">
                 <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No products yet</p>
+                {canProducts && (
                 <Link to="/admin/products/new">
                   <Button className="mt-4 bg-amber-600 hover:bg-amber-700" size="sm">
                     Add First Product
                   </Button>
                 </Link>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Quick Actions */}
+        {showQuickActions && (
         <Card className="bg-white border-gray-200">
           <CardHeader className="pb-3">
             <CardTitle className="text-gray-900 text-base">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            {canProducts && (
             <Link to="/admin/products/new" className="block">
               <Button
                 variant="outline"
@@ -315,6 +346,8 @@ const Dashboard = () => {
                 Add New Product
               </Button>
             </Link>
+            )}
+            {canOrders && (
             <Link to="/admin/orders" className="block">
               <Button
                 variant="outline"
@@ -325,6 +358,8 @@ const Dashboard = () => {
                 View Orders
               </Button>
             </Link>
+            )}
+            {canProducts && (
             <Link to="/admin/media" className="block">
               <Button
                 variant="outline"
@@ -335,8 +370,10 @@ const Dashboard = () => {
                 Upload Media
               </Button>
             </Link>
+            )}
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   );
