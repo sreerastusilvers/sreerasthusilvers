@@ -1,9 +1,11 @@
 /**
- * Admin-only WhatsApp endpoint: inbox replies, template management, media
- * proxy and setup status. Every action needs an admin Firebase ID token.
+ * WhatsApp endpoint for the owner and team: inbox replies, template
+ * management, media proxy, setup status and dealer (manufacturer) chats.
+ * Every action needs a Firebase ID token for the owner, or for an active team
+ * member whose permissions cover that action (ACTION_PERMISSIONS below).
  *
  * POST /api/whatsapp-reply
- * Headers: Authorization: Bearer <Firebase ID token for an admin user>
+ * Headers: Authorization: Bearer <Firebase ID token>
  *
  * Body `action` (defaults to 'send' so older callers keep working):
  *   send              { phone, text? , template?: { name, language?, params?: string[],
@@ -26,6 +28,17 @@
  *   templates-delete  { name, metaId? }  Deletes a template (every language, or the
  *                     one language whose metaId is given).
  *   config-status     {}  Returns which env vars are set, as booleans only.
+ *
+ * Dealer chats (team permission `dealerChats`). Staff only ever send a
+ * dealerId; the number lives in `dealerPrivate/{id}` (owner-only), so it never
+ * reaches a staff browser:
+ *   dealer-ticket     { dealerId, subject, details }  Opens ticket T-0001 etc. and
+ *                     messages the dealer: plain text while their 24 h window is
+ *                     open, else the template in siteSettings/dealerChat, which
+ *                     asks them to reply (their reply opens the window).
+ *   dealer-send       { dealerId, text, ticketId? }  Inside the window only.
+ *   dealer-send-media { dealerId, media: { mime, filename, data }, caption?, ticketId? }
+ *   dealer-mark-read  { dealerId }
  *
  * Env: WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, WHATSAPP_WABA_ID, FIREBASE_ADMIN_SDK_BASE64
  * (plus WHATSAPP_VERIFY_TOKEN and WHATSAPP_APP_SECRET, used by the webhook).
@@ -141,9 +154,44 @@ export async function metaRequest(
   return data;
 }
 
-async function requireAdmin(req: VercelRequest, db: admin.firestore.Firestore) {
+/**
+ * Which team permission opens each action (the owner may do everything).
+ * Mirrors src/lib/permissions.ts. An action missing here is owner-only.
+ */
+export const ACTION_PERMISSIONS: Record<string, string[]> = {
+  send: ['whatsapp'],
+  'send-media': ['whatsapp'],
+  'mark-read': ['whatsapp'],
+  media: ['whatsapp', 'dealerChats'],
+  'templates-list': ['whatsapp', 'marketing'],
+  'templates-create': ['marketing'],
+  'templates-delete': ['marketing'],
+  'config-status': ['whatsapp', 'marketing'],
+  'dealer-ticket': ['dealerChats'],
+  'dealer-send': ['dealerChats'],
+  'dealer-send-media': ['dealerChats'],
+  'dealer-mark-read': ['dealerChats'],
+};
+
+export interface Caller {
+  uid: string | null;
+  email: string | null;
+  name: string;
+  owner: boolean;
+  permissions: string[];
+}
+
+export function callerMay(caller: Caller, action: string) {
+  if (caller.owner) return true;
+  const need = ACTION_PERMISSIONS[action];
+  return !!need && need.some((p) => caller.permissions.includes(p));
+}
+
+async function requireTeam(req: VercelRequest, db: admin.firestore.Firestore): Promise<Caller> {
   const expected = process.env.ADMIN_NOTIFICATION_KEY;
-  if (expected && req.headers['x-admin-key'] === expected) return null;
+  if (expected && req.headers['x-admin-key'] === expected) {
+    return { uid: null, email: null, name: 'Server', owner: true, permissions: [] };
+  }
 
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
@@ -151,12 +199,20 @@ async function requireAdmin(req: VercelRequest, db: admin.firestore.Firestore) {
 
   const decoded = await admin.auth().verifyIdToken(token);
   const claims = decoded as admin.auth.DecodedIdToken & { admin?: boolean; role?: string };
-  if (claims.admin === true || claims.role === 'admin') return decoded;
-
   const userDoc = await db.collection('users').doc(decoded.uid).get();
-  const role = userDoc.exists ? userDoc.data()?.role : null;
-  if (role !== 'admin') throw new Error('Unauthorized');
-  return decoded;
+  const profile = (userDoc.exists ? userDoc.data() : null) || {};
+  const base = {
+    uid: decoded.uid,
+    email: decoded.email || null,
+    name: str(profile.username || profile.name || decoded.email || 'Team member'),
+  };
+  if (claims.admin === true || claims.role === 'admin' || profile.role === 'admin') {
+    return { ...base, owner: true, permissions: [] };
+  }
+  if (profile.role === 'staff' && profile.isActive !== false && Array.isArray(profile.permissions)) {
+    return { ...base, owner: false, permissions: profile.permissions.map((p: unknown) => str(p)) };
+  }
+  throw new Error('Unauthorized');
 }
 
 async function sendToMeta(payload: Record<string, unknown>) {
@@ -717,7 +773,7 @@ type Ctx = {
   res: VercelResponse;
   db: admin.firestore.Firestore;
   body: Record<string, any>;
-  actor: { uid: string | null; email: string | null };
+  actor: { uid: string | null; email: string | null; name?: string };
 };
 
 async function handleSend({ res, db, body, actor }: Ctx) {
@@ -777,9 +833,8 @@ async function handleSend({ res, db, body, actor }: Ctx) {
   return res.status(200).json({ ok: true, messageId: wamid });
 }
 
-async function handleSendMedia({ res, db, body, actor }: Ctx) {
-  const phoneId = normalizePhone(body.phone);
-  if (!phoneId) throw new HttpError(400, 'Missing phone');
+/** Check an attachment from the browser: type, size and a safe file name. */
+function readSendableMedia(body: Record<string, any>) {
   const mime = str(body.media?.mime).toLowerCase();
   const kind = SENDABLE_MEDIA[mime];
   if (!kind) throw new HttpError(400, 'Send a JPEG or PNG photo, or a PDF, Word, Excel, PowerPoint or text file.');
@@ -788,10 +843,11 @@ async function handleSendMedia({ res, db, body, actor }: Ctx) {
   if (bytes.length > MAX_SEND_MEDIA_BYTES) throw new HttpError(413, 'Files sent from here can be up to 3 MB.');
   const filename = str(body.media?.filename).replace(/[\\/\r\n"]/g, '').trim().slice(0, 120) || (kind === 'image' ? 'photo.jpg' : 'document');
   const caption = str(body.caption).trim().slice(0, 1024);
+  return { mime, kind, bytes, filename, caption };
+}
 
-  const threadRef = db.collection('whatsappThreads').doc(phoneId);
-  await assertReplyWindow(threadRef);
-
+/** Upload a file to Meta's /media and return its media id. */
+async function uploadMediaToMeta(bytes: Buffer, mime: string, filename: string) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_ID;
   if (!process.env.WHATSAPP_TOKEN || !phoneNumberId) {
     throw new HttpError(503, 'WhatsApp is not configured (WHATSAPP_TOKEN / WHATSAPP_PHONE_ID). See the setup guide, step 6.');
@@ -803,6 +859,18 @@ async function handleSendMedia({ res, db, body, actor }: Ctx) {
   const uploaded = await metaRequest(`${META_BASE}/${phoneNumberId}/media`, { method: 'POST', body: form });
   const mediaId = str(uploaded.id);
   if (!mediaId) throw new HttpError(502, 'Meta did not return a media id.');
+  return mediaId;
+}
+
+async function handleSendMedia({ res, db, body, actor }: Ctx) {
+  const phoneId = normalizePhone(body.phone);
+  if (!phoneId) throw new HttpError(400, 'Missing phone');
+  const { mime, kind, bytes, filename, caption } = readSendableMedia(body);
+
+  const threadRef = db.collection('whatsappThreads').doc(phoneId);
+  await assertReplyWindow(threadRef);
+
+  const mediaId = await uploadMediaToMeta(bytes, mime, filename);
 
   const to = phoneId.replace(/^\+/, '');
   const withCaption = caption ? { caption } : {};
@@ -1019,6 +1087,248 @@ async function handleConfigStatus({ res, db }: Ctx) {
   return res.status(200).json({ ok: true, env: configStatus(), webhookSeen, graphVersion: META_GRAPH_VERSION });
 }
 
+// ===========================================================================
+// Dealer (manufacturer) chats
+// ===========================================================================
+const DEALERS = 'dealers';
+const DEALER_PRIVATE = 'dealerPrivate';
+const DEALER_TICKETS = 'dealerTickets';
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** One line for a template parameter: Meta rejects newlines, tabs and 4+ spaces (132018). */
+export function oneLine(text: string, max = 900) {
+  return str(text).replace(/[\r\n\t]+/g, ' / ').replace(/ {2,}/g, ' ').trim().slice(0, max);
+}
+
+export function ticketNumber(seq: number) {
+  return `T-${String(seq).padStart(4, '0')}`;
+}
+
+/** The dealer's chat doc and number. Staff never see the number; it stays here. */
+async function loadDealer(db: admin.firestore.Firestore, dealerId: string) {
+  if (!ID_RE.test(dealerId)) throw new HttpError(400, 'Invalid dealer.');
+  const ref = db.collection(DEALERS).doc(dealerId);
+  const [snap, priv] = await Promise.all([ref.get(), db.collection(DEALER_PRIVATE).doc(dealerId).get()]);
+  const data = (snap.exists ? snap.data() : null) || null;
+  if (!data || data.active === false) throw new HttpError(404, 'This dealer is not available. Ask the owner.');
+  const phone = normalizePhone(priv.exists ? priv.data()?.phone : '');
+  if (!phone) throw new HttpError(409, 'This dealer has no WhatsApp number yet. Ask the owner to add it.');
+  const closes = data.replyWindowClosesAt as admin.firestore.Timestamp | undefined;
+  const windowOpen = !!closes && closes.toMillis() > Date.now();
+  return { ref, data, phone, windowOpen };
+}
+
+async function recordDealerOutbound(
+  db: admin.firestore.Firestore,
+  dealerRef: admin.firestore.DocumentReference,
+  messageDoc: Record<string, unknown>,
+  preview: string,
+  extraDealer: Record<string, unknown> = {},
+) {
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const wamid = messageDoc.providerMessageId ? String(messageDoc.providerMessageId) : '';
+  const msgRef = wamid ? dealerRef.collection('messages').doc(wamid) : dealerRef.collection('messages').doc();
+  const batch = db.batch();
+  batch.set(msgRef, { ...messageDoc, createdAt: now, status: 'accepted' });
+  batch.set(
+    dealerRef,
+    {
+      lastMessage: preview.slice(0, 200),
+      lastMessageType: messageDoc.type,
+      lastDirection: 'outbound',
+      lastAt: now,
+      lastOutboundMessageId: wamid || null,
+      lastStatus: 'accepted',
+      ...extraDealer,
+    },
+    { merge: true },
+  );
+  await batch.commit();
+  return wamid || null;
+}
+
+function senderFields(actor: Ctx['actor']) {
+  return { direction: 'outbound', sentByUid: actor.uid, sentByName: actor.name || 'Team' };
+}
+
+async function ticketFor(db: admin.firestore.Firestore, dealerId: string, ticketId: string) {
+  if (!ticketId) return null;
+  if (!ID_RE.test(ticketId)) throw new HttpError(400, 'Invalid ticket.');
+  const snap = await db.collection(DEALER_TICKETS).doc(ticketId).get();
+  if (!snap.exists || snap.data()?.dealerId !== dealerId) throw new HttpError(404, 'Ticket not found for this dealer.');
+  return { id: ticketId, number: str(snap.data()?.number) };
+}
+
+async function handleDealerTicket({ res, db, body, actor }: Ctx) {
+  const dealerId = str(body.dealerId);
+  const subject = str(body.subject).trim().slice(0, 120);
+  const details = str(body.details).trim().slice(0, 1500);
+  if (!subject) throw new HttpError(400, 'Write what you need in one line.');
+  const dealer = await loadDealer(db, dealerId);
+
+  // Without an open window the only way to reach the dealer is the template.
+  let template: { name: string; language: string; bodyText: string } | null = null;
+  if (!dealer.windowOpen) {
+    const cfg = (await db.collection('siteSettings').doc('dealerChat').get()).data() || {};
+    const name = str(cfg.templateName);
+    if (!name) {
+      throw new HttpError(409, 'The dealer message template is not set up yet. Ask the owner to set it up in Manufacturers.');
+    }
+    const language = str(cfg.language) || 'en';
+    let bodyText = '';
+    try {
+      const tplSnap = await db.collection(TEMPLATES_COLLECTION).where('name', '==', name).limit(10).get();
+      const match = tplSnap.docs.find((d) => (d.data().language || 'en') === language) || tplSnap.docs[0];
+      bodyText = str(match?.data()?.bodyText);
+    } catch {
+      /* the timeline falls back to a plain summary */
+    }
+    template = { name, language, bodyText };
+  }
+
+  // Number the ticket (T-0001, T-0002, ...).
+  const counterRef = db.collection('counters').doc('dealerTickets');
+  const seq = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(counterRef);
+    const next = (Number(snap.exists ? snap.data()?.seq : 0) || 0) + 1;
+    tx.set(counterRef, { seq: next }, { merge: true });
+    return next;
+  });
+  const number = ticketNumber(seq);
+  const ticketRef = db.collection(DEALER_TICKETS).doc();
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const summary = details ? `${subject}: ${details}` : subject;
+
+  const to = dealer.phone.replace(/^\+/, '');
+  const messageDoc: Record<string, unknown> = { ...senderFields(actor), ticketId: ticketRef.id, ticketNumber: number };
+  let preview: string;
+  if (template) {
+    const params = [number, oneLine(summary)];
+    const data = await sendToMeta({
+      to,
+      type: 'template',
+      template: { name: template.name, language: { code: template.language }, components: templateSendComponents(params) },
+    });
+    messageDoc.type = 'template';
+    messageDoc.template = { name: template.name, language: template.language, params };
+    messageDoc.text = template.bodyText ? renderTemplateText(template.bodyText, params) : `New requirement (ref ${number}): ${params[1]}`;
+    messageDoc.providerMessageId = readMetaMessageId(data);
+    preview = str(messageDoc.text);
+  } else {
+    const text = `New requirement (ref ${number})\n${subject}${details ? `\n\n${details}` : ''}`;
+    const data = await sendToMeta({ to, type: 'text', text: { body: text.slice(0, 4096) } });
+    messageDoc.type = 'text';
+    messageDoc.text = text.slice(0, 4096);
+    messageDoc.providerMessageId = readMetaMessageId(data);
+    preview = text;
+  }
+
+  await ticketRef.set({
+    number,
+    seq,
+    dealerId,
+    dealerName: str(dealer.data.displayName),
+    subject,
+    details,
+    status: 'open',
+    createdByUid: actor.uid,
+    createdByName: actor.name || 'Team',
+    createdAt: now,
+    updatedAt: now,
+    lastMessageAt: now,
+    openingMessageId: messageDoc.providerMessageId || null,
+    openedWith: template ? 'template' : 'text',
+  });
+  const wamid = await recordDealerOutbound(db, dealer.ref, messageDoc, preview, {
+    lastTicketId: ticketRef.id,
+    lastTicketNumber: number,
+    // A template went out: nothing more can be sent until the dealer answers.
+    ...(template ? { awaitingReply: true } : {}),
+  });
+  return res.status(200).json({ ok: true, ticketId: ticketRef.id, number, messageId: wamid, via: template ? 'template' : 'text' });
+}
+
+function windowClosedError() {
+  return new HttpError(409, 'The dealer has not replied yet. You can send messages once they reply to the ticket.');
+}
+
+async function handleDealerSend({ res, db, body, actor }: Ctx) {
+  const dealerId = str(body.dealerId);
+  const text = str(body.text).trim().slice(0, 4096);
+  if (!text) throw new HttpError(400, 'Type a message.');
+  const dealer = await loadDealer(db, dealerId);
+  if (!dealer.windowOpen) throw windowClosedError();
+  const ticket = await ticketFor(db, dealerId, str(body.ticketId) || str(dealer.data.lastTicketId));
+  const data = await sendToMeta({ to: dealer.phone.replace(/^\+/, ''), type: 'text', text: { body: text } });
+  const wamid = await recordDealerOutbound(
+    db,
+    dealer.ref,
+    {
+      ...senderFields(actor),
+      type: 'text',
+      text,
+      providerMessageId: readMetaMessageId(data),
+      ...(ticket ? { ticketId: ticket.id, ticketNumber: ticket.number } : {}),
+    },
+    text,
+  );
+  if (ticket) {
+    await db.collection(DEALER_TICKETS).doc(ticket.id).set({ lastMessageAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  }
+  return res.status(200).json({ ok: true, messageId: wamid });
+}
+
+async function handleDealerSendMedia({ res, db, body, actor }: Ctx) {
+  const dealerId = str(body.dealerId);
+  const { mime, kind, bytes, filename, caption } = readSendableMedia(body);
+  const dealer = await loadDealer(db, dealerId);
+  if (!dealer.windowOpen) throw windowClosedError();
+  const ticket = await ticketFor(db, dealerId, str(body.ticketId) || str(dealer.data.lastTicketId));
+  const mediaId = await uploadMediaToMeta(bytes, mime, filename);
+  const to = dealer.phone.replace(/^\+/, '');
+  const withCaption = caption ? { caption } : {};
+  const data = await sendToMeta(
+    kind === 'image'
+      ? { to, type: 'image', image: { id: mediaId, ...withCaption } }
+      : { to, type: 'document', document: { id: mediaId, filename, ...withCaption } },
+  );
+  const label = kind === 'image' ? 'Photo' : 'Document';
+  const wamid = await recordDealerOutbound(
+    db,
+    dealer.ref,
+    {
+      ...senderFields(actor),
+      type: kind,
+      text: caption || (kind === 'document' ? filename : ''),
+      media: { id: mediaId, mimeType: mime, caption: caption || null, filename: kind === 'document' ? filename : null },
+      providerMessageId: readMetaMessageId(data),
+      ...(ticket ? { ticketId: ticket.id, ticketNumber: ticket.number } : {}),
+    },
+    `${label}${caption ? `: ${caption}` : kind === 'document' ? `: ${filename}` : ''}`,
+  );
+  return res.status(200).json({ ok: true, messageId: wamid, mediaId });
+}
+
+async function handleDealerMarkRead({ res, db, body }: Ctx) {
+  const dealerId = str(body.dealerId);
+  if (!ID_RE.test(dealerId)) throw new HttpError(400, 'Invalid dealer.');
+  const ref = db.collection(DEALERS).doc(dealerId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpError(404, 'Dealer not found.');
+  await ref.set({ unreadCount: 0, lastReadAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  const last = str(snap.data()?.lastInboundMessageId);
+  let receiptSent = false;
+  if (last && process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID) {
+    try {
+      await sendToMeta({ status: 'read', message_id: last });
+      receiptSent = true;
+    } catch {
+      /* best effort */
+    }
+  }
+  return res.status(200).json({ ok: true, receiptSent });
+}
+
 const ACTIONS: Record<string, (ctx: Ctx) => Promise<unknown>> = {
   send: handleSend,
   'send-media': handleSendMedia,
@@ -1028,6 +1338,10 @@ const ACTIONS: Record<string, (ctx: Ctx) => Promise<unknown>> = {
   'templates-create': handleTemplatesCreate,
   'templates-delete': handleTemplatesDelete,
   'config-status': handleConfigStatus,
+  'dealer-ticket': handleDealerTicket,
+  'dealer-send': handleDealerSend,
+  'dealer-send-media': handleDealerSendMedia,
+  'dealer-mark-read': handleDealerMarkRead,
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -1050,15 +1364,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ ok: false, error: 'Admin init failed', detail: getErrorMessage(err) });
   }
   const db = admin.firestore();
-  let decoded: Awaited<ReturnType<typeof requireAdmin>>;
+  let caller: Caller;
   try {
-    decoded = await requireAdmin(req, db);
+    caller = await requireTeam(req, db);
   } catch {
     return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
+  if (!callerMay(caller, action)) {
+    return res.status(403).json({ ok: false, error: 'Your login does not have access to this. Ask the owner.' });
+  }
   const actor = {
-    uid: decoded?.uid || (body.actorUid ? str(body.actorUid) : null),
-    email: decoded?.email || (body.actorEmail ? str(body.actorEmail) : null),
+    uid: caller.uid || (body.actorUid ? str(body.actorUid) : null),
+    email: caller.email || (body.actorEmail ? str(body.actorEmail) : null),
+    name: caller.name,
   };
 
   try {

@@ -151,6 +151,7 @@ const buildPricing = (order: Order): PricingBreakdown => {
   const deliveryCharge = order.deliveryCharge || 0;
   const codCharge = order.codCharge || 0;
   const couponDiscount = order.couponDiscount || 0;
+  const offerDiscount = order.offerDiscount || 0;
   const total = order.total;
 
   // The order document already stores taxAmount and subtotal as a snapshot —
@@ -160,7 +161,7 @@ const buildPricing = (order: Order): PricingBreakdown => {
   const taxAmount = order.taxAmount || 0;
   const taxableValue = gstInclusive
     ? Math.max(0, total - deliveryCharge - codCharge - taxAmount)
-    : Math.max(0, subtotal - couponDiscount);
+    : Math.max(0, subtotal - couponDiscount - offerDiscount);
 
   const isIntraState =
     (order.shippingAddress?.state || '').trim().toLowerCase() ===
@@ -331,6 +332,9 @@ export const generateInvoicePDF = async (order: Order): Promise<void> => {
   if (pricing.couponDiscount > 0) {
     const code = order.couponCode ? ` (${order.couponCode})` : '';
     totalsLines.push([`Coupon Discount${code}`, `- ${formatINR(pricing.couponDiscount)}`]);
+  }
+  if ((order.offerDiscount || 0) > 0) {
+    totalsLines.push(['Jewellery offer (free item)', `- ${formatINR(order.offerDiscount || 0)}`]);
   }
   if (pricing.gstInclusive && pricing.taxAmount > 0) {
     totalsLines.push(['Taxable value', formatINR(pricing.taxableValue)]);

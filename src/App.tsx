@@ -89,6 +89,11 @@ const AdminOrderDetails = lazy(() => import("./pages/admin/AdminOrderDetails"));
 const AdminVideoCalls = lazy(() => import("./pages/admin/AdminVideoCalls"));
 const AdminNewsletterSubscriptions = lazy(() => import("./pages/admin/AdminNewsletterSubscriptions"));
 const AdminStorage = lazy(() => import("./pages/admin/AdminStorage"));
+const AdminTeam = lazy(() => import("./pages/admin/AdminTeam"));
+const AdminActivity = lazy(() => import("./pages/admin/AdminActivity"));
+const AdminRecycleBin = lazy(() => import("./pages/admin/AdminRecycleBin"));
+const AdminDealers = lazy(() => import("./pages/admin/AdminDealers"));
+const AdminDealerChats = lazy(() => import("./pages/admin/AdminDealerChats"));
 const MyVideoCalls = lazy(() => import("./pages/MyVideoCalls"));
 const VideoCallPage = lazy(() => import("./pages/VideoCallPage"));
 const WriteReview = lazy(() => import("./pages/WriteReview"));
@@ -354,6 +359,11 @@ const App = () => {
                 <Route path="customers/:customerId" element={<AdminCustomerDetails />} />
                 <Route path="newsletter" element={<AdminNewsletterSubscriptions />} />
                 <Route path="storage" element={<AdminStorage />} />
+                <Route path="team" element={<AdminTeam />} />
+                <Route path="activity" element={<AdminActivity />} />
+                <Route path="recycle-bin" element={<AdminRecycleBin />} />
+                <Route path="dealers" element={<AdminDealers />} />
+                <Route path="dealer-chats" element={<AdminDealerChats />} />
               </Route>
 
               {/* Delivery Partner Routes (always rendered in light mode).

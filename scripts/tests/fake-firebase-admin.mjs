@@ -15,7 +15,7 @@ function docRef(path) {
     },
     async set(data, opts) {
       const prev = store.get(path);
-      store.set(path, opts?.merge && prev ? { ...prev, ...data } : { ...data });
+      store.set(path, applyIncrements(opts?.merge && prev ? prev : {}, data, opts?.merge && prev));
     },
     async update(data) {
       if (!store.has(path)) {
@@ -27,6 +27,14 @@ function docRef(path) {
       store.set(path, { ...store.get(path), ...data });
     },
   };
+}
+/** Merge `data` over `prev`, turning increment() markers into numbers. */
+function applyIncrements(prev, data, merge) {
+  const out = merge ? { ...prev } : {};
+  for (const [k, v] of Object.entries(data)) {
+    out[k] = v && typeof v === 'object' && '__inc' in v ? (Number(prev?.[k]) || 0) + v.__inc : v;
+  }
+  return out;
 }
 function snap(path) {
   const data = store.get(path);
@@ -59,13 +67,17 @@ const db = {
     const ops = [];
     return { set: (ref, d, o) => ops.push(() => ref.set(d, o)), async commit() { for (const op of ops) await op(); } };
   },
+  async runTransaction(fn) {
+    return fn({ get: (ref) => ref.get(), set: (ref, d, o) => ref.set(d, o), update: (ref, d) => ref.update(d) });
+  },
 };
 
 const firestore = Object.assign(() => db, { FieldValue: { serverTimestamp, increment } });
 const adminStub = {
   apps: [1],
   firestore,
-  auth: () => ({ verifyIdToken: async (t) => ({ uid: t === 'admin-token' ? 'admin1' : 'user1' }) }),
+  // 'admin-token' → admin1; 'uid:<x>' → <x>; anything else → user1.
+  auth: () => ({ verifyIdToken: async (t) => ({ uid: t === 'admin-token' ? 'admin1' : t.startsWith('uid:') ? t.slice(4) : 'user1' }) }),
   messaging: () => ({ sendEachForMulticast: async ({ tokens }) => ({ successCount: tokens.length, failureCount: 0, responses: tokens.map(() => ({ success: true })) }) }),
   credential: { cert: () => ({}) },
   initializeApp() {},

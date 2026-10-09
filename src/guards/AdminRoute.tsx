@@ -2,13 +2,14 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, ShieldX } from 'lucide-react';
+import { firstAllowedPath, permissionForPath } from '@/lib/permissions';
 
 interface AdminRouteProps {
   children: React.ReactNode;
 }
 
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
-  const { user, userProfile, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin, isStaff, permissions } = useAuth();
   const location = useLocation();
 
   // Show loading state while checking auth
@@ -26,6 +27,15 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   // Redirect to admin login if not authenticated
   if (!user) {
     return <Navigate to="/admin" state={{ from: location }} replace />;
+  }
+
+  // Team members: only the pages the owner gave them. Anything else sends them
+  // to their first page (owner-only pages such as Team never open for them).
+  if (!isAdmin && isStaff) {
+    const needed = permissionForPath(location.pathname);
+    if (needed && permissions.includes(needed)) return <>{children}</>;
+    const home = firstAllowedPath(permissions);
+    if (home && home !== location.pathname) return <Navigate to={home} replace />;
   }
 
   // Show access denied if user is not admin

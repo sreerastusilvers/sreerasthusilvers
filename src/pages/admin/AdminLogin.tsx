@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { cleanPermissions, firstAllowedPath } from '@/lib/permissions';
 import { Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck, Sparkles, ArrowLeft } from 'lucide-react';
 
 const AdminLogin = () => {
@@ -11,12 +12,16 @@ const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login, user, isAdmin } = useAuth();
+  const { login, logout, user, isAdmin, isStaff, permissions } = useAuth();
   const navigate = useNavigate();
 
   React.useEffect(() => {
     if (user && isAdmin) navigate('/admin/dashboard');
-  }, [user, isAdmin, navigate]);
+    else if (user && isStaff) {
+      const home = firstAllowedPath(permissions);
+      if (home) navigate(home);
+    }
+  }, [user, isAdmin, isStaff, permissions, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +29,22 @@ const AdminLogin = () => {
     setLoading(true);
     try {
       const userProfile = await login(email, password);
+      if (userProfile.role === 'staff') {
+        // Team login: switched off by the owner, or no pages given yet.
+        const home = userProfile.isActive === false ? null : firstAllowedPath(cleanPermissions(userProfile.permissions));
+        if (!home) {
+          await logout();
+          setError(
+            userProfile.isActive === false
+              ? 'This team login has been switched off. Ask the owner to turn it back on.'
+              : 'No pages have been given to this login yet. Ask the owner to give you access.',
+          );
+          setLoading(false);
+          return;
+        }
+        navigate(home);
+        return;
+      }
       if (userProfile.role !== 'admin') {
         setError('Access denied. Admin credentials required.');
         setLoading(false);

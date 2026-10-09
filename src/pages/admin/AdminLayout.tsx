@@ -33,7 +33,14 @@ import {
   Coins,
   Mail,
   HardDrive,
+  UsersRound,
+  History,
+  Trash,
+  Factory,
+  Store,
 } from 'lucide-react';
+import { permissionForPath, staffRoleLabel } from '@/lib/permissions';
+import { useDealerUnread } from '@/components/admin/dealers/useDealerUnread';
 import { Button } from '@/components/ui/button';
 import StorageLimitWatcher from '@/components/admin/StorageLimitWatcher';
 import { useWhatsAppUnread } from '@/components/admin/whatsapp/useWhatsAppUnread';
@@ -53,13 +60,14 @@ const darkModeLogo = "/white_logo.png";
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [contentMediaOpen, setContentMediaOpen] = React.useState(false);
-  const { userProfile, logout } = useAuth();
+  const { userProfile, logout, isAdmin, can } = useAuth();
   const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   // Unread WhatsApp conversations for the sidebar badge.
-  const whatsappUnread = useWhatsAppUnread(userProfile?.role === 'admin');
+  const whatsappUnread = useWhatsAppUnread(can('whatsapp'));
+  const dealerUnread = useDealerUnread(can('dealerChats'));
 
   /**
    * Say so when a change does not reach the storefront.
@@ -111,6 +119,7 @@ const AdminLayout = () => {
     { path: '/admin/image-compressor', icon: ImageDown, label: 'Image Compressor' },
     { path: '/admin/marketing', icon: Bell, label: 'Marketing' },
     { path: '/admin/whatsapp', icon: MessagesSquare, label: 'WhatsApp' },
+    { path: '/admin/dealer-chats', icon: Store, label: 'Dealer Chats' },
     { path: '/admin/storage', icon: HardDrive, label: 'Storage' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
   ];
@@ -126,6 +135,29 @@ const AdminLayout = () => {
     { path: '/admin/reviews', icon: Star, label: 'Reviews' },
     { path: '/admin/site-settings', icon: Globe, label: 'Footer & Brand' },
   ];
+
+  // Owner sees everything; a team member only the pages they were given.
+  const allowed = (path: string) => {
+    if (isAdmin) return true;
+    const perm = permissionForPath(path);
+    return !!perm && can(perm);
+  };
+  const visibleMainItems = mainNavItems.filter((item) => item.path !== '/admin/settings' && allowed(item.path));
+  const visibleContentItems = contentMediaItems.filter((item) => allowed(item.path));
+  const ownerItems = isAdmin
+    ? [
+        { path: '/admin/team', icon: UsersRound, label: 'Team' },
+        { path: '/admin/dealers', icon: Factory, label: 'Manufacturers' },
+        { path: '/admin/activity', icon: History, label: 'Activity' },
+        { path: '/admin/recycle-bin', icon: Trash, label: 'Recycle Bin' },
+      ]
+    : [];
+  const navClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+      isActive
+        ? 'bg-[#FFF9E6] dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium'
+        : 'text-gray-700 dark:text-gray-300 hover:bg-[#FFF9E6]/50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+    }`;
 
   return (
     <div className="min-h-screen bg-[#FBF8F3] dark:bg-gray-950 font-['Poppins']" style={{ fontFamily: 'Poppins, sans-serif' }}>
@@ -179,7 +211,7 @@ const AdminLayout = () => {
         {/* Navigation */}
         <nav className="admin-nav-scroll flex-1 overflow-y-auto p-4 pr-3 space-y-1">
           {/* Main nav items (all except Settings) */}
-          {mainNavItems.slice(0, -1).map((item) => (
+          {visibleMainItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -200,10 +232,17 @@ const AdminLayout = () => {
                   <span className="sr-only"> unread conversations</span>
                 </span>
               )}
+              {item.path === '/admin/dealer-chats' && dealerUnread > 0 && (
+                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#008069] px-1.5 text-[11px] font-semibold tabular-nums text-white">
+                  {dealerUnread > 99 ? '99+' : dealerUnread}
+                  <span className="sr-only"> unread dealer chats</span>
+                </span>
+              )}
             </NavLink>
           ))}
 
           {/* Content & Media Dropdown */}
+          {visibleContentItems.length > 0 && (
           <div>
             <button
               onClick={() => setContentMediaOpen(!contentMediaOpen)}
@@ -221,7 +260,7 @@ const AdminLayout = () => {
             </button>
             {contentMediaOpen && (
               <div className="ml-4 mt-1 space-y-1 border-l-2 border-[#F5EFE6] dark:border-gray-700 pl-3">
-                {contentMediaItems.map((item) => (
+                {visibleContentItems.map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}
@@ -242,7 +281,22 @@ const AdminLayout = () => {
             )}
           </div>
 
+          )}
+
+          {ownerItems.length > 0 && (
+            <div className="pt-3 mt-3 border-t border-[#F5EFE6] dark:border-gray-800 space-y-1">
+              <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Team & safety</p>
+              {ownerItems.map((item) => (
+                <NavLink key={item.path} to={item.path} onClick={() => setSidebarOpen(false)} className={navClass}>
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
+
           {/* Settings */}
+          {isAdmin && (
           <NavLink
             to={mainNavItems[mainNavItems.length - 1].path}
             onClick={() => setSidebarOpen(false)}
@@ -257,6 +311,7 @@ const AdminLayout = () => {
             <Settings className="h-5 w-5" />
             <span>Settings</span>
           </NavLink>
+          )}
 
           {/* Logout Button - Inside Scroll Area */}
           <div className="pt-4 mt-4 border-t border-[#F5EFE6] dark:border-gray-800">
@@ -306,7 +361,12 @@ const AdminLayout = () => {
                     {userProfile?.username?.charAt(0).toUpperCase() || 'A'}
                   </span>
                 </div>
-                <span className="hidden md:block">{userProfile?.username || 'Admin'}</span>
+                <span className="hidden md:flex flex-col items-start leading-tight">
+                  <span>{userProfile?.username || 'Admin'}</span>
+                  {!isAdmin && (
+                    <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">{staffRoleLabel(userProfile?.staffRole)}</span>
+                  )}
+                </span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

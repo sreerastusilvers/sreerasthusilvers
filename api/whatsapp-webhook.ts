@@ -12,6 +12,11 @@
  *   whatsappThreads/{+phone}/messages/{id}  — inbound, outbound and internal notes.
  *                                             Inbound and outbound docs use Meta's
  *                                             message id (wamid) as the doc id.
+ *   dealers/{dealerId}(/messages/{id})      — the same for manufacturers. A number
+ *                                             listed in dealerPrivate (owner-only)
+ *                                             never lands in the customer inbox, and
+ *                                             nothing staff can read holds the number
+ *                                             or the dealer's WhatsApp profile name.
  *
  * Events handled:
  *   value.messages  — text, button, interactive, image, video, audio, document,
@@ -224,7 +229,15 @@ export async function applyStatus(db: WebhookDb, status: Record<string, any>, de
   const wamid = s(status?.id);
   const recipient = s(status?.recipient_id).replace(/\D/g, '');
   if (!wamid || !recipient) return 'skipped';
-  const threadRef = db.collection('whatsappThreads').doc(`+${recipient}`);
+  const result = await applyStatusAt(db, db.collection('whatsappThreads').doc(`+${recipient}`), wamid, status, deps);
+  if (result !== 'missing') return result;
+  // Not a customer message: perhaps one sent to a dealer.
+  const dealerId = await findDealerId(db, `+${recipient}`);
+  if (!dealerId) return result;
+  return applyStatusAt(db, db.collection('dealers').doc(dealerId), wamid, status, deps);
+}
+
+async function applyStatusAt(db: WebhookDb, threadRef: any, wamid: string, status: Record<string, any>, deps: WebhookDeps) {
   const msgRef = threadRef.collection('messages').doc(wamid);
   return db.runTransaction(async (tx) => {
     const msgSnap = await tx.get(msgRef);
@@ -252,6 +265,89 @@ export function marketingConsentChange(text: string): 'out' | 'in' | null {
   return null;
 }
 
+/** The dealer (manufacturer) behind a number, if the owner listed it. */
+export async function findDealerId(db: WebhookDb, phoneId: string): Promise<string | null> {
+  try {
+    const snap = await db.collection('dealerPrivate').where('phone', '==', phoneId).limit(1).get();
+    return snap.docs[0]?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A dealer's message: stored under dealers/{id}, tagged with the ticket it
+ * answers (the message they replied to, else the dealer's latest ticket).
+ */
+export async function storeDealerInbound(
+  db: WebhookDb,
+  dealerId: string,
+  msg: Record<string, any>,
+  contactName: string | null,
+  deps: WebhookDeps,
+) {
+  const summary = describeInbound(msg);
+  const tsMs = Number(msg.timestamp || 0) * 1000 || Date.now();
+  const inboundAt = deps.fromMillis(tsMs);
+  const dealerRef = db.collection('dealers').doc(dealerId);
+  const msgRef = dealerRef.collection('messages').doc(s(msg.id) || `inb_${tsMs}`);
+
+  const dealerSnap = await dealerRef.get();
+  const dealer = (dealerSnap.exists ? dealerSnap.data() : null) || {};
+  let ticketId = s(dealer.lastTicketId) || null;
+  let ticketNumber = s(dealer.lastTicketNumber) || null;
+  if (summary.contextMessageId) {
+    const quoted = await dealerRef.collection('messages').doc(summary.contextMessageId).get();
+    const q = quoted.exists ? quoted.data() || {} : {};
+    if (q.ticketId) {
+      ticketId = s(q.ticketId);
+      ticketNumber = s(q.ticketNumber) || null;
+    }
+  }
+
+  const batch = db.batch();
+  batch.set(
+    dealerRef,
+    {
+      lastMessage: summary.preview.slice(0, 200),
+      lastMessageType: summary.type,
+      lastDirection: 'inbound',
+      lastAt: inboundAt,
+      lastInboundAt: inboundAt,
+      lastInboundMessageId: s(msg.id) || null,
+      // Meta allows free-form replies for 24 hours after their last message.
+      replyWindowClosesAt: deps.fromMillis(tsMs + 24 * 60 * 60 * 1000),
+      unreadCount: deps.increment(1),
+      awaitingReply: false,
+      updatedAt: deps.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  batch.set(msgRef, {
+    direction: 'inbound',
+    type: summary.type,
+    text: summary.text,
+    rawType: summary.type,
+    media: summary.media || null,
+    location: summary.location || null,
+    reaction: summary.reaction || null,
+    contextMessageId: summary.contextMessageId || null,
+    providerMessageId: s(msg.id) || null,
+    ticketId,
+    ticketNumber,
+    createdAt: inboundAt,
+  });
+  if (ticketId) {
+    batch.set(db.collection('dealerTickets').doc(ticketId), { lastMessageAt: inboundAt, lastDealerReplyAt: inboundAt }, { merge: true });
+  }
+  if (contactName) {
+    // Owner-only: their WhatsApp profile name may be their real name.
+    batch.set(db.collection('dealerPrivate').doc(dealerId), { waProfileName: contactName }, { merge: true });
+  }
+  await batch.commit();
+  return 'stored';
+}
+
 export async function storeInbound(
   db: WebhookDb,
   msg: Record<string, any>,
@@ -261,6 +357,8 @@ export async function storeInbound(
   const from = s(msg?.from).replace(/\D/g, '');
   if (!from) return 'skipped';
   const phoneId = `+${from}`;
+  const dealerId = await findDealerId(db, phoneId);
+  if (dealerId) return storeDealerInbound(db, dealerId, msg, contactName, deps);
   const summary = describeInbound(msg);
   const tsMs = Number(msg.timestamp || 0) * 1000 || Date.now();
   const inboundAt = deps.fromMillis(tsMs);

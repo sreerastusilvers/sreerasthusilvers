@@ -617,14 +617,32 @@ const AdminOrderDetails = () => {
               <span>{formatPrice(order.codCharge || 0)}</span>
             </div>
           )}
-          {(order.discount || order.couponDiscount || 0) > 0 && (
-            <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
-              <span>
-                Discount{order.couponCode ? ` (${order.couponCode})` : ''}
-              </span>
-              <span>-{formatPrice(order.discount || order.couponDiscount || 0)}</span>
-            </div>
-          )}
+          {(() => {
+            // `discount` is coupon + offer on newer orders; older ones only had a coupon.
+            const offerOff = order.offerDiscount || 0;
+            const couponOff = order.couponDiscount ?? Math.max(0, (order.discount || 0) - offerOff);
+            return (
+              <>
+                {couponOff > 0 && (
+                  <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                    <span>Discount{order.couponCode ? ` (${order.couponCode})` : ''}</span>
+                    <span>-{formatPrice(couponOff)}</span>
+                  </div>
+                )}
+                {offerOff > 0 && (
+                  <div className="flex justify-between gap-3 text-emerald-700 dark:text-emerald-400">
+                    <span>
+                      Jewellery offer: free item{order.offerGiftName ? ` (${order.offerGiftName})` : ''}
+                      <span className="block text-xs text-emerald-700/80 dark:text-emerald-400/80">
+                        {formatPrice(order.offerCredit || 0)} credit for {formatPrice(order.offerQualifyingSpend || 0)} of jewellery
+                      </span>
+                    </span>
+                    <span>-{formatPrice(offerOff)}</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
           <div className="mt-2 flex justify-between border-t border-gray-200 pt-2 text-base font-bold text-gray-900 dark:border-zinc-800 dark:text-zinc-100">
             <span>Total</span>
             <span className="text-amber-600">{formatPrice(order.total || 0)}</span>

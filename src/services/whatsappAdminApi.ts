@@ -102,6 +102,15 @@ export const whatsappAdminApi = {
 
   configStatus: () => call<ConfigStatus>('config-status'),
 
+  // Dealer (manufacturer) chats: only the dealer id leaves the browser.
+  dealerTicket: (payload: { dealerId: string; subject: string; details?: string }) =>
+    call<{ ok: true; ticketId: string; number: string; messageId: string | null; via: 'template' | 'text' }>('dealer-ticket', payload),
+  dealerSend: (payload: { dealerId: string; text: string; ticketId?: string }) =>
+    call<{ ok: true; messageId: string | null }>('dealer-send', payload),
+  dealerSendMedia: (payload: { dealerId: string; media: { mime: string; filename: string; data: string }; caption?: string; ticketId?: string }) =>
+    call<{ ok: true; messageId: string | null; mediaId: string }>('dealer-send-media', payload),
+  dealerMarkRead: (dealerId: string) => call<{ ok: true; receiptSent: boolean }>('dealer-mark-read', { dealerId }),
+
   /**
    * Downloads media through the admin proxy and returns an object URL. Files
    * over 3.5 MB arrive in slices (Vercel's response limit), joined here.

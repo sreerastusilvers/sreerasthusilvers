@@ -15,7 +15,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  * coupons, silver rate) is server-controlled data.
  *
  * Body:    { items: [{ productId, quantity }], paymentMethod?, couponCode?,
- *            currency?, receipt?, notes?, amount? (client's claim, checked) }
+ *            offerGiftProductId?, currency?, receipt?, notes?,
+ *            amount? (client's claim, checked) }
+ *
+ * The jewellery offer (siteSettings/jewelleryOffer) is priced here too, with the
+ * same function the checkout uses; `offerGiftProductId` only picks WHICH cart
+ * line is the free item, never how much comes off.
  * Returns: { order_id, amount, currency, key_id }
  */
 
@@ -206,6 +211,208 @@ function couponDiscount(coupon: any, subtotal: number): number {
   return Math.min(coupon.value, subtotal);
 }
 
+
+// ── Jewellery offer: EXACT COPY of src/lib/jewelleryOffer.ts (from `export interface
+// OfferTier` to the end). Vercel functions here cannot import from src/, so the
+// copy is checked by scripts/tests/jewellery-offer.test.mjs; edit both together. ──
+// BEGIN jewelleryOffer copy
+export interface OfferTier {
+  /** Qualifying spend needed, in rupees. */
+  minSpend: number;
+  /** Credit towards the free item, in rupees. */
+  credit: number;
+}
+
+export interface JewelleryOfferSettings {
+  enabled: boolean;
+  title: string;
+  tiers: OfferTier[];
+  /** Category names or slugs whose items count towards the spend. */
+  qualifyingCategories: string[];
+  /** When false, applying a coupon switches the offer off for that order. */
+  combineWithCoupons: boolean;
+  /** Optional window, epoch milliseconds. */
+  startsAt?: number | null;
+  endsAt?: number | null;
+  terms?: string;
+}
+
+export const DEFAULT_JEWELLERY_OFFER: JewelleryOfferSettings = {
+  enabled: false,
+  title: 'Jewellery Offer: a free product on us',
+  tiers: [
+    { minSpend: 25000, credit: 7000 },
+    { minSpend: 50000, credit: 15000 },
+    { minSpend: 100000, credit: 30000 },
+  ],
+  qualifyingCategories: ['Jewellery'],
+  combineWithCoupons: false,
+  startsAt: null,
+  endsAt: null,
+  terms: '',
+};
+
+export interface OfferLine {
+  productId: string;
+  category?: string | null;
+  /** Price of one unit, in rupees. */
+  unitPrice: number;
+  quantity: number;
+}
+
+export interface OfferOptions {
+  /** The product the customer picked as the free item; best one is chosen when absent. */
+  giftProductId?: string | null;
+  couponApplied?: boolean;
+  now?: number;
+}
+
+export interface OfferResult {
+  /** Switched on and inside its dates. */
+  live: boolean;
+  /** Qualifying spend, not counting the free unit. */
+  qualifyingSpend: number;
+  tier: OfferTier | null;
+  credit: number;
+  /**
+   * Tier the cart's whole qualifying spend reaches. When no line can be the
+   * free item yet (a lone ₹30,000 ring cannot pay for itself), this is the
+   * credit an extra product would get.
+   */
+  unlocked: OfferTier | null;
+  /** The next tier up and how much more jewellery reaches it. */
+  nextTier: OfferTier | null;
+  shortfall: number;
+  giftProductId: string | null;
+  giftUnitPrice: number;
+  /** Rupees taken off the order total. */
+  discount: number;
+  /** The offer would apply but a coupon is used and they do not combine. */
+  blockedByCoupon: boolean;
+}
+
+/** "Jewellery", "jewellery", "JEWELRY" and "jewelry" all compare equal. */
+export function normCategory(v: unknown): string {
+  return String(v ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .replace(/jewelry/g, 'jewellery');
+}
+
+export function sanitizeOfferSettings(raw: unknown): JewelleryOfferSettings {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, any>;
+  const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const tiers = (Array.isArray(r.tiers) ? r.tiers : DEFAULT_JEWELLERY_OFFER.tiers)
+    .map((t: any) => ({ minSpend: Math.max(0, num(t?.minSpend)), credit: Math.max(0, num(t?.credit)) }))
+    .filter((t: OfferTier) => t.minSpend > 0 && t.credit > 0)
+    .sort((a: OfferTier, b: OfferTier) => a.minSpend - b.minSpend);
+  const cats = Array.isArray(r.qualifyingCategories)
+    ? r.qualifyingCategories.map((c: unknown) => String(c ?? '').trim()).filter(Boolean)
+    : DEFAULT_JEWELLERY_OFFER.qualifyingCategories;
+  const ms = (v: any): number | null => {
+    if (v == null || v === '') return null;
+    if (typeof v?.toMillis === 'function') return v.toMillis();
+    if (v instanceof Date) return v.getTime();
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  return {
+    enabled: r.enabled === true,
+    title: typeof r.title === 'string' && r.title.trim() ? r.title.trim() : DEFAULT_JEWELLERY_OFFER.title,
+    tiers,
+    qualifyingCategories: cats,
+    combineWithCoupons: r.combineWithCoupons === true,
+    startsAt: ms(r.startsAt),
+    endsAt: ms(r.endsAt),
+    terms: typeof r.terms === 'string' ? r.terms : '',
+  };
+}
+
+export function isOfferLive(s: JewelleryOfferSettings, now = Date.now()): boolean {
+  if (!s.enabled || s.tiers.length === 0) return false;
+  if (s.startsAt && now < s.startsAt) return false;
+  if (s.endsAt && now > s.endsAt) return false;
+  return true;
+}
+
+export function computeJewelleryOffer(
+  settings: JewelleryOfferSettings,
+  lines: OfferLine[],
+  opts: OfferOptions = {},
+): OfferResult {
+  const now = opts.now ?? Date.now();
+  const tiers = [...settings.tiers].sort((a, b) => a.minSpend - b.minSpend);
+  const allowed = new Set(settings.qualifyingCategories.map(normCategory));
+  const clean = lines
+    .map((l) => ({
+      productId: String(l.productId),
+      qualifies: allowed.has(normCategory(l.category)),
+      unitPrice: Math.max(0, Number(l.unitPrice) || 0),
+      quantity: Math.max(0, Math.floor(Number(l.quantity) || 0)),
+    }))
+    .filter((l) => l.quantity > 0);
+
+  const totalSpend = clean.reduce((s, l) => s + (l.qualifies ? l.unitPrice * l.quantity : 0), 0);
+  const tierFor = (spend: number) => {
+    let hit: OfferTier | null = null;
+    for (const t of tiers) if (spend >= t.minSpend) hit = t;
+    return hit;
+  };
+  const nextFor = (spend: number) => tiers.find((t) => spend < t.minSpend) || null;
+
+  const base: OfferResult = {
+    live: isOfferLive(settings, now),
+    qualifyingSpend: totalSpend,
+    tier: null,
+    credit: 0,
+    unlocked: tierFor(totalSpend),
+    nextTier: nextFor(totalSpend),
+    shortfall: 0,
+    giftProductId: null,
+    giftUnitPrice: 0,
+    discount: 0,
+    blockedByCoupon: false,
+  };
+  base.shortfall = base.nextTier ? base.nextTier.minSpend - totalSpend : 0;
+  if (!base.live || clean.length === 0) return base;
+
+  // Score every line as the free item; the requested one wins when it is in the cart.
+  const scored = clean
+    .filter((l) => l.unitPrice > 0)
+    .map((g) => {
+      const spend = totalSpend - (g.qualifies ? g.unitPrice : 0);
+      const tier = tierFor(spend);
+      const credit = tier ? tier.credit : 0;
+      return { g, spend, tier, credit, discount: Math.min(credit, g.unitPrice) };
+    });
+  if (scored.length === 0) return base;
+  const requested = opts.giftProductId ? scored.find((x) => x.g.productId === String(opts.giftProductId)) : undefined;
+  const best =
+    requested ||
+    [...scored].sort(
+      (a, b) => b.discount - a.discount || (a.g.productId < b.g.productId ? -1 : a.g.productId > b.g.productId ? 1 : 0),
+    )[0];
+
+  if (!best.tier) return base;
+  const next = nextFor(best.spend);
+  const result: OfferResult = {
+    ...base,
+    qualifyingSpend: best.spend,
+    tier: best.tier,
+    credit: best.credit,
+    nextTier: next,
+    shortfall: next ? next.minSpend - best.spend : 0,
+    giftProductId: best.g.productId,
+    giftUnitPrice: best.g.unitPrice,
+    discount: best.discount,
+  };
+  if (result.discount > 0 && opts.couponApplied && !settings.combineWithCoupons) {
+    return { ...result, discount: 0, blockedByCoupon: true };
+  }
+  return result;
+}
+// END jewelleryOffer copy
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -216,6 +423,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     paymentMethod?: string;
     shippingState?: string;
     couponCode?: string;
+    offerGiftProductId?: string;
     amount?: unknown;
     currency?: unknown;
     receipt?: unknown;
@@ -252,10 +460,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let serverTotal: number;
   try {
     // ── Settings (admin-managed documents, never client-supplied) ──
-    const [deliveryDoc, gstDoc, silverDoc] = await Promise.all([
+    const [deliveryDoc, gstDoc, silverDoc, offerDoc] = await Promise.all([
       getDoc('siteSettings/delivery'),
       getDoc('siteSettings/gst'),
       getDoc('siteSettings/silverRate'),
+      getDoc('siteSettings/jewelleryOffer'),
     ]);
     const delivery = normalizeDelivery(deliveryDoc);
     const gst = { ...DEFAULT_GST, ...(gstDoc || {}) };
@@ -267,6 +476,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     let subtotal = 0;
+    const offerLines: OfferLine[] = [];
     for (let i = 0; i < items.length; i++) {
       const productId = String(items[i].productId);
       const p = products[i];
@@ -298,6 +508,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: `Product ${productId} has no valid price` });
       }
       subtotal += unit * Number(items[i].quantity);
+      offerLines.push({ productId, category: p.category, unitPrice: unit, quantity: Number(items[i].quantity) });
     }
 
     // ── Coupon, re-validated server-side ──
@@ -342,7 +553,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const deliveryCharge = computeDeliveryCharge(subtotal, delivery, products, destState);
     const gstAmount = computeGstOnTop(subtotal, gst);
 
-    serverTotal = Math.max(0, subtotal + deliveryCharge + gstAmount - discount);
+    const offer = computeJewelleryOffer(sanitizeOfferSettings(offerDoc), offerLines, {
+      giftProductId: typeof body.offerGiftProductId === 'string' ? body.offerGiftProductId : null,
+      couponApplied: discount > 0,
+    });
+
+    serverTotal = Math.max(0, subtotal + deliveryCharge + gstAmount - discount - offer.discount);
   } catch (error: unknown) {
     return res.status(500).json({
       error: 'Could not price this order',

@@ -221,6 +221,13 @@ export interface Order {
   couponType?: 'percent' | 'flat';
   couponValue?: number;
   couponDiscount?: number;
+  // Jewellery offer snapshot: the free item and how much came off it.
+  offerTitle?: string;
+  offerCredit?: number;
+  offerDiscount?: number;
+  offerGiftProductId?: string;
+  offerGiftName?: string;
+  offerQualifyingSpend?: number;
   // GST snapshot — same rationale as coupon snapshot above.
   gstRate?: number;
   gstInclusive?: boolean;

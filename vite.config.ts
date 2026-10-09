@@ -129,9 +129,13 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react(), geminiApiDevMiddleware(), razorpayApiDevMiddleware(), catalogDevProxy()].filter(Boolean),
     resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
+      alias: [
+        // Every app import of Firestore goes through the audit layer (activity
+        // log + recycle bin for admin writes). The layer itself imports the
+        // real SDK as `@firebase/firestore`, which this exact match skips.
+        { find: /^firebase\/firestore$/, replacement: path.resolve(__dirname, "./src/lib/audit/firestore.ts") },
+        { find: "@", replacement: path.resolve(__dirname, "./src") },
+      ],
     },
     build: {
       rollupOptions: {
@@ -149,7 +153,7 @@ export default defineConfig(({ mode }) => {
            */
           manualChunks: {
             "vendor-react": ["react", "react-dom", "react-router-dom"],
-            "vendor-firebase": ["firebase/app", "firebase/auth", "firebase/firestore"],
+            "vendor-firebase": ["firebase/app", "firebase/auth", "@firebase/firestore"],
             "vendor-motion": ["framer-motion"],
           },
         },

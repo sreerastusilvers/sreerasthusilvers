@@ -93,7 +93,7 @@ export function normalizeWhatsAppNumber(raw: unknown): string | null {
 }
 
 /** Mirror of isCustomerRole in api/broadcast.ts. */
-export const isCustomerRole = (role: unknown) => role !== 'admin' && role !== 'delivery';
+export const isCustomerRole = (role: unknown) => role !== 'admin' && role !== 'delivery' && role !== 'staff';
 
 export interface CustomerRow {
   uid: string;

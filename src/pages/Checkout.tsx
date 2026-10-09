@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { JewelleryOfferCard, OfferSummaryRow } from '@/components/offer/JewelleryOfferCard';
 import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, animate, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { useCart } from '@/contexts/CartContext';
@@ -393,6 +394,7 @@ const MobileCheckout = () => {
     userId: user?.uid,
     // Apply the code the customer tapped in the offer ribbon.
     applyRememberedCode: true,
+    lines: items.map((i) => ({ id: i.id, price: i.price, quantity: i.quantity, category: i.category, name: i.name })),
   });
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
@@ -496,6 +498,7 @@ const MobileCheckout = () => {
           paymentMethod: selectedPaymentMethod,
           shippingState: selectedAddress.state,
           couponCode: pricing.appliedCoupon?.code,
+          offerGiftProductId: pricing.offer.discount > 0 ? pricing.offer.giftProductId || undefined : undefined,
           receipt: orderId,
           name: 'Sreerasthu Silvers',
           description: `Order ${orderId}`,
@@ -524,7 +527,8 @@ const MobileCheckout = () => {
         subtotal: subtotal,
         deliveryCharge: deliveryCharge,
         taxAmount: taxAmount,
-        discount: discount,
+        // Coupon plus jewellery offer; each is also stored on its own below.
+        discount: discount + pricing.offer.discount,
         total: total,
         ...(pricing.appliedCoupon ? {
           couponCode: pricing.appliedCoupon.code,
@@ -533,6 +537,14 @@ const MobileCheckout = () => {
           couponType: pricing.appliedCoupon.type,
           couponValue: pricing.appliedCoupon.value,
           couponDiscount: pricing.discount,
+        } : {}),
+        ...(pricing.offer.discount > 0 ? {
+          offerTitle: pricing.offerSettings.title,
+          offerCredit: pricing.offer.credit,
+          offerDiscount: pricing.offer.discount,
+          offerGiftProductId: pricing.offer.giftProductId || '',
+          offerGiftName: items.find((i) => i.id === pricing.offer.giftProductId)?.name || '',
+          offerQualifyingSpend: pricing.offer.qualifyingSpend,
         } : {}),
         gstRate: pricing.gst.rate,
         gstInclusive: !!pricing.gst.inclusive,
@@ -620,6 +632,7 @@ const MobileCheckout = () => {
           <span className="text-green-600 font-medium tabular-nums">− {formatPrice(discount)}</span>
         </div>
       )}
+      <OfferSummaryRow pricing={pricing} />
       <div className="flex justify-between text-sm">
         <span className="text-gray-600 dark:text-zinc-400">Delivery Fee</span>
         <span className={`font-medium tabular-nums ${deliveryCharge === 0 ? 'text-green-600' : 'text-gray-900 dark:text-zinc-100'}`}>
@@ -1259,6 +1272,8 @@ const MobileCheckout = () => {
               </div>
             </div>
 
+            <JewelleryOfferCard pricing={pricing} className="mx-4 mb-4" />
+
             {/* Bill Summary */}
             <div className="mx-4 mb-4">
               <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-4">
@@ -1280,6 +1295,7 @@ const MobileCheckout = () => {
                       <span className="text-green-600 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>− {formatPrice(discount)}</span>
                     </div>
                   )}
+                  <OfferSummaryRow pricing={pricing} />
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600 dark:text-zinc-400" style={{ fontFamily: "'Poppins', sans-serif" }}>{gstLabel}</span>
                     <span className="text-gray-900 dark:text-zinc-100 font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>{formatPrice(taxAmount)}</span>
@@ -1365,6 +1381,8 @@ const MobileCheckout = () => {
             </button>
           </div>
         </div>
+
+        <JewelleryOfferCard pricing={pricing} className="mx-4 mb-4" />
 
         {/* Bill Summary */}
         <div className="mx-4 mb-4">
@@ -2034,6 +2052,7 @@ const Checkout = () => {
     userId: user?.uid,
     // Apply the code the customer tapped in the offer ribbon.
     applyRememberedCode: true,
+    lines: items.map((i) => ({ id: i.id, price: i.price, quantity: i.quantity, category: i.category, name: i.name })),
   });
   const deliveryCharge = pricing.deliveryCharge;
   const taxAmount = pricing.gstAmount;
@@ -2133,6 +2152,7 @@ const Checkout = () => {
           paymentMethod: selectedPaymentMethod,
           shippingState: selectedAddress.state,
           couponCode: pricing.appliedCoupon?.code,
+          offerGiftProductId: pricing.offer.discount > 0 ? pricing.offer.giftProductId || undefined : undefined,
           receipt: orderId,
           name: 'Sreerasthu Silvers',
           description: `Order ${orderId}`,
@@ -2161,7 +2181,8 @@ const Checkout = () => {
         subtotal: subtotal,
         deliveryCharge: deliveryCharge,
         taxAmount: taxAmount,
-        discount: discount,
+        // Coupon plus jewellery offer; each is also stored on its own below.
+        discount: discount + pricing.offer.discount,
         total: total,
         ...(pricing.appliedCoupon ? {
           couponCode: pricing.appliedCoupon.code,
@@ -2170,6 +2191,14 @@ const Checkout = () => {
           couponType: pricing.appliedCoupon.type,
           couponValue: pricing.appliedCoupon.value,
           couponDiscount: pricing.discount,
+        } : {}),
+        ...(pricing.offer.discount > 0 ? {
+          offerTitle: pricing.offerSettings.title,
+          offerCredit: pricing.offer.credit,
+          offerDiscount: pricing.offer.discount,
+          offerGiftProductId: pricing.offer.giftProductId || '',
+          offerGiftName: items.find((i) => i.id === pricing.offer.giftProductId)?.name || '',
+          offerQualifyingSpend: pricing.offer.qualifyingSpend,
         } : {}),
         gstRate: pricing.gst.rate,
         gstInclusive: !!pricing.gst.inclusive,
@@ -2805,6 +2834,7 @@ const Checkout = () => {
 
           {/* Right Column - Coupons & Price Details */}
           <div className="space-y-6">
+            <JewelleryOfferCard pricing={pricing} />
             {/* Coupons */}
             <div className="bg-card border border-border rounded-lg p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -2901,6 +2931,7 @@ const Checkout = () => {
                     <span className="text-green-600">- {formatPrice(discount)}</span>
                   </div>
                 )}
+                <OfferSummaryRow pricing={pricing} labelClassName="text-muted-foreground" valueClassName="text-green-600" />
 
                 {pricing.freeDelivery && pricing.deliveryBeforeFree > 0 && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
@@ -3062,6 +3093,7 @@ const Checkout = () => {
                         <span className="font-medium text-green-600">− {formatPrice(discount)}</span>
                       </div>
                     )}
+                    <OfferSummaryRow pricing={pricing} className="flex items-center justify-between" labelClassName="text-green-600" valueClassName="font-medium text-green-600" />
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-zinc-400">{gstLabel}</span>
                       <span className="font-medium text-gray-900 dark:text-zinc-100">{formatPrice(taxAmount)}</span>

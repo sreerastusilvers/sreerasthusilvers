@@ -12,6 +12,22 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
+    // --- TEAM (staff logins, see src/lib/permissions.ts) ---
+    // users/{uid}: role 'staff', isActive, permissions: ['products', 'content', ...].
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isTeam() {
+      return isAuthenticated() && profile().get('role', '') == 'staff' && profile().get('isActive', true) != false;
+    }
+    // Owner, or an active team member given this page.
+    function can(perm) {
+      return isAdmin() || (isTeam() && perm in profile().get('permissions', []));
+    }
+    function isAdminOrTeam() {
+      return isAdmin() || isTeam();
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -24,7 +40,7 @@ service cloud.firestore {
     // --- USER RULES (Profiles, Addresses, History, & Security) ---
     match /users/{userId} {
       // Admin can see everyone; Users can see their own profile
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || can('customers');
       
       // Admin can create delivery boys; Users can create their own profile.
       // A self-created profile must be an ordinary customer: before this, the
@@ -44,6 +60,11 @@ service cloud.firestore {
       allow update: if isAdmin() || (
         isOwner(userId) &&
         request.resource.data.get('role', 'user') == resource.data.get('role', 'user') &&
+        // A team member cannot give themselves pages or switch themselves back on.
+        request.resource.data.get('permissions', null) == resource.data.get('permissions', null) &&
+        request.resource.data.get('staffRole', null) == resource.data.get('staffRole', null) &&
+        (resource.data.get('role', 'user') != 'staff' ||
+          request.resource.data.get('isActive', true) == resource.data.get('isActive', true)) &&
         ownAccountStatusChangeAllowed(
           resource.data.get('accountStatus', 'active'),
           request.resource.data.get('accountStatus', 'active'))
@@ -69,9 +90,9 @@ service cloud.firestore {
       
       // --- GIFT CARDS SUBCOLLECTION ---
       match /giftCards/{giftCardId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || can('giftCards');
         // Only admin can create/update/delete gift cards
-        allow write: if isAdmin();
+        allow write: if can('giftCards');
       }
 
       // --- WALLET (subcollection) ---
@@ -148,9 +169,9 @@ service cloud.firestore {
     // --- GIFT CARDS (global collection) ---
     match /giftCards/{cardId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin();
+      allow create: if can('giftCards');
       allow update: if isAuthenticated(); // For redemption
-      allow delete: if isAdmin();
+      allow delete: if can('giftCards');
     }
 
     // --- GIFT CARDS collection-group read (admin manager fast query) ---
@@ -158,16 +179,16 @@ service cloud.firestore {
     // collectionGroup('giftCards') query instead of scanning users one by one.
     // Writes stay governed by the specific per-user path rule above.
     match /{path=**}/giftCards/{giftCardId} {
-      allow read: if isAdmin();
+      allow read: if can('giftCards');
     }
     
     // --- REFUNDS (global collection) ---
     match /refunds/{refundId} {
       allow read: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid || isAdmin()
+        resource.data.userId == request.auth.uid || can('orders')
       );
       allow create: if isAuthenticated();
-      allow update: if isAdmin(); // Only admin processes refunds
+      allow update: if can('orders'); // Only admin processes refunds
       allow delete: if false;
     }
     
@@ -202,19 +223,23 @@ service cloud.firestore {
     // is written by the server with the Admin SDK, which bypasses these rules.
     match /siteSettings/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin()
+        || (docId in ['delivery', 'gst', 'customerSupport', 'coupons', 'jewelleryOffer'] && can('commerce'))
+        || (docId == 'silverRate' && can('silverRate'))
+        || (!(docId in ['delivery', 'gst', 'customerSupport', 'coupons', 'jewelleryOffer', 'silverRate', 'dealerChat', 'catalogVersion'])
+            && can('content'));
     }
     match /homeBanners/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if can('content');
     }
     match /homeCollections/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if can('content');
     }
     match /homeVideos/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if can('content');
     }
 
     // --- NEWSLETTER ---
@@ -226,7 +251,7 @@ service cloud.firestore {
         && request.resource.data.email == email
         && email.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$')
         && email.size() <= 254;
-      allow read, delete: if isAdmin();
+      allow read, delete: if can('newsletter');
       allow update: if false;
     }
 
@@ -244,7 +269,7 @@ service cloud.firestore {
 
     // --- ADMIN TOOLS ---
     match /promptHistory/{docId} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('aiTools');
     }
 
     // --- STORE MANAGEMENT (Products & Admin Data) ---
@@ -253,12 +278,12 @@ service cloud.firestore {
       // At most 5 photos per product (MAX_PRODUCT_IMAGES in src/services/mediaStorage.ts).
       // An update that leaves the photo list as it was is still allowed, so an
       // older product with more photos can get stock/price edits before it's trimmed.
-      allow create: if isAdmin() && productImages(request.resource.data).size() <= 5;
-      allow update: if (isAdmin() && (
+      allow create: if can('products') && productImages(request.resource.data).size() <= 5;
+      allow update: if (can('products') && (
         productImages(request.resource.data).size() <= 5 ||
         productImages(request.resource.data) == productImages(resource.data)
       )) || (isAuthenticated() && isStockOnlyChange());
-      allow delete: if isAdmin();
+      allow delete: if can('products');
     }
 
     function productImages(data) {
@@ -305,13 +330,13 @@ service cloud.firestore {
     
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if can('products');
     }
     
     // --- MARKETING (Banners) ---
     match /banners/{bannerId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if can('content');
     }
 
     // --- COUPONS ---
@@ -320,8 +345,8 @@ service cloud.firestore {
     // accurate. They must NOT be able to mutate any other coupon field.
     match /coupons/{couponId} {
       allow read: if true;
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
+      allow create, delete: if can('coupons');
+      allow update: if can('coupons') || (
         isAuthenticated()
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['usedCount', 'updatedAt'])
@@ -332,13 +357,13 @@ service cloud.firestore {
     // --- HOMEPAGE SHOWCASES ---
     match /showcases/{showcaseId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if can('content');
     }
 
     // --- HOMEPAGE TESTIMONIALS ---
     match /testimonials/{testimonialId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if can('content');
     }
     
     // --- CUSTOMER REVIEWS ---
@@ -349,14 +374,14 @@ service cloud.firestore {
       allow create: if isAuthenticated() && 
         request.resource.data.userId == request.auth.uid;
       // Only admin can update (approve/reject) or delete reviews
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if can('content');
+      allow delete: if can('content');
     }
     
     // --- HOMEPAGE GALLERY ---
     match /gallery/{imageId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if can('content');
     }
     
     // --- ORDER FULFILLMENT (Optimized for Delivery Partners with OTP Verification) ---
@@ -437,7 +462,7 @@ service cloud.firestore {
       
       // READ: Admins see all; Customers see their orders; Delivery boys see assigned orders
       allow read: if isAuthenticated() && 
-        (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || isAdmin());
+        (resource == null || isOrderOwner() || isAssignedDeliveryBoy() || can('orders'));
       
       // CREATE: Only authenticated users can create their own orders
       allow create: if isAuthenticated() && 
@@ -448,14 +473,14 @@ service cloud.firestore {
       // - Customers can cancel their own orders (pending/processing only)
       // - Customers can request returns for delivered orders
       // - Delivery boys can only update their assigned orders with valid status transitions
-      allow update: if isAdmin() || 
+      allow update: if can('orders') || 
         (isOrderOwner() && isValidCancellation()) ||
         (isOrderOwner() && isValidReturnRequest()) ||
         (isAssignedDeliveryBoy() && isValidCodPaymentCollectionUpdate()) ||
         (isAssignedDeliveryBoy() && isValidStatusTransition() && isValidOTPUpdate());
       
       // DELETE: Only admin can delete orders
-      allow delete: if isAdmin();
+      allow delete: if can('orders');
 
       // --- ORDER MESSAGES / IN-APP CHAT ---
       match /messages/{messageId} {
@@ -474,13 +499,13 @@ service cloud.firestore {
             && request.resource.data.channel == 'chat';
         }
 
-        allow read: if isAdmin() ||
+        allow read: if can('orders') ||
           (isMessageOrderOwner() && resource.data.visibility == 'customer');
 
-        allow create: if isAdmin() ||
+        allow create: if can('orders') ||
           (isMessageOrderOwner() && isCustomerMessageWrite());
 
-        allow update, delete: if isAdmin();
+        allow update, delete: if can('orders');
       }
     }
 
@@ -510,7 +535,7 @@ service cloud.firestore {
     // Admin-only. The /api/broadcast endpoint uses the admin SDK (bypasses
     // these rules) to write per-channel results back to the document.
     match /broadcastCampaigns/{campaignId} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('marketing');
     }
 
     // --- WHATSAPP TEMPLATE METADATA ---
@@ -519,8 +544,8 @@ service cloud.firestore {
     // are approved in Meta dashboard; this collection only stores metadata
     // for picker UX.
     match /whatsappTemplates/{templateId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow read: if can('whatsapp') || can('marketing');
+      allow write: if can('marketing');
     }
 
     // --- WHATSAPP INBOX (admin reply console) ---
@@ -530,16 +555,16 @@ service cloud.firestore {
     // internal notes are `messages` docs with direction 'note'; both are
     // covered by the admin-only rules below. Notes are never sent to Meta.
     match /whatsappThreads/{threadId} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('whatsapp');
       match /messages/{msgId} {
-        allow read, write: if isAdmin();
+        allow read, write: if can('whatsapp');
       }
     }
 
     // --- WHATSAPP QUICK-REPLY SNIPPETS (team inbox) ---
     // Saved answers the team inserts into replies. Admin-only.
     match /whatsappSnippets/{snippetId} {
-      allow read, write: if isAdmin();
+      allow read, write: if can('whatsapp');
     }
 
     // --- VIDEO CALL SIGNALLING ---
@@ -570,11 +595,55 @@ service cloud.firestore {
                     && request.resource.data.customerUid == request.auth.uid;
       // Customer can read/update (cancel) their own requests
       allow read, update: if isAuthenticated()
-                    && (resource.data.customerUid == request.auth.uid || isAdmin());
+                    && (resource.data.customerUid == request.auth.uid || can('videoCalls'));
       // Only admin can delete
-      allow delete: if isAdmin();
+      allow delete: if can('videoCalls');
       // List-level: admins see all; customers query filtered by their uid
       allow list: if isAuthenticated();
+    }
+  
+    // --- ACTIVITY LOG & RECYCLE BIN (src/lib/audit/firestore.ts) ---
+    // Every admin-panel write by the owner or a team member is logged, and
+    // anything removed is copied to the bin first. Entries can't be edited or
+    // removed by the team; only the owner reads them, restores or empties.
+    match /activityLog/{entryId} {
+      allow read: if isAdmin();
+      allow create: if isAdminOrTeam() && request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /recycleBin/{entryId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isAdminOrTeam() && request.resource.data.deletedByUid == request.auth.uid;
+    }
+
+    // --- DEALER (MANUFACTURER) CHATS ---
+    // Staff see a dealer's display name and chat only. The number and real
+    // name live in dealerPrivate, which only the owner (and the server) reads.
+    // Messages and tickets are written by the server (Admin SDK).
+    match /dealers/{dealerId} {
+      allow read: if can('dealerChats');
+      allow write: if isAdmin();
+      match /messages/{msgId} {
+        allow read: if can('dealerChats');
+        allow write: if isAdmin();
+      }
+    }
+    match /dealerPrivate/{dealerId} {
+      allow read, write: if isAdmin();
+    }
+    match /dealerTickets/{ticketId} {
+      allow read: if can('dealerChats');
+      // Staff may only open or close a ticket.
+      allow update: if isAdmin() || (
+        can('dealerChats')
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'closedAt', 'closedByUid', 'closedByName', 'updatedAt'])
+        && request.resource.data.status in ['open', 'closed']
+      );
+      allow create, delete: if isAdmin();
+    }
+    match /counters/{counterId} {
+      allow read, write: if isAdmin();
     }
   }
 }

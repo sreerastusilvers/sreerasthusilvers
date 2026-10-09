@@ -18,17 +18,23 @@ import {
   getDoc,
   serverTimestamp,
   deleteField,
+  onSnapshot,
 } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
 import { recordLoginAttempt } from '@/services/securityService';
 import { isCustomAvatarUrl } from '@/components/account/avatarUtils';
+import { cleanPermissions, type PermissionKey, type StaffRole } from '@/lib/permissions';
+import { setAuditActor } from '@/lib/audit/actor';
 
 // Types
 export interface UserProfile {
   uid: string;
   email: string | null;
   username: string;
-  role: 'user' | 'admin' | 'delivery';
+  role: 'user' | 'admin' | 'delivery' | 'staff';
+  /** Team members (role 'staff'): job label, pages they may open, and whether the login is switched on. */
+  staffRole?: StaffRole;
+  permissions?: PermissionKey[];
   createdAt: Date;
   updatedAt: Date;
   phone?: string;
@@ -47,6 +53,12 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isDelivery: boolean;
+  /** An active team login (role 'staff'). */
+  isStaff: boolean;
+  /** Pages a team member may open; every page for the owner. */
+  permissions: PermissionKey[];
+  /** Owner, or an active team member with this permission. */
+  can: (perm: PermissionKey) => boolean;
   signup: (email: string, password: string, username: string, phone?: string, sameForWhatsApp?: boolean) => Promise<void>;
   login: (email: string, password: string) => Promise<UserProfile>;
   loginWithGoogle: () => Promise<UserProfile>;
@@ -128,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const profile = await fetchUserProfile(updatedUser.uid);
             recordSessionLogin(updatedUser);
 
-            if (profile?.role !== 'admin') {
+            if (profile?.role !== 'admin' && profile?.role !== 'staff') {
               // Register for FCM push notifications (best-effort, non-blocking)
               PushNotifications.requestPermissionAndRegisterToken(updatedUser.uid).catch(() => {});
               PushNotifications.subscribeForegroundMessages(({ title, body, data }) => {
@@ -360,12 +372,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserProfile(updatedProfile);
   };
 
+  const isStaff = userProfile?.role === 'staff' && userProfile?.isActive !== false;
+
+  // Tell the audit layer who is acting, so admin-panel writes and deletes are
+  // logged and binned under their name (customers are never audited).
+  useEffect(() => {
+    if (userProfile && (userProfile.role === 'admin' || (userProfile.role === 'staff' && userProfile.isActive !== false))) {
+      setAuditActor({
+        uid: userProfile.uid,
+        name: userProfile.username || userProfile.email || 'Team member',
+        role: userProfile.role === 'admin' ? 'admin' : userProfile.staffRole || 'staff',
+      });
+    } else {
+      setAuditActor(null);
+    }
+  }, [userProfile]);
+
+  // A team login follows the owner's changes live: switching it off or taking a
+  // page away closes that page now, not at the next sign-in. (Rules and the
+  // server check on every request anyway; this keeps the screen honest.)
+  const watchedStaffUid = userProfile?.role === 'staff' || userProfile?.staffRole ? userProfile?.uid : null;
+  useEffect(() => {
+    if (!watchedStaffUid) return;
+    return onSnapshot(
+      doc(db, 'users', watchedStaffUid),
+      (snap) => {
+        const data = snap.data();
+        if (!data) return;
+        setUserProfile((prev) =>
+          prev && prev.uid === watchedStaffUid
+            ? { ...prev, role: data.role, staffRole: data.staffRole, permissions: data.permissions, isActive: data.isActive, username: data.username || prev.username }
+            : prev,
+        );
+      },
+      () => {},
+    );
+  }, [watchedStaffUid]);
+  const staffPermissions = isStaff ? cleanPermissions(userProfile?.permissions) : [];
+
   const value: AuthContextType = {
     user,
     userProfile,
     loading,
     isAdmin: userProfile?.role === 'admin',
     isDelivery: userProfile?.role === 'delivery',
+    isStaff,
+    permissions: staffPermissions,
+    can: (perm: PermissionKey) => userProfile?.role === 'admin' || (isStaff && staffPermissions.includes(perm)),
     signup,
     login,
     loginWithGoogle,

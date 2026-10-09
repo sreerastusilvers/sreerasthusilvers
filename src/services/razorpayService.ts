@@ -55,6 +55,8 @@ export interface RazorpayCheckoutOptions {
   shippingState?: string;
   /** Re-validated server-side; an invalid code is simply ignored. */
   couponCode?: string;
+  /** Which cart line is the jewellery offer's free item; the server prices it. */
+  offerGiftProductId?: string;
   /** Defaults to INR. */
   currency?: string;
   /** Receipt id stored against the Razorpay order (e.g. the internal order number). */
@@ -134,6 +136,7 @@ async function createOrder(options: RazorpayCheckoutOptions): Promise<CreateOrde
         paymentMethod: options.paymentMethod,
         shippingState: options.shippingState,
         couponCode: options.couponCode,
+        offerGiftProductId: options.offerGiftProductId,
         amount: amountInPaise,
         currency: options.currency || 'INR',
         receipt: options.receipt,

@@ -1,3 +1,4 @@
+import { JewelleryOfferCard, OfferSummaryRow } from '@/components/offer/JewelleryOfferCard';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { ArrowLeft, MoreVertical, Star, Plus, Minus, Trash2, ChevronRight } from 'lucide-react';
@@ -86,6 +87,7 @@ const MobileCart = () => {
   // Delivery is quoted at the home-state rate until an address is picked.
   const pricing = useCheckoutPricing(subtotal, items.length === 0, 'Razorpay', {
     productIds: items.map((i) => i.id),
+    lines: items.map((i) => ({ id: i.id, price: i.price, quantity: i.quantity, category: i.category, name: i.name })),
   });
 
   // Desktop users hitting /cart should see the slide-over drawer instead of
@@ -297,6 +299,8 @@ const MobileCart = () => {
               </div>
             )}
 
+            <JewelleryOfferCard pricing={pricing} className="mb-3" />
+
             {/* Order Summary */}
             <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl p-4">
               <h3 className="text-base font-bold text-gray-900 dark:text-zinc-100 mb-3">Order Summary</h3>
@@ -323,6 +327,7 @@ const MobileCart = () => {
                     <span className="text-green-600 font-medium">-{formatPrice(promoDiscount)}</span>
                   </div>
                 )}
+                <OfferSummaryRow pricing={pricing} />
                 
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600 dark:text-zinc-400">Delivery</span>

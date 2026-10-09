@@ -39,7 +39,7 @@ export const config = { maxDuration: 60 };
 
 /** Shoppers sign up with role 'user'; older accounts say 'customer' or nothing. */
 export function isCustomerRole(role: unknown) {
-  return role !== 'admin' && role !== 'delivery';
+  return role !== 'admin' && role !== 'delivery' && role !== 'staff';
 }
 
 /**

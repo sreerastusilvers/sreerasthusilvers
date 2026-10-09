@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { JewelleryOfferNote } from '@/components/offer/JewelleryOfferNote';
 import { auth } from "@/config/firebase";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1131,6 +1132,8 @@ const ProductDetail = () => {
                     </div>
                   );
                 })()}
+
+                <JewelleryOfferNote category={product.category} />
 
                 {/* Divider */}
                 <div className="border-t border-border my-4" />

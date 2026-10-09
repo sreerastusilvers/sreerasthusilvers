@@ -6,9 +6,6 @@
 import { useEffect, useState } from 'react';
 import {
   AlertCircle,
-  Check,
-  CheckCheck,
-  Clock,
   Download,
   FileText,
   ImageIcon,
@@ -24,16 +21,11 @@ import {
 import { whatsappAdminApi } from '@/services/whatsappAdminApi';
 import { formatWhatsAppText } from './WhatsAppPreviewBubble';
 import { describeSendError, formatBubbleTime, type DeliveryStatus, type ThreadMessage } from './inboxModel';
+import { WaBubble, WaTicks } from '@/components/wa/WaKit';
 
-export const DeliveryTicks = ({ status, className = '' }: { status?: DeliveryStatus | null; className?: string }) => {
-  if (!status) return null;
-  const common = `h-3.5 w-3.5 flex-none ${className}`;
-  if (status === 'failed') return <AlertCircle className={`${common} text-red-600 dark:text-red-400`} aria-label="Not delivered" />;
-  if (status === 'read') return <CheckCheck className={`${common} text-[#53bdeb]`} aria-label="Read" />;
-  if (status === 'delivered') return <CheckCheck className={`${common} text-[#667781] dark:text-[#8696a0]`} aria-label="Delivered" />;
-  if (status === 'sent') return <Check className={`${common} text-[#667781] dark:text-[#8696a0]`} aria-label="Sent" />;
-  return <Clock className={`${common} text-[#667781] dark:text-[#8696a0]`} aria-label="Sending" />;
-};
+export const DeliveryTicks = ({ status, className = '' }: { status?: DeliveryStatus | null; className?: string }) => (
+  <WaTicks status={status} className={className} />
+);
 
 const MEDIA_META: Record<string, { label: string; Icon: typeof ImageIcon }> = {
   image: { label: 'Photo', Icon: ImageIcon },
@@ -43,7 +35,7 @@ const MEDIA_META: Record<string, { label: string; Icon: typeof ImageIcon }> = {
   document: { label: 'Document', Icon: FileText },
 };
 
-const MediaBlock = ({ m, demo }: { m: ThreadMessage; demo: boolean }) => {
+export const MediaBlock = ({ m, demo }: { m: ThreadMessage; demo: boolean }) => {
   const type = m.type || 'document';
   const meta = MEDIA_META[type] || MEDIA_META.document;
   const label = type === 'audio' && m.media?.voice ? 'Voice message' : meta.label;
@@ -80,7 +72,7 @@ const MediaBlock = ({ m, demo }: { m: ThreadMessage; demo: boolean }) => {
   };
 
   if (url && (type === 'image' || type === 'sticker')) {
-    return <img src={url} alt={m.media?.caption || label} className={`mb-1 rounded-md ${type === 'sticker' ? 'h-32 w-32 object-contain' : 'max-h-80 w-full object-cover'}`} />;
+    return <img src={url} alt={m.media?.caption || label} className={`mb-1 rounded-[6px] ${type === 'sticker' ? 'h-32 w-32 object-contain' : 'max-h-[340px] w-full min-w-[220px] object-cover'}`} />;
   }
   if (url && type === 'video') return <video src={url} controls className="mb-1 max-h-80 w-full rounded-md" />;
   if (url && type === 'audio') return <audio src={url} controls className="mb-1 w-64 max-w-full" />;
@@ -109,7 +101,7 @@ const MediaBlock = ({ m, demo }: { m: ThreadMessage; demo: boolean }) => {
   );
 };
 
-const LocationBlock = ({ m }: { m: ThreadMessage }) => {
+export const LocationBlock = ({ m }: { m: ThreadMessage }) => {
   const l = m.location!;
   const href = `https://www.google.com/maps?q=${encodeURIComponent(`${l.latitude},${l.longitude}`)}`;
   return (
@@ -130,16 +122,17 @@ const LocationBlock = ({ m }: { m: ThreadMessage }) => {
   );
 };
 
-export const MessageBubble = ({ m, demo = false }: { m: ThreadMessage; demo?: boolean }) => {
+/** One timeline entry: customer message, team reply (with ticks) or internal note. */
+export const MessageBubble = ({ m, demo = false, tail = true }: { m: ThreadMessage; demo?: boolean; tail?: boolean }) => {
   if (m.direction === 'note') {
     return (
-      <li className="flex justify-center px-1">
-        <div className="w-full max-w-[92%] rounded-lg border border-[#f5d76e]/70 bg-[#fff6d6] px-3 py-2 text-[13.5px] text-[#4a3b00] shadow-[0_1px_0.5px_rgba(11,20,26,0.08)] dark:border-[#8a7420]/50 dark:bg-[#3a3418] dark:text-[#f3e6b0] md:max-w-[72%]">
-          <p className="mb-0.5 flex items-center gap-1 text-[11px] font-medium text-[#7a6200] dark:text-[#d9c46e]">
+      <li className="my-2 flex justify-center px-[4%] md:px-[7%]">
+        <div className="w-full max-w-[92%] rounded-[7.5px] bg-[var(--wa-note)] px-3 py-2 text-[13.5px] leading-[19px] text-[var(--wa-note-text)] shadow-[var(--wa-shadow)] md:max-w-[72%]">
+          <p className="mb-0.5 flex items-center gap-1 text-[11.5px] font-medium opacity-80">
             <Lock className="h-3 w-3" aria-hidden /> Internal note · only your team sees this
           </p>
           <p className="whitespace-pre-wrap break-words">{m.text}</p>
-          <p className="mt-0.5 text-right text-[11px] text-[#7a6200]/80 dark:text-[#d9c46e]/80">
+          <p className="mt-0.5 text-right text-[11px] opacity-75">
             {m.actorName || m.actorEmail || 'Team'} · {formatBubbleTime(m.createdAt)}
           </p>
         </div>
@@ -151,55 +144,50 @@ export const MessageBubble = ({ m, demo = false }: { m: ThreadMessage; demo?: bo
   const isMedia = !!m.media && !!MEDIA_META[m.type || ''];
   const isTemplate = m.type === 'template';
   const showText = !!m.text && !(isTemplate && m.text.startsWith('[template:'));
+  const sender = outbound ? m.actorName || m.actorEmail : null;
 
   return (
-    <li className={`flex ${outbound ? 'justify-end' : 'justify-start'}`}>
-      <div className="max-w-[86%] md:max-w-[65%]">
-        <div
-          className={`rounded-lg px-2.5 pb-1.5 pt-1.5 text-[14.2px] leading-[1.38] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${
-            outbound
-              ? 'rounded-tr-none bg-[#d9fdd3] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]'
-              : 'rounded-tl-none bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]'
-          }`}
-        >
-          {isTemplate && (
-            <p className="mb-1 flex items-center gap-1 text-[11px] font-medium text-[#667781] dark:text-[#aebac1]">
-              <LayoutTemplate className="h-3 w-3" aria-hidden /> Template · {m.template?.name}
-            </p>
-          )}
-          {isMedia && <MediaBlock m={m} demo={demo} />}
-          {m.type === 'location' && m.location && <LocationBlock m={m} />}
-          {m.type === 'contacts' && (
-            <p className="mb-1 flex items-center gap-1.5 text-[13px]">
-              <UserRound className="h-4 w-4" aria-hidden /> Shared a contact
-            </p>
-          )}
-          {showText && m.type !== 'location' && <p className="whitespace-pre-wrap break-words">{formatWhatsAppText(m.text || '')}</p>}
-          {isTemplate && !showText && m.template?.params?.length ? (
-            <ol className="list-decimal pl-4 text-[13px]">
-              {m.template.params.map((p, i) => (
-                <li key={i}>{p}</li>
-              ))}
-            </ol>
-          ) : null}
-          {!showText && !isMedia && !isTemplate && m.type !== 'location' && m.type !== 'contacts' && (
-            <p className="italic text-[#667781] dark:text-[#8696a0]">Empty message</p>
-          )}
-          <p className="mt-0.5 flex items-center justify-end gap-1 text-[11px] text-[#667781] dark:text-[#8696a0]">
-            {outbound && m.actorEmail ? <span className="mr-1 hidden truncate sm:inline">{m.actorName || m.actorEmail}</span> : null}
-            {formatBubbleTime(m.createdAt)}
-            {/* Messages sent before status tracking have no status: Meta accepted them. */}
-            {outbound && <DeliveryTicks status={m.status || (m.providerMessageId ? 'sent' : 'accepted')} />}
+    <WaBubble
+      out={outbound}
+      tail={tail}
+      time={formatBubbleTime(m.createdAt)}
+      // Messages sent before status tracking have no status: Meta accepted them.
+      status={outbound ? m.status || (m.providerMessageId ? 'sent' : 'accepted') : undefined}
+      header={
+        isTemplate || sender ? (
+          <p className="mb-0.5 flex items-center gap-1 text-[12px] font-medium leading-[18px] text-[var(--wa-teal)]">
+            {isTemplate && <LayoutTemplate className="h-3 w-3" aria-hidden />}
+            {[sender, isTemplate ? `Template · ${m.template?.name || ''}` : null].filter(Boolean).join(' · ')}
           </p>
-        </div>
-        {outbound && m.status === 'failed' && (
+        ) : null
+      }
+      media={
+        isMedia ? (
+          <MediaBlock m={m} demo={demo} />
+        ) : m.type === 'location' && m.location ? (
+          <LocationBlock m={m} />
+        ) : null
+      }
+      footer={
+        outbound && m.status === 'failed' ? (
           <p className="mt-1 flex items-start justify-end gap-1 text-right text-[11.5px] text-red-700 dark:text-red-300" role="status">
             <AlertCircle className="mt-[2px] h-3 w-3 flex-none" aria-hidden />
             {describeSendError(m.error)}
           </p>
-        )}
-      </div>
-    </li>
+        ) : null
+      }
+    >
+      {m.type === 'contacts' && (
+        <span className="flex items-center gap-1.5 text-[13px]">
+          <UserRound className="h-4 w-4" aria-hidden /> Shared a contact
+        </span>
+      )}
+      {showText && m.type !== 'location' && formatWhatsAppText(m.text || '')}
+      {isTemplate && !showText && m.template?.params?.length ? m.template.params.join(' · ') : null}
+      {!showText && !isMedia && !isTemplate && m.type !== 'location' && m.type !== 'contacts' && (
+        <span className="italic text-[var(--wa-muted)]">Empty message</span>
+      )}
+    </WaBubble>
   );
 };
 

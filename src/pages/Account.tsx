@@ -11,6 +11,7 @@ import Header from '@/components/Header';
 import CategoryIconNav from '@/components/CategoryIconNav';
 import AccountShell from '@/components/account/AccountShell';
 import UserAvatar from '@/components/account/UserAvatar';
+import InstallAppCard from '@/components/account/InstallAppCard';
 import { useAccountIdentity } from '@/components/account/useAccountIdentity';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -1192,6 +1193,9 @@ const AccountPage = () => {
               </div>
             </div>
 
+            {/* Install app (renders only where installable) */}
+            <InstallAppCard className="mb-3" />
+
             {/* Menu list — drawer style */}
             <div className="bg-card rounded-lg shadow-sm overflow-hidden">
               {accountMenu.map((item) => (
@@ -1463,6 +1467,8 @@ const AccountPage = () => {
       <CategoryIconNav />
       <div className="min-h-[60vh] bg-muted" style={{ fontFamily: "'Poppins', sans-serif" }}>
         <AccountShell>
+                {/* Install app (renders only where installable) */}
+                <InstallAppCard className="mb-4" />
                 <div className="bg-card rounded-lg shadow-sm">
                   {/* Order Tabs */}
                   <div className="border-b border-border px-6 pt-6">

@@ -198,14 +198,29 @@ async function authenticate(req: VercelRequest): Promise<Caller> {
     { headers: { Authorization: `Bearer ${token}` } },
   );
   let role: string | undefined;
+  let teamCanManage = false;
   if (resp.ok) {
-    const json = (await resp.json()) as { fields?: { role?: { stringValue?: string } } };
+    const json = (await resp.json()) as {
+      fields?: {
+        role?: { stringValue?: string };
+        isActive?: { booleanValue?: boolean };
+        permissions?: { arrayValue?: { values?: Array<{ stringValue?: string }> } };
+      };
+    };
     role = json.fields?.role?.stringValue;
+    // A team member who edits products or site content uploads and replaces
+    // pictures like the owner does (see src/lib/permissions.ts).
+    const perms = (json.fields?.permissions?.arrayValue?.values || []).map((v) => v.stringValue || '');
+    teamCanManage =
+      role === 'staff' && json.fields?.isActive?.booleanValue !== false && perms.some((p) => TEAM_MEDIA_PERMISSIONS.includes(p));
   } else if (resp.status !== 404) {
     throw new HttpError(502, 'SERVER', `Could not verify your account (HTTP ${resp.status}).`);
   }
-  return { uid, isAdmin: role === 'admin' };
+  return { uid, isAdmin: role === 'admin' || teamCanManage };
 }
+
+/** Team permissions whose pages upload store pictures. */
+const TEAM_MEDIA_PERMISSIONS = ['products', 'content', 'marketing', 'aiTools', 'storage', 'giftCards', 'coupons', 'commerce'];
 
 // ── Usage vs free tier ──────────────────────────────────────────────────────
 

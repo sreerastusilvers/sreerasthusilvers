@@ -1,0 +1,139 @@
+/*
+ * WhatsApp look for the admin chat screens (customer inbox, dealer chats).
+ * Colours follow WhatsApp Web / Android (2024 refresh). Everything is scoped
+ * to `.wa` so it never leaks into the rest of the admin panel.
+ */
+.wa {
+  --wa-bg: #ffffff;
+  --wa-header: #f0f2f5;
+  --wa-header-m: #ffffff;
+  --wa-chat: #efeae2;
+  --wa-out: #d9fdd3;
+  --wa-in: #ffffff;
+  --wa-text: #111b21;
+  --wa-text-2: #3b4a54;
+  --wa-muted: #667781;
+  --wa-icon: #54656f;
+  --wa-teal: #008069;
+  --wa-green: #1daa61;
+  --wa-badge: #25d366;
+  --wa-badge-text: #ffffff;
+  --wa-time-unread: #1daa61;
+  --wa-divider: #e9edef;
+  --wa-border: #d1d7db;
+  --wa-hover: #f5f6f6;
+  --wa-active: #f0f2f5;
+  --wa-input: #ffffff;
+  --wa-input-m: #ffffff;
+  --wa-search: #f0f2f5;
+  --wa-chip: #f0f2f5;
+  --wa-chip-text: #54656f;
+  --wa-chip-on: #d9fdd3;
+  --wa-chip-on-text: #15603e;
+  --wa-day: #ffffff;
+  --wa-day-text: #54656f;
+  --wa-system: #ffeecd;
+  --wa-system-text: #54656f;
+  --wa-tick: #53bdeb;
+  --wa-meta: #667781;
+  --wa-meta-out: #667781;
+  --wa-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  --wa-empty: #f0f2f5;
+  --wa-note: #fff6d6;
+  --wa-note-text: #4a3b00;
+  --wa-doodle-opacity: 0.4;
+  --wa-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='%23cbbfae' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 30l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z'/%3E%3Cpath d='M92 22c-4-5-12-3-12 4 0 6 12 12 12 12s12-6 12-12c0-7-8-9-12-4z'/%3E%3Ccircle cx='170' cy='32' r='11'/%3E%3Cpath d='M164 21l6-7 6 7'/%3E%3Cpath d='M206 70h22v14h-14l-6 5v-5h-2z'/%3E%3Cpath d='M40 96l10-10h14l10 10-17 18z'/%3E%3Cpath d='M50 86l7 28 7-28M40 96h34'/%3E%3Cpath d='M120 78c8 0 14 6 14 14s-14 22-14 22-14-14-14-22 6-14 14-14z'/%3E%3Ccircle cx='120' cy='92' r='4'/%3E%3Cpath d='M182 112v-22l16-4v22'/%3E%3Ccircle cx='178' cy='112' r='4'/%3E%3Ccircle cx='194' cy='108' r='4'/%3E%3Cpath d='M18 160c10-14 26-14 34 0-8 12-24 12-34 0z'/%3E%3Cpath d='M18 160h34'/%3E%3Crect x='86' y='146' width='26' height='20' rx='4'/%3E%3Ccircle cx='99' cy='156' r='5'/%3E%3Cpath d='M92 146l3-4h8l3 4'/%3E%3Cpath d='M150 150l18 18M168 150l-18 18'/%3E%3Ccircle cx='159' cy='159' r='14'/%3E%3Cpath d='M214 148c0 10-8 18-8 18s-8-8-8-18a8 8 0 0116 0z'/%3E%3Cpath d='M30 206h26M43 193v26'/%3E%3Cpath d='M96 196q8-10 16 0t16 0'/%3E%3Cpath d='M96 210q8-10 16 0t16 0'/%3E%3Cpath d='M172 198l10 6 10-6v14l-10 6-10-6z'/%3E%3Cpath d='M182 204v14'/%3E%3C/svg%3E");
+  color: var(--wa-text);
+  font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, 'Lucida Grande', Arial, Ubuntu, Cantarell, 'Fira Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .wa {
+  --wa-bg: #111b21;
+  --wa-header: #202c33;
+  --wa-header-m: #1f2c34;
+  --wa-chat: #0b141a;
+  --wa-out: #005c4b;
+  --wa-in: #202c33;
+  --wa-text: #e9edef;
+  --wa-text-2: #d1d7db;
+  --wa-muted: #8696a0;
+  --wa-icon: #aebac1;
+  --wa-teal: #00a884;
+  --wa-green: #00a884;
+  --wa-badge: #00a884;
+  --wa-badge-text: #111b21;
+  --wa-time-unread: #00a884;
+  --wa-divider: #222d34;
+  --wa-border: #2a3942;
+  --wa-hover: #202c33;
+  --wa-active: #2a3942;
+  --wa-input: #2a3942;
+  --wa-input-m: #1f2c34;
+  --wa-search: #202c33;
+  --wa-chip: #202c33;
+  --wa-chip-text: #8696a0;
+  --wa-chip-on: #103529;
+  --wa-chip-on-text: #00a884;
+  --wa-day: #182229;
+  --wa-day-text: #8696a0;
+  --wa-system: #182229;
+  --wa-system-text: #ffd279;
+  --wa-meta: #8696a0;
+  --wa-meta-out: rgba(255, 255, 255, 0.6);
+  --wa-empty: #222e35;
+  --wa-note: #3a3418;
+  --wa-note-text: #f3e6b0;
+  --wa-doodle-opacity: 0.07;
+  --wa-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 30l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z'/%3E%3Cpath d='M92 22c-4-5-12-3-12 4 0 6 12 12 12 12s12-6 12-12c0-7-8-9-12-4z'/%3E%3Ccircle cx='170' cy='32' r='11'/%3E%3Cpath d='M164 21l6-7 6 7'/%3E%3Cpath d='M206 70h22v14h-14l-6 5v-5h-2z'/%3E%3Cpath d='M40 96l10-10h14l10 10-17 18z'/%3E%3Cpath d='M50 86l7 28 7-28M40 96h34'/%3E%3Cpath d='M120 78c8 0 14 6 14 14s-14 22-14 22-14-14-14-22 6-14 14-14z'/%3E%3Ccircle cx='120' cy='92' r='4'/%3E%3Cpath d='M182 112v-22l16-4v22'/%3E%3Ccircle cx='178' cy='112' r='4'/%3E%3Ccircle cx='194' cy='108' r='4'/%3E%3Cpath d='M18 160c10-14 26-14 34 0-8 12-24 12-34 0z'/%3E%3Cpath d='M18 160h34'/%3E%3Crect x='86' y='146' width='26' height='20' rx='4'/%3E%3Ccircle cx='99' cy='156' r='5'/%3E%3Cpath d='M92 146l3-4h8l3 4'/%3E%3Cpath d='M150 150l18 18M168 150l-18 18'/%3E%3Ccircle cx='159' cy='159' r='14'/%3E%3Cpath d='M214 148c0 10-8 18-8 18s-8-8-8-18a8 8 0 0116 0z'/%3E%3Cpath d='M30 206h26M43 193v26'/%3E%3Cpath d='M96 196q8-10 16 0t16 0'/%3E%3Cpath d='M96 210q8-10 16 0t16 0'/%3E%3Cpath d='M172 198l10 6 10-6v14l-10 6-10-6z'/%3E%3Cpath d='M182 204v14'/%3E%3C/svg%3E");
+}
+
+.wa-wallpaper {
+  position: relative;
+  background-color: var(--wa-chat);
+  isolation: isolate;
+}
+.wa-wallpaper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--wa-doodle);
+  background-size: 240px 240px;
+  opacity: var(--wa-doodle-opacity);
+  pointer-events: none;
+}
+
+.wa-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--wa-scroll-rgb, 11, 20, 26), 0.2) transparent;
+}
+.dark .wa-scroll {
+  --wa-scroll-rgb: 255, 255, 255;
+}
+.wa-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.wa-scroll::-webkit-scrollbar-thumb {
+  background: rgba(var(--wa-scroll-rgb, 11, 20, 26), 0.2);
+}
+
+/* Mobile: a conversation slides in over the list, like the app. */
+@keyframes wa-slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.wa-enter {
+  animation: wa-slide-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wa-enter {
+    animation: none;
+  }
+}

@@ -1,3 +1,4 @@
+import { JewelleryOfferCard, OfferSummaryRow } from '@/components/offer/JewelleryOfferCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Loader2, Shield, RotateCcw, Truck, ChevronDown, Tag, Heart, Search, ScanLine, Mic, Check } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
@@ -25,6 +26,7 @@ const ShoppingCart = () => {
   // checkout once the shipping state is known.
   const pricing = useCheckoutPricing(subtotal, items.length === 0, 'Razorpay', {
     productIds: items.map((i) => i.id),
+    lines: items.map((i) => ({ id: i.id, price: i.price, quantity: i.quantity, category: i.category, name: i.name })),
   });
 
   // On mobile, redirect to /checkout instead of opening the drawer
@@ -420,6 +422,8 @@ const ShoppingCart = () => {
 
                   {/* ─── ORDER SUMMARY (scrolls with items) ─── */}
                   <div className="bg-background px-6 py-6 space-y-5 pb-24 md:pb-6">
+                    <JewelleryOfferCard pricing={pricing} className="mb-3" />
+
                     {/* Order Summary Heading */}
                     <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
                       Order Summary
@@ -497,6 +501,7 @@ const ShoppingCart = () => {
                           <span className="text-green-600 font-medium">− ₹ {discount.toLocaleString()}</span>
                         </div>
                       )}
+                      <OfferSummaryRow pricing={pricing} labelClassName="text-muted-foreground" />
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Delivery</span>
                         <span className={freeDelivery ? 'text-green-600 font-medium' : 'text-foreground'}>

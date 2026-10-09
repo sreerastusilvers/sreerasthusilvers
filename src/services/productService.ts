@@ -148,12 +148,12 @@ export const updateProduct = async (productId: string, updates: Partial<Product>
 // Delete a product
 export const deleteProduct = async (productId: string): Promise<void> => {
   const ref = doc(db, PRODUCTS_COLLECTION, productId);
-  const snap = await getDoc(ref);
+  // The admin panel's deleteDoc copies the product into the recycle bin first.
+  // Its photos stay in storage so a restore brings them back; they are freed
+  // when the product is emptied from the bin (AdminRecycleBin → purge).
   await deleteDoc(ref);
   invalidateProductCache();
   requestCatalogRefresh([productId]);
-  // Background: the product is gone either way; cleanup only frees storage.
-  void releaseProductImages(snap.data()?.media?.images || []);
 };
 
 /**

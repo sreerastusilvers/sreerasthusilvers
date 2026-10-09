@@ -19,6 +19,29 @@ import {
   type Coupon,
 } from '@/services/couponService';
 import { getActiveProductsCached } from '@/services/productCache';
+import { useJewelleryOfferSettings } from '@/services/jewelleryOfferService';
+import {
+  computeJewelleryOffer,
+  type JewelleryOfferSettings,
+  type OfferResult,
+} from '@/lib/jewelleryOffer';
+
+/** A cart line as the jewellery offer needs it. */
+export interface PricingLine {
+  id: string;
+  price: number;
+  quantity: number;
+  category?: string;
+  name?: string;
+}
+
+/** A cart line that could be the free item, and what it would take off. */
+export interface OfferGiftOption {
+  productId: string;
+  name: string;
+  unitPrice: number;
+  discount: number;
+}
 
 export interface CheckoutPricing {
   subtotal: number;
@@ -47,6 +70,12 @@ export interface CheckoutPricing {
    * button reads this, so none of them can forget to show it.
    */
   couponLoading: boolean;
+  /** Jewellery spend offer: what applies to this cart right now. */
+  offer: OfferResult;
+  offerSettings: JewelleryOfferSettings;
+  /** Lines the customer may pick as the free item (best first). */
+  offerGiftOptions: OfferGiftOption[];
+  setOfferGift: (productId: string | null) => void;
   coupons: Coupon[];
   /** Coupons a customer could actually redeem right now - what to advertise. */
   redeemableCoupons: Coupon[];
@@ -72,6 +101,8 @@ export interface CheckoutPricingOptions {
    * the remembered code would leave nothing for checkout to apply.
    */
   applyRememberedCode?: boolean;
+  /** Price and quantity per line, for the jewellery offer. */
+  lines?: PricingLine[];
 }
 
 /**
@@ -88,7 +119,9 @@ export function useCheckoutPricing(
   paymentMethod: string,
   options: CheckoutPricingOptions = {}
 ): CheckoutPricing {
-  const { productIds, destinationState, cartCategories, userId, applyRememberedCode } = options;
+  const { productIds, destinationState, cartCategories, userId, applyRememberedCode, lines } = options;
+  const offerSettings = useJewelleryOfferSettings();
+  const [offerGift, setOfferGift] = useState<string | null>(null);
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [delivery, setDelivery] = useState<DeliverySettings>(DEFAULT_DELIVERY);
@@ -191,6 +224,8 @@ export function useCheckoutPricing(
     categories: [],
     subcategories: [],
   });
+  /** Category per product from the catalog: the same field the server prices from. */
+  const [categoryByProduct, setCategoryByProduct] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -211,12 +246,15 @@ export function useCheckoutPricing(
         const wanted = new Set(idsKey.split(','));
         const categories = new Set<string>();
         const subcategories = new Set<string>();
+        const byProduct: Record<string, string> = {};
         for (const p of products) {
           if (!p.id || !wanted.has(p.id)) continue;
+          if (p.category) byProduct[p.id] = p.category;
           if (p.category) categories.add(p.category);
           if (p.subcategory) subcategories.add(p.subcategory);
         }
         setCartTaxonomy({ categories: [...categories], subcategories: [...subcategories] });
+        setCategoryByProduct(byProduct);
       })
       .catch(() => {
         // Falls back to the universal charge - never blocks checkout.
@@ -228,6 +266,35 @@ export function useCheckoutPricing(
     () => (productIds || []).map((id) => deliveryByProduct[id] || {}),
     [idsKey, deliveryByProduct] // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  /**
+   * The jewellery offer, priced by the same function /api/create-order runs.
+   * The customer's pick of free item is kept only while it is still the best
+   * or still gives something; otherwise the best line is used.
+   */
+  const linesKey = JSON.stringify((lines || []).map((l) => [l.id, l.price, l.quantity, l.category || '']));
+  const { offer, offerGiftOptions } = useMemo(() => {
+    const offerLines = (lines || []).map((l) => ({
+      productId: l.id,
+      category: categoryByProduct[l.id] || l.category || '',
+      unitPrice: l.price,
+      quantity: l.quantity,
+    }));
+    const couponApplied = appliedDiscount > 0;
+    const options: OfferGiftOption[] = [];
+    for (const l of lines || []) {
+      const r = computeJewelleryOffer(offerSettings, offerLines, { giftProductId: l.id, couponApplied: false });
+      if (r.giftProductId === l.id && r.discount > 0 && !options.some((o) => o.productId === l.id)) {
+        options.push({ productId: l.id, name: l.name || 'Item', unitPrice: l.price, discount: r.discount });
+      }
+    }
+    options.sort((a, b) => b.discount - a.discount);
+    const picked = offerGift && options.some((o) => o.productId === offerGift) ? offerGift : null;
+    return {
+      offer: computeJewelleryOffer(offerSettings, offerLines, { giftProductId: picked, couponApplied }),
+      offerGiftOptions: options,
+    };
+  }, [linesKey, categoryByProduct, offerSettings, offerGift, appliedDiscount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pricing = useMemo(() => {
     if (isEmpty) {
@@ -260,7 +327,7 @@ export function useCheckoutPricing(
     // forced `inclusive: false`, so switching it on in the admin panel changed
     // the label but still added GST to the total.
     const { gstAmount, addOnTop } = computeGst(subtotal, gst);
-    const total = subtotal + deliveryCharge + (addOnTop ? gstAmount : 0) - appliedDiscount;
+    const total = subtotal + deliveryCharge + (addOnTop ? gstAmount : 0) - appliedDiscount - offer.discount;
     return {
       deliveryCharge,
       freeDelivery,
@@ -271,7 +338,7 @@ export function useCheckoutPricing(
       codCharge: 0,
       total: Math.max(0, total),
     };
-  }, [subtotal, isEmpty, delivery, gst, appliedDiscount, deliveryItems, destinationState]);
+  }, [subtotal, isEmpty, delivery, gst, appliedDiscount, offer.discount, deliveryItems, destinationState]);
 
   const applyCoupon = async (code: string) => {
     setCouponLoading(true);
@@ -324,6 +391,10 @@ export function useCheckoutPricing(
     delivery,
     gst,
     couponLoading,
+    offer,
+    offerSettings,
+    offerGiftOptions,
+    setOfferGift,
     applyCoupon,
     removeCoupon: () => {
       setAppliedCoupon(null);

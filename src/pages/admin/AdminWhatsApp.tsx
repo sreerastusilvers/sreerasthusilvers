@@ -1,5 +1,6 @@
 /**
- * Admin WhatsApp team inbox.
+ * Admin WhatsApp team inbox, laid out like WhatsApp Web on a computer and the
+ * WhatsApp app on a phone (see src/components/wa/WaKit.tsx).
  *
  * - Threads from `whatsappThreads` (filled by /api/whatsapp-webhook), with
  *   filters (All / Unread / Open / Resolved / Assigned to me) and search.
@@ -13,11 +14,10 @@
  * Sending, read receipts and media go through /api/whatsapp-reply with the
  * signed-in admin's Firebase token. DEV only: add ?demo=1 for sample data.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   AlertTriangle,
-  ArrowLeft,
   Check,
   CheckCircle2,
   Clock,
@@ -27,14 +27,12 @@ import {
   LayoutTemplate,
   Loader2,
   Lock,
-  MessageCircle,
+  MoreVertical,
   Paperclip,
   RotateCcw,
-  Search,
   Send,
   StickyNote,
   Trash2,
-  User as UserIcon,
   UserPlus,
   X,
   Zap,
@@ -56,11 +54,7 @@ import { isSendableTemplate, statusStyle } from '@/components/admin/whatsapp/tem
 import { ATTACH_ACCEPT, prepareAttachment } from '@/components/admin/whatsapp/waMedia';
 import {
   FILTERS,
-  avatarTone,
-  dayLabel,
   formatCountdown,
-  formatListTime,
-  initials,
   maskPhone,
   matchesFilter,
   matchesSearch,
@@ -74,9 +68,29 @@ import {
   type ThreadFilter,
   type ThreadMessage,
 } from '@/components/admin/whatsapp/inboxModel';
+import {
+  WaApp,
+  WaChatHeader,
+  WaChatRow,
+  WaChips,
+  WaComposerBar,
+  WaDayChip,
+  WaEmpty,
+  WaIconButton,
+  WaListHeader,
+  WaMessages,
+  WaSearch,
+  WaSendButton,
+  WaSystemNote,
+  WaTag,
+  WaTextarea,
+  waGroup,
+  waListTime,
+} from '@/components/wa/WaKit';
+import { WaEmojiPicker } from '@/components/wa/WaEmojiPicker';
 
 const iconBtn =
-  'inline-flex h-10 w-10 flex-none items-center justify-center rounded-full text-[#54656f] transition-[background-color,transform] duration-150 hover:bg-black/5 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] dark:text-[#aebac1] dark:hover:bg-white/10';
+  'inline-flex h-10 w-10 flex-none items-center justify-center rounded-full text-[var(--wa-icon)] transition-colors duration-150 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-teal)] dark:hover:bg-white/10';
 
 /** Re-render every 30 s so window countdowns stay current. */
 function useNow(intervalMs = 30_000) {
@@ -87,15 +101,6 @@ function useNow(intervalMs = 30_000) {
   }, [intervalMs]);
   return now;
 }
-
-const Avatar = ({ thread, size = 'h-12 w-12' }: { thread: Thread; size?: string }) => {
-  const ini = initials(thread.contactName);
-  return (
-    <div className={`${size} grid flex-none place-items-center rounded-full text-sm font-semibold ${avatarTone(thread.id)}`} aria-hidden>
-      {ini || <UserIcon className="h-5 w-5" />}
-    </div>
-  );
-};
 
 const AdminWhatsApp = () => {
   const { user, userProfile } = useAuth();
@@ -115,13 +120,6 @@ const AdminWhatsApp = () => {
   const data = useInboxData(actor, activeId);
   const setup = useWhatsAppSetupStatus(data.demo);
   const now = useNow();
-
-  // Desktop opens the newest conversation; mobile starts on the list.
-  useEffect(() => {
-    if (activeId || data.loadingThreads || !data.threads.length) return;
-    if (window.matchMedia('(min-width: 768px)').matches) setActiveId(data.threads[0].id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.loadingThreads]);
 
   const activeThread = useMemo(() => data.threads.find((t) => t.id === activeId) || null, [data.threads, activeId]);
 
@@ -146,131 +144,96 @@ const AdminWhatsApp = () => {
   );
   const totalUnread = data.threads.reduce((n, t) => n + ((t.unreadCount || 0) > 0 ? 1 : 0), 0);
 
-  return (
-    <div className="-m-4 h-[calc(100dvh-64px)] min-h-[520px] overflow-hidden border-[#d1d7db] bg-[#efeae2] dark:border-[#2a3942] dark:bg-[#0b141a] lg:m-0 lg:h-[calc(100dvh-112px)] lg:rounded-xl lg:border lg:shadow-sm">
-      <div className="grid h-full grid-cols-1 md:grid-cols-[minmax(300px,380px)_1fr]">
-        {/* ------------------------------------------------ thread list */}
-        <aside className={`${activeThread ? 'hidden md:flex' : 'flex'} min-h-0 flex-col overflow-hidden bg-white dark:bg-[#111b21] md:border-r md:border-[#d1d7db] md:dark:border-[#2a3942]`}>
-          <header className="flex h-[60px] flex-none items-center gap-2 bg-[#f0f2f5] px-3 dark:bg-[#202c33]">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#00a884]" aria-hidden>
-              <MessageCircle className="h-5 w-5 text-white" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-[16px] font-semibold leading-tight text-[#111b21] dark:text-[#e9edef]">WhatsApp inbox</h1>
-              <p className="text-[12px] leading-tight text-[#667781] dark:text-[#8696a0]" aria-live="polite">
-                {data.demo ? 'Demo data · ' : ''}
-                {totalUnread ? `${totalUnread} unread` : 'All caught up'}
-              </p>
-            </div>
-            <SetupStatusButton missing={setup.missing.length} onClick={() => setSetupOpen(true)} />
-          </header>
+  const list = (
+    <>
+      <WaListHeader
+        title="Chats"
+        subtitle={`${data.demo ? 'Demo data · ' : ''}Customer WhatsApp${totalUnread ? ` · ${totalUnread} unread` : ''}`}
+        actions={<SetupStatusButton missing={setup.missing.length} onClick={() => setSetupOpen(true)} />}
+      />
 
-          {setup.missing.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSetupOpen(true)}
-              className="flex flex-none items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-left text-[13px] text-amber-900 transition-colors duration-150 hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/15"
-            >
-              <AlertTriangle className="h-4 w-4 flex-none" aria-hidden />
-              <span className="flex-1">
-                Setup incomplete: {setup.missing.length} item{setup.missing.length === 1 ? '' : 's'} missing.
-              </span>
-              <span className="font-medium underline underline-offset-2">View</span>
+      {setup.missing.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setSetupOpen(true)}
+          className="mx-3 mb-2 flex flex-none items-center gap-2 rounded-lg bg-[#fff3cd] px-3 py-2.5 text-left text-[13px] text-[#5c4400] transition-colors duration-150 hover:brightness-95 dark:bg-[#3d3216] dark:text-[#f0d27a]"
+        >
+          <AlertTriangle className="h-4 w-4 flex-none" aria-hidden />
+          <span className="flex-1">
+            Setup incomplete: {setup.missing.length} item{setup.missing.length === 1 ? '' : 's'} missing.
+          </span>
+          <span className="font-medium underline underline-offset-2">View</span>
+        </button>
+      )}
+
+      <div className="flex-none space-y-3 px-4 pb-2">
+        <WaSearch value={search} onChange={setSearch} placeholder="Search name or number" />
+        <WaChips<ThreadFilter>
+          label="Filter conversations"
+          value={filter}
+          onChange={setFilter}
+          items={FILTERS.map((f) => ({ id: f.id, label: f.label, count: f.id !== 'all' ? counts[f.id] : 0 }))}
+        />
+      </div>
+
+      {data.loadingThreads ? (
+        <div className="grid flex-1 place-items-center text-sm text-[var(--wa-muted)]">
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading chats…
+          </span>
+        </div>
+      ) : data.threadsError ? (
+        <div className="grid flex-1 place-items-center px-6 text-center text-sm text-red-700 dark:text-red-300">{data.threadsError}</div>
+      ) : data.threads.length === 0 ? (
+        <div className="grid flex-1 place-items-center px-8 text-center">
+          <div className="space-y-2">
+            <p className="text-[15px] text-[var(--wa-text)]">No chats yet</p>
+            <p className="text-[13px] text-[var(--wa-muted)]">When a customer messages your WhatsApp business number, it appears here.</p>
+            <button type="button" onClick={() => setSetupOpen(true)} className="text-[13px] font-medium text-[var(--wa-teal)] underline underline-offset-2">
+              Check WhatsApp setup
             </button>
-          )}
-
-          <div className="flex-none space-y-2 border-b border-[#e9edef] px-3 py-2 dark:border-[#2a3942]">
-            <label className="relative block">
-              <span className="sr-only">Search by name or phone</span>
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667781] dark:text-[#8696a0]" aria-hidden />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name or phone"
-                className="h-10 w-full rounded-lg bg-[#f0f2f5] pl-9 pr-9 text-[14px] text-[#111b21] placeholder:text-[#667781] focus:outline-none focus:ring-2 focus:ring-[#00a884]/50 dark:bg-[#202c33] dark:text-[#e9edef] dark:placeholder:text-[#8696a0]"
-              />
-              {search && (
-                <button type="button" onClick={() => setSearch('')} className="absolute right-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[#667781] hover:bg-black/5 dark:text-[#8696a0] dark:hover:bg-white/10" aria-label="Clear search">
-                  <X className="h-4 w-4" aria-hidden />
-                </button>
-              )}
-            </label>
-            <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none]" role="tablist" aria-label="Filter conversations">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={filter === f.id}
-                  onClick={() => setFilter(f.id)}
-                  className={`inline-flex h-8 flex-none items-center gap-1 rounded-full px-3 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] ${
-                    filter === f.id
-                      ? 'bg-[#d9fdd3] font-medium text-[#008069] dark:bg-[#0a332c] dark:text-[#00a884]'
-                      : 'bg-[#f0f2f5] text-[#54656f] hover:bg-[#e9edef] dark:bg-[#202c33] dark:text-[#aebac1] dark:hover:bg-[#2a3942]'
-                  }`}
-                >
-                  {f.label}
-                  {counts[f.id] > 0 && f.id !== 'all' && <span className="tabular-nums opacity-80">{counts[f.id]}</span>}
-                </button>
-              ))}
-            </div>
           </div>
-
-          {data.loadingThreads ? (
-            <div className="grid flex-1 place-items-center text-sm text-[#667781] dark:text-[#8696a0]">
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading conversations…
-              </span>
-            </div>
-          ) : data.threadsError ? (
-            <div className="grid flex-1 place-items-center px-6 text-center text-sm text-red-700 dark:text-red-300">{data.threadsError}</div>
-          ) : data.threads.length === 0 ? (
-            <div className="grid flex-1 place-items-center px-8 text-center">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-[#111b21] dark:text-[#e9edef]">No conversations yet</p>
-                <p className="text-[13px] text-[#667781] dark:text-[#8696a0]">
-                  When a customer messages your WhatsApp business number, it appears here.
-                </p>
-                <button type="button" onClick={() => setSetupOpen(true)} className="text-[13px] font-medium text-[#008069] underline underline-offset-2 dark:text-[#00a884]">
-                  Check WhatsApp setup
-                </button>
-              </div>
-            </div>
-          ) : visible.length === 0 ? (
-            <div className="grid flex-1 place-items-center px-8 text-center text-[13px] text-[#667781] dark:text-[#8696a0]">
-              <div className="space-y-3">
-                <p>No conversations match {search ? `"${search}"` : 'this filter'}.</p>
-                {data.hasMoreThreads && (
-                  <LoadMoreThreads loading={data.loadingMoreThreads} onClick={data.loadMoreThreads} label="Search older conversations" />
-                )}
-              </div>
-            </div>
-          ) : (
-            <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              {visible.map((t) => (
-                <ThreadRow key={t.id} t={t} active={t.id === activeId} now={now} myUid={actor.uid} onOpen={() => setActiveId(t.id)} />
-              ))}
-              {data.hasMoreThreads && (
-                <li className="flex justify-center px-4 py-3">
-                  <LoadMoreThreads loading={data.loadingMoreThreads} onClick={data.loadMoreThreads} label="Load older conversations" />
-                </li>
-              )}
-            </ul>
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="grid flex-1 place-items-center px-8 text-center text-[13px] text-[var(--wa-muted)]">
+          <div className="space-y-3">
+            <p>No chats match {search ? `"${search}"` : 'this filter'}.</p>
+            {data.hasMoreThreads && <LoadMoreThreads loading={data.loadingMoreThreads} onClick={data.loadMoreThreads} label="Search older chats" />}
+          </div>
+        </div>
+      ) : (
+        <ul className="wa-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {visible.map((t) => (
+            <ThreadRow key={t.id} t={t} active={t.id === activeId} now={now} myUid={actor.uid} onOpen={() => setActiveId(t.id)} />
+          ))}
+          {data.hasMoreThreads && (
+            <li className="flex justify-center px-4 py-3">
+              <LoadMoreThreads loading={data.loadingMoreThreads} onClick={data.loadMoreThreads} label="Load older chats" />
+            </li>
           )}
-        </aside>
+        </ul>
+      )}
+    </>
+  );
 
-        {/* ------------------------------------------------ conversation */}
-        <section className={`${activeThread ? 'flex' : 'hidden md:flex'} min-h-0 min-w-0 flex-col overflow-hidden`}>
-          {!activeThread ? (
-            <div className="grid flex-1 place-items-center border-b-[6px] border-[#25d366] bg-[#f0f2f5] px-8 text-center dark:bg-[#222e35]">
-              <div className="max-w-sm space-y-2">
-                <MessageCircle className="mx-auto h-10 w-10 text-[#8696a0]" aria-hidden />
-                <p className="text-lg font-light text-[#41525d] dark:text-[#e9edef]">Pick a conversation</p>
-                <p className="text-[13px] text-[#667781] dark:text-[#8696a0]">Replies go out from your WhatsApp business number. Internal notes stay inside the team.</p>
-              </div>
-            </div>
-          ) : (
+  return (
+    <>
+      <WaApp
+        list={list}
+        onCloseChat={() => setActiveId(null)}
+        empty={
+          <WaEmpty
+            title="Sreerasthu Silvers WhatsApp"
+            text="Reply to customers from the store's WhatsApp number. Internal notes and quick replies stay inside your team."
+            footer={
+              <>
+                <Lock className="h-3.5 w-3.5" aria-hidden /> Messages go out from your WhatsApp Business number
+              </>
+            }
+          />
+        }
+        chat={
+          activeThread ? (
             <Conversation
               key={activeThread.id}
               thread={activeThread}
@@ -285,11 +248,11 @@ const AdminWhatsApp = () => {
               actions={data.actions}
               onBack={() => setActiveId(null)}
             />
-          )}
-        </section>
-      </div>
+          ) : null
+        }
+      />
       <SetupStatusDialog open={setupOpen} onOpenChange={setSetupOpen} status={setup} />
-    </div>
+    </>
   );
 };
 
@@ -297,59 +260,41 @@ export default AdminWhatsApp;
 
 // ===========================================================================
 const ThreadRow = ({ t, active, now, myUid, onOpen }: { t: Thread; active: boolean; now: number; myUid: string | null; onOpen: () => void }) => {
-  const unread = (t.unreadCount || 0) > 0;
+  const unread = t.unreadCount || 0;
   const ms = millisLeft(t.replyWindowClosesAt, now);
   const resolved = threadStatus(t) === 'resolved';
   const assignedName = t.assignedTo ? (t.assignedTo.uid === myUid ? 'You' : t.assignedTo.name) : null;
+  const showTags = assignedName || resolved || ms <= 2 * 3600_000;
   return (
-    <li>
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-current={active ? 'true' : undefined}
-        className={`flex w-full items-center gap-3 px-3 text-left transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#00a884] ${
-          active ? 'bg-[#f0f2f5] dark:bg-[#2a3942]' : 'hover:bg-[#f5f6f6] dark:hover:bg-[#202c33]'
-        }`}
-      >
-        <Avatar thread={t} />
-        <div className="min-w-0 flex-1 border-b border-[#e9edef] py-3 dark:border-[#222d34]">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className={`truncate text-[16px] text-[#111b21] dark:text-[#e9edef] ${unread ? 'font-semibold' : ''}`}>{t.contactName || maskPhone(t.phone)}</span>
-            <span className={`flex-none text-[12px] ${unread ? 'font-medium text-[#008069] dark:text-[#00a884]' : 'text-[#667781] dark:text-[#8696a0]'}`}>{formatListTime(t.updatedAt)}</span>
-          </div>
-          <div className="mt-0.5 flex items-center gap-1.5">
-            {t.lastDirection === 'outbound' && <DeliveryTicks status={t.lastStatus || 'sent'} />}
-            <p className={`min-w-0 flex-1 truncate text-[14px] ${unread ? 'text-[#111b21] dark:text-[#e9edef]' : 'text-[#667781] dark:text-[#8696a0]'}`}>
-              {t.lastMessage || 'No messages yet'}
-            </p>
-            {unread && (
-              <span className="inline-flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-[#00a884] px-1.5 text-[11px] font-semibold tabular-nums text-white dark:text-[#111b21]">
-                {t.unreadCount}
-                <span className="sr-only"> unread</span>
-              </span>
+    <WaChatRow
+      title={t.contactName || maskPhone(t.phone)}
+      time={waListTime(t.updatedAt, now)}
+      unread={unread}
+      active={active}
+      onOpen={onOpen}
+      preview={
+        <>
+          {t.lastDirection === 'outbound' && <DeliveryTicks status={t.lastStatus || 'sent'} className="flex-none text-[var(--wa-muted)]" />}
+          <span className="truncate">{t.lastMessage || 'No messages yet'}</span>
+        </>
+      }
+      tags={
+        showTags ? (
+          <>
+            {resolved && <WaTag tone="green">Resolved</WaTag>}
+            {assignedName && <WaTag>{assignedName}</WaTag>}
+            {!resolved && ms > 0 && ms <= 2 * 3600_000 && (
+              <WaTag tone="amber">
+                <Clock className="h-3 w-3" aria-hidden /> {formatCountdown(ms)} left
+              </WaTag>
             )}
-          </div>
-          {(assignedName || resolved || ms <= 2 * 3600_000) && (
-            <div className="mt-1 flex flex-wrap items-center gap-1">
-              {resolved && <Tag className="bg-[#e7f6ec] text-[#0f6b3a] dark:bg-[#123d2a] dark:text-[#8ee3b0]">Resolved</Tag>}
-              {assignedName && <Tag className="bg-[#eef1f3] text-[#41525d] dark:bg-[#202c33] dark:text-[#aebac1]">{assignedName}</Tag>}
-              {!resolved && ms > 0 && ms <= 2 * 3600_000 && (
-                <Tag className="bg-[#fff3cd] text-[#7a5a00] dark:bg-[#3d3216] dark:text-[#f0d27a]">
-                  <Clock className="h-3 w-3" aria-hidden /> {formatCountdown(ms)} left
-                </Tag>
-              )}
-              {!resolved && ms <= 0 && <Tag className="bg-[#eef1f3] text-[#54656f] dark:bg-[#202c33] dark:text-[#8696a0]">Template only</Tag>}
-            </div>
-          )}
-        </div>
-      </button>
-    </li>
+            {!resolved && ms <= 0 && <WaTag>Template only</WaTag>}
+          </>
+        ) : null
+      }
+    />
   );
 };
-
-const Tag = ({ className, children }: { className: string; children: React.ReactNode }) => (
-  <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${className}`}>{children}</span>
-);
 
 // ===========================================================================
 type Actions = ReturnType<typeof useInboxData>['actions'];
@@ -380,38 +325,9 @@ const Conversation = ({
   onBack: () => void;
 }) => {
   const [reveal, setReveal] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const remainingMs = millisLeft(thread.replyWindowClosesAt, now);
   const windowOpen = remainingMs > 0;
   const resolved = threadStatus(thread) === 'resolved';
-
-  // Keep the newest message in view (no smooth scroll: this runs often).
-  const stickToBottom = useRef(true);
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    stickToBottom.current = true;
-    el.scrollTop = el.scrollHeight;
-  }, [messages.length, thread.id]);
-  // Stay pinned to the newest message when the box resizes (composer grows,
-  // media loads, keyboard opens) unless the admin scrolled up to read.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const onScroll = () => {
-      stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    };
-    const ro = new ResizeObserver(() => {
-      if (stickToBottom.current) el.scrollTop = el.scrollHeight;
-    });
-    ro.observe(el);
-    if (el.firstElementChild) ro.observe(el.firstElementChild);
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      ro.disconnect();
-      el.removeEventListener('scroll', onScroll);
-    };
-  }, [thread.id, loading]);
 
   const toggleResolved = async () => {
     try {
@@ -430,136 +346,109 @@ const Conversation = ({
     }
   };
 
-  // Group messages by day for separators.
-  const groups = useMemo(() => {
-    const out: Array<{ label: string; items: ThreadMessage[] }> = [];
-    messages.forEach((m) => {
-      const label = dayLabel(m.createdAt);
-      const last = out[out.length - 1];
-      if (last && last.label === label) last.items.push(m);
-      else out.push({ label, items: [m] });
-    });
-    return out;
-  }, [messages]);
-
+  const days = useMemo(() => waGroup(messages), [messages]);
   const assignee = thread.assignedTo;
+
   return (
     <>
-      <header className="flex h-[60px] flex-none items-center gap-1.5 bg-[#f0f2f5] px-2 dark:bg-[#202c33] md:gap-3 md:px-4">
-        <button type="button" onClick={onBack} className={`${iconBtn} md:hidden`} aria-label="Back to conversations">
-          <ArrowLeft className="h-5 w-5" aria-hidden />
-        </button>
-        <Avatar thread={thread} size="h-10 w-10" />
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[16px] font-medium leading-tight text-[#111b21] dark:text-[#e9edef]">{thread.contactName || 'Unknown contact'}</h2>
-          <div className="flex items-center gap-1 text-[12.5px] leading-tight text-[#667781] dark:text-[#8696a0]">
-            <span className="truncate font-mono">{reveal ? thread.phone : maskPhone(thread.phone)}</span>
+      <WaChatHeader
+        title={thread.contactName || 'Unknown contact'}
+        onBack={onBack}
+        subtitle={
+          <span className="flex items-center gap-1">
+            <span className="truncate tabular-nums">{reveal ? thread.phone : maskPhone(thread.phone)}</span>
             <button
               type="button"
               onClick={() => setReveal((r) => !r)}
-              className="inline-flex h-7 w-7 flex-none items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
+              className="inline-flex h-6 w-6 flex-none items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
               aria-label={reveal ? 'Hide phone number' : 'Show phone number'}
               aria-pressed={reveal}
             >
               {reveal ? <EyeOff className="h-3.5 w-3.5" aria-hidden /> : <Eye className="h-3.5 w-3.5" aria-hidden />}
             </button>
-          </div>
-        </div>
-
-        <span
-          className={`hidden flex-none items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium lg:inline-flex ${
-            windowOpen ? 'bg-[#d9fdd3] text-[#0b6b52] dark:bg-[#0a332c] dark:text-[#5fd3b0]' : 'bg-[#fff3cd] text-[#7a5a00] dark:bg-[#3d3216] dark:text-[#f0d27a]'
-          }`}
-          title="Meta allows free-form replies for 24 hours after the customer's last message."
-        >
-          <Clock className="h-3.5 w-3.5" aria-hidden />
-          {windowOpen ? `Reply window ${formatCountdown(remainingMs)}` : 'Window closed'}
-        </span>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+            <span aria-hidden>·</span>
+            <span className={windowOpen ? '' : 'text-[#a06a00] dark:text-[#f0d27a]'}>
+              {windowOpen ? `reply window ${formatCountdown(remainingMs)}` : 'template only'}
+            </span>
+          </span>
+        }
+        actions={
+          <>
             <button
               type="button"
-              className="inline-flex h-10 flex-none items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium text-[#54656f] transition-[background-color,transform] duration-150 hover:bg-black/5 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] dark:text-[#aebac1] dark:hover:bg-white/10"
-              aria-label={assignee ? `Assigned to ${assignee.name}. Change assignee` : 'Assign conversation'}
+              onClick={toggleResolved}
+              className={`hidden h-9 flex-none items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-teal)] md:inline-flex ${
+                resolved
+                  ? 'text-[var(--wa-icon)] hover:bg-black/5 dark:hover:bg-white/10'
+                  : 'bg-[var(--wa-teal)] text-white hover:brightness-95 dark:text-[#111b21]'
+              }`}
             >
-              {assignee ? (
-                <span className={`grid h-7 w-7 place-items-center rounded-full text-[11px] font-semibold ${avatarTone(assignee.uid)}`} aria-hidden>
-                  {initials(assignee.name) || '?'}
-                </span>
-              ) : (
-                <UserPlus className="h-5 w-5" aria-hidden />
-              )}
-              <span className="hidden max-w-[8rem] truncate md:inline">{assignee ? (assignee.uid === actor.uid ? 'You' : assignee.name) : 'Assign'}</span>
+              {resolved ? <RotateCcw className="h-4 w-4" aria-hidden /> : <CheckCircle2 className="h-4 w-4" aria-hidden />}
+              {resolved ? 'Reopen' : 'Resolve'}
             </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-60">
-            <DropdownMenuLabel>Assign to</DropdownMenuLabel>
-            {actor.uid && (
-              <DropdownMenuItem onSelect={() => assignTo({ uid: actor.uid!, name: actor.name, email: actor.email })}>
-                <span className="flex-1">Me</span>
-                {assignee?.uid === actor.uid && <Check className="h-4 w-4" aria-hidden />}
-              </DropdownMenuItem>
-            )}
-            {team
-              .filter((m) => m.uid !== actor.uid)
-              .map((m) => (
-                <DropdownMenuItem key={m.uid} onSelect={() => assignTo(m)}>
-                  <span className="min-w-0 flex-1 truncate">{m.name}</span>
-                  {assignee?.uid === m.uid && <Check className="h-4 w-4" aria-hidden />}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <WaIconButton label={assignee ? `Assigned to ${assignee.name}. Change` : 'Assign conversation'}>
+                  <UserPlus className="h-5 w-5" aria-hidden />
+                </WaIconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel>Assign to</DropdownMenuLabel>
+                {actor.uid && (
+                  <DropdownMenuItem onSelect={() => assignTo({ uid: actor.uid!, name: actor.name, email: actor.email })}>
+                    <span className="flex-1">Me</span>
+                    {assignee?.uid === actor.uid && <Check className="h-4 w-4" aria-hidden />}
+                  </DropdownMenuItem>
+                )}
+                {team
+                  .filter((m) => m.uid !== actor.uid)
+                  .map((m) => (
+                    <DropdownMenuItem key={m.uid} onSelect={() => assignTo(m)}>
+                      <span className="min-w-0 flex-1 truncate">{m.name}</span>
+                      {assignee?.uid === m.uid && <Check className="h-4 w-4" aria-hidden />}
+                    </DropdownMenuItem>
+                  ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled={!assignee} onSelect={() => assignTo(null)}>
+                  Unassign
                 </DropdownMenuItem>
-              ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled={!assignee} onSelect={() => assignTo(null)}>
-              Unassign
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <WaIconButton label="More options" className="md:hidden">
+                  <MoreVertical className="h-5 w-5" aria-hidden />
+                </WaIconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={toggleResolved}>{resolved ? 'Reopen chat' : 'Mark as resolved'}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setReveal((r) => !r)}>{reveal ? 'Hide number' : 'Show number'}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        }
+      />
 
-        <button
-          type="button"
-          onClick={toggleResolved}
-          className={`inline-flex h-10 flex-none items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium transition-[background-color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] md:px-3 ${
-            resolved
-              ? 'text-[#54656f] hover:bg-black/5 dark:text-[#aebac1] dark:hover:bg-white/10'
-              : 'bg-[#008069] text-white hover:bg-[#017561] dark:bg-[#00a884] dark:text-[#111b21] dark:hover:bg-[#06cf9c]'
-          }`}
-          aria-label={resolved ? 'Reopen conversation' : 'Mark conversation as resolved'}
-        >
-          {resolved ? <RotateCcw className="h-4 w-4" aria-hidden /> : <CheckCircle2 className="h-4 w-4" aria-hidden />}
-          <span className="hidden md:inline">{resolved ? 'Reopen' : 'Resolve'}</span>
-        </button>
-      </header>
-
-      <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#efeae2] px-3 py-3 dark:bg-[#0b141a] md:px-[6%] md:py-5"
-        role="log"
-        aria-label={`Messages with ${thread.contactName || 'customer'}`}
-      >
+      <WaMessages label={`Messages with ${thread.contactName || 'customer'}`} resetKey={`${thread.id}:${loading}`} count={messages.length}>
         {loading ? (
-          <div className="grid h-full place-items-center text-sm text-[#667781] dark:text-[#8696a0]">
+          <div className="grid h-40 place-items-center text-sm text-[var(--wa-muted)]">
             <Loader2 className="h-5 w-5 animate-spin" aria-label="Loading messages" />
           </div>
         ) : messages.length === 0 ? (
-          <p className="py-12 text-center text-[13px] text-[#667781] dark:text-[#8696a0]">No messages in this conversation yet.</p>
+          <WaSystemNote>No messages in this chat yet.</WaSystemNote>
         ) : (
-          <div className="space-y-3">
-            {groups.map((g) => (
-              <div key={g.label}>
-                <div className="sticky top-0 z-[1] mb-2 flex justify-center">
-                  <span className="rounded-lg bg-white/95 px-3 py-1 text-[12px] text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] dark:bg-[#182229] dark:text-[#8696a0]">{g.label}</span>
-                </div>
-                <ul className="space-y-1.5">
-                  {g.items.map((m) => (
-                    <MessageBubble key={m.id} m={m} demo={demo} />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          days.map((d) => (
+            <section key={d.label} aria-label={d.label}>
+              <WaDayChip>{d.label}</WaDayChip>
+              <ul>
+                {d.items.map(({ m, tail }) => (
+                  <MessageBubble key={m.id} m={m} demo={demo} tail={tail} />
+                ))}
+              </ul>
+            </section>
+          ))
         )}
-      </div>
+      </WaMessages>
 
       <Composer thread={thread} windowOpen={windowOpen} remainingMs={remainingMs} templates={templates} snippets={snippets} actions={actions} />
     </>
@@ -629,14 +518,8 @@ const Composer = ({
     setParams((prev) => Array.from({ length: tpl?.paramLabels.length || 0 }, (_, i) => prev[i] || ''));
   }, [tpl]);
 
-  // Auto-grow the textarea up to ~6 lines.
   const value = mode === 'note' ? note : text;
-  useEffect(() => {
-    const ta = taRef.current;
-    if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
-  }, [value, mode]);
+  const setValue = (v: string) => (mode === 'note' ? setNote(v) : setText(v));
 
   const submit = async () => {
     if (sending) return;
@@ -682,14 +565,6 @@ const Composer = ({
     }
   };
 
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter sends on desktop; on touch screens Enter adds a new line.
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia('(pointer: fine)').matches) {
-      e.preventDefault();
-      submit();
-    }
-  };
-
   const insertSnippet = (s: Snippet) => {
     if (mode === 'note') setNote((n) => (n ? `${n}\n${s.text}` : s.text));
     else {
@@ -703,6 +578,17 @@ const Composer = ({
     requestAnimationFrame(() => taRef.current?.focus());
   };
 
+  const insertEmoji = (e: string) => {
+    const ta = taRef.current;
+    const start = ta?.selectionStart ?? value.length;
+    const end = ta?.selectionEnd ?? value.length;
+    setValue(value.slice(0, start) + e + value.slice(end));
+    requestAnimationFrame(() => {
+      ta?.focus();
+      ta?.setSelectionRange(start + e.length, start + e.length);
+    });
+  };
+
   const modes: Array<{ id: Mode; label: string; Icon: typeof Send; disabled?: boolean }> = [
     { id: 'reply', label: 'Reply', Icon: Send, disabled: !windowOpen },
     { id: 'template', label: 'Template', Icon: LayoutTemplate },
@@ -710,60 +596,61 @@ const Composer = ({
   ];
   const sendable = templates.filter((t) => isSendableTemplate(t.status));
 
-  return (
-    <div className="flex-none border-t border-[#d1d7db] bg-[#f0f2f5] px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 dark:border-[#2a3942] dark:bg-[#202c33] md:px-4">
-      {/* window state */}
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-full bg-white p-0.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] dark:bg-[#111b21]" role="tablist" aria-label="Composer mode">
-          {modes.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              role="tab"
-              aria-selected={mode === m.id}
-              disabled={m.disabled}
-              onClick={() => setMode(m.id)}
-              title={m.disabled ? 'The 24-hour reply window is closed. Use a template.' : undefined}
-              className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] disabled:cursor-not-allowed disabled:opacity-40 ${
-                mode === m.id
-                  ? m.id === 'note'
-                    ? 'bg-[#f5d76e] text-[#4a3b00]'
-                    : 'bg-[#008069] text-white dark:bg-[#00a884] dark:text-[#111b21]'
-                  : 'text-[#54656f] hover:bg-black/5 dark:text-[#aebac1] dark:hover:bg-white/10'
-              }`}
-            >
-              <m.Icon className="h-3.5 w-3.5" aria-hidden />
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <span
-          className={`ml-auto inline-flex items-center gap-1 text-[12px] ${
-            !windowOpen ? 'text-[#7a5a00] dark:text-[#f0d27a]' : remainingMs < 2 * 3600_000 ? 'text-[#7a5a00] dark:text-[#f0d27a]' : 'text-[#667781] dark:text-[#8696a0]'
-          }`}
-          aria-live="polite"
-        >
-          <Clock className="h-3.5 w-3.5" aria-hidden />
-          {windowOpen ? `${formatCountdown(remainingMs)} left to reply freely` : 'Template only'}
-        </span>
+  const modeBar = (
+    <div className="mb-1.5 flex flex-wrap items-center gap-2 px-1 md:px-0">
+      <div className="inline-flex rounded-full bg-[var(--wa-input-m)] p-0.5 shadow-[var(--wa-shadow)] md:bg-[var(--wa-bg)]" role="tablist" aria-label="Composer mode">
+        {modes.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            role="tab"
+            aria-selected={mode === m.id}
+            disabled={m.disabled}
+            onClick={() => setMode(m.id)}
+            title={m.disabled ? 'The 24-hour reply window is closed. Use a template.' : undefined}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-teal)] disabled:cursor-not-allowed disabled:opacity-40 ${
+              mode === m.id
+                ? m.id === 'note'
+                  ? 'bg-[#f5d76e] text-[#4a3b00]'
+                  : 'bg-[var(--wa-teal)] text-white dark:text-[#111b21]'
+                : 'text-[var(--wa-icon)] hover:bg-black/5 dark:hover:bg-white/10'
+            }`}
+          >
+            <m.Icon className="h-3.5 w-3.5" aria-hidden />
+            {m.label}
+          </button>
+        ))}
       </div>
+      <span
+        className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] ${
+          !windowOpen || remainingMs < 2 * 3600_000 ? 'bg-[#fff3cd] text-[#7a5a00] dark:bg-[#3d3216] dark:text-[#f0d27a]' : 'text-[var(--wa-muted)]'
+        }`}
+        aria-live="polite"
+      >
+        <Clock className="h-3.5 w-3.5" aria-hidden />
+        {windowOpen ? `${formatCountdown(remainingMs)} left to reply freely` : 'Template only'}
+      </span>
+    </div>
+  );
 
-      {!windowOpen && mode !== 'note' && (
-        <p className="mb-2 flex items-start gap-1.5 rounded-lg bg-[#fff3cd] px-3 py-2 text-[12.5px] text-[#5c4400] dark:bg-[#3d3216] dark:text-[#f0d27a]">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
-          More than 24 hours since the customer's last message. Meta only allows approved templates until they write again.
-        </p>
-      )}
-
-      {mode === 'template' ? (
+  if (mode === 'template') {
+    return (
+      <div className="flex-none bg-[var(--wa-header-m)] px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-1px_0_var(--wa-divider)] md:bg-[var(--wa-header)] md:px-4 md:shadow-none">
+        {modeBar}
+        {!windowOpen && (
+          <p className="mb-2 flex items-start gap-1.5 rounded-lg bg-[#fff3cd] px-3 py-2 text-[12.5px] text-[#5c4400] dark:bg-[#3d3216] dark:text-[#f0d27a]">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" aria-hidden />
+            More than 24 hours since the customer's last message. Meta only allows approved templates until they write again.
+          </p>
+        )}
         <div className="space-y-2">
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <label className="sr-only" htmlFor="wa-template">Template</label>
             <select
               id="wa-template"
               value={tplId}
               onChange={(e) => setTplId(e.target.value)}
-              className="h-11 min-w-0 flex-1 rounded-lg border-0 bg-white px-3 text-[14px] text-[#111b21] focus:outline-none focus:ring-2 focus:ring-[#00a884]/50 dark:bg-[#2a3942] dark:text-[#e9edef]"
+              className="h-11 min-w-0 flex-1 rounded-lg border-0 bg-[var(--wa-input)] px-3 text-[14px] text-[var(--wa-text)] shadow-[var(--wa-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-teal)] md:shadow-none"
             >
               <option value="">{sendable.length ? 'Pick an approved template…' : 'No approved templates yet'}</option>
               {templates.map((t) => (
@@ -773,7 +660,7 @@ const Composer = ({
                 </option>
               ))}
             </select>
-            <SendButton onClick={submit} sending={sending} disabled={!tpl} label="Send template" />
+            <WaSendButton onClick={submit} busy={sending} disabled={!tpl} label="Send template" />
           </div>
           {tpl && tpl.paramLabels.length > 0 && (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -784,112 +671,99 @@ const Composer = ({
                   onChange={(e) => setParams((p) => p.map((x, j) => (j === i ? e.target.value : x)))}
                   placeholder={`{{${i + 1}}} ${label}`}
                   aria-label={`${label} (variable ${i + 1})`}
-                  className="h-10 rounded-lg border-0 bg-white px-3 text-[14px] text-[#111b21] placeholder:text-[#667781] focus:outline-none focus:ring-2 focus:ring-[#00a884]/50 dark:bg-[#2a3942] dark:text-[#e9edef] dark:placeholder:text-[#8696a0]"
+                  className="h-10 rounded-lg border-0 bg-[var(--wa-input)] px-3 text-[14px] text-[var(--wa-text)] placeholder:text-[var(--wa-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-teal)]"
                 />
               ))}
             </div>
           )}
           {tpl?.bodyText && (
-            <p className="line-clamp-3 rounded-lg bg-white/70 px-3 py-2 text-[13px] text-[#41525d] dark:bg-[#111b21]/60 dark:text-[#aebac1]">
+            <p className="line-clamp-3 rounded-lg bg-[var(--wa-out)] px-3 py-2 text-[13px] text-[var(--wa-text)] shadow-[var(--wa-shadow)]">
               {renderTemplate(tpl.bodyText, params)}
             </p>
           )}
         </div>
-      ) : (
+      </div>
+    );
+  }
+
+  const isNote = mode === 'note';
+  return (
+    <WaComposerBar
+      above={
         <>
-        {attachment && mode === 'reply' && (
-          <div className="mb-2 flex items-center gap-3 rounded-lg bg-white p-2 pr-1 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] dark:bg-[#2a3942]">
-            {attachment.previewUrl ? (
-              <img src={attachment.previewUrl} alt="" className="h-12 w-12 flex-none rounded object-cover" />
-            ) : (
-              <span className="grid h-12 w-12 flex-none place-items-center rounded bg-[#f0f2f5] text-[#54656f] dark:bg-[#111b21] dark:text-[#aebac1]">
-                <FileText className="h-5 w-5" aria-hidden />
+          {modeBar}
+          {attachment && mode === 'reply' && (
+            <div className="mb-2 flex items-center gap-3 rounded-lg bg-[var(--wa-input-m)] p-2 pr-1 shadow-[var(--wa-shadow)] md:bg-[var(--wa-input)]">
+              {attachment.previewUrl ? (
+                <img src={attachment.previewUrl} alt="" className="h-12 w-12 flex-none rounded object-cover" />
+              ) : (
+                <span className="grid h-12 w-12 flex-none place-items-center rounded bg-[var(--wa-search)] text-[var(--wa-icon)]">
+                  <FileText className="h-5 w-5" aria-hidden />
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-medium text-[var(--wa-text)]">
+                  {attachment.kind === 'image' ? 'Photo' : attachment.file.name}
+                </span>
+                <span className="block text-[11px] text-[var(--wa-muted)]">
+                  {(attachment.file.size / 1024 / 1024).toFixed(attachment.file.size < 1024 * 1024 ? 2 : 1)} MB · your text is sent as the caption
+                </span>
               </span>
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-medium text-[#111b21] dark:text-[#e9edef]">
-                {attachment.kind === 'image' ? 'Photo' : attachment.file.name}
-              </span>
-              <span className="block text-[11px] text-[#667781] dark:text-[#8696a0]">
-                {(attachment.file.size / 1024 / 1024).toFixed(attachment.file.size < 1024 * 1024 ? 2 : 1)} MB · your text below is sent as the caption
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setAttachment(null)}
-              aria-label="Remove attachment"
-              className="grid h-10 w-10 flex-none place-items-center rounded-full text-[#54656f] hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] dark:text-[#aebac1] dark:hover:bg-white/10"
-            >
-              <X className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-        )}
-        <div className="flex items-end gap-2">
+              <WaIconButton label="Remove attachment" onClick={() => setAttachment(null)}>
+                <X className="h-4 w-4" aria-hidden />
+              </WaIconButton>
+            </div>
+          )}
+        </>
+      }
+      left={
+        <>
+          <WaEmojiPicker onPick={insertEmoji} />
           <SnippetsPopover snippets={snippets} onInsert={insertSnippet} currentText={value} onAdd={actions.addSnippet} onDelete={actions.deleteSnippet} />
           {mode === 'reply' && (
             <>
               <input ref={fileRef} type="file" accept={ATTACH_ACCEPT} className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => attach(e.target.files?.[0])} />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={preparing || sending}
-                aria-label="Attach a photo or document"
-                title="Attach a photo or document (up to 3 MB)"
-                className="grid h-11 w-11 flex-none place-items-center rounded-full text-[#54656f] transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] disabled:opacity-40 dark:text-[#aebac1] dark:hover:bg-white/10"
-              >
-                {preparing ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Paperclip className="h-5 w-5" aria-hidden />}
-              </button>
+              <WaIconButton label="Attach a photo or document (up to 3 MB)" onClick={() => fileRef.current?.click()} disabled={preparing || sending} className="mb-1 md:mb-0">
+                {preparing ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Paperclip className="h-5 w-5 -rotate-45" aria-hidden />}
+              </WaIconButton>
             </>
           )}
-          <div className={`flex min-w-0 flex-1 items-end rounded-lg ${mode === 'note' ? 'bg-[#fff6d6] ring-1 ring-[#f5d76e] dark:bg-[#3a3418] dark:ring-[#8a7420]/60' : 'bg-white dark:bg-[#2a3942]'}`}>
-            {mode === 'note' && <Lock className="mb-3 ml-3 h-4 w-4 flex-none text-[#7a6200] dark:text-[#d9c46e]" aria-hidden />}
-            <label htmlFor="wa-composer" className="sr-only">{mode === 'note' ? 'Internal note' : 'Message'}</label>
-            <textarea
-              id="wa-composer"
-              ref={taRef}
-              value={value}
-              onChange={(e) => (mode === 'note' ? setNote(e.target.value) : setText(e.target.value))}
-              onKeyDown={onKeyDown}
-              onPaste={(e) => {
-                const file = mode === 'reply' ? Array.from(e.clipboardData.files)[0] : undefined;
-                if (file) {
-                  e.preventDefault();
-                  attach(file);
-                }
-              }}
-              rows={1}
-              maxLength={attachment && mode === 'reply' ? 1024 : 4096}
-              placeholder={mode === 'note' ? 'Write a note for your team (not sent to the customer)' : attachment ? 'Add a caption (optional)' : 'Type a message'}
-              className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-3 py-[11px] text-[15px] leading-[1.4] text-[#111b21] placeholder:text-[#667781] focus:outline-none dark:text-[#e9edef] dark:placeholder:text-[#8696a0]"
-            />
-          </div>
-          <SendButton
-            onClick={submit}
-            sending={sending}
-            disabled={mode === 'reply' && attachment ? preparing : !value.trim()}
-            label={mode === 'note' ? 'Add note' : attachment ? 'Send attachment' : 'Send reply'}
-            note={mode === 'note'}
+        </>
+      }
+      input={
+        <div className={`flex items-end ${isNote ? 'rounded-lg bg-[var(--wa-note)] px-2 md:-mx-3 md:px-3' : ''}`}>
+          {isNote && <Lock className="mb-[15px] mr-1.5 h-4 w-4 flex-none text-[var(--wa-note-text)] md:mb-[13px]" aria-hidden />}
+          <label htmlFor="wa-composer" className="sr-only">{isNote ? 'Internal note' : 'Message'}</label>
+          <WaTextarea
+            id="wa-composer"
+            ref={taRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onSubmit={submit}
+            onPaste={(e) => {
+              const file = mode === 'reply' ? Array.from(e.clipboardData.files)[0] : undefined;
+              if (file) {
+                e.preventDefault();
+                attach(file);
+              }
+            }}
+            maxLength={attachment && mode === 'reply' ? 1024 : 4096}
+            placeholder={isNote ? 'Note for your team (not sent)' : attachment ? 'Add a caption (optional)' : 'Type a message'}
           />
         </div>
-        </>
-      )}
-    </div>
+      }
+      send={
+        <WaSendButton
+          onClick={submit}
+          busy={sending}
+          disabled={mode === 'reply' && attachment ? preparing : !value.trim()}
+          label={isNote ? 'Add note' : attachment ? 'Send attachment' : 'Send reply'}
+          icon={isNote ? <StickyNote className="h-5 w-5" aria-hidden /> : undefined}
+        />
+      }
+    />
   );
 };
-
-const SendButton = ({ onClick, sending, disabled, label, note }: { onClick: () => void; sending: boolean; disabled?: boolean; label: string; note?: boolean }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={sending || disabled}
-    aria-label={label}
-    className={`inline-flex h-11 w-11 flex-none items-center justify-center rounded-full transition-[background-color,transform,opacity] duration-150 active:scale-[0.95] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#00a884] dark:focus-visible:ring-offset-[#202c33] ${
-      note ? 'bg-[#e0b400] text-[#2b2200] hover:bg-[#c99f00]' : 'bg-[#008069] text-white hover:bg-[#017561] dark:bg-[#00a884] dark:text-[#111b21] dark:hover:bg-[#06cf9c]'
-    }`}
-  >
-    {sending ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : note ? <StickyNote className="h-5 w-5" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
-  </button>
-);
 
 // ===========================================================================
 const SnippetsPopover = ({
@@ -935,7 +809,7 @@ const SnippetsPopover = ({
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setAdding(false); }}>
       <PopoverTrigger asChild>
-        <button type="button" className={`${iconBtn} h-11 w-11`} aria-label="Quick replies">
+        <button type="button" className={`${iconBtn} mb-1 md:mb-0`} aria-label="Quick replies" title="Quick replies">
           <Zap className="h-5 w-5" aria-hidden />
         </button>
       </PopoverTrigger>
@@ -1030,7 +904,7 @@ const LoadMoreThreads = ({ loading, onClick, label }: { loading: boolean; onClic
     type="button"
     onClick={onClick}
     disabled={loading}
-    className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-[#d1d7db] px-4 text-[13px] font-medium text-[#008069] hover:bg-[#f5f6f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00a884] disabled:opacity-60 dark:border-[#313d45] dark:text-[#00a884] dark:hover:bg-[#202c33]"
+    className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-[var(--wa-border)] px-4 text-[13px] font-medium text-[var(--wa-teal)] hover:bg-[var(--wa-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wa-teal)] disabled:opacity-60"
   >
     {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
     {loading ? 'Loading…' : label}
