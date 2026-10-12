@@ -1,6 +1,20 @@
 # Handoff
 
-Last updated: 2026-10-09 (late night)
+Last updated: 2026-10-12
+
+## 2026-10-12: "You don't have permission" on Manufacturers and Dealer Chats (owner login, live site)
+
+Status: diagnosed, nothing changed in code. All commits up to `c714eee` are pushed to GitHub.
+- **Cause:** the live Firestore rules are an older set that has no entry for the new dealer collections (`dealers`, `dealerTickets`, `dealerPrivate`), so Firebase refuses them for everyone, the owner included.
+    - The repo's rules let the owner in: the rules suite tries every dealer action as the owner, and all passed on 2026-10-09.
+    - Both pages read only collections that the repo's rules cover.
+    - Earlier notes said production ran open "test mode" rules. That was wrong; with open rules these pages would have worked.
+- **Not checked directly:** reading the live rules from this chat was refused (it needs the saved Firebase login). Owner check: Firebase console → Firestore Database → Rules. If there is no `match /dealers`, that's confirmed.
+- **Fix = the pending owner to-do:** replace the leaked admin key in Vercel (`FIREBASE_ADMIN_SDK_BASE64`), make sure the newest Vercel deployment is live, then `firebase deploy --only firestore:rules`. After that, place one small paid test order.
+
+### Next steps
+1. Owner: the three steps above. Claude can run the rules deploy if the owner asks for it (the CLI is signed in as the store's Google account).
+
 
 ## 2026-10-09 (late night): Dashboard shows only the buttons a login can use
 
