@@ -8,7 +8,7 @@ Last updated: 2026-10-13
     - Before deploying: the G1 payment code was confirmed live (its admin text is in the live bundle), and `npm run test:rules` gave 340 passed, 0 failed.
     - Live check as a signed-out visitor: `products` 200; `dealers`, `dealerPrivate` and `users` 403.
     - **Confirmed on the live site (owner login, the user's Chrome):** Manufacturers and Dealer Chats both load (GKKD listed, chat opens), no permission errors in the console.
-- **UI fix (committed locally, NOT pushed yet):** `src/components/wa/WaKit.tsx`.
+- **UI fix (pushed and live 2026-10-13):** `src/components/wa/WaKit.tsx`.
     - Push attempt 2026-10-13 failed: Git's saved GitHub login is `ishaputrabiz`, which has no access to `sreerastusilvers/sreerasthusilvers` (403). The user must push from a login with access. The live chat bundle still has `min-h-[560px]`, so the fix is not live.
     - The chat frame had `min-h-[560px]`. On a laptop at 150% scaling the window is about 600px tall, so the frame was taller than the space and pushed the message box below the screen. Removed. This also fixes the customer WhatsApp inbox, which uses the same frame.
     - The date label ("TODAY") stuck to the top while scrolling and covered white message bubbles. It now scrolls with the messages.
@@ -16,7 +16,7 @@ Last updated: 2026-10-13
 
 ### Next steps
 1. Owner: replace the leaked admin key (`FIREBASE_ADMIN_SDK_BASE64` in Vercel, see 2026-10-09 evening). Until then, if the old key was already deleted, prepaid orders land in "Needs review" (safe, not lost). Then place one small paid test order.
-2. User: push `main` (3 commits ahead) with the store's GitHub login, so Vercel deploys the UI fix. Then check Dealer Chats in a short window (about 600px tall): the message box stays on screen and "TODAY" no longer covers the first message.
+2. ~~Push `main`~~ Done 2026-10-13 15:44 IST; Vercel deployed within minutes. **Code check passed:** the live chat chunk no longer has `min-h-[560px]` or the sticky date label, and matches `WaKit.tsx`. **Still to do:** look at Dealer Chats as the owner in a window about 600px tall (message box on screen, "TODAY" not covering the first message). This needs the owner login, so it means the user's Chrome (ask first) or the user checks by eye.
 
 
 ## 2026-10-12: "You don't have permission" on Manufacturers and Dealer Chats (owner login, live site)
