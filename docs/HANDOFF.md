@@ -1,6 +1,22 @@
 # Handoff
 
-Last updated: 2026-10-12
+Last updated: 2026-10-13
+
+## 2026-10-13: Firestore rules deployed; chat message box no longer slides off the screen
+
+- **Rules are live** (`firebase deploy --only firestore:rules`, 2026-10-13, signed in as the store's Google account).
+    - Before deploying: the G1 payment code was confirmed live (its admin text is in the live bundle), and `npm run test:rules` gave 340 passed, 0 failed.
+    - Live check as a signed-out visitor: `products` 200; `dealers`, `dealerPrivate` and `users` 403.
+    - The owner's permission errors on Manufacturers and Dealer Chats should now be gone.
+- **UI fix (committed locally, not pushed):** `src/components/wa/WaKit.tsx`.
+    - The chat frame had `min-h-[560px]`. On a laptop at 150% scaling the window is about 600px tall, so the frame was taller than the space and pushed the message box below the screen. Removed. This also fixes the customer WhatsApp inbox, which uses the same frame.
+    - The date label ("TODAY") stuck to the top while scrolling and covered white message bubbles. It now scrolls with the messages.
+    - Checked on emulators (project `demo-dealer`, Front Desk staff login): 1280x600 at 150%, 1440x900 and 390x844, light and dark. The page fits the window with no scroll in all 8 views. `npm run build` passes.
+
+### Next steps
+1. Owner: replace the leaked admin key (`FIREBASE_ADMIN_SDK_BASE64` in Vercel, see 2026-10-09 evening). Until then, if the old key was already deleted, prepaid orders land in "Needs review" (safe, not lost). Then place one small paid test order.
+2. Push this commit so Vercel deploys the UI fix.
+
 
 ## 2026-10-12: "You don't have permission" on Manufacturers and Dealer Chats (owner login, live site)
 

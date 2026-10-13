@@ -106,7 +106,7 @@ export const WaAvatar = ({ size = 49, icon }: { size?: number; icon?: ReactNode 
 );
 
 export const WaDayChip = ({ children }: { children: ReactNode }) => (
-  <div className="sticky top-1.5 z-[2] my-2 flex justify-center">
+  <div className="my-2 flex justify-center">
     <span className="rounded-[7.5px] bg-[var(--wa-day)] px-3 py-[5px] text-[12.5px] uppercase leading-[21px] text-[var(--wa-day-text)] shadow-[var(--wa-shadow)]">
       {children}
     </span>
@@ -352,7 +352,9 @@ export const WaApp = ({
     );
   }
   return (
-    <div className="wa -m-4 h-[calc(100dvh-64px)] min-h-[560px] overflow-hidden bg-[var(--wa-bg)] lg:-m-6 lg:h-[calc(100dvh-64px)]">
+    // Exactly the space under the admin header, never more: a min-height here
+    // pushed the composer below the fold on short laptop windows.
+    <div className="wa -m-4 h-[calc(100dvh-64px)] overflow-hidden bg-[var(--wa-bg)] lg:-m-6">
       <div className="grid h-full grid-cols-[minmax(320px,30%)_1fr] xl:grid-cols-[minmax(360px,30%)_1fr]">
         <aside className="flex min-h-0 flex-col overflow-hidden border-r border-[var(--wa-border)] bg-[var(--wa-bg)]">{list}</aside>
         <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">{chat || empty}</section>
