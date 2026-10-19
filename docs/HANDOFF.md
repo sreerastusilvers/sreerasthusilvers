@@ -540,3 +540,5 @@ Status: done, build passes, browser-tested (Playwright, 390 px and 1440 px, ligh
 
 ### Pre-existing, not touched
 - `npx tsc` fails on `ignoreDeprecations: "6.0"` in `tsconfig.app.json` with TS 5.9, and there are older type errors in unrelated files (VideoCallRequestModal, *Collections pages, invoiceService, videoCallService, DeliveryDashboard).
+
+- **2026-10-19: product cards: cart button + Buy now, floating "View cart" pill** (local commit, not pushed). Shared `ProductCard.tsx` and the category page's own card: a cart button (a small stepper once in the cart) beside "Buy Now" (adds once, dismisses the add confirmation, goes to checkout). `src/components/ViewCartPill.tsx` shows bottom centre on the pages in `src/lib/cartPill.ts` and steps aside while CartConfirmation or the cart is open. Empty stars are now hollow in dark mode (they looked like 5 stars). Home mosaic rows and Wishlist keep their own buttons. Checked as a guest at 390/1440 light/dark (live Firebase, so not signed in).

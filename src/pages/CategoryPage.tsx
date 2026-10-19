@@ -18,8 +18,8 @@ import {
   Home,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Check as CheckIcon } from "lucide-react";
-import { useJustAdded } from "@/components/cart/cartFeedback";
+import { ShoppingCart, Minus, Plus } from "lucide-react";
+import { dismissCartFeedback } from "@/components/cart/cartFeedback";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CategoryIconNav from "@/components/CategoryIconNav";
@@ -77,6 +77,8 @@ type CategoryProductCardProps = {
   product: UIProduct;
   wishlisted: boolean;
   onAddToCart: (product: UIProduct) => void;
+  /** Adds it if it is not in the cart yet, then goes to checkout. */
+  onBuyNow: (product: UIProduct) => void;
   onToggleWishlist: (product: UIProduct, wishlisted: boolean) => void;
   onOpen: (productId: string) => void;
 };
@@ -85,11 +87,14 @@ const CategoryProductCard = memo(function CategoryProductCard({
   product,
   wishlisted,
   onAddToCart,
+  onBuyNow,
   onToggleWishlist,
   onOpen,
 }: CategoryProductCardProps) {
   const { ratePerGram } = useSilverRate();
-  const justAdded = useJustAdded(product.id);
+  const { items, updateQuantity, removeFromCart } = useCart();
+  const inCartQty = items.find((i) => i.id === product.id)?.quantity ?? 0;
+  const soldOut = typeof product.stock === "number" && product.stock <= 0;
   const sp = product.silverPricing;
   const displayPrice = sp?.enabled && ratePerGram > 0
     ? computeSilverOriginalPrice(sp, ratePerGram)
@@ -143,7 +148,7 @@ const CategoryProductCard = memo(function CategoryProductCard({
                 <Star key={i} className={`w-3 h-3 ${
                   i < Math.floor(product.rating) ? "fill-amber-400 text-amber-400"
                   : i < product.rating ? "fill-amber-200 text-amber-400"
-                  : "fill-gray-200 text-gray-400"
+                  : "fill-gray-200 text-gray-400 dark:fill-transparent dark:text-gray-500"
                 }`} />
               ))}
               <span className="text-xs text-muted-foreground">({product.reviews})</span>
@@ -151,7 +156,7 @@ const CategoryProductCard = memo(function CategoryProductCard({
           ) : (
             <>
               {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-3 h-3 fill-gray-200 text-gray-400" />
+                <Star key={i} className="w-3 h-3 fill-gray-200 text-gray-400 dark:fill-transparent dark:text-gray-500" />
               ))}
             </>
           )}
@@ -171,22 +176,54 @@ const CategoryProductCard = memo(function CategoryProductCard({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => onAddToCart(product)}
-          className={`w-full mt-2 py-2 text-white text-xs font-medium rounded-lg transition-[background-color,transform] duration-150 active:scale-[0.97] inline-flex items-center justify-center gap-1 ${
-            justAdded ? "bg-emerald-700" : "bg-primary hover:bg-primary/90"
-          }`}
-        >
-          {justAdded ? (
-            <>
-              <CheckIcon className="w-3.5 h-3.5" strokeWidth={3} aria-hidden="true" />
-              Added
-            </>
+        <div className="flex items-stretch gap-1.5 pt-1">
+          {inCartQty > 0 ? (
+            <div className="flex h-9 flex-none items-center rounded-lg border border-primary bg-primary/[0.06]">
+              <button
+                type="button"
+                aria-label={`Decrease quantity of ${product.title}`}
+                onClick={() => {
+                  if (inCartQty <= 1) removeFromCart(product.id);
+                  else updateQuantity(product.id, inCartQty - 1);
+                }}
+                className="grid h-full w-7 place-items-center rounded-l-lg text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.94] transition-[background-color,transform] duration-150"
+              >
+                <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <span aria-live="polite" className="min-w-[1rem] text-center text-xs font-bold tabular-nums text-primary">
+                {inCartQty}
+                <span className="sr-only"> in cart</span>
+              </span>
+              <button
+                type="button"
+                aria-label={`Increase quantity of ${product.title}`}
+                onClick={() => updateQuantity(product.id, inCartQty + 1)}
+                className="grid h-full w-7 place-items-center rounded-r-lg text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.94] transition-[background-color,transform] duration-150"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
           ) : (
-            "Add to Cart"
+            <button
+              type="button"
+              disabled={soldOut}
+              aria-label={`Add ${product.title} to cart`}
+              onClick={() => onAddToCart(product)}
+              className="grid h-9 w-9 flex-none place-items-center rounded-lg border border-primary text-primary transition-[background-color,color,transform] duration-150 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-primary"
+            >
+              <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+            </button>
           )}
-        </button>
+          <button
+            type="button"
+            disabled={soldOut}
+            onClick={() => onBuyNow(product)}
+            className="flex h-9 min-w-0 flex-1 items-center justify-center rounded-lg bg-primary px-2 text-xs font-medium text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span className="truncate">{soldOut ? "Sold out" : "Buy Now"}</span>
+            <span className="sr-only">: {product.title}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -199,7 +236,7 @@ const CategoryPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, items: cartItems, closeCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { toast } = useToast();
 
@@ -669,10 +706,10 @@ const CategoryPage = () => {
     navigate(`/product/${productId}`);
   };
 
-  const handleCardAddToCart = async (product: UIProduct) => {
+  const handleCardAddToCart = (product: UIProduct): boolean => {
     if (!user && !auth.currentUser) {
       navigate("/login", { state: { from: location } });
-      return;
+      return false;
     }
     const added = addToCart({
       id: product.id,
@@ -683,7 +720,20 @@ const CategoryPage = () => {
       stock: product.stock,
     });
     // The shared cart confirmation (raised by addToCart) reports the result.
-    if (!added) return;
+    return added;
+  };
+
+  // Buy now = the product page's rule: in the cart once (not doubled), then checkout.
+  const handleCardBuyNow = (product: UIProduct) => {
+    if (!user && !auth.currentUser) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+    const inCart = cartItems.some((i) => i.id === product.id);
+    if (!inCart && !handleCardAddToCart(product)) return;
+    dismissCartFeedback();
+    closeCart();
+    navigate("/checkout", { state: { from: "product" } });
   };
 
   const handleCardToggleWishlist = (product: UIProduct, wishlisted: boolean) => {
@@ -921,7 +971,8 @@ const CategoryPage = () => {
                       product={product}
                       wishlisted={isInWishlist(product.id)}
                       onOpen={handleCardOpen}
-                      onAddToCart={(p) => { void handleCardAddToCart(p); }}
+                      onAddToCart={handleCardAddToCart}
+                      onBuyNow={handleCardBuyNow}
                       onToggleWishlist={handleCardToggleWishlist}
                     />
                   ))}
