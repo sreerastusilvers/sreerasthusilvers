@@ -17,5 +17,5 @@ Last updated: 2026-11-05. Older history: `docs/archive/HANDOFF-to-2026-10-13.md`
 - **Gotcha:** headless Playwright gets no /tr beacons from this Pixel (Meta drops automated browsers). Verify in a real Chrome or in Events Manager → Test events.
 
 ## Next steps
-1. Owner: add `VITE_META_PIXEL_ID=1634038191551263` in Vercel (Production), redeploy, then check Events Manager → Test events on sreerasthusilvers.com.
+1. DONE 2026-11-05: Pixel is LIVE. Checked on www.sreerasthusilvers.com in Chrome "Browser 6": PageView (utm kept) and ViewContent (₹10,000 INR) sent once each with id 1634038191551263. Confirm the first real Purchase in Events Manager.
 2. Owner: replace the leaked admin key (`FIREBASE_ADMIN_SDK_BASE64` in Vercel); see the archive, 2026-10-09 evening.
