@@ -1287,7 +1287,9 @@ const ProductDetail = () => {
               You May Also Like
             </h2>
             {/* Mobile: Horizontal Scroll */}
-            <div className="md:hidden flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+            {/* relative: the cards' absolute bits (wishlist button, sr-only text) must use this
+                scroller as their containing block, or they escape it and widen the mobile page */}
+            <div className="md:hidden relative flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
               {relatedProducts.map((relatedProduct, idx) => (
                 <div key={relatedProduct.id} className="flex-shrink-0 w-40">
                   <ProductCard product={relatedProduct} index={idx} />
