@@ -11,6 +11,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test:pixel": "node scripts/tests/meta-pixel.test.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-rules -c scripts/tests/firebase.rules-test.json \"node scripts/tests/firestore-rules.test.mjs .\""
   },
   "dependencies": {

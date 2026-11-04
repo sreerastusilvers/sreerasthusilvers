@@ -18,6 +18,7 @@ import { adaptFirebaseToUI, UIProduct } from '@/lib/productAdapter';
 import { getUserAddresses, getDefaultAddress, Address, addAddress, AddressFormData } from '@/services/addressService';
 import { createPaidOrder, preflightCart, generateOrderNumber, OrderFormData, OrderItem } from '@/services/orderService';
 import { payWithRazorpay, PaymentCancelledError, type VerifiedPayment } from '@/services/razorpayService';
+import { trackInitiateCheckout, trackPurchase } from '@/lib/metaPixel';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -407,6 +408,15 @@ const MobileCheckout = () => {
   const discount = pricing.discount;
   const total = pricing.total;
 
+  // Meta Pixel InitiateCheckout: on mobile, step 1 is the cart, so checkout
+  // starts when the shopper moves on to step 2. Once per visit to the page.
+  const initiateCheckoutSent = useRef(false);
+  useEffect(() => {
+    if (currentStep !== 2 || initiateCheckoutSent.current || items.length === 0) return;
+    initiateCheckoutSent.current = true;
+    trackInitiateCheckout(items.map((i) => ({ id: i.id, quantity: i.quantity })), subtotal);
+  }, [currentStep, items, subtotal]);
+
   // Defensive guard — must come AFTER all hooks (Rules of Hooks)
   if (!user) return <Navigate to="/login" state={{ from: { pathname: '/checkout' } }} replace />;
 
@@ -514,6 +524,10 @@ const MobileCheckout = () => {
           notes: { orderNumber: orderId, userId: user.uid },
         });
       }
+
+      // Meta Pixel Purchase: only here, after /api/verify-payment confirmed the
+      // signature (payWithRazorpay throws on cancel/failure). Once per order.
+      trackPurchase(orderId, items.map((i) => ({ id: i.id, quantity: i.quantity })), total);
 
 
       // Prepare order data
@@ -1919,6 +1933,15 @@ const Checkout = () => {
     if (items.length > 0) cartWasPopulatedRef.current = true;
   }, [items]);
 
+  // Meta Pixel InitiateCheckout (desktop): the cart is a drawer here, so the
+  // checkout starts when this page opens with items. Mobile fires its own.
+  const initiateCheckoutSent = useRef(false);
+  useEffect(() => {
+    if (isMobile || cartLoading || items.length === 0 || initiateCheckoutSent.current) return;
+    initiateCheckoutSent.current = true;
+    trackInitiateCheckout(items.map((i) => ({ id: i.id, quantity: i.quantity })), subtotal);
+  }, [isMobile, cartLoading, items, subtotal]);
+
   // Redirect to home only when cart was populated then emptied (e.g. after order placed)
   // Skip when isMobile — MobileCheckout has its own nav guard with step-awareness
   useEffect(() => {
@@ -2168,6 +2191,10 @@ const Checkout = () => {
           notes: { orderNumber: orderId, userId: user.uid },
         });
       }
+
+      // Meta Pixel Purchase: only here, after /api/verify-payment confirmed the
+      // signature (payWithRazorpay throws on cancel/failure). Once per order.
+      trackPurchase(orderId, items.map((i) => ({ id: i.id, quantity: i.quantity })), total);
 
 
       // Prepare order data

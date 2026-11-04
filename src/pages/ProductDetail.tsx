@@ -28,6 +28,7 @@ import ProductOfferTag from "@/components/offers/ProductOfferTag";
 import { SmartImage } from "@/components/ui/smart-image";
 import { useJustAdded, notifyCartError, dismissCartFeedback } from "@/components/cart/cartFeedback";
 import ProductImageViewer from "@/components/ProductImageViewer";
+import { trackViewContent } from "@/lib/metaPixel";
 
 /**
  * Can this product be bought right now?
@@ -206,6 +207,15 @@ const ProductDetail = () => {
     // `catalogRevision` re-runs this when an admin publishes, so the price
     // painted from the catalog matches the one the product page settles on.
   }, [productId, catalogRevision]);
+
+  // Meta Pixel ViewContent: once per product, on the first copy shown (the
+  // catalog copy and the fresh read both call setProduct).
+  const viewContentSentFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!product || product.id !== productId || viewContentSentFor.current === product.id) return;
+    viewContentSentFor.current = product.id;
+    trackViewContent({ id: product.id, name: product.title, price: product.price });
+  }, [product, productId]);
 
   // Fetch reviews and check if user can review
   useEffect(() => {

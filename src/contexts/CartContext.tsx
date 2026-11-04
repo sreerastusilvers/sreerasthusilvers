@@ -8,6 +8,7 @@ import { fetchLiveProductInfo } from '@/services/livePricing';
 import { useCatalogRevision } from '@/services/productCache';
 import { notifyAdded, notifyCartError } from '@/components/cart/cartFeedback';
 import { mergeAddIntoSavedCart } from './cartMerge';
+import { trackAddToCart } from '@/lib/metaPixel';
 
 // Cart Item Interface
 export interface CartItem {
@@ -414,6 +415,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     notifyAdded(feedbackItem, quantity, requestedQuantity);
+    // Every add-to-cart button on the site goes through here, so this is the
+    // single Meta Pixel AddToCart (refused adds returned above).
+    trackAddToCart({ id: item.id, name: item.name, price: item.price }, quantity);
     return true;
   };
 

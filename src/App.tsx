@@ -40,6 +40,7 @@ const SavedAddresses = lazy(() => import("./pages/SavedAddresses"));
 const BuyAgain = lazy(() => import("./pages/BuyAgain"));
 import LoadingScreen from "./components/LoadingScreen";
 import ScrollToTop from "./components/ScrollToTop";
+import { MetaPixelRouteTracker, NavigateKeepQuery } from "./components/analytics/MetaPixelRouteTracker";
 const MobileCart = lazy(() => import("./pages/MobileCart"));
 const MobileOrders = lazy(() => import("./pages/MobileOrders"));
 const OrderDetailsPage = lazy(() => import("./pages/OrderDetailsPage"));
@@ -119,21 +120,21 @@ const LEGACY_SHOP_REDIRECTS: Record<string, string> = {
 
 const LegacyShopRedirect = () => {
   const { shopSlug } = useParams<{ shopSlug: string }>();
-  return <Navigate to={LEGACY_SHOP_REDIRECTS[shopSlug ?? ""] ?? "/category/jewellery"} replace />;
+  return <NavigateKeepQuery to={LEGACY_SHOP_REDIRECTS[shopSlug ?? ""] ?? "/category/jewellery"} />;
 };
 
 const LegacyArticlesRedirect = () => {
   const { articleSlug } = useParams<{ articleSlug: string }>();
-  return <Navigate to={articleSlug === "gift-articles" ? "/category/gifting" : "/category/articles"} replace />;
+  return <NavigateKeepQuery to={articleSlug === "gift-articles" ? "/category/gifting" : "/category/articles"} />;
 };
 
-const LegacyFurnitureRedirect = () => <Navigate to="/category/furniture" replace />;
+const LegacyFurnitureRedirect = () => <NavigateKeepQuery to="/category/furniture" />;
 
-const LegacyOtherProductsRedirect = () => <Navigate to="/category/others" replace />;
+const LegacyOtherProductsRedirect = () => <NavigateKeepQuery to="/category/others" />;
 
-const LegacyHomeDecorRedirect = () => <Navigate to="/category/others" replace />;
+const LegacyHomeDecorRedirect = () => <NavigateKeepQuery to="/category/others" />;
 
-const LegacyGiftsRedirect = () => <Navigate to="/category/gifting" replace />;
+const LegacyGiftsRedirect = () => <NavigateKeepQuery to="/category/gifting" />;
 
 /** Shown while a route's JS chunk downloads. Deliberately dependency-free. */
 function RouteFallback() {
@@ -166,6 +167,7 @@ const App = () => {
             {!isLoaded && <LoadingScreen onComplete={handleLoadingComplete} />}
             <BrowserRouter>
               <ScrollToTop />
+              <MetaPixelRouteTracker />
               <ShoppingCart />
             {/* Route components are lazy-loaded; this fallback covers the chunk fetch. */}
             <Suspense fallback={<RouteFallback />}>
@@ -174,7 +176,7 @@ const App = () => {
               <Route path="/" element={<Index />} />
               
               {/* Mobile Cart Page — redirect to checkout (cart is now step 1 of checkout) */}
-              <Route path="/cart" element={<Navigate to="/checkout" replace />} />
+              <Route path="/cart" element={<NavigateKeepQuery to="/checkout" />} />
               
               {/* Mobile Search Pages */}
               <Route path="/search" element={<MobileSearch />} />
@@ -185,19 +187,19 @@ const App = () => {
               <Route path="/category/:categorySlug" element={<CategoryPage />} />
               
               {/* Legacy redirects */}
-              <Route path="/jewelry" element={<Navigate to="/category/jewellery" replace />} />
-              <Route path="/furniture" element={<Navigate to="/category/furniture" replace />} />
-              <Route path="/articles" element={<Navigate to="/category/articles" replace />} />
+              <Route path="/jewelry" element={<NavigateKeepQuery to="/category/jewellery" />} />
+              <Route path="/furniture" element={<NavigateKeepQuery to="/category/furniture" />} />
+              <Route path="/articles" element={<NavigateKeepQuery to="/category/articles" />} />
               <Route path="/articles/:articleSlug" element={<LegacyArticlesRedirect />} />
               <Route path="/products" element={<CategoryPage />} />
-              <Route path="/home-decor" element={<Navigate to="/category/others" replace />} />
+              <Route path="/home-decor" element={<NavigateKeepQuery to="/category/others" />} />
               <Route path="/home-decor/:itemSlug" element={<LegacyHomeDecorRedirect />} />
-              <Route path="/gifts" element={<Navigate to="/category/articles" replace />} />
+              <Route path="/gifts" element={<NavigateKeepQuery to="/category/articles" />} />
               <Route path="/gifts/:giftSlug" element={<LegacyGiftsRedirect />} />
               <Route path="/shop/:shopSlug" element={<LegacyShopRedirect />} />
               <Route path="/furniture/:itemSlug" element={<LegacyFurnitureRedirect />} />
               <Route path="/other-products/:itemSlug" element={<LegacyOtherProductsRedirect />} />
-              <Route path="/jewelry-collections" element={<Navigate to="/category/jewellery" replace />} />
+              <Route path="/jewelry-collections" element={<NavigateKeepQuery to="/category/jewellery" />} />
               
               <Route path="/product/:productId" element={<ProductDetail />} />
               <Route path="/write-review" element={
@@ -267,7 +269,7 @@ const App = () => {
               } />
               {/* No wallet yet: checkout cannot spend a balance, so the old
                   WalletPage (gift-card redeem into wallet) stays unrouted. */}
-              <Route path="/wallet" element={<Navigate to="/purchase-summary" replace />} />
+              <Route path="/wallet" element={<NavigateKeepQuery to="/purchase-summary" />} />
               <Route path="/purchase-summary" element={
                 <ProtectedRoute requireEmailVerification={false}>
                   <PurchaseSummary />
