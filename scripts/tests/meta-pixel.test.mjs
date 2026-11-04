@@ -82,7 +82,8 @@ const test = async (name, fn) => { await fn(); passed++; console.log(`  ok  ${na
 
   await test('isTrackablePath blocks staff and auth-code pages only', () => {
     for (const p of ['/admin', '/admin/', '/ADMIN/orders', '/delivery/dashboard', '/deliverypartner',
-      '/reset-password', '/auth/action', '/__/auth/action', '/verify-email', '/auth/verify-email']) {
+      '/reset-password', '/auth/action', '/__/auth/action', '/verify-email', '/auth/verify-email',
+      '/call/abc123', '/my-video-calls']) {
       assert.equal(px.isTrackablePath(p), false, p);
     }
     for (const p of ['/', '/product/abc', '/checkout', '/category/jewellery', '/administer', '/login']) {

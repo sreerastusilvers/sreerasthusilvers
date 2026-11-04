@@ -54,11 +54,14 @@ let initialised = false;
 
 export const isMetaPixelEnabled = (): boolean => PIXEL_ID.length > 0;
 
+/** True once fbevents.js has been added to this page. */
+export const isMetaPixelLoaded = (): boolean => typeof window !== 'undefined' && !!window.fbq;
+
 /**
  * Pages Meta must never see: staff areas, and auth links whose URL carries a
  * one-time code (Firebase `oobCode`) that would otherwise be sent to Meta.
  */
-const BLOCKED_PREFIXES = ['/admin', '/delivery', '/deliverypartner'];
+const BLOCKED_PREFIXES = ['/admin', '/delivery', '/deliverypartner', '/call', '/my-video-calls'];
 const BLOCKED_EXACT = new Set([
   '/reset-password',
   '/auth/reset-password',

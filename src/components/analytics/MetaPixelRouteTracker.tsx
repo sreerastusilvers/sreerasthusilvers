@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { isMetaPixelEnabled, trackPageView } from '@/lib/metaPixel';
+import { isMetaPixelEnabled, isMetaPixelLoaded, isTrackablePath, trackPageView } from '@/lib/metaPixel';
 
 /**
  * Sends a Meta Pixel PageView on first load and on every client-side route
@@ -13,6 +13,13 @@ export function MetaPixelRouteTracker() {
 
   useEffect(() => {
     if (!isMetaPixelEnabled()) return;
+    // Meta's script must never run inside staff/private pages: if it was loaded
+    // on a shop page and the visitor moves to one in the same tab, reload so
+    // that page starts clean (the pixel only loads on trackable paths).
+    if (!isTrackablePath(pathname)) {
+      if (isMetaPixelLoaded()) window.location.reload();
+      return;
+    }
     const timer = window.setTimeout(trackPageView, 300);
     return () => window.clearTimeout(timer);
   }, [pathname, search]);
