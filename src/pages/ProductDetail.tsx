@@ -29,6 +29,8 @@ import { SmartImage } from "@/components/ui/smart-image";
 import { useJustAdded, notifyCartError, dismissCartFeedback } from "@/components/cart/cartFeedback";
 import ProductImageViewer from "@/components/ProductImageViewer";
 import { trackViewContent } from "@/lib/metaPixel";
+import Seo from "@/components/seo/Seo";
+import { productSeo } from "@/lib/seo/core.mjs";
 
 /**
  * Can this product be bought right now?
@@ -58,6 +60,7 @@ const ProductDetail = () => {
   const [showVideoCallModal, setShowVideoCallModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [product, setProduct] = useState<UIProductDetail | null>(null);
+  const [rawProduct, setRawProduct] = useState<FirebaseProduct | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<UIProductDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -178,6 +181,7 @@ const ProductDetail = () => {
       const cached = catalog.find(p => p.id === productId) ?? null;
       if (cached) {
         setProduct(adaptFirebaseToUIDetail(cached));
+        setRawProduct(cached);
         showRelated(cached.category);
         setLoading(false);
       }
@@ -187,6 +191,7 @@ const ProductDetail = () => {
         if (cancelled) return;
         if (fresh) {
           setProduct(adaptFirebaseToUIDetail(fresh));
+          setRawProduct(fresh);
           if (!cached) showRelated(fresh.category);
         } else if (!cached) {
           setNotFound(true);
@@ -542,6 +547,7 @@ const ProductDetail = () => {
   if (notFound || !product) {
     return (
       <div className="min-h-screen w-full">
+        <Seo title="Product not found | Sreerasthu Silvers" noindex />
         <main className="container-custom py-20 text-center">
           <h1 className="text-2xl font-semibold mb-4">Product Not Found</h1>
           <p className="text-muted-foreground mb-6">The product you're looking for doesn't exist or has been removed.</p>
@@ -578,8 +584,26 @@ const ProductDetail = () => {
   ];
 
 
+  const seo = productSeo(
+    { ...(rawProduct ?? {}), id: product.id, name: rawProduct?.name ?? product.title, price: product.price },
+    {
+      categoryPath: rawProduct?.category ? `/category/${rawProduct.category.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")}` : undefined,
+      categoryName: rawProduct?.category,
+      rating: reviewStats.totalReviews > 0 ? { average: reviewStats.averageRating, count: reviewStats.totalReviews } : null,
+    },
+  );
+
   return (
     <div className="min-h-screen w-full overflow-x-clip">
+      <Seo
+        title={seo.title}
+        description={seo.description}
+        canonical={seo.canonical}
+        image={seo.image}
+        imageAlt={seo.imageAlt}
+        type="product"
+        jsonLd={seo.jsonLd}
+      />
       {/* Desktop Header */}
       <div className="hidden lg:block">
         <Header />

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef, memo } from "react";
 import { auth } from "@/config/firebase";
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import Seo from "@/components/seo/Seo";
+import { STATIC_PAGES, absoluteUrl, categorySeo } from "@/lib/seo/core.mjs";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   SlidersHorizontal,
@@ -748,6 +750,7 @@ const CategoryPage = () => {
   if (categorySlug && !currentCategory && !loading && categories.length > 0) {
     return (
       <div className="min-h-screen bg-background">
+        <Seo title="Category not found | Sreerasthu Silvers" noindex />
         <Header />
         <div className="flex flex-col items-center justify-center py-32">
           <p className="text-muted-foreground text-lg">Category not found</p>
@@ -760,8 +763,19 @@ const CategoryPage = () => {
     );
   }
 
+  const seo = currentCategory
+    ? categorySeo(currentCategory.slug, currentCategory.name)
+    : { ...STATIC_PAGES["/products"], canonical: absoluteUrl("/products"), jsonLd: [] };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <Seo
+        title={seo.title}
+        description={seo.description}
+        canonical={seo.canonical}
+        jsonLd={seo.jsonLd}
+        noindex={(!loading && allProducts.length === 0) || (!categorySlug && !!activeTag)}
+      />
       <Header />
       <CategoryIconNav />
 
@@ -789,9 +803,9 @@ const CategoryPage = () => {
       {/* Mobile: Sort + Filter bar */}
       <div className="lg:hidden sticky top-0 z-30 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-lg font-bold text-foreground">
+          <h2 className="text-lg font-bold text-foreground">
             {currentCategory?.name || tagMeta?.label || "All Products"}
-          </h1>
+          </h2>
           <div className="flex gap-2">
             {/* Sort */}
             <div className="relative">

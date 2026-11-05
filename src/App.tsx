@@ -41,6 +41,7 @@ const BuyAgain = lazy(() => import("./pages/BuyAgain"));
 import LoadingScreen from "./components/LoadingScreen";
 import ScrollToTop from "./components/ScrollToTop";
 import { MetaPixelRouteTracker, NavigateKeepQuery } from "./components/analytics/MetaPixelRouteTracker";
+import { RouteSeo } from "./components/seo/Seo";
 const MobileCart = lazy(() => import("./pages/MobileCart"));
 const MobileOrders = lazy(() => import("./pages/MobileOrders"));
 const OrderDetailsPage = lazy(() => import("./pages/OrderDetailsPage"));
@@ -168,6 +169,7 @@ const App = () => {
             <BrowserRouter>
               <ScrollToTop />
               <MetaPixelRouteTracker />
+              <RouteSeo />
               <ShoppingCart />
             {/* Route components are lazy-loaded; this fallback covers the chunk fetch. */}
             <Suspense fallback={<RouteFallback />}>

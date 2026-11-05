@@ -121,9 +121,9 @@ const Contact = () => {
               </h3>
             </div>
             <div className="ml-10">
-              <p className="text-muted-foreground mb-1">Mobile: 063049 60489</p>
-              <p className="text-muted-foreground mb-1">Website: sreerasthusiIvers.co.in</p>
-              <p className="text-muted-foreground">Mail: info@sreerasthusiIvers.co.in</p>
+              <p className="text-muted-foreground mb-1">Mobile: +91 63049 60489</p>
+              <p className="text-muted-foreground mb-1">Website: www.sreerasthusilvers.com</p>
+              <p className="text-muted-foreground">Mail: sreerasthusilvers@gmail.com</p>
             </div>
           </motion.div>
 

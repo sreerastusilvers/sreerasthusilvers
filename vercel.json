@@ -1,6 +1,7 @@
 {
   "installCommand": "npm install",
   "buildCommand": "npm run build",
+  "trailingSlash": false,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     {
@@ -18,6 +19,6 @@
       ],
       "destination": "/api/media?og=product&id=:id"
     },
-    { "source": "/((?!api/).*)", "destination": "/" }
+    { "source": "/((?!api/).*)", "destination": "/shell.html" }
   ]
 }

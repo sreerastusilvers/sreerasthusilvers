@@ -1,14 +1,19 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Sreerasthu Silvers - https://www.sreerasthusilvers.com
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /delivery
+Disallow: /account
+Disallow: /checkout
+Disallow: /wishlist
+Disallow: /profile
+Disallow: /purchase-summary
+Disallow: /buy-again
+Disallow: /my-video-calls
+Disallow: /call
+Disallow: /api/
+Disallow: /__/
+Disallow: /*?*sort=
+Disallow: /*?*price=
+
+Sitemap: https://www.sreerasthusilvers.com/sitemap.xml

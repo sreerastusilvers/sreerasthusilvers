@@ -7,7 +7,7 @@
     "dev": "vite",
     "emulators": "firebase emulators:start",
     "dev:all": "concurrently \"vite\" \"firebase emulators:start\"",
-    "build": "vite build",
+    "build": "vite build && node scripts/seo/prerender.mjs",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
