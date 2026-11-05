@@ -41,6 +41,7 @@ const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || 'sreerasthusilvers-33
 const CATEGORIES_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/categories?pageSize=100`;
 const MANAGED_IMAGE = /^(https?:\/\/[^?#]+\/m[0-9a-f]{24})\.(jpg|png|webp)$/;
 const PRODUCT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const SLUG = /^[a-z0-9-]{1,64}$/; // categories with any other slug are skipped (safe in paths and HTML)
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -159,7 +160,7 @@ async function main() {
     const j = await fetchJson(CATEGORIES_URL);
     categories = (j.documents || [])
       .map((d) => ({ slug: d.fields?.slug?.stringValue, name: d.fields?.name?.stringValue }))
-      .filter((c) => c.slug && c.name);
+      .filter((c) => c.name && SLUG.test(c.slug || ""));
   } catch (err) {
     console.warn(`[seo] categories unavailable, category pages skipped: ${err.message}`);
   }
@@ -241,7 +242,7 @@ async function main() {
       .map(([k, v]) => `<li>${esc(k)}: ${esc(v)}</li>`)
       .join('');
     const body =
-      `<nav><a href="/">Home</a>${where ? ` › <a href="${where.path}">${esc(where.name)}</a>` : ''}</nav>` +
+      `<nav><a href="/">Home</a>${where ? ` › <a href="${esc(where.path)}">${esc(where.name)}</a>` : ''}</nav>` +
       `<h1>${esc(seo.h1)}</h1>` +
       (seo.images[0] ? `<img src="${esc(seo.images[0])}" alt="${esc(seo.imageAlt)}" width="600" height="600" />` : '') +
       (seo.price ? `<p><strong>${formatInr(seo.price)}</strong> · ${seo.inStock ? 'In stock' : 'Out of stock'}</p>` : '') +
